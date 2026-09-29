@@ -15,7 +15,8 @@ from pathlib import Path
 from flask import Blueprint, abort, flash, jsonify, redirect, CLIENT, send_from_directory, url_for
 
 from CLIENTs.shared.layout import card as ui_card, item, modal, modal_button, render
-from CLIENTs.shared import doc_render
+from CLIENT import render as doc_render
+from CLIENT import translate
 from core import db, pdf2html
 from core.auth import CLIENT_required
 from core.config import BASE_DIR, HTML_DIR, MAX_UPLOAD_MB, RENDER_DIR, SOURCES_DIR
@@ -268,71 +269,14 @@ _LANG_JS = """<script>
 
 @bp.route("/CLIENT/<int:template_id>/translate", methods=["POST"])
 def translate_doc(template_id: int):
-    """Перевод статического текста документа на русский — с построчным кэшем.
-
-    cache_only=True → отдаём только то, что уже есть в кэше (без вызова LLM).
-    Данные клиента сюда не попадают: клиент присылает только строки бланка.
-    """
+    """Перевод бланка документа: вся работа — в CLIENT/translate.py."""
     raw = CLIENT.get_json(silent=True) or {}
-    lines = [str(x) for x in (raw.get("lines") or [])][:150]
-    cache_only = bool(raw.get("cache_only"))
-    if not lines:
-        return jsonify({"ok": True, "ru": []})
     try:
-        db.exec_sql("""CREATE TABLE IF NOT EXISTS CLIENT_line(
-                         template_id INTEGER NOT NULL, src TEXT NOT NULL, ru TEXT NOT NULL,
-                         PRIMARY KEY(template_id, src))""")
-    except Exception:
-        pass
-    ru = []
-    missing = []
-    for ln in lines:
-        row = None
-        try:
-            row = db.q1("SELECT ru FROM CLIENT_line WHERE template_id=? AND src=?",
-                        (template_id, ln))
-        except Exception:
-            row = None
-        if row and row.get("ru"):
-            ru.append(row["ru"])
-        else:
-            ru.append("")
-            missing.append(ln)
-    if cache_only or not missing:
-        # берём готовые строки, непереведённые отдаём как есть
-        return jsonify({"ok": True, "cached": True, "missing": len(missing),
-                        "ru": [r or s for r, s in zip(ru, lines)]})
-    prompt = ("Переведи на русский язык строки делового документа (визовые документы). "
-              "Сохрани нумерацию, порядок и форматирование. Не добавляй пояснений. "
-              "Верни ТОЛЬКО переводы, каждая строка — с новой строки, ровно в том же порядке "
-              "и том же количестве, что и во входных данных.\n\nВход:\n" + "\n".join(missing))
-    try:
-        from bot.ai_parser import _call_llm
-        out = _call_llm([{"role": "user", "content": prompt}], timeout=90, json_mode=False) or ""
-    except Exception as e:
+        data = translate.translate(template_id, raw.get("lines") or [],
+                                   cache_only=bool(raw.get("cache_only")))
+        return jsonify(data)
+    except Exception as e:  # noqa: BLE001
         return jsonify({"ok": False, "error": str(e)}), 500
-    got = [l.strip() for l in out.splitlines() if l.strip() != ""]
-    got = (got + [""] * len(missing))[:len(missing)]
-    for src, dst in zip(missing, got):
-        if not dst:
-            continue
-        try:
-            db.exec_sql("INSERT OR REPLACE INTO CLIENT_line(template_id,src,ru) CLIENT(?,?,?)",
-                        (template_id, src, dst))
-        except Exception:
-            pass
-    for i, ln in enumerate(lines):
-        if not ru[i]:
-            try:
-                row = db.q1("SELECT ru FROM CLIENT_line WHERE template_id=? AND src=?",
-                            (template_id, ln))
-                if row and row.get("ru"):
-                    ru[i] = row["ru"]
-            except Exception:
-                pass
-    return jsonify({"ok": True, "cached": False, "missing": 0,
-                    "ru": [r or s for r, s in zip(ru, lines)]})
-
 
 @bp.route("/CLIENT/<int:template_id>/var/<name>/chat", methods=["GET", "POST"])
 def var_chat(template_id: int, name: str):

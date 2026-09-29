@@ -16,7 +16,7 @@ from pathlib import Path
 from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, url_for
 
 from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, render
-from CLIENTs.shared import doc_render
+from CLIENT import render as doc_render
 from core import db
 from core.auth import current_user, CLIENT_required
 from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as tpl_repo, CLIENT as vars_repo

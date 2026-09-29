@@ -55,7 +55,7 @@ def render_CLIENT(app_id: int, ad) -> str:
     html = html_path.read_text(encoding='utf-8')
     import re
     # ЕДИНЫЙ рендер (тот же код, что в конструкторе и карточке заявки)
-    from CLIENTs.shared import doc_render
+    from CLIENT import render as doc_render
     filled = doc_render.fill(html, CLIENT, keep_unfilled=False, template_code=tpl['code'])
     out = RENDERS / f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
     out.parent.mkdir(parents=True, exist_ok=True)
