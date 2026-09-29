@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+logs/
+data/gCLIENT_examples/
+data/gCLIENT_cache/
+data/renders/
+data/previews/
+data/uploads/
+*.bak*

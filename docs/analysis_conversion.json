@@ -1,0 +1,653 @@
+[
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_company",
+  "formats": [
+   "PT Alpha Prime Bali",
+   "PT Alpha Prime Consulting",
+   "PT Wisata Digital Nusantara"
+  ],
+  "rule": "Карточка клиента / карточка спонсора, поле company_name (юр. название компании-спонсора). Пишется латиницей, с префиксом формы (PT/CV), заглавными как в akta. Подставляется в шапку, в подпись и в текст 'penerima kuasa dari ...'."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_name",
+  "formats": [
+   "I Made Sudarma",
+   "Ni Kadek Ayu Lestari",
+   "I Wayan Putra Adnyana"
+  ],
+  "rule": "Карточка спонсора, поле authorized_CLIENT / director_name — ФИО подписанта-гаранта (penerima kuasa). Индонезийское имя, регистр CLIENT Case, без транслитерации. Подставляется в блок 'Yang bertanda tangan', в 'selaku penerima kuasa' и в подпись 'Hormat kami'."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_position",
+  "formats": [
+   "Swasta",
+   "Karyawan Swasta",
+   "Direktur"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT/position ('Pekerjaan :'). Если гарант — частное лицо, пишется 'Swasta'; если директор компании — 'Direktur'. Формат: CLIENT Case, индонезийский язык."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "Indonesia",
+   "Indonesia"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT ('Kewarganegaraan :'). Для гаранта-гражданина Индонезии всегда 'Indonesia'. Формат: CLIENT Case."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_nik",
+  "formats": [
+   "5171015403930001",
+   "5171022508900002",
+   "5171030101950003"
+  ],
+  "rule": "Карточка спонсора, поле NIK (KTP). 16 цифр без пробелов и дефисов, как в KTP. Сейчас в шаблоне статично — брать из карточки гаранта."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_address",
+  "formats": [
+   "Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya",
+   "Jl. Gatot Subroto Barat No. 99, Denpasar",
+   "Banjar Kaja, Kel. Sesetan, Denpasar Selatan"
+  ],
+  "rule": "Карточка спонсора, поле address (KTP/domisili гаранта). Индонезийский адрес как в KTP: Jl./Gg./Banjar + номер, kelurahan, kecamatan, kota. Формат без перевода."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "letter_CLIENT",
+  "formats": [
+   "37/PTAPB-SP/2025",
+   "001/PTAPB-SP/I/2025",
+   "12/PTA-SP/VI/2025"
+  ],
+  "rule": "Расчёт/нумерация исходящих документов агентства. Формат: порядковый номер/код компании-SP/римский месяц/год. Регистр — заглавные буквы в коде компании."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "letter_date",
+  "formats": [
+   "12 Mei 2025",
+   "03 Juni 2025",
+   "27 Januari 2026"
+  ],
+  "rule": "Дата выпуска письма = дата подачи заявления. Формат индонезийский: 'DD NamaBulan YYYY' (месяц по-индонезийски, CLIENT Case). Берётся из расчёта/даты подачи в заявке."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_name",
+  "formats": [
+   "IVAN IVANOV",
+   "ANNA SMIRNOVA",
+   "DMITRII KUZNETSOV"
+  ],
+  "rule": "Карточка клиента, поле full_name как в загранпаспорте. Транслитерация загранпаспорта РФ, ЗАГЛАВНЫЕ латинские буквы, порядок CLIENT Last (как в паспорте), без отчества."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "Laki-laki",
+   "Perempuan"
+  ],
+  "rule": "Карточка клиента, поле CLIENT / пол как в паспорте. Индонезийский: 'Laki-laki' (M) или 'Perempuan' (F). Формат CLIENT Case, с дефисом для мужского."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_CLIENT_CLIENT",
+  "formats": [
+   "MOSKOW",
+   "SAINT PETERSBURG",
+   "NOVOSIBIRSK"
+  ],
+  "rule": "Карточка клиента, поле CLIENT_of_CLIENT (город рождения по загранпаспорту). Транслитерация, ЗАГЛАВНЫЕ. Сейчас в шаблоне стоит '-', нужно подставлять реальный город."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_CLIENT_date",
+  "formats": [
+   "1989-03-14",
+   "14/03/1989",
+   "1995-11-02"
+  ],
+  "rule": "Карточка клиента, поле date_of_CLIENT. ISO-формат YYYY-MM-DD. Подставляется в 'Tempat/Tgl. Lahir' после слэша."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "RUSIA",
+   "RUSSIA",
+   "UKRAINA"
+  ],
+  "rule": "Карточка клиента, поле CLIENT. В индонезийских документах пишут по-индонезийски заглавными: 'RUSIA' (сейчас статично — должно быть переменным)."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_passport_no",
+  "formats": [
+   "769762908",
+   "75 2345671",
+   "512345678"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT. Номер загранпаспорта как в документе (обычно серия+номер без пробелов), заглавные буквы/цифры без изменения. Сейчас статично — брать из карточки."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_passport_CLIENT",
+  "formats": [
+   "2028-05-14",
+   "14/05/2028",
+   "2031-12-31"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT ('Masa Berlaku Paspor'). ISO-формат YYYY-MM-DD. Дата из MRZ/страницы паспорта."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "bridging_visa_no",
+  "formats": [
+   "e33g-1234567",
+   "B1-20250312-0001",
+   "AB1234567"
+  ],
+  "rule": "Заявка/расчёт — номер Bridging Visa (из e-viza PDF или системы). Формат: буквенно-цифровой, регистр как в выдаче. Подставляется как 'Nomor Bridging Visa'."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "bridging_visa_CLIENT",
+  "formats": [
+   "2025-06-30",
+   "30/06/2025",
+   "2026-01-15"
+  ],
+  "rule": "Заявка/расчёт — 'Masa Berlaku Bridging Visa'. ISO-формат YYYY-MM-DD. Берётся из данных моста (срок въезда/пребывания)."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "client_address",
+  "formats": [
+   "Banjar Padang Linjong, Canggu, Kuta Utara, Badung, Bali 80365",
+   "Jl. Raya Ubud No. 5, Gianyar, Bali 80571",
+   "Villa Melati, Jl. Petitenget, Seminyak, Badung, Bali 80361"
+  ],
+  "rule": "Карточка клиента / заявка, поле address_in_indonesia (адрес проживания в Индонезии). Индонезийский формат: Banjar/Jl. + номер, kelurahan, kecamatan, kabupaten/kota, провинция, почтовый индекс. Сейчас статично — переменное."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "CLIENT_date",
+  "formats": [
+   "Denpasar, 12 Mei 2025",
+   "Gianyar, 03 Juni 2025",
+   "Denpasar, 27 Januari 2026"
+  ],
+  "rule": "Город подписания + дата. Формат: 'Kota, DD NamaBulan YYYY' (индонезийский месяц, CLIENT Case). Город — место подписания (обычно Denpasar/Gianyar), дата совпадает с letter_date."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "company_address",
+  "formats": [
+   "Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581",
+   "Jl. Sunset Road No. 88, Kuta, Badung, Bali 80361"
+  ],
+  "rule": "Карточка спонсора, поле company_address. Индонезийский адрес с почтовым кодом. Подставляется в шапку и подпись."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "+62 811 397 9669",
+   "+62 812 3456 7890",
+   "+62 361 123 456"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Формат '+62 XXX XXXX XXXX'. Подставляется в строку 'Telp:' шапки."
+ },
+ {
+  "doc": "conversion_jaminan_letter__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "ptalphaprimeconsulting@gmail.com",
+   "info@alphaprime.co.id",
+   "admin@visaagency.id"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Нижний регистр, валидный CLIENT. Подставляется в строку 'CLIENT:' шапки."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_company",
+  "formats": [
+   "PT Alpha Prime Bali",
+   "PT Alpha Prime Consulting",
+   "PT Wisata Digital Nusantara"
+  ],
+  "rule": "Карточка спонсора, поле company_name (юр. название). Латиница, с префиксом PT/CV, заглавные как в akta. Шапка + подпись + текст 'dari ...'."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_name",
+  "formats": [
+   "I Made Sudarma",
+   "Ni Kadek Ayu Lestari",
+   "I Wayan Putra Adnyana"
+  ],
+  "rule": "Карточка спонсора, поле authorized_CLIENT/director_name — заявитель-подписант. CLIENT Case, индонезийское имя без транслитерации."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_position",
+  "formats": [
+   "Swasta",
+   "Karyawan Swasta",
+   "Direktur"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT/position ('Pekerjaan :'). 'Swasta' для частного лица, 'Direktur' для директора. CLIENT Case."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "Indonesia",
+   "Indonesia"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT ('Kewarganegaraan :'). Для индонезийца — 'Indonesia'."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_nik",
+  "formats": [
+   "5171015403930001",
+   "5171022508900002",
+   "5171030101950003"
+  ],
+  "rule": "Карточка спонсора, поле NIK (KTP). 16 цифр без пробелов. Сейчас статично — брать из карточки гаранта."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_address",
+  "formats": [
+   "Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya",
+   "Jl. Gatot Subroto Barat No. 99, Denpasar",
+   "Banjar Kaja, Kel. Sesetan, Denpasar Selatan"
+  ],
+  "rule": "Карточка спонсора, поле address (KTP/domisili). Индонезийский формат адреса как в KTP."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "letter_CLIENT",
+  "formats": [
+   "37/PTAPB-SP/2025",
+   "001/PTAPB-SP/I/2025",
+   "12/PTA-SP/VI/2025"
+  ],
+  "rule": "Расчёт/нумерация исходящих агентства. Формат: порядковый/код-SP/римский месяц/год, заглавные."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "letter_date",
+  "formats": [
+   "12 Mei 2025",
+   "03 Juni 2025",
+   "27 Januari 2026"
+  ],
+  "rule": "Дата выпуска письма = дата подачи. Формат 'DD NamaBulan YYYY', месяц по-индонезийски. Из заявки/расчёта."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_name",
+  "formats": [
+   "IVAN IVANOV",
+   "ANNA SMIRNOVA",
+   "DMITRII KUZNETSOV"
+  ],
+  "rule": "Карточка клиента, поле full_name как в загранпаспорте. Транслитерация, ЗАГЛАВНЫЕ, порядок CLIENT Last."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "Laki-laki",
+   "Perempuan"
+  ],
+  "rule": "Карточка клиента, поле CLIENT. 'Laki-laki'/'Perempuan', CLIENT Case с дефисом."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_CLIENT_CLIENT",
+  "formats": [
+   "MOSKOW",
+   "SAINT PETERSBURG",
+   "NOVOSIBIRSK"
+  ],
+  "rule": "Карточка клиента, поле CLIENT_of_CLIENT. Транслитерация, ЗАГЛАВНЫЕ. Сейчас стоит '-' — подставлять реальный город."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_CLIENT_date",
+  "formats": [
+   "1989-03-14",
+   "14/03/1989",
+   "1995-11-02"
+  ],
+  "rule": "Карточка клиента, поле date_of_CLIENT. ISO YYYY-MM-DD в 'Tempat/Tgl. Lahir'."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "RUSIA",
+   "RUSSIA",
+   "UKRAINA"
+  ],
+  "rule": "Карточка клиента, поле CLIENT. По-индонезийски заглавными: 'RUSIA' (сейчас статично)."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_passport_no",
+  "formats": [
+   "769762908",
+   "75 2345671",
+   "512345678"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT как в паспорте. Без изменения регистра. Сейчас статично."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_passport_CLIENT",
+  "formats": [
+   "2028-05-14",
+   "14/05/2028",
+   "2031-12-31"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT ('Masa Berlaku Paspor'). ISO YYYY-MM-DD из паспорта."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "bridging_visa_no",
+  "formats": [
+   "e33g-1234567",
+   "B1-20250312-0001",
+   "AB1234567"
+  ],
+  "rule": "Заявка/расчёт — номер Bridging Visa из e-viza PDF. Буквенно-цифровой, регистр как в выдаче."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "bridging_visa_CLIENT",
+  "formats": [
+   "2025-06-30",
+   "30/06/2025",
+   "2026-01-15"
+  ],
+  "rule": "Заявка/расчёт — 'Masa Berlaku Bridging Visa'. ISO YYYY-MM-DD из данных моста."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_address",
+  "formats": [
+   "Banjar Padang Linjong, Canggu, Kuta Utara, Badung, Bali 80365",
+   "Jl. Raya Ubud No. 5, Gianyar, Bali 80571",
+   "Villa Melati, Jl. Petitenget, Seminyak, Badung, Bali 80361"
+  ],
+  "rule": "Карточка клиента/заявка, поле address_in_indonesia. Индонезийский формат Banjar/Jl. + район + индекс. Сейчас статично."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_date",
+  "formats": [
+   "Denpasar, 12 Mei 2025",
+   "Gianyar, 03 Juni 2025",
+   "Denpasar, 27 Januari 2026"
+  ],
+  "rule": "Город + дата подписания. Формат 'Kota, DD NamaBulan YYYY', месяц по-индонезийски. Дата совпадает с letter_date."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "company_address",
+  "formats": [
+   "Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581",
+   "Jl. Sunset Road No. 88, Kuta, Badung, Bali 80361"
+  ],
+  "rule": "Карточка спонсора, поле company_address. Индонезийский адрес с индексом."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "+62 811 397 9669",
+   "+62 812 3456 7890",
+   "+62 361 123 456"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Формат '+62 XXX XXXX XXXX'."
+ },
+ {
+  "doc": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "ptalphaprimeconsulting@gmail.com",
+   "info@alphaprime.co.id",
+   "admin@visaagency.id"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Нижний регистр, валидный CLIENT."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_company",
+  "formats": [
+   "PT Alpha Prime Bali",
+   "PT Alpha Prime Consulting",
+   "PT Wisata Digital Nusantara"
+  ],
+  "rule": "Карточка спонсора, поле company_name — доверитель (principal) в доверенности. Латиница, префикс PT/CV, заглавные как в akta. Шапка + подпись + текст 'penerima kuasa dari ...'."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_name",
+  "formats": [
+   "I Made Sudarma",
+   "Ni Kadek Ayu Lestari",
+   "I Wayan Putra Adnyana"
+  ],
+  "rule": "Карточка спонсора, поле authorized_CLIENT/director_name — получатель доверенности (penerima kuasa). CLIENT Case, индонезийское имя. Подставляется в блок 'Yang bertanda tangan', в 'selaku penerima kuasa' и в подпись."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_position",
+  "formats": [
+   "Swasta",
+   "Karyawan Swasta",
+   "Direktur"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT/position ('Pekerjaan :'). 'Swasta'/'Direktur'. CLIENT Case."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "Indonesia",
+   "Indonesia"
+  ],
+  "rule": "Карточка спонсора, поле CLIENT ('Kewarganegaraan :'). 'Indonesia'."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_nik",
+  "formats": [
+   "5171015403930001",
+   "5171022508900002",
+   "5171030101950003"
+  ],
+  "rule": "Карточка спонсора, поле NIK (KTP). 16 цифр без пробелов. Сейчас статично — брать из карточки."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_address",
+  "formats": [
+   "Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya",
+   "Jl. Gatot Subroto Barat No. 99, Denpasar",
+   "Banjar Kaja, Kel. Sesetan, Denpasar Selatan"
+  ],
+  "rule": "Карточка спонсора, поле address (KTP/domisili). Индонезийский формат адреса."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "letter_CLIENT",
+  "formats": [
+   "37/PTAPB-SP/2025",
+   "001/PTAPB-SP/I/2025",
+   "12/PTA-SP/VI/2025"
+  ],
+  "rule": "Расчёт/нумерация исходящих агентства. Формат: порядковый/код-SP/римский месяц/год."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "letter_date",
+  "formats": [
+   "12 Mei 2025",
+   "03 Juni 2025",
+   "27 Januari 2026"
+  ],
+  "rule": "Дата выпуска доверенности = дата подачи. Формат 'DD NamaBulan YYYY', месяц по-индонезийски."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_name",
+  "formats": [
+   "IVAN IVANOV",
+   "ANNA SMIRNOVA",
+   "DMITRII KUZNETSOV"
+  ],
+  "rule": "Карточка клиента, поле full_name как в загранпаспорте. Транслитерация, ЗАГЛАВНЫЕ, порядок CLIENT Last."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "Laki-laki",
+   "Perempuan"
+  ],
+  "rule": "Карточка клиента, поле CLIENT. 'Laki-laki'/'Perempuan', CLIENT Case."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_CLIENT_CLIENT",
+  "formats": [
+   "MOSKOW",
+   "SAINT PETERSBURG",
+   "NOVOSIBIRSK"
+  ],
+  "rule": "Карточка клиента, поле CLIENT_of_CLIENT. Транслитерация, ЗАГЛАВНЫЕ. Сейчас стоит '-' — подставлять реальный город."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_CLIENT_date",
+  "formats": [
+   "1989-03-14",
+   "14/03/1989",
+   "1995-11-02"
+  ],
+  "rule": "Карточка клиента, поле date_of_CLIENT. ISO YYYY-MM-DD в 'Tempat/Tgl. Lahir'."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "RUSIA",
+   "RUSSIA",
+   "UKRAINA"
+  ],
+  "rule": "Карточка клиента, поле CLIENT. По-индонезийски заглавными: 'RUSIA' (сейчас статично)."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_passport_no",
+  "formats": [
+   "769762908",
+   "75 2345671",
+   "512345678"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT как в паспорте. Сейчас статично — брать из карточки."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_passport_CLIENT",
+  "formats": [
+   "2028-05-14",
+   "14/05/2028",
+   "2031-12-31"
+  ],
+  "rule": "Карточка клиента, поле passport_CLIENT ('Masa Berlaku Paspor'). ISO YYYY-MM-DD."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "bridging_visa_no",
+  "formats": [
+   "e33g-1234567",
+   "B1-20250312-0001",
+   "AB1234567"
+  ],
+  "rule": "Заявка/расчёт — номер Bridging Visa из e-viza PDF. Буквенно-цифровой, регистр как в выдаче."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "bridging_visa_CLIENT",
+  "formats": [
+   "2025-06-30",
+   "30/06/2025",
+   "2026-01-15"
+  ],
+  "rule": "Заявка/расчёт — 'Masa Berlaku Bridging Visa'. ISO YYYY-MM-DD."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "client_address",
+  "formats": [
+   "Banjar Padang Linjong, Canggu, Kuta Utara, Badung, Bali 80365",
+   "Jl. Raya Ubud No. 5, Gianyar, Bali 80571",
+   "Villa Melati, Jl. Petitenget, Seminyak, Badung, Bali 80361"
+  ],
+  "rule": "Карточка клиента/заявка, поле address_in_indonesia. Индонезийский формат Banjar/Jl. + район + индекс. Сейчас статично."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "CLIENT_date",
+  "formats": [
+   "Denpasar, 12 Mei 2025",
+   "Gianyar, 03 Juni 2025",
+   "Denpasar, 27 Januari 2026"
+  ],
+  "rule": "Город + дата подписания доверенности. Формат 'Kota, DD NamaBulan YYYY', месяц по-индонезийски."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "company_address",
+  "formats": [
+   "Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581",
+   "Jl. Sunset Road No. 88, Kuta, Badung, Bali 80361"
+  ],
+  "rule": "Карточка спонсора, поле company_address (доверитель). Индонезийский адрес с индексом."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "+62 811 397 9669",
+   "+62 812 3456 7890",
+   "+62 361 123 456"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Формат '+62 XXX XXXX XXXX'."
+ },
+ {
+  "doc": "conversion_surat_kuasa__denpasar",
+  "CLIENT": "company_CLIENT",
+  "formats": [
+   "ptalphaprimeconsulting@gmail.com",
+   "info@alphaprime.co.id",
+   "admin@visaagency.id"
+  ],
+  "rule": "Карточка спонсора, поле company_CLIENT. Нижний регистр, валидный CLIENT."
+ }
+]

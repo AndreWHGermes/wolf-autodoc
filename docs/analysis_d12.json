@@ -1,0 +1,262 @@
+[
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_company_address",
+  "formats": [
+   "Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581",
+   "Jl. Raya Seminyak No. 88, Kuta, Badung, Bali 80361",
+   "Jl. Sunset Road No. 12, Kuta, Badung, Bali 80361"
+  ],
+  "rule": "Карточка клиента → поле «адрес компании». Сейчас в шаблоне статичный адрес — заменить на реальный. Формат индонезийский: Jl. <название> No.<номер>, RT/RW (если есть), Kel./Desa, Kec., Kab./Kota, Provinsi, kode pos. Повторяется 3 раза (шапка, блок жительства, подпись)."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_company_CLIENT",
+  "formats": [
+   "+62 811-397-9669",
+   "+08113979669",
+   "+62 812 3456 7890"
+  ],
+  "rule": "Карточка клиента → «телефон компании». Статичный +08113979669 в шапке и в подписи заменить. Формат: +62 затем номер без ведущего нуля, либо локальный формат +0..., допускаются дефисы/пробелы. Повторяется 2 раза."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_company_CLIENT",
+  "formats": [
+   "ptalphaprimeconsulting@gmail.com",
+   "info@baliremote.co.id",
+   "admin@nusantaradigital.com"
+  ],
+  "rule": "Карточка клиента → «CLIENT компании». Статичный PTALPHAPRIMECONSULTING@GMAIL.COM заменить на реальный. Формат: только строчные латинские буквы, без пробелов; домен — как в карточке. Повторяется 2 раза."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_date",
+  "formats": [
+   "Jakarta, 15 January 2025",
+   "Bali, 20 Maret 2025",
+   "Denpasar, 03 Februari 2025"
+  ],
+  "rule": "Расчёт: место = город оформления (обычно город адреса компании), дата = дата подачи/подписания письма (не позднее даты подачи в иммиграцию, обычно +0…5 дней от расчёта). Формат: <City>, <DD Month YYYY>, месяц прописью; язык — индонезийский или английский, но единообразно во всём пакете."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_name",
+  "formats": [
+   "Jan Kowalski",
+   "Anna Maria Nowak",
+   "Piotr Zielinski"
+  ],
+  "rule": "Карточка клиента → ФИО подписанта (директора/представителя спонсора). Пишется латиницей в порядке «Имя Отчество/второе имя Фамилия», без транслитерации кириллицей; буквы только латиница, диакритика допустима. Используется в блоке «Saya yang bertanda tangan di bawah ini» в обоих разделах (письмо и заявление поручителя)."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_CLIENT_date",
+  "formats": [
+   "12 Maret 1985",
+   "1985-03-12",
+   "12 March 1985"
+  ],
+  "rule": "Карточка клиента → дата рождения подписанта. В шаблоне стоит заглушка CLIENT_name_2 — это НЕ имя, а дата. Формат: DD Month YYYY (месяц прописью, как в CLIENT_date) либо ISO YYYY-MM-DD. Подставляется после «Poland, » в строке «Tempat dan Tanggal lahir»."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "Poland",
+   "Warsaw",
+   "Krakow"
+  ],
+  "rule": "Карточка клиента → место рождения подписанта. В шаблоне захардкожено «Poland» — взять из паспорта/карточки (город или страна, как в документе). Латиница, первая буква заглавная. Стоит перед запятой и датой рождения."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "Poland",
+   "Polandia",
+   "Ukraine"
+  ],
+  "rule": "Карточка клиента → гражданство подписанта (поле «Kebangsaan»). В шаблоне захардкожено «Poland». Формат: название страны на английском/индонезийском языке в единственном числе, заглавная первая буква. Должно совпадать с гражданством в паспорте подписанта."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "job_and_position",
+  "formats": [
+   "Alpha Prime Consulting",
+   "Bali Remote CLIENT",
+   "PT Nusantara Digital"
+  ],
+  "rule": "Карточка клиента → название компании/организации, в которой работает подписант. В шаблоне стоит после слова «Direktur» («Direktur {{ job_and_position }}»), поэтому сюда НЕ вписывать должность, а только организацию. При дублировании со CLIENT_company значения совпадают."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "client_CLIENT_CLIENT_date",
+  "formats": [
+   "Moscow, 14 April 1990",
+   "Kyiv, 02 September 1988",
+   "Almaty, 30 December 1992"
+  ],
+  "rule": "Карточка клиента → место и дата рождения заявителя. Заполнить пустую строку «Tempat dan Tanggal lahir :» в блоке данных WNA. Формат: <Город>, <DD Month YYYY> (месяц прописью) — строго как в загранпаспорте."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "Russia",
+   "Ukraine",
+   "Kazakhstan"
+  ],
+  "rule": "Карточка клиента → гражданство заявителя. Заполнить пустую строку «Kebangsaan :» в блоке данных WNA. Название страны латиницей, заглавная первая буква; должно совпадать с паспортом заявителя."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "client_passport_CLIENT",
+  "formats": [
+   "75 1234567",
+   "FA123456",
+   "N12345678"
+  ],
+  "rule": "Карточка клиента → номер загранпаспорта заявителя. Заполнить пустую строку «Pemegang paspor no :». Формат: буквенно-цифровая комбинация без пробелов, ВЕРХНИЙ регистр, строго как в паспорте. Не путать с номером паспорта подписанта."
+ },
+ {
+  "doc": "d12_cover_letter__default",
+  "CLIENT": "CLIENT_position_CLIENT",
+  "formats": [
+   "Direktur",
+   "President Director",
+   "Authorized Representative"
+  ],
+  "rule": "Карточка клиента → должность подписанта (стоит статичным словом «Direktur» в блоке данных и в подписи «Direktur {{ CLIENT_company }}»). Заменить на реальную должность и согласовать во всех трёх местах. Оформление: с заглавной буквы, на индонезийском (Direktur) или английском (Director), единообразно с остальным пакетом."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_company",
+  "formats": [
+   "PT ALPHA PRIME CONSULTING",
+   "PT Bali Remote CLIENT",
+   "PT Nusantara Digital Consulting"
+  ],
+  "rule": "Карточка клиента / заявка → поле «компания-спонсор (название)». Латиница, форма PT + заглавные буквы, без точек. Используется в шапке, в подписи и после слова Direktur; значение должно совпадать с d12_cover_letter."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_company_address",
+  "formats": [
+   "Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581",
+   "Jl. Raya Seminyak No. 88, Kuta, Badung, Bali 80361",
+   "Jl. Sunset Road No. 12, Kuta, Badung, Bali 80361"
+  ],
+  "rule": "Карточка клиента → «адрес компании». Статичный адрес из шаблона заменить. Формат: Jl. <название> No.<номер>, Kec./Kel., Kabupaten/Kota, Provinsi, kode pos. Повторяется 3 раза, значение идентично cover letter."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_company_CLIENT",
+  "formats": [
+   "+62 811-397-9669",
+   "+08113979669",
+   "+62 812 3456 7890"
+  ],
+  "rule": "Карточка клиента → «телефон компании». Статичный +08113979669 заменить. Формат: +62 и номер без ведущего нуля либо +0..., допустимы дефисы/пробелы. Повторяется 2 раза, идентично cover letter."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_company_CLIENT",
+  "formats": [
+   "ptalphaprimeconsulting@gmail.com",
+   "info@baliremote.co.id",
+   "admin@nusantaradigital.com"
+  ],
+  "rule": "Карточка клиента → «CLIENT компании». Статичный PTALPHAPRIMECONSULTING@GMAIL.COM заменить. Только строчные латинские буквы, без пробелов. Повторяется 2 раза, идентично cover letter."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_date",
+  "formats": [
+   "Jakarta, 15 January 2025",
+   "Bali, 20 Maret 2025",
+   "Denpasar, 03 Februari 2025"
+  ],
+  "rule": "Расчёт: город оформления (обычно город компании) + дата подписания заявления, такая же, как в cover letter (либо на 1 день позже). Формат <City>, <DD Month YYYY>, месяц прописью; язык единый для всего пакета."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_name",
+  "formats": [
+   "Jan Kowalski",
+   "Anna Maria Nowak",
+   "Piotr Zielinski"
+  ],
+  "rule": "Карточка клиента → ФИО подписанта (поручителя/директора спонсора). Латиница, «Имя (второе имя) Фамилия», как в паспорте. Подставляется в блок «Saya yang bertanda tangan di bawah ini»; значение совпадает с cover letter."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_CLIENT_date",
+  "formats": [
+   "12 Maret 1985",
+   "1985-03-12",
+   "12 March 1985"
+  ],
+  "rule": "Карточка клиента → дата рождения подписанта. Заглушка CLIENT_name_2 = дата рождения. Формат DD Month YYYY (месяц прописью) или ISO YYYY-MM-DD; ставится после «Poland, »."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "Poland",
+   "Warsaw",
+   "Krakow"
+  ],
+  "rule": "Карточка клиента → место рождения подписанта. Захардкоженное «Poland» заменить на город/страну из паспорта подписанта. Латиница, заглавная первая буква."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "Poland",
+   "Polandia",
+   "Ukraine"
+  ],
+  "rule": "Карточка клиента → гражданство подписанта (поле «Kebangsaan»). Захардкоженное «Poland» заменить. Название страны латиницей, единственное число, заглавная первая буква; совпадает с паспортом подписанта."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "job_and_position",
+  "formats": [
+   "Alpha Prime Consulting",
+   "Bali Remote CLIENT",
+   "PT Nusantara Digital"
+  ],
+  "rule": "Карточка клиента → компания, где работает подписант. Стоит после слова «Direktur», поэтому только организация, без должности. При совпадении со CLIENT_company значения одинаковы."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "client_CLIENT_CLIENT_date",
+  "formats": [
+   "Moscow, 14 April 1990",
+   "Kyiv, 02 September 1988",
+   "Almaty, 30 December 1992"
+  ],
+  "rule": "Карточка клиента → место и дата рождения заявителя. Заполнить пустую строку «Tempat dan Tanggal lahir :» в блоке данных WNA. Формат <Город>, <DD Month YYYY>, месяц прописью, как в паспорте."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "client_CLIENT",
+  "formats": [
+   "Russia",
+   "Ukraine",
+   "Kazakhstan"
+  ],
+  "rule": "Карточка клиента → гражданство заявителя. Заполнить пустую строку «Kebangsaan :» в блоке данных WNA. Название страны латиницей, заглавная первая буква; совпадает с паспортом."
+ },
+ {
+  "doc": "d12_CLIENTment_letter__default",
+  "CLIENT": "client_passport_CLIENT",
+  "formats": [
+   "75 1234567",
+   "FA123456",
+   "N12345678"
+  ],
+  "rule": "Карточка клиента → номер загранпаспорта заявителя. Заполнить пустую строку «Pemegang paspor no :». Буквенно-цифровая комбинация без пробелов, ВЕРХНИЙ регистр, строго как в паспорте."
+ }
+]

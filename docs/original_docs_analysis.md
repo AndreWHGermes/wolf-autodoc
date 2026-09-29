@@ -1,0 +1,344 @@
+# Анализ оригинальных документов клиентов
+
+Источник: `/opt/wolf/data/gCLIENT_examples`
+
+## CLIENTal — 12 документов
+
+Опорный: `CLIENT/CLIENTal.pdf` — 16 строк
+
+**Позиций, где значения расходятся: 12**
+
+- `No ae32271197`
+    - `Ref. Logoida CLIENT CLIENTovich` ×1
+    - `Ref.` ×1
+- `Ref.`
+    - `Ref. CLIENT` ×1
+    - `B19289961ADL 17.09.2026` ×1
+    - `Ref. CLIENT CLIENT Valerevna` ×1
+    - `Ref. Kuzkina Anastasiya Sergeevna` ×1
+    - `Ref. CLIENT CLIENT GEORGIEVNA` ×1
+- `B19289961ADL 28.08.2026`
+    - `B19289961ADL 21.09.2026` ×1
+    - `111538, Moscow, Novogireyevskaya Street, Bldg. 14,` ×1
+    - `B19289961ADL 23.09.2026` ×1
+    - `B19289961ADL 14.09.2026` ×1
+    - `B19289961ADL 17.08.2026` ×1
+- `CLIENT CLIENT CLIENTOVICH`
+    - `TBANK` ×2
+    - `Apartment 302, 9 Kirovogradskaya Street, Moscow,` ×1
+    - `SberBank CLIENT 2, Apt. 87, Russia.` ×1
+    - `117556, Moscow, Ul Bolotnikovskaya , D. 10a, Kv. 90` ×1
+    - `195220, St. Petersburg, Dor Kushelevskaya , D. 5, Korp.` ×1
+- `TBANK Bulvar Beskudnikovsky, 58, Building 1, Apt. 12 Moscow,`
+    - `TBANK` ×3
+    - `TBANK 117519, Russia` ×1
+    - `«SberBank», universal CLIENT of Bank of Russia No 9441, hereby informs ` ×1
+    - `TBANK 5, Kv. 171` ×1
+    - `TBANK Selezneva, D. 144, Kv. 23` ×1
+- `127247, Russia`
+    - `«TBank», universal CLIENT of Bank of Russia No 9441, hereby informs tha` ×1
+    - `for Logoida CLIENT.` ×1
+    - `«TBank», universal CLIENT of Bank of Russia No 9441, hereby informs tha` ×1
+    - `«TBank», universal CLIENT of Bank of Russia No 9441, hereby informs tha` ×1
+    - `«TBank», universal CLIENT of Bank of Russia No 9441, hereby informs tha` ×1
+- `«TBank», universal CLIENT of Bank of Russia No 9441, hereby informs tha`
+    - `CLIENT .` ×1
+    - `As from 17.06.2025 to 17.09.2026 the deposit balance is 935 000. 00 rubl` ×1
+    - `CLIENT CLIENT Valerevna.` ×1
+    - `Kuzkina Anastasiya Sergeevna.` ×1
+    - `CLIENT Georgievna.` ×1
+- `CLIENT CLIENT CLIENTOVICH.`
+    - `five hundred eight rubles 00 kopeks).` ×2
+    - `As from 21.06.2026 to 21.09.2026 the deposit balance is 621 309, 00 rubl` ×1
+    - `hundred rubles 00 kopeks).` ×1
+    - `As from 23.06.2026 to 23.09.2026 the deposit balance is 627 504, 39 rubl` ×1
+    - `As from 14.06.2025 to 14.09.2026 the deposit balance is 672 502, 00 rubl` ×1
+- `As from 28.05.2025 to 28.08.2026 the deposit balance is 965 508, 00 rubl`
+    - `hundred nine rubles 00 kopeks).` ×2
+    - `hundred eight rubles 00 kopeks).` ×2
+    - `Best regards,` ×2
+    - `c/a 30101810400000000225 1st CLIENT in the Main Department of the Centra` ×1
+    - `hundred four rubles thirty-nine kopeks).` ×1
+- `eight rubles 00 kopeks).`
+    - `Best regards,` ×7
+    - `Head of Back-CLIENT Department E.S. Shadrina` ×2
+    - `Russian Federation in the Central Federal District Moscow BIC 044525225` ×1
+    - `c/a 30101810400000000225 1st CLIENT in the Main Department of the Centra` ×1
+- `Best regards,`
+    - `Head of Back-CLIENT Department E.S. Shadrina` ×7
+    - `c/a 30101810900000000974 1st CLIENT in the Main Department of the Centra` ×2
+    - `Russian Federation in the Central Federal District Moscow BIC 044525225` ×1
+- `Head of Back-CLIENT Department E.S. Shadrina`
+    - `c/a 30101810900000000974 1st CLIENT in the Main Department of the Centra` ×6
+    - `Russian Federation in the Central Federal District Moscow BIC 044583974` ×2
+    - `________________________________________________________________________` ×1
+
+Документы группы:
+  - CLIENT/PERSONAL.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/Personal-3m .pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/CLIENTal.pdf
+  - CLIENT/PersonalBank-3months.pdf
+  - CLIENT/Personal-3m .pdf
+
+## bank_CLIENTment — 12 документов
+
+Опорный: `CLIENT/bankCLIENTment.pdf` — 3780 строк
+
+**Позиций, где значения расходятся: 0**
+
+
+Документы группы:
+  - CLIENT/BANKSTATEMENT.pdf
+  - CLIENT/bankCLIENTment.pdf
+  - CLIENT/bankCLIENTment.pdf
+  - CLIENT/Bank Statement.pdf
+  - CLIENT/bankCLIENTment.pdf
+  - CLIENT/Справка о движении средств.pdf
+  - CLIENT_CLIENT/Справка_о_движении_средств.pdf
+  - CLIENT/bankCLIENTment.pdf
+  - CLIENT/Bank Statement - CLIENT CLIENT.pdf
+  - CLIENT/Bank Statement CLIENT.pdf
+  - CLIENT/Справка о движении средств.pdf
+  - CLIENT/BankStatement_.pdf
+
+## work_agreement — 12 документов
+
+Опорный: `CLIENT/EMPLOYMENT AGREEMENT.pdf` — 84 строк
+
+**Позиций, где значения расходятся: 78**
+
+- `EMPLOYMENT AGREEMENT (Remote Work)`
+    - `REMOTE WORK AGREEMENT` ×2
+    - `LLC " WILDBERRIES"` ×2
+    - `LLC "SOTKA"` ×1
+    - `LLC «MERCURY MODA»` ×1
+    - `EMPLOYMENT CONTRACT` ×1
+- `This Agreement is made on this «17» August 2025`
+    - `REMOTE WORK AGREEMENT` ×7
+    - `This Employment Contract (hereinafter referred to as the "Contract") is ` ×1
+    - `(For E33G Visa / Remote Worker KITAS Support)` ×1
+    - `Razrabotka Programmnogo Obespecheniya` ×1
+    - `For E33G Visa / Remote Worker KITAS Support` ×1
+- `BETWEEN:`
+    - `For E33G Visa / Remote Worker KITAS` ×4
+    - `For E33G Visa / Remote Worker KITAS Support` ×3
+    - `by and between:` ×1
+    - `This Remote Work Agreement ("Agreement") is made on this 16th day of Jul` ×1
+    - `REMOTE WORK AGREEMENT` ×1
+- `LLC «BUSINESS TECHNOLOGIES»`
+    - `Passport: 77 9899509` ×1
+    - `Signature: _______________________________` ×1
+    - `Name: CLIENT CLIENT VASILIEVNA` ×1
+    - `Passport: 66 7481541` ×1
+    - `Signature: ___________________________` ×1
+- `(OGRN: 1097746579941, INN: 000000000, KPP: 772801001) CLIENT addres`
+    - `BETWEEN` ×4
+    - `This Remote Work Agreement ("Agreement") is made on this 21st day of Sep` ×1
+    - `This Remote Work Agreement ("Agreement") is made on this 25th day of Aug` ×1
+    - `Russian Federation, with its principal CLIENT of business located at 114,` ×1
+    - `ООО «РИВЬЕРА» (Riviera LLC), operating as the Dealer Center AVANTA, a co` ×1
+- `Moscow, ul. Samora Mashela, d. 8 k. 2, hereinafter referred to as the «C`
+    - `BETWEEN` ×5
+    - `Odintsovo Urban District, Moscow Region, 143082, Russian Federation (her` ×1
+    - `under the laws of the Russian Federation, with CLIENT address at 107` ×1
+    - `(LLC "PANTEON"), a construction company CLIENT under the laws of t` ×1
+    - `Individual Entrepreneur Talanov Dmitry Alexandrovich, CLIENT under t` ×1
+- `represented by its Director CLIENTa Natalya CLIENTovna, acting on t`
+    - `WILDBERRIES LLC, a company CLIENT under the laws of the Russian Fe` ×2
+    - `(LLC "SOTKA"), an CLIENTal company CLIENT under the laws of the` ×1
+    - `LLC RCURY MODA» a limited liability company CLIENT under the laws ` ×1
+    - `to as the "CLIENT");` ×1
+    - `Krasnobogatyrskaya, d. 89, str. 1, etazh 1, pom. 14, Russia, Company Reg` ×1
+- `Charter,`
+    - `address at: Industrial Park "Koledino", Podolsk, Moscow Region, INN: 772` ×2
+    - `CLIENT address in Kazan, INN: 1660338214, KPP: 166001001, OGRN: 1191` ×1
+    - `Russian Federation, INN: 000000000, KPP: 503201001, OGRN: 1145032002390` ×1
+    - `AND` ×1
+    - `000000000, KPP: 771801001, OGRN: 1237700665498, (hereinafter referred t` ×1
+- `AND`
+    - `1067746062449, (hereinafter referred to as the "Company")` ×2
+    - `(hereinafter referred to as the "Company")` ×1
+    - `CLIENT of business located at 114, Building 2, Barvikha, Odintsovo Urban ` ×1
+    - `Ivan CLIENT, an individual from Russian Federation with passport nu` ×1
+    - `pom./etazh 040/01, Russia, INN: 000000000, KPP: 501801001, OGRN: 118502` ×1
+- `CLIENT Georgievna`
+    - `AND` ×4
+    - `ssian Federation (hereinafter referred to as the "Company")` ×1
+    - `(hereinafter referred to as the "CLIENT").` ×1
+    - `CLIENT CLIENT, Passport No: 77 0659250, Date of CLIENT: 31.08.1986, Nat` ×1
+    - `referred to as the "Company")` ×1
+- `Passport CLIENT: 76 No. 7144611, CLIENT by: Russian Federation, Date of `
+    - `AND` ×3
+    - `CLIENT, Passport No: 77 9899509, Date of CLIENT: 18.01.1992, Na` ×1
+    - `WHEREAS, the CLIENT desires to employ the CLIENT, and the CLIENT d` ×1
+    - `(hereinafter referred to as the "CLIENT")` ×1
+    - `Date of CLIENT: 26.06.2006, CLIENT: Russian Federation, CLIENT of Bir` ×1
+- `Date of CLIENT: 31.03.2032, Date of CLIENT: 09.03.1991, CLIENT of CLIENT: K`
+    - `Federation, CLIENT of CLIENT: USSR, (hereinafter referred to as the "Contr` ×1
+    - `Ivan CLIENT, Passport No: 551425877, Date of CLIENT: 13.05.1992, Nat` ×1
+    - `accept employment, under the terms and conditions set forth in this Cont` ×1
+    - `1. Nature of CLIENT` ×1
+    - `CLIENT CLIENT VASILIEVNA, Passport No: 76 5582770, Date of CLIENT: 2` ×1
+- `USSR, hereinafter referred to as the «CLIENT», collectively referred t`
+    - `1. NATURE OF CLIENT` ×5
+    - `of CLIENT: Uzbekistan, (hereinafter referred to as the "CLIENT").` ×1
+    - `NOW, THEREFORE, in consideration of the mutual covenants and agreements ` ×1
+    - `The Company engages the CLIENT as a Lead Developer of CLIENT Syste` ×1
+    - `Russian Federation, CLIENT of CLIENT: Moscow, Russia, (hereinafter referre` ×1
+- `1. NATURE OF CLIENT`
+    - `The Company engages the CLIENT as a Sales Manager to provide the fol` ×2
+    - `herein, the parties agree as follows:` ×1
+    - `(Remote Consultant / Remote CLIENT) to provide the following CLIENT:` ×1
+    - `The Company engages the CLIENT as a Project Manager to provide the f` ×1
+    - `The Company engages the CLIENT as a Managing Partner to provide the ` ×1
+- `1.1. The Company engages the CLIENT as a HR Specialist to provide th`
+    - `• Management, coordination, and leadership of the sales team CLIENTs.` ×1
+    - `The Company engages the CLIENT as a CLIENT Manager to provide the f` ×1
+    - `1. Position and Duties` ×1
+    - `— CLIENT and Information Systems Development & Engineering` ×1
+    - `The Company engages the CLIENT as Head of HR Department and Technica` ×1
+- `CLIENT:`
+    - `• Development and implementation of sales strategies, performance monito` ×1
+    - `• Setting the strategic direction and roadmap for retail banking CLIENT` ×1
+    - `The CLIENT hereby employs the CLIENT as a CLIENT Manager.` ×1
+    - `— Systems Architecture and Security Infrastructure Design` ×1
+    - `the following CLIENT:` ×1
+- `• Full-cycle recruitment, selection, and onboarding of CLIENTnel;`
+    - `target achievement.` ×1
+    - `based on market trends and customer feedback.` ×1
+    - `The CLIENT CLIENT to perform all duties and responsibilities CLIENT t` ×1
+    - `— Technical Support, Code Maintenance & Cybersecurity Operations` ×1
+    - `● Strategic management of human resources, recruitment, and CLIENTnel de` ×1
+- `• Maintenance of CLIENTnel records and HR CLIENTation;`
+    - `• Maintaining and coordinating sales CLIENTation, CRM systems, and man` ×1
+    - `• Managing the entire CLIENT lifecycle, from MVP definition to scaling ` ×1
+    - `and any other duties assigned by the CLIENT reasonably within the Empl` ×1
+    - `The CLIENT shall perform all duties remotely and independently, incl` ×1
+    - `● Technical administration of company infrastructure and internal system` ×1
+- `• Organization and conduct of performance reviews and CLIENT evaluatio`
+    - `customer workflows.` ×1
+    - `regulatory compliance and risk mitigation.` ×1
+    - `capabilities.` ×1
+    - `residing in Indonesia. The CLIENT shall not provide CLIENT to any ` ×1
+    - `● Coordination of remote CLIENTs and administrative support.` ×1
+- `• Participation in the development and implementation of corporate polic`
+    - `• Ensuring compliance with internal commercial policies, CLIENT standar` ×1
+    - `• Prioritizing the backlog and coordinating with IT, Risk, and CLIENT` ×1
+    - `2. Term of Employment` ×1
+    - `company, or CLIENT, and shall not derive income from Indonesian sources ` ×1
+    - `● Ensuring compliance with internal technical and HR policies.` ×1
+- `internal regulations;`
+    - `The CLIENT shall perform all duties remotely and independently, incl` ×2
+    - `The CLIENT shall perform all duties remotely and independently, incl` ×2
+    - `features within budget and timeline constraints.` ×1
+    - `The term of this Contract shall commence on 03/08/2026 and shall continu` ×1
+    - `CLIENT rendered under this Agreement are provided exclusively for the ` ×1
+- `• CLIENT relations support, conflict resolution, and motivation progra`
+    - `in Indonesia. The CLIENT shall not provide CLIENT to any Indonesia` ×2
+    - `Indonesia. The CLIENT shall not provide CLIENT to any Indonesian i` ×2
+    - `• Utilizing data analytics to monitor CLIENT KPIs, user adoption, and f` ×1
+    - `by either party with a CLIENT CLIENT as per the applicable laws and regu` ×1
+    - `2. Term` ×1
+- `• Reporting to management on HR metrics and staff turnover;`
+    - `and shall not derive income from Indonesian sources under this Agreement` ×2
+    - `shall not derive income from Indonesian sources under this Agreement. Al` ×2
+    - `adapting the strategy as needed.` ×1
+    - `3. CLIENT` ×1
+    - `This Agreement shall commence on 16th July 2025 and shall remain CLIENT f` ×1
+- `• Preparation of employment contracts, additional agreements, orders, an`
+    - `this Agreement are provided exclusively for the Company and its operatio` ×2
+    - `Agreement are provided exclusively for the Company and its CLIENTs.` ×2
+    - `2. TERM` ×2
+    - `The CLIENT shall perform all duties remotely and independently, incl` ×1
+    - `The CLIENT shall pay the CLIENT a salary of $90,000.00 USD per annum` ×1
+- `CLIENTation.`
+    - `2. TERM` ×4
+    - `Indonesia. The CLIENT shall not provide CLIENT to any Indonesian i` ×1
+    - `CLIENT instalments of $7,500 USD. The salary shall be CLIENT to adjust` ×1
+    - `renewed by mutual written agreement between the parties.` ×1
+    - `This Agreement has been in effect since 10th August 2025 (incorporating ` ×1
+- `1.2. The CLIENT shall perform all duties remotely and independently,`
+    - `This Agreement has been in effect since 13th August 2025 (incorporating ` ×1
+    - `not derive income from Indonesian sources under this Agreement. All serv` ×1
+    - `the CLIENT's salary policies and applicable laws.` ×1
+    - `3. CLIENT The Company CLIENT to pay the CLIENT:` ×1
+    - `This Agreement has been in effect since 1st July 2024 (incorporating fiv` ×1
+- `temporarily residing outside the Russian Federation, including but not l`
+    - `3. CLIENT` ×2
+    - `remain CLIENT CLIENT 13th August 2030, unless terminated earlier by either` ×1
+    - `are provided exclusively for the Company and its CLIENTs.` ×1
+    - `4. Benefits` ×1
+    - `● RUB 5,100,000 (Five Million One Hundred Thousand Russian Rubles) per a` ×1
+- `of Indonesia.`
+    - `This Agreement may be renewed by mutual written agreement between the pa` ×3
+    - `3. CLIENT` ×2
+    - `The Company CLIENT to pay the CLIENT:` ×2
+    - `2. TERM` ×1
+    - `The CLIENT shall be enCLIENTd to 28 days of holiday per year, in additi` ×1
+- `1.3. The CLIENT shall not provide CLIENT to any Indonesian individ`
+    - `3. CLIENT` ×4
+    - `This Agreement has been in effect since 25th August 2026 (incorporating ` ×1
+    - `observed in Russia. Other benefits shall be provided as per the CLIENT` ×1
+    - `month.` ×1
+    - `The Company CLIENT to pay the CLIENT:` ×1
+- `CLIENT, and shall not derive income from Indonesian sources under this A`
+    - `The Company CLIENT to pay the CLIENT:` ×4
+    - `remain CLIENT CLIENT 25th August 2031, unless terminated earlier by either` ×1
+    - `benefits policies.` ×1
+    - `Payments shall be made via international bank transfer to the CLIENT` ×1
+    - `RUB 6,0o00,000 (Six Million Russian Rubles) per annum,` ×1
+- `CLIENT rendered under this Agreement are provided exclusively for the `
+    - `• RUB 6,300,000 (Six Million Three Hundred Thousand Russian Rubles) per ` ×1
+    - `Agreement may be renewed by mutual written agreement between the parties` ×1
+    - `5. Confidentiality` ×1
+    - `The CLIENT shall be solely responsible for any CLIENTal tax obligati` ×1
+    - `RUB 7,680,000 (Seven Million Six Hundred Eighty Thousand Russian Rubles)` ×1
+- `CLIENTs.`
+    - `annum,` ×2
+    - `• which is RUB 525,000 (Five Hundred Twenty-Five Thousand Russian Rubles` ×1
+    - `3. CLIENT` ×1
+    - `The CLIENT CLIENT to keep in strict confidence all confidential and pr` ×1
+    - `Kazakhstan, being his CLIENT of tax residence. The Company shall not be` ×1
+- `2. TERM`
+    - `month.` ×1
+    - `The Company CLIENT to pay the CLIENT:` ×1
+    - `of the CLIENT during and after the term of employment.` ×1
+    - `Indonesian tax obligations, if any arise under applicable Indonesian reg` ×1
+    - `● which is RUB 640,000 (Six Hundred Forty Thousand Russian Rubles) per m` ×1
+- `2.1. This Agreement has been in effect since «17» August 2025 and shall `
+    - `Payments shall be made via international bank transfer to the CLIENT` ×4
+    - `• USD 90,000 (Ninety Thousand dollars) per annum,` ×1
+    - `6. CLIENT` ×1
+    - `The Company CLIENT that:` ×1
+    - `residence. The Company shall not be responsible for any Indonesian tax o` ×1
+- `«17» August 2030 (for a fixed term of 5 years), unless terminated earlie`
+    - `CLIENT shall be solely responsible for any CLIENTal tax obligations ` ×4
+    - `• which is USD 7,500 (Seven Thousand Five Hundred dollars) per month.` ×1
+    - `Either party may terminate this Contract with written CLIENT in accordan` ×1
+    - `— The CLIENT performs CLIENT exclusively for the Company.` ×1
+    - `applicable Indonesian regulations.` ×1
+
+Документы группы:
+  - CLIENT/WorkAgreement_CLIENT .pdf
+  - CLIENT/EMPLOYMENT AGREEMENT.pdf
+  - CLIENT/WorkAgreement_ALEKSANRIN.pdf
+  - CLIENT/контракт клиента.pdf
+  - CLIENT/REMOTE WORK AGREEMENT  - CLIENT CLIENT.pdf
+  - CLIENT/WorkAgreement .pdf
+  - CLIENT/Work Agreement - CLIENT.pdf
+  - CLIENT/WorkAgreement.pdf
+  - CLIENT/Work Agreement - CLIENT E.A.pdf
+  - CLIENT/REMOTE WORK AGREEMENT.pdf
+  - CLIENT/WorkAgreement_CLIENTA.pdf
+  - CLIENT/WorkAgreement.pdf
+
+## cv — 1 документов
+
+Недостаточно документов для сравнения.

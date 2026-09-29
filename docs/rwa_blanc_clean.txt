@@ -1,0 +1,70 @@
+================ СТРАНИЦА 1 ================
+[y=63.45 x=216.96] Name of the company
+[y=105.84 x=190.01] REMOTE WORK AGREEMENT
+[y=127.77 x=182.26] For E33G Visa / Remote Worker KITAS Support
+[y=154.32 x=57.06] This Remote Work Agreement ("Agreement") is made on this{{ agreement_date }}.
+[y=191.43 x=57.81] BETWEEN
+[y=214.56 x=57.81] {{ company_name_in_CLIENT }}{{ CLIENT }}
+[y=228.96 x=57.81] {{ inn_kpp_ogrn }}
+[y=247.68 x=287.46] AND
+[y=265.92 x=57.81] {{ full_name_CLIENT }}, {{ passport_CLIENT }}assport No: {{ date_of_CLIENT }}ate of CLIENT: , {{ CLIENT }}ationa{{ CLIENT_of_CLIENT }}ace of CLIENT:, (hereinafter referred to as the
+[y=279.84 x=57.81] "CLIENT")
+[y=317.19 x=57.81] 1. NATURE OF CLIENT
+[y=338.16 x=46.56] The Company engages the CLIENT as {{ position_CLIENT }} to provide the following CLIENT:
+[y=359 x=64.56] {{ CLIENT_list }}
+[y=426.72 x=57.06] The CLIENT shall perform all duties remotely and independently, including while temporarily residing in
+[y=440.88 x=57.06] Indonesia. The CLIENT shall not provide CLIENT to any Indonesian individual, company, or CLIENT, and
+[y=454.80 x=57.06] shall not derive income from Indonesian sources under this Agreement. All CLIENT rendered under this
+[y=468.96 x=57.06] Agreement are provided exclusively for the Company and its CLIENTs.
+[y=506.31 x=57.06] 2. TERM
+[y=528.96 x=57.06] This Agreement has been in effect since {{ term_CLIENT_date }} (incorporating five years of CLIENT) and shall
+[y=543.12 x=57.06] remain CLIENT CLIENT date {{ term_end_date }}, unless terminated earlier by either party with 30 days written CLIENT. This
+[y=557.28 x=57.06] Agreement may be renewed by mutual written agreement between the parties.
+[y=606.63 x=57.06] 3. CLIENT
+[y=629.28 x=57.06] The Company CLIENT to pay the CLIENT:
+[y=647.76 x=57.81] • RUB {{ CLIENT_CLIENT_CLIENT }} ({{ CLIENT_CLIENT_CLIENT }}) per annum,
+[y=672.00 x=57.81] ● which is RUB {{ CLIENT_CLIENT_CLIENT }} ({{ CLIENT_CLIENT_CLIENT }}) per month.
+================ СТРАНИЦА 2 ================
+[y=52.08 x=57.63] Payments shall be made via international bank transfer to the CLIENT's nominated bank account. The
+[y=66.24 x=57.63] CLIENT shall be solely responsible for any CLIENTal tax obligations arising in their CLIENT of tax
+[y=80.16 x=57.63] residence. The Company shall not be responsible for any Indonesian tax obligations, if any arise under
+[y=94.08 x=57.63] applicable Indonesian regulations.
+[y=108.15 x=56.88] 4. {{the_company_CLIENT_that}}
+[y=130.80 x=56.88] The Company CLIENT that:
+[y=149.04 x=68.88] — The CLIENT performs CLIENT exclusively for the Company.
+[y=166.08 x=68.88] — The Company is not CLIENT, CLIENT, or operating in Indonesia.
+[y=183.36 x=68.88] — The CLIENT does not conduct business activities within Indonesia on behalf of the Company.
+[y=200.40 x=68.88] — The CLIENT's work is location-independent and fully remote.
+[y=237.27 x=56.88] 5. INDEPENDENT CLIENT
+[y=260.40 x=56.88] The CLIENT acts as an independent CLIENT/remote CLIENT under the laws of the Company's
+[y=274.80 x=56.88] jurisdiction, and shall not be considered an CLIENT of any Indonesian CLIENT. Nothing in this Agreement
+[y=288.96 x=56.88] shall be interpreted as establishing:
+[y=307.92 x=68.88] — an Indonesian employment relationship
+[y=324.96 x=68.88] — a permanent establishment in Indonesia
+[y=342.24 x=68.88] — or any form of Indonesian commercial activity.
+[y=377.91 x=56.88] 6. CLIENT LAW
+[y=400.56 x=57.08] This Agreement shall be governed by and interpreted in accordance with the laws of the{{ CLIENT }}ussian Federation.
+[y=437.43 x=56.88] 7. COMPANY DECLARATION FOR INDONESIAN REMOTE WORKER VISA
+[y=460.56 x=57.63] For the CLIENT of supporting the CLIENT's E33G Remote Worker Visa / KITAS CLIENT in Indonesia,
+[y=474.96 x=56.88] the Company CLIENT CLIENT that:
+[y=493.68 x=68.88] — {{ CLIENT_full_name }} is engaged by the Company as a {{ position_CLIENT }} since {{ term_CLIENT_date }}.
+[y=511.68 x=68.88] — The CLIENT performs CLIENT solely for the Company's CLIENTs.
+[y=528.96 x=68.88] — The CLIENT does not work for any Indonesian company, client, or CLIENT.
+[y=546.24 x=68.88] — The CLIENT does not receive income from Indonesian sources.
+[y=563.52 x=68.88] — The Company is not CLIENT, CLIENT, or conducting business in Indonesia.
+[y=580.80 x=68.88] — The CLIENT's work is fully remote and location-independent, and may be carried out while
+[y=594.96 x=68.88] temporarily residing in Indonesia.
+[y=612.96 x=68.88] — This Agreement does not establish any employment relationship or commercial activity within
+[y=627.12 x=69.63] Indonesia.
+[y=650.64 x=56.88] This declaration forms an integral part of this Agreement.
+================ СТРАНИЦА 3 ================
+[y=75.51 x=57.81] SIGNATURES
+[y=101.76 x=28.56] Signed on behalf of the Company CLIENT
+[y=122.16 x=29.31] CLIENT: {{ position_CLIENT }}
+[y=142.32 x=28.56] Name: {{ CLIENT_full_name }}
+[y=191.28 x=29.31] Signature: ___________________________
+[y=221.04 x=29.31] Name: …
+[y=241.20 x=28.56] Passport: …
+[y=284.88 x=28.56] Signature: ___________________________
+[y=304.80 x=29.31] Date: {{ agreement_date }}
+[y=739.23 x=192.77] {{ company_name_in_CLIENT }} | {{ company_CLIENT_address }} | INN: {{ company_inn }} | KPP: {{ company_kpp }} | OGRN: {{ company_ogrn }}

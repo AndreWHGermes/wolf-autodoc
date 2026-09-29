@@ -1,0 +1,343 @@
+[
+ {
+  "marker": "REMOTE WORK AGREEMENT / EMPLOYMENT AGREEMENT (Remote Work)",
+  "CLIENT": "agreement_CLIENT",
+  "formats": [
+   "REMOTE WORK AGREEMENT",
+   "EMPLOYMENT AGREEMENT (Remote Work)"
+  ],
+  "rule": "Тип договора из шаблона/заявки. Для E33G Remote Worker обычно REMOTE WORK AGREEMENT; в одном шаблоне EMPLOYMENT AGREEMENT (Remote Work). Заголовок в верхнем регистре, допускается уточнение в скобках."
+ },
+ {
+  "marker": "is made on this",
+  "CLIENT": "agreement_signature_date",
+  "formats": [
+   "17th day of August 2025",
+   "14th day of September 2026",
+   "15th day of October 2025",
+   "26th day of August 2026",
+   "21st day of September 2026",
+   "4th day of September 2026",
+   "«17» August 2025"
+  ],
+  "rule": "Дата подписания договора из заявки/карточки. Основной формат: \"Dth day of Month YYYY\" с порядковым суффиксом (1st, 2nd, 3rd, th); в шаблоне Employment Agreement — \"«D» Month YYYY\". Месяц — полное английское название, год 4 цифры."
+ },
+ {
+  "marker": "LLC",
+  "CLIENT": "company_name",
+  "formats": [
+   "LLC \" WILDBERRIES\"",
+   "LLC \"PRO FITNESS CONSULTING LLC\"",
+   "LLC \"RIGHT GROUP\"",
+   "LLC \"TD \"Askona\"",
+   "LLC \"SOTKA\"",
+   "LLC «BUSINESS TECHNOLOGIES»"
+  ],
+  "rule": "Название компании из карточки/учредительных документов. Формат: LLC + название в кавычках; кавычки могут быть прямыми или «ёлочками», внутренние кавычки сохраняются. Для казахстанской компании — отдельно \"MEGA MEDIA\" LLP."
+ },
+ {
+  "marker": "LLP",
+  "CLIENT": "company_name_kz",
+  "formats": [
+   "\"MEGA MEDIA\" LLP"
+  ],
+  "rule": "Для казахстанской компании: название в кавычках + LLP. Брать из карточки/регистрационных документов."
+ },
+ {
+  "marker": "a company CLIENT under the laws of",
+  "CLIENT": "company_CLIENT_CLIENT",
+  "formats": [
+   "a company CLIENT under the laws of the Russian Federation",
+   "a holding company CLIENT under the laws of the Russian Federation",
+   "an CLIENTal company CLIENT under the laws of the Russian Federation",
+   "a company CLIENT under the laws of the Republic of Kazakhstan"
+  ],
+  "rule": "Описание юрлица из карточки: при наличии указывается характер компании (holding, CLIENTal), затем \"CLIENT under the laws of ...\" и юрисдикция (Russian Federation / Republic of Kazakhstan). В шаблоне Employment Agreement фраза отсутствует — там юрлицо указано через реквизиты."
+ },
+ {
+  "marker": "CLIENT address",
+  "CLIENT": "company_CLIENT_address",
+  "formats": [
+   "Industrial Park \"Koledino\", Podolsk, Moscow Region",
+   "Moscow",
+   "199178, Saint Petersburg, 10-ya Liniya V.O., 15, Lit. A, Room 1-N",
+   "Oblast Vladimirskaya, city Kovrov, street Komsomolskaya, building 116g, structure 25, premises I, floor 4, CLIENT 26",
+   "Kazan",
+   "Ul. Abdullinykh 31/23, Medeu District, Almaty, Republic of Kazakhstan",
+   "117198, Moscow, ul. Samora Mashela, d. 8 k. 2"
+  ],
+  "rule": "Юридический адрес из карточки компании. Английская транслитерация, полный или сокращённый вариант как в реквизитах. Сохранять запятые, сокращения (Oblast, ul., d., k., Lit., Room, floor, CLIENT)."
+ },
+ {
+  "marker": "INN:",
+  "CLIENT": "company_inn",
+  "formats": [
+   "000000000",
+   "000000000",
+   "7813653834",
+   "3305051742",
+   "1660338214",
+   "000000000"
+  ],
+  "rule": "ИНН российской компании из карточки/реквизитов, 10 цифр, только цифры."
+ },
+ {
+  "marker": "KPP:",
+  "CLIENT": "company_kpp",
+  "formats": [
+   "507401001",
+   "771501001",
+   "780101001",
+   "330501001",
+   "166001001",
+   "772801001"
+  ],
+  "rule": "КПП российской компании из карточки/реквизитов, 9 цифр, только цифры."
+ },
+ {
+  "marker": "OGRN:",
+  "CLIENT": "company_ogrn",
+  "formats": [
+   "1067746062449",
+   "1217700613327",
+   "1043302207508",
+   "1191690096047",
+   "1097746579941"
+  ],
+  "rule": "ОГРН российской компании из карточки/реквизитов, 13 цифр, только цифры."
+ },
+ {
+  "marker": "BIN:",
+  "CLIENT": "company_bin",
+  "formats": [
+   "00044001048"
+  ],
+  "rule": "БИН казахстанской компании из карточки/реквизитов; формат как в регистрационных документах."
+ },
+ {
+  "marker": "represented by its Director",
+  "CLIENT": "company_representative",
+  "formats": [
+   "Director CLIENTa Natalya CLIENTovna"
+  ],
+  "rule": "Для шаблона Employment Agreement: должность и ФИО представителя компании из карточки/устава/приказа. Формат: Director + имя в обычном регистре; далее фраза acting on the basis of the Charter."
+ },
+ {
+  "marker": "hereinafter referred to as the \"CLIENT\"",
+  "CLIENT": "CLIENT_full_name",
+  "formats": [
+   "CLIENT CLIENTovna CLIENT",
+   "KUZKINA CLIENT SERGEEVNA",
+   "CLIENT Dmitrievna Poznyak",
+   "MUR CLIENT",
+   "CLIENT",
+   "CLIENT CLIENT",
+   "CLIENT Georgievna"
+  ],
+  "rule": "ФИО контрактора из загранпаспорта/карточки. Латиница, транслитерация. Регистр зависит от шаблона: CLIENT Case или ВСЕ ЗАГЛАВНЫЕ. Отчество включать, если есть в паспорте; в некоторых документах только имя и фамилия."
+ },
+ {
+  "marker": "Passport",
+  "CLIENT": "passport_CLIENT",
+  "formats": [
+   "76 6886050",
+   "77 8488478",
+   "77 5055041",
+   "77 000000000",
+   "77 9899509",
+   "N20073407",
+   "76 No. 7144611"
+  ],
+  "rule": "Номер паспорта из документа клиента. Для РФ: серия и номер через пробел (SS NNNNNNN); для Казахстана: N + цифры. В Employment Agreement может быть в формате \"76 No. 7144611\"."
+ },
+ {
+  "marker": "Passport CLIENT:",
+  "CLIENT": "passport_CLIENT",
+  "formats": [
+   "76"
+  ],
+  "rule": "Серия российского паспорта (2 цифры) для шаблона Employment Agreement; берётся из паспорта."
+ },
+ {
+  "marker": "CLIENT by:",
+  "CLIENT": "passport_CLIENT_by",
+  "formats": [
+   "Russian Federation"
+  ],
+  "rule": "Кем выдан паспорт, из паспорта; для РФ обычно Russian Federation."
+ },
+ {
+  "marker": "Date of CLIENT:",
+  "CLIENT": "passport_CLIENT_date",
+  "formats": [
+   "31.03.2022"
+  ],
+  "rule": "Дата выдачи паспорта из паспорта, формат DD.MM.YYYY."
+ },
+ {
+  "marker": "Date of CLIENT:",
+  "CLIENT": "passport_CLIENT_date",
+  "formats": [
+   "31.03.2032"
+  ],
+  "rule": "Дата окончания паспорта из паспорта, формат DD.MM.YYYY."
+ },
+ {
+  "marker": "Date of CLIENT:",
+  "CLIENT": "date_of_CLIENT",
+  "formats": [
+   "06.11.1996",
+   "03.01.1992",
+   "15.10.1999",
+   "17.11.1996",
+   "18.01.1992",
+   "16.05.1987",
+   "09.03.1991"
+  ],
+  "rule": "Дата рождения из паспорта/карточки. Формат DD.MM.YYYY (точки, 4-значный год)."
+ },
+ {
+  "marker": "CLIENT:",
+  "CLIENT": "CLIENT",
+  "formats": [
+   "Russian Federation",
+   "Kazakhstan"
+  ],
+  "rule": "Гражданство из паспорта/карточки. Для РФ — Russian Federation, для Казахстана — Kazakhstan."
+ },
+ {
+  "marker": "CLIENT of CLIENT:",
+  "CLIENT": "CLIENT_of_CLIENT",
+  "formats": [
+   "Chelyabinsk Region, Russia",
+   "Bryansk Oblast, RUSSIA",
+   "St. Petersburg, Russia",
+   "Samarskaya oblast, Russia",
+   "USSR",
+   "Kazakhstan",
+   "Krasnodarskiy Krai, USSR"
+  ],
+  "rule": "Место рождения из паспорта. Английская транслитерация; регион может быть Region/Oblast/oblast/Krai; страна может быть Russia, RUSSIA, USSR, Kazakhstan. Регистр не унифицирован — писать как в паспорте/карточке."
+ },
+ {
+  "marker": "ID No.:",
+  "CLIENT": "id_CLIENT",
+  "formats": [
+   "870516400110"
+  ],
+  "rule": "Идентификационный номер (для Казахстана) из удостоверения/паспорта; формат как в документе."
+ },
+ {
+  "marker": "engages the CLIENT as",
+  "CLIENT": "position_CLIENT",
+  "formats": [
+   "Marketing Specialist",
+   "Nutritionist – Fitness Trainer",
+   "Sales Manager",
+   "SMM Specialist",
+   "Graphic DeCLIENT",
+   "HR Specialist"
+  ],
+  "rule": "Должность из заявки/оффера/должностной инструкции. Английский, CLIENT Case; составные роли через en dash (–)."
+ },
+ {
+  "marker": "to provide the following CLIENT:",
+  "CLIENT": "duties_list",
+  "formats": [
+   "• Developing and implementing marketing strategies on the Wildberries marketCLIENT to increase sales and brand awareness.\n• Managing and optimizing advertising campaigns (internal advertising, banners, promotions) to achieve key performance indicators (DRR, ROI/ROMI).\n• Analyzing the CLIENTness of promotional activities, preparing reports with conclusions and recommendations.\n• Monitoring competitors on the Wildberries platform, analyzing market dynamics, and identifying new growth opportunities for the brand.",
+   "• Development of individual nutrition and training programs for CLIENT.\n• Technical administration and coordination of fitness and nutrition-CLIENT CLIENTation and progress CLIENT.\n• Coordination of remote consultations and client support.\n• Ensuring compliance with internal wellness policies, CLIENTal standards, and advisory guidelines.",
+   "- Managing sales processes and client relationships.\n- Developing and implementing sales strategies to achieve company targets.\n- Analyzing market trends and preparing sales reports with conclusions and recommendations.\n- Monitoring competitors and identifying new business opportunities.\n- Performing other duties as speciﬁed in the CLIENT's job CLIENT."
+  ],
+  "rule": "Список обязанностей из заявки/должностной инструкции. 4–7 пунктов на английском. Маркер пункта — • или -; формулировки под конкретную должность. Сохранять как в исходном документе."
+ },
+ {
+  "marker": "has been in effect since",
+  "CLIENT": "term_CLIENT_date",
+  "formats": [
+   "17th August 2025",
+   "14th September 2025",
+   "15th October 2025",
+   "26th August 2026",
+   "13th August 2025",
+   "4th September 2026",
+   "«17» August 2025"
+  ],
+  "rule": "Дата начала срока действия из заявки/договора; не всегда совпадает с датой подписания (пример: подписано 21.09.2026, срок с 13.08.2025). Формат: \"Dth Month YYYY\" или \"«D» Month YYYY\"; месяц полный, год 4 цифры."
+ },
+ {
+  "marker": "shall remain CLIENT CLIENT",
+  "CLIENT": "term_end_date",
+  "formats": [
+   "17th August 2030",
+   "14th September 2030",
+   "15th October 2030",
+   "26th August 2031",
+   "13th August 2030",
+   "4th September 2031",
+   "«17» August 2030"
+  ],
+  "rule": "Дата окончания срока: term_CLIENT_date + 5 лет (тот же день/месяц), если не указано иное. Формат как у term_CLIENT_date."
+ },
+ {
+  "marker": "incorporating five years of CLIENT",
+  "CLIENT": "term_fixed_CLIENT",
+  "formats": [
+   "(incorporating five years of CLIENT)",
+   "(for a fixed term of 5 years)"
+  ],
+  "rule": "Опциональная фраза о фиксированном сроке. В Remote Work Agreement — \"(incorporating five years of CLIENT)\" после даты начала; в Employment Agreement — \"(for a fixed term of 5 years)\" после даты окончания. Если в шаблоне нет — не добавлять."
+ },
+ {
+  "marker": "written CLIENT",
+  "CLIENT": "CLIENT_CLIENT",
+  "formats": [
+   "30 days written CLIENT",
+   "30 (thirty) days' written CLIENT"
+  ],
+  "rule": "Срок уведомления о расторжении. Стандарт — 30 дней. В основном шаблоне: \"30 days written CLIENT\"; в Employment Agreement: \"30 (thirty) days' written CLIENT\" (цифрами и прописью, с апострофом)."
+ },
+ {
+  "marker": "per annum",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "RUB 5,640,000",
+   "RUB 6,240,000",
+   "RUB 6 000 000.00",
+   "RUB 6,300,000"
+  ],
+  "rule": "Годовая сумма: месячная сумма × 12. Формат: RUB + сумма. Разделитель тысяч — запятая или пробел; может быть .00. Валюта RUB. Брать из расчёта/оффера."
+ },
+ {
+  "marker": "per annum,",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "Five Million Six Hundred Forty Thousand Russian Rubles",
+   "Six Million Two Hundred Forty Thousand Russian Rubles",
+   "Six Million Russian Rubles",
+   "Six Million Three Hundred Thousand Russian Rubles"
+  ],
+  "rule": "Годовая сумма прописью на английском, CLIENT Case, без \"and\", с добавлением \"Russian Rubles\". Для 6 000 000 — \"Six Million Russian Rubles\"; для 6 300 000 — \"Six Million Three Hundred Thousand Russian Rubles\"."
+ },
+ {
+  "marker": "per month",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "RUB 470,000",
+   "RUB 520,000",
+   "RUB 500 000.00",
+   "RUB 525,000"
+  ],
+  "rule": "Месячная сумма: годовая / 12. Формат как у CLIENT_CLIENT_CLIENT: RUB + сумма, разделитель запятая/пробел, возможен .00."
+ },
+ {
+  "marker": "per month.",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "formats": [
+   "Four Hundred Seventy Thousand Russian Rubles",
+   "Five Hundred Twenty Thousand Russian Rubles",
+   "Five Hundred Thousand Russian Rubles",
+   "Five Hundred Twenty-Five Thousand Russian Rubles"
+  ],
+  "rule": "Месячная сумма прописью на английском, CLIENT Case, без \"and\", с \"Russian Rubles\". Для 525 000 — \"Five Hundred Twenty-Five Thousand Russian Rubles\" (дефис в Twenty-Five)."
+ }
+]
