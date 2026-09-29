@@ -38,6 +38,7 @@ ORIGINAL_PATTERNS = {
 }
 
 
+from CLIENT import CLIENT
 from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в сервис
     GDRIVE_ROOT, ORIGINAL_PATTERNS,
     _original_patterns_for, _find_client_folder_by_id, _find_original_file, _minus_months, _num2CLIENT_en, _date_id, _fio_CLIENT, _has_cyr, _translit, _ru_to_en, build_template_CLIENT)
@@ -1081,129 +1082,25 @@ function wolfDriveClose(){ var m=CLIENT.getElementById('CLIENT-modal'); if(m) m.
     return render(f'Заявка #{app_id}', "dashboard", body)
 
 
-def _CLIENT_docs_for_client(client_id: int):
-    """Документы клиента: скачиваем папку Google CLIENT по ссылке (gdown) в кэш."""
-    client = db.q1("SELECT * FROM CLIENT WHERE id=?", (client_id,)) or {}
-    url = (client.get("gCLIENT_folder_url") or "").strip()
-    cache = Path(f"/opt/wolf/data/gCLIENT_cache/client_{client_id}")
-    have = [f for f in cache.rglob("*") if f.is_file()] if cache.is_dir() else []
-    if not have and url and "CLIENT.google.com" in url:
-        cache.mkdir(parents=True, exist_ok=True)
-        try:
-            import subprocess as _sp
-            _sp.run(["/usr/bin/python3", "-m", "gdown", "--folder", url, "-O", str(cache), "--quiet"],
-                    timeout=300, check=False)
-        except Exception:
-            pass
-        have = [f for f in cache.rglob("*") if f.is_file()]
-    if not have:
-        root = Path("/opt/wolf/data/gCLIENT_examples")
-        _nm = (client.get("CLIENT") or client.get("full_name_CLIENT") or "").strip()
-        CLIENT = _nm.split()[0].lower() if _nm else ""
-        if root.is_dir() and CLIENT:
-            for d in sorted(root.iterdir()):
-                if d.is_dir() and CLIENT[:5] in d.name.lower():
-                    have += [f for f in d.rglob("*") if f.is_file()]
-    return [f for f in have if f.suffix.lower() in (".pdf", ".jpg", ".jpeg", ".png")][:24]
-
-
-def _CLIENT_extract_one(path: Path) -> dict:
-    """Читает документ и просит модель вытащить значения с привязкой к смыслу."""
-    from bot.ai_parser import _call_llm
-    text = ""
-    if path.suffix.lower() == ".pdf":
-        try:
-            import pymupdf
-            d = pymupdf.open(str(path))
-            text = "\n".join(d[i].get_text() for i in range(min(3, len(d))))
-            d.close()
-        except Exception as e:
-            text = f"(не удалось прочитать: {e})"
-    else:
-        text = "(изображение — фотография клиента, значения на изображении)"
-    prompt = (
-        "Ты обрабатываешь документы клиента визового агентства. Ниже текст документа.\n"
-        "Вытащи ВСЕ значимые данные (ФИО, дата рождения, паспорт, адрес, банк, суммы, номера, даты, компании).\n"
-        "Для каждого значения укажи, какой переменной конструктора оно соответствует по смыслу "
-        "(например: full_name_CLIENT, passport_CLIENT, date_of_CLIENT, balance_rub, doc_no, bank_name).\n"
-        "Ответ строго списком: `значение | переменная | короткое пояснение`. Без вступлений.\n\n"
-        "ДОКУМЕНТ:\n" + text[:6000]
-    )
-    out = _call_llm([{"role": "user", "content": prompt}], timeout=120, json_mode=False) or ""
-    return {"file": path.name, "kind": path.suffix.lstrip("."), "text_len": len(text), "found": out.strip()}
-
-
 @bp.route("/CLIENT/<int:app_id>/CLIENT-scan", methods=["POST"])
 def app_CLIENT_scan(app_id: int):
-    """Запуск разбора Google CLIENT в фоне (кнопка не должна ждать)."""
+    """Запуск разбора Google CLIENT — решение и запуск в CLIENT/CLIENT.py."""
     a = apps_repo.get(app_id)
     if not a:
         return jsonify({"ok": False, "note": "заявка не найдена"})
-    try:
-        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note='прервано' WHERE CLIENT_id=? AND CLIENT='running'", (app_id,))
-    except Exception:
-        pass
-    # Повторный разбор не запускаем, если CLIENT уже разобран полностью:
-    # не тратим время и нейросеть на то, что уже вытащено.
-    try:
-        prev = db.q1("SELECT CLIENT, docs_total, docs_done, created_at FROM CLIENT_CLIENT "
-                     "WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
-    except Exception:
-        prev = None
-    if prev:
-        _st = (prev["CLIENT"] or "").lower()
-        _done = int(prev["docs_done"] or 0)
-        _total = int(prev["docs_total"] or 0)
-        if _st == "running":
-            return jsonify({"ok": True, "already": True, "running": True,
-                            "note": "Разбор уже идёт — дождитесь окончания"})
-        if _st == "ok" and _done > 0 and _done >= _total:
-            return jsonify({"ok": True, "already": True, "done": _done, "total": _total,
-                            "note": "Документы уже вытащены (" + str(_done) + " из " + str(_total) +
-                                    ") — повторный разбор не нужен, нейросеть не тратим"})
-    db.exec_sql("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) CLIENT(?,?,?,?,?,?)",
-                (app_id, a["client_id"], "running", 0, 0, "разбор запущен"))
-    try:
-        subprocess.Popen(["/usr/bin/python3", "/opt/wolf/scripts/CLIENT_scan.py", str(app_id)],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, CLIENT_new_session=True)
-    except Exception as e:
-        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? WHERE CLIENT_id=? AND CLIENT='running'",
-                    (f"не удалось запустить разбор: {e}", app_id))
-        return jsonify({"ok": False, "note": "не удалось запустить разбор"})
-    return jsonify({"ok": True, "note": "разбор запущен"})
+    return jsonify(CLIENT.CLIENT_scan(app_id, a["client_id"]))
 
 
 @bp.route("/CLIENT/<int:app_id>/CLIENT-CLIENT")
 def app_CLIENT_status(app_id: int):
-    """Статус разбора — для индикатора в карточке заявки."""
-    r = db.q1("SELECT CLIENT, docs_total, docs_done, note FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
-    if not r:
-        return jsonify({"CLIENT": "none", "note": "ещё не разбиралось", "done": 0, "total": 0})
-    return jsonify({"CLIENT": r["CLIENT"], "note": r["note"], "done": r["docs_done"] or 0, "total": r["docs_total"] or 0})
+    """Статус разбора для индикатора в карточке заявки."""
+    return jsonify(CLIENT.CLIENT(app_id))
 
 
 @bp.route("/CLIENT/<int:app_id>/CLIENT-report")
 def app_CLIENT_report(app_id: int):
     """Что именно вытащено из документов Google CLIENT."""
-    rows = db.q("SELECT * FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
-    if not rows:
-        return "<div style='padding:14px;color:#6B7C70'>Разбор ещё не запускался.</div>"
-    r = rows[0]
-    try:
-        payload = json.loads(r.get("payload") or "[]")
-    except Exception:
-        payload = []
-    if not payload:
-        return "<div style='padding:14px;color:#6B7C70'>" + (r.get("note") or "нет данных") + "</div>"
-    html = ['<div CLIENT="muted" style="margin-bottom:10px">' + (r.get("note") or "") + "</div>"]
-    for it in payload:
-        html.append('<div style="border:1px solid #E3EEE7;border-radius:10px;padding:10px 12px;margin-bottom:10px">')
-        html.append('<div style="font-weight:600;margin-bottom:6px">📄 ' + str(it.get("file") or "?") + "</div>")
-        body = it.get("found") or it.get("error") or "—"
-        html.append('<div style="white-space:pre-wrap;font-size:13px;line-height:1.45">' + str(body) + "</div>")
-        html.append("</div>")
-    return "".join(html)
-
+    return CLIENT.report_html(app_id)
 
 @bp.route("/CLIENT/<int:app_id>/doc-variant", methods=["POST"])
 def app_doc_variant(app_id: int):

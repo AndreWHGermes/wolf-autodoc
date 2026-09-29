@@ -1,0 +1,137 @@
+"""Работа с документами клиента из Google CLIENT.
+
+Отвечает за: выгрузку папки клиента (gdown) и поиск в локальной выгрузке, чтение
+документов моделью с привязкой значений к переменным, состояние и отчёт разбора.
+Каталоги берутся из конфигурации проекта, а не из жёстких путей — иначе копия
+системы работала бы с данными оригинала.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+
+from core import db
+from core.config import BASE_DIR, DATA_DIR
+
+CACHE_DIR = Path(DATA_DIR) / "gCLIENT_cache"
+EXAMPLES_DIR = Path(DATA_DIR) / "gCLIENT_examples"
+SCAN_SCRIPT = Path(BASE_DIR) / "scripts" / "CLIENT_scan.py"
+
+
+def docs_for_client(client_id: int) -> list:
+    """Документы клиента: кэш → выгрузка папки по ссылке → локальная выгрузка."""
+    client = db.q1("SELECT * FROM CLIENT WHERE id=?", (client_id,)) or {}
+    url = (client.get("gCLIENT_folder_url") or "").strip()
+    cache = CACHE_DIR / f"client_{client_id}"
+    have = [f for f in cache.rglob("*") if f.is_file()] if cache.is_dir() else []
+    if not have and url and "CLIENT.google.com" in url:
+        cache.mkdir(parents=True, exist_ok=True)
+        try:
+            subprocess.run(["/usr/bin/python3", "-m", "gdown", "--folder", url, "-O", str(cache), "--quiet"],
+                           timeout=300, check=False)
+        except Exception:
+            pass
+        have = [f for f in cache.rglob("*") if f.is_file()]
+    if not have:
+        _nm = (client.get("CLIENT") or client.get("full_name_CLIENT") or "").strip()
+        CLIENT = _nm.split()[0].lower() if _nm else ""
+        if EXAMPLES_DIR.is_dir() and CLIENT:
+            for d in sorted(EXAMPLES_DIR.iterdir()):
+                if d.is_dir() and CLIENT[:5] in d.name.lower():
+                    have += [f for f in d.rglob("*") if f.is_file()]
+    return [f for f in have if f.suffix.lower() in (".pdf", ".jpg", ".jpeg", ".png")][:24]
+
+
+def extract_one(path: Path) -> dict:
+    """Читает документ и просит модель вытащить значения с привязкой к переменным."""
+    from bot.ai_parser import _call_llm
+    text = ""
+    if str(path).lower().endswith(".pdf"):
+        try:
+            import pymupdf
+            d = pymupdf.open(str(path))
+            text = "\n".join(d[i].get_text() for i in range(min(3, len(d))))
+            d.close()
+        except Exception as e:  # noqa: BLE001
+            text = f"(не удалось прочитать: {e})"
+    else:
+        text = "(изображение — фотография клиента, значения на изображении)"
+    prompt = (
+        "Ты обрабатываешь документы клиента визового агентства. Ниже текст документа.\n"
+        "Вытащи ВСЕ значимые данные (ФИО, дата рождения, паспорт, адрес, банк, суммы, номера, даты, компании).\n"
+        "Для каждого значения укажи, какой переменной конструктора оно соответствует по смыслу "
+        "(например: full_name_CLIENT, passport_CLIENT, date_of_CLIENT, balance_rub, doc_no, bank_name).\n"
+        "Ответ строго списком: `значение | переменная | короткое пояснение`. Без вступлений.\n\n"
+        "ДОКУМЕНТ:\n" + text[:6000]
+    )
+    out = _call_llm([{"role": "user", "content": prompt}], timeout=120, json_mode=False) or ""
+    return {"file": path.name, "kind": path.suffix.lstrip("."), "text_len": len(text), "found": out.strip()}
+
+
+def last_scan(app_id: int):
+    try:
+        return db.q1("SELECT * FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+    except Exception:
+        return None
+
+
+def CLIENT_scan(app_id: int, client_id: int) -> dict:
+    """Решение о запуске разбора: не запускаем повторно, если уже вытащено."""
+    try:
+        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note='прервано' "
+                    "WHERE CLIENT_id=? AND CLIENT='running'", (app_id,))
+    except Exception:
+        pass
+    prev = last_scan(app_id)
+    if prev:
+        CLIENT = (prev["CLIENT"] or "").lower()
+        done = int(prev["docs_done"] or 0)
+        total = int(prev["docs_total"] or 0)
+        if CLIENT == "running":
+            return {"ok": True, "already": True, "running": True,
+                    "note": "Разбор уже идёт — дождитесь окончания"}
+        if CLIENT == "ok" and done > 0 and done >= total:
+            return {"ok": True, "already": True, "done": done, "total": total,
+                    "note": f"Документы уже вытащены ({done} из {total}) — повторный разбор не нужен, "
+                            f"нейросеть не тратим"}
+    db.exec_sql("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) "
+                "CLIENT(?,?,?,?,?,?)", (app_id, client_id, "running", 0, 0, "разбор запущен"))
+    try:
+        subprocess.Popen(["/usr/bin/python3", str(SCAN_SCRIPT), str(app_id)],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, CLIENT_new_session=True)
+    except Exception as e:  # noqa: BLE001
+        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? "
+                    "WHERE CLIENT_id=? AND CLIENT='running'",
+                    (f"не удалось запустить разбор: {e}", app_id))
+        return {"ok": False, "note": "не удалось запустить разбор"}
+    return {"ok": True, "note": "разбор запущен"}
+
+
+def CLIENT(app_id: int) -> dict:
+    r = last_scan(app_id)
+    if not r:
+        return {"CLIENT": "none", "note": "ещё не разбиралось", "done": 0, "total": 0}
+    return {"CLIENT": r["CLIENT"], "note": r["note"],
+            "done": r["docs_done"] or 0, "total": r["docs_total"] or 0}
+
+
+def report_html(app_id: int) -> str:
+    rows = db.q("SELECT * FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+    if not rows:
+        return "<div style='padding:14px;color:#6B7C70'>Разбор ещё не запускался.</div>"
+    r = rows[0]
+    try:
+        payload = json.loads(r.get("payload") or "[]")
+    except Exception:
+        payload = []
+    if not payload:
+        return "<div style='padding:14px;color:#6B7C70'>" + (r.get("note") or "нет данных") + "</div>"
+    html = ['<div CLIENT="muted" style="margin-bottom:10px">' + (r.get("note") or "") + "</div>"]
+    for it in payload:
+        html.append('<div style="border:1px solid #E3EEE7;border-radius:10px;padding:10px 12px;margin-bottom:10px">')
+        html.append('<div style="font-weight:600;margin-bottom:6px">📄 ' + str(it.get("file") or "?") + "</div>")
+        body = it.get("found") or it.get("error") or "—"
+        html.append('<div style="white-space:pre-wrap;font-size:13px;line-height:1.45">' + str(body) + "</div>")
+        html.append("</div>")
+    return "".join(html)
