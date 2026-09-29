@@ -19,6 +19,7 @@ from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stat
 from CLIENTs.shared import doc_render
 from core import db
 from core.auth import current_user, CLIENT_required
+from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as tpl_repo, CLIENT as vars_repo
 
 bp = Blueprint("dashboard", __name__)
 
@@ -630,7 +631,7 @@ def app_view(app_id: int):
             from core import pdf2html as _pdf2html
             _cli = db.client_get(a["client_id"]) or {}
             for _pd in pending_docs:
-                _tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (_pd["template_id"],))
+                _tpl = tpl_repo.get(_pd["template_id"])
                 if not _tpl:
                     continue
                 _html_path = Path('/opt/wolf/data/CLIENT') / _tpl["code"] / "template.html"
@@ -1601,7 +1602,7 @@ def _CLIENT_extract_one(path: Path) -> dict:
 @bp.route("/CLIENT/<int:app_id>/CLIENT-scan", methods=["POST"])
 def app_CLIENT_scan(app_id: int):
     """Запуск разбора Google CLIENT в фоне (кнопка не должна ждать)."""
-    a = db.q1("SELECT * FROM CLIENT WHERE id=?", (app_id,))
+    a = apps_repo.get(app_id)
     if not a:
         return jsonify({"ok": False, "note": "заявка не найдена"})
     try:
@@ -1744,8 +1745,8 @@ def app_doc_html(app_id: int, template_id: int):
 @bp.route("/CLIENT/<int:app_id>/original-pages/<int:template_id>")
 def app_original_pages(app_id: int, template_id: int):
     """Оригинал клиента (Google CLIENT) страницами PNG — для листа визора."""
-    a = db.q1("SELECT * FROM CLIENT WHERE id=?", (app_id,))
-    t = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    a = apps_repo.get(app_id)
+    t = tpl_repo.get(template_id)
     if not a or not t:
         return "<div style='padding:20px'>Нет данных</div>"
     f = _find_original_file(a["client_id"], t["code"])
@@ -1789,10 +1790,10 @@ def app_doc_autofill(app_id: int, template_id: int):
       suggested    — из CLIENT_CLIENT_CLIENT (топ-1, приходит с плашкой «из опыта»)
       manual_only  — пусто, ставим CLIENTholder
     """
-    a = db.q1("SELECT * FROM CLIENT WHERE id=?", (app_id,))
+    a = apps_repo.get(app_id)
     if not a:
         return jsonify({"ok": False, "error": "Заявка не найдена"}), 404
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    tpl = tpl_repo.get(template_id)
     if not tpl:
         return jsonify({"ok": False, "error": "Шаблон не найден"}), 404
 
@@ -1959,8 +1960,8 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
 
     Возвращает JSON: {ok, pdf_name} — имя файла для предпросмотра.
     """
-    a = db.q1("SELECT * FROM CLIENT WHERE id=?", (app_id,))
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    a = apps_repo.get(app_id)
+    tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         return jsonify({"ok": False, "error": "Заявка или шаблон не найдены"}), 404
 
@@ -2034,7 +2035,7 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
 def app_doc_editor(app_id: int, template_id: int):
     """Двух-колонковый редактор шаблона: список переменных + предпросмотр HTML и PDF."""
     a = db.CLIENT_get(app_id)
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         flash("Документ не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
@@ -2092,7 +2093,7 @@ def app_doc_editor(app_id: int, template_id: int):
 def app_doc_preview_pdf(app_id: int, template_id: int):
     """Рендер PDF по текущим значениям формы (без сохранения), отдаём HTML страницы с iframe."""
     a = db.CLIENT_get(app_id)
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         return "Not found", 404
     html_file = (Path(tpl["html_path"]) if tpl.get("html_path")
@@ -2148,7 +2149,7 @@ def app_doc_save_CLIENT(app_id: int, template_id: int):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    tpl = tpl_repo.get(template_id)
     a = db.CLIENT_get(app_id)
     if not tpl or not a:
         return jsonify({"ok": False, "error": "not found"}), 404
@@ -2179,8 +2180,7 @@ def app_doc_save_CLIENT(app_id: int, template_id: int):
         pass
 
     # обновим полный лист переменных, если есть пустые
-    CLIENT = db.q("SELECT name FROM template_CLIENT WHERE template_id=?",
-                     (template_id,))
+    CLIENT = vars_repo.names(template_id)
     return jsonify({"ok": True, "saved": list(CLIENT.keys())})
 
 
@@ -2188,7 +2188,7 @@ def app_doc_save_CLIENT(app_id: int, template_id: int):
 @CLIENT_required
 def app_doc_edit(app_id: int, template_id: int):
     a = db.CLIENT_get(app_id)
-    tpl = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         flash("Документ не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))

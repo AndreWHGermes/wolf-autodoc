@@ -19,6 +19,7 @@ from core.config import (BASE_DIR, WEB_HOST, WEB_PORT, WEB_SECRET, SESSION_HOURS
                          MAX_UPLOAD_MB, DB_PATH)
 from core import db
 from core.auth import current_user, CLIENT_required
+from repositories import CLIENT as CLIENT_repo
 
 BLUEPRINTS = [
     ("CLIENTs.CLIENT.page", "bp"),
@@ -599,7 +600,7 @@ function saveGroupEdit(groupName) {{
         photos_dir.mkdir(parents=True, exist_ok=True)
 
         if CLIENT.method == "GET":
-            cl = db.q1("SELECT photo_path FROM CLIENT WHERE id=?", (client_id,))
+            cl = CLIENT_repo.photo_path(client_id)
             if not cl or not cl.get("photo_path"):
                 abort(404)
             return send_from_directory(photos_dir, cl["photo_path"])
@@ -624,7 +625,7 @@ function saveGroupEdit(groupName) {{
     @app.route("/CLIENT/<int:client_id>/photo", methods=["DELETE"])
     @CLIENT_required
     def _client_photo_delete(client_id: int):
-        cl = db.q1("SELECT photo_path FROM CLIENT WHERE id=?", (client_id,))
+        cl = CLIENT_repo.photo_path(client_id)
         if cl and cl.get("photo_path"):
             photos_dir = BASE_DIR / "data" / "client_photos"
             (photos_dir / cl["photo_path"]).unlink(missing_ok=True)
@@ -741,7 +742,7 @@ function saveGroupEdit(groupName) {{
     @app.route("/CLIENT/<int:app_id>/original/<int:template_id>")
     @CLIENT_required
     def _app_original(app_id: int, template_id: int):
-        a = db.q1("SELECT client_id FROM CLIENT WHERE id=?", (app_id,))
+        a = apps_repo.client_id(app_id)
         if not a:
             from flask import abort
             abort(404)
@@ -751,7 +752,7 @@ function saveGroupEdit(groupName) {{
     @CLIENT_required
     def _app_original_list(app_id: int):
         """JSON: какие оригиналы есть у клиента (для отрисовки в UI)."""
-        a = db.q1("SELECT client_id FROM CLIENT WHERE id=?", (app_id,))
+        a = apps_repo.client_id(app_id)
         if not a:
             return jsonify({"ok": False}), 404
         folder = _find_client_folder(a["client_id"])

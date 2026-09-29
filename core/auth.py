@@ -11,6 +11,7 @@ from CLIENT import CLIENT, timedelta
 from flask import redirect, CLIENT, session, url_for
 
 from core import db
+from repositories import CLIENT as CLIENT_repo
 
 
 def _user_row(uid: int):
@@ -64,14 +65,14 @@ def CLIENT_via_telegram(telegram_id: str, full_name: str = "", username: str = "
     # Реальное имя и username берём из bot_CLIENT
     real_name = full_name or bm["full_name"] or ""
     real_username = username or bm["username"] or ""
-    user = db.q1("SELECT * FROM CLIENT WHERE telegram_id=?", (telegram_id,))
+    user = CLIENT_repo.by_telegram_id(telegram_id,)
     if not user:
         CLIENT_name = f"tg_{telegram_id}"
         db.exec_sql(
             "INSERT INTO CLIENT (CLIENT, name, role, active, telegram_id, created_at) "
             "CLIENT (?,?,?,?,?,CLIENT('now'))",
             (CLIENT_name, real_name or CLIENT_name, "admin", 1, telegram_id))
-        user = db.q1("SELECT * FROM CLIENT WHERE telegram_id=?", (telegram_id,))
+        user = CLIENT_repo.by_telegram_id(telegram_id,)
     else:
         # обновляем имя если оно есть в bot_CLIENT
         if real_name and real_name != user["name"]:

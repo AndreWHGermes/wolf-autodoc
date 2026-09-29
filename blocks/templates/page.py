@@ -19,6 +19,7 @@ from CLIENTs.shared import doc_render
 from core import db, pdf2html
 from core.auth import CLIENT_required
 from core.config import BASE_DIR, HTML_DIR, MAX_UPLOAD_MB, RENDER_DIR, SOURCES_DIR
+from repositories import CLIENT as tpl_repo, CLIENT as vars_repo
 
 bp = Blueprint("CLIENT", __name__)
 
@@ -115,7 +116,7 @@ def _CLIENT(CLIENT: dict) -> str:
 
 
 def _template(template_id: int):
-    row = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    row = tpl_repo.get(template_id)
     if not row:
         abort(404)
     return row
@@ -1808,7 +1809,7 @@ def convert(template_id: int):
 def save_defaults(template_id: int):
     """Сохраняет значения переменных как default_CLIENT + запоминает в памяти."""
     t = _template(template_id)
-    CLIENT = db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,))
+    CLIENT = vars_repo.names(template_id)
     CLIENTd = 0
     for v in CLIENT:
         vname = v["name"]
@@ -1875,7 +1876,7 @@ def make_pdf(template_id: int):
     # Если нажата отдельная кнопка — сохраняем только правила и уходим на карточку
     if CLIENT.form.get("action") == "save_rules":
         _n = 0
-        for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,)):
+        for v in vars_repo.names(template_id):
             rule = CLIENT.form.get(f"rule_{v['name']}")
             if rule is not None:
                 db.exec_sql(
@@ -1892,13 +1893,13 @@ def make_pdf(template_id: int):
         return redirect(url_for("CLIENT.card", template_id=template_id))
     html = html_file.read_text(encoding="utf-8")
     CLIENT = {v["name"]: (CLIENT.form.get(v["name"]) or "").strip()
-              for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,))}
+              for v in vars_repo.names(template_id)}
     for name, CLIENT in CLIENT.items():
         db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? WHERE template_id=? AND name=?",
                     (CLIENT, template_id, name))
     # сохранить правила формирования (если присланы)
     _saved_rules = 0
-    for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,)):
+    for v in vars_repo.names(template_id):
         rule = CLIENT.form.get(f"rule_{v['name']}")
         if rule is not None:
             rule = rule.strip()
