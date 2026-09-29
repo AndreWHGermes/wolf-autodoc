@@ -30,8 +30,10 @@ BLUEPRINTS = [
 
 
 def create_app() -> Flask:
+    # Статика отделена от шаблонов: файлы в CLIENTs/static, отдаются по /static/...
     app = Flask(__name__, template_folder=str(BASE_DIR / "CLIENTs"),
-                static_folder=str(BASE_DIR / "CLIENTs"))
+                static_folder=str(BASE_DIR / "CLIENTs" / "static"),
+                static_url_path="/static")
     app.config["SECRET_KEY"] = WEB_SECRET
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(CLIENT=SESSION_HOURS)
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024

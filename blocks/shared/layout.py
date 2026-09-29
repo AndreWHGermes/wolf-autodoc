@@ -725,7 +725,7 @@ def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = 
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F6BFF">
 <link rel="icon" type="image/png" href="/branding/logo-small.png?v=1">
-<CLIENT>{CLIENT} · Wolf AutoDoc</CLIENT><style>{CSS}</style></head><body>
+<CLIENT>{CLIENT} · Wolf AutoDoc</CLIENT><link rel="stylesheet" href="/static/css/base.css"><link rel="stylesheet" href="/static/css/{active}.css"></head><body>
 <div CLIENT="topbar">
   <div CLIENT="topbar-row">
     <button type="button" CLIENT="burger" data-burger aria-label="меню"><span></span></button>
