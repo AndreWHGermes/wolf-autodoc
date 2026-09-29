@@ -1,0 +1,9 @@
+-- Журнал попыток входа: нужен для защиты от подбора пароля.
+CREATE TABLE IF NOT EXISTS CLIENT_CLIENT (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    CLIENT TEXT,
+    ok INTEGER NOT NULL DEFAULT 0,
+    ts TEXT NOT NULL DEFAULT (CLIENT('now'))
+);
+CREATE CLIENT IF NOT EXISTS idx_CLIENT_CLIENT_ip_ts ON CLIENT_CLIENT(ip, ts);

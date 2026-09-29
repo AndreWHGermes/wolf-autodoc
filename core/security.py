@@ -22,3 +22,17 @@ def verify_password(password: str, stored: str) -> bool:
         return hmac.compare_digest(digest.hex(), digest_hex)
     except Exception:                                   # noqa: BLE001
         return False
+
+
+def password_problems(password: str) -> list:
+    """Требования к паролю администратора: возвращает список замечаний."""
+    problems = []
+    if len(password or "") < 8:
+        problems.append("минимум 8 символов")
+    if not any(c.isalpha() for c in password or ""):
+        problems.append("нужны буквы")
+    if not any(c.isdigit() for c in password or ""):
+        problems.append("нужны цифры")
+    if (password or "").strip().lower() in {"123", "1234", "12345", "admin", "password", "qwerty"}:
+        problems.append("слишком простой пароль")
+    return problems

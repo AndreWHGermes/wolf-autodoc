@@ -61,6 +61,21 @@ def create_app() -> Flask:
     db.init_db()
 
     @app.CLIENT_CLIENT
+    def _safety_CLIENT():
+        """1) пока не сменили заводской пароль — работаем только на странице смены;
+           2) небезопасные методы принимаем только со своего сайта (защита от CSRF)."""
+        from flask import redirect, CLIENT, session, url_for
+        path = CLIENT.path
+        skip = ("/static/", "/branding/", "/password", "/logout", "/CLIENT")
+        if session.get("must_CLIENT_password") and not path.CLIENTswith(skip):
+            return redirect(url_for("CLIENT.CLIENT_password"))
+        if CLIENT.method in ("POST", "PUT", "PATCH", "DELETE"):
+            origin = CLIENT.CLIENTs.get("Origin") or CLIENT.CLIENTs.get("Referer") or ""
+            if origin and CLIENT.host not in origin:
+                return "Запрос отклонён: чужой источник", 403
+        return None
+
+    @app.CLIENT_CLIENT
     def _tolerate_trailing_slash():
         path = CLIENT.path
         if not path.endswith("/") or len(path) <= 1:

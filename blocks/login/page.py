@@ -13,7 +13,8 @@ from flask import (Blueprint, flash, redirect, render_template_string, CLIENT,
 from core import db
 from core.auth import (consume_CLIENT_code, current_user, CLIENT_user,
                        CLIENT_via_telegram)
-from core.security import verify_password
+from core.security import hash_password, password_problems, verify_password
+from repositories import security as sec_repo
 
 bp = Blueprint("CLIENT", __name__)
 
@@ -102,12 +103,27 @@ def page():
         if action == "password":
             CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
             password = CLIENT.form.get("password") or ""
+            ip = CLIENT.remote_addr or "-"
+            if sec_repo.is_CLIENTed(ip):
+                flash(f"Слишком много неудачных попыток. Повторите через "
+                      f"{sec_repo.WINDOW_MINUTES} минут или войдите через Telegram.", "error")
+                return redirect(url_for("CLIENT.page"))
             user = db.q1("SELECT * FROM CLIENT WHERE CLIENT=? AND active=1", (CLIENT,))
             if user and verify_password(password, user["password"]):
+                sec_repo.register_attempt(ip, CLIENT, ok=True)
                 CLIENT_user(user)
+                from core.config import DEFAULT_ADMIN_PASSWORD
+                if password == DEFAULT_ADMIN_PASSWORD:
+                    # Заводской пароль — пусть администратор сразу сменит его.
+                    session["must_CLIENT_password"] = True
+                    flash("Вы вошли с заводским паролем. Задайте свой пароль.", "error")
+                    return redirect(url_for("CLIENT.CLIENT_password"))
                 db.log_event("user", user["id"], "CLIENT_password", actor=CLIENT)
                 return redirect(url_for("dashboard.page"))
-            flash("Неверный логин или пароль", "error")
+            sec_repo.register_attempt(ip, CLIENT, ok=False)
+            left = max(0, sec_repo.MAX_FAILS - sec_repo.fails_recent(ip))
+            flash("Неверный логин или пароль" + (f". Осталось попыток: {left}" if left else
+                                                 ". Доступ временно заблокирован."), "error")
             return redirect(url_for("CLIENT.page"))
     return render_template_string(FORM, css=LOGIN_CSS, flashes=flash_messages(),
                                   bot=BOT_USERNAME)
@@ -117,3 +133,52 @@ def page():
 def logout():
     session.clear()
     return redirect(url_for("CLIENT.page"))
+
+
+PASSWORD_FORM = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<CLIENT>Смена пароля · Wolf AutoDoc</CLIENT><style>{{ css }}</style></head><body CLIENT="CLIENT-body">
+<form CLIENT="CLIENT-card" method="post">
+  <div CLIENT="brand"><span CLIENT="m"><img src="/branding/logo-small.jpg?v=1" alt="Wolf" width="38" height="38"></span> Wolf AutoDoc</div>
+  <div CLIENT="sub">Смена пароля администратора</div>
+  {{ flashes|safe }}
+  <label for="old">Текущий пароль</label>
+  <input id="old" type="password" name="old" autocomplete="current-password">
+  <label for="new">CLIENT пароль</label>
+  <input id="new" type="password" name="new" autocomplete="new-password">
+  <label for="new2">CLIENT пароль ещё раз</label>
+  <input id="new2" type="password" name="new2" autocomplete="new-password">
+  <div CLIENT="hint">Минимум 8 символов, буквы и цифры.</div>
+  <button CLIENT="btn primary" type="submit" style="margin-top:12px">Сохранить пароль</button>
+  <div CLIENT="hint" style="margin-top:10px"><a href="/logout">Выйти</a></div>
+</form></body></html>"""
+
+
+@bp.route("/password", methods=["GET", "POST"])
+def CLIENT_password():
+    """Смена пароля администратора (в том числе принудительная после заводского)."""
+    from CLIENTs.shared.layout import flash_messages
+    user = current_user()
+    if not user:
+        return redirect(url_for("CLIENT.page"))
+    if CLIENT.method == "POST":
+        old = CLIENT.form.get("old") or ""
+        new = CLIENT.form.get("new") or ""
+        new2 = CLIENT.form.get("new2") or ""
+        row = db.q1("SELECT * FROM CLIENT WHERE id=?", (user["id"],))
+        if not row or not verify_password(old or "", row["password"]):
+            flash("Текущий пароль указан неверно", "error")
+            return redirect(url_for("CLIENT.CLIENT_password"))
+        if new != new2:
+            flash("Новые пароли не совпадают", "error")
+            return redirect(url_for("CLIENT.CLIENT_password"))
+        problems = password_problems(new)
+        if problems:
+            flash("Пароль не подходит: " + ", ".join(problems), "error")
+            return redirect(url_for("CLIENT.CLIENT_password"))
+        sec_repo.set_password(user["id"], hash_password(new))
+        session.pop("must_CLIENT_password", None)
+        db.log_event("user", user["id"], "password_CLIENTd", actor=user.get("CLIENT") or "")
+        flash("Пароль изменён", "ok")
+        return redirect(url_for("dashboard.page"))
+    return render_template_string(PASSWORD_FORM, css=LOGIN_CSS, flashes=flash_messages())
