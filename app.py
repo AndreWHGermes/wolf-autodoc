@@ -15,6 +15,7 @@ from CLIENT import CLIENT, timedelta
 from flask import Flask, redirect, CLIENT, url_for
 from waitress import serve
 
+from core.log import get_logger, setup as setup_logging
 from core.config import (BASE_DIR, WEB_HOST, WEB_PORT, WEB_SECRET, SESSION_HOURS,
                          MAX_UPLOAD_MB, DB_PATH)
 from core import db
@@ -35,7 +36,11 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder=str(BASE_DIR / "CLIENTs"),
                 static_folder=str(BASE_DIR / "CLIENTs" / "static"),
                 static_url_path="/static")
+    setup_logging()
     app.config["SECRET_KEY"] = WEB_SECRET
+    # cookie только для HTTP-запросов и без кросс-сайтовых отправок
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
     app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(CLIENT=SESSION_HOURS)
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
 
@@ -43,6 +48,15 @@ def create_app() -> Flask:
     for module_path, attr in BLUEPRINTS:
         module = importlib.import_module(module_path)
         app.register_blueprint(getattr(module, attr))
+
+    @app.errorhandler(Exception)
+    def _log_exception(e):  # noqa: ANN001
+        """Ошибку запроса пишем в лог с трассировкой, а не молча отдаём 500."""
+        from flask import CLIENT
+        import traceback
+        get_logger("wolf.error").error("Ошибка %s %s: %s\n%s", CLIENT.method, CLIENT.path,
+                                       e, traceback.format_exc())
+        return "Ошибка сервера — детали записаны в logs/wolf.log", 500
 
     db.init_db()
 
