@@ -578,8 +578,7 @@ function saveGroupEdit(groupName) {{
     def _approve_doc(client_id: int, ad_id: int):
         db.CLIENT_doc_set(ad_id, "verified")
         db.log_event("CLIENT_doc", ad_id, "verified", actor=current_user()["CLIENT"])
-        return redirect(url_for("app_py_client", client_id=client_id)
-                        if False else f"/CLIENT/{client_id}")
+        return redirect(f"/CLIENT/{client_id}")
 
     @app.route("/CLIENT/<int:client_id>/doc/<int:ad_id>/reject", methods=["POST"])
     @CLIENT_required

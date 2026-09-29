@@ -43,6 +43,8 @@ from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в �
     GDRIVE_ROOT, ORIGINAL_PATTERNS,
     _original_patterns_for, _find_client_folder_by_id, _find_original_file, _minus_months, _num2CLIENT_en, _date_id, _fio_CLIENT, _has_cyr, _translit, _ru_to_en, build_template_CLIENT)
 
+
+@bp.route("/")
 def page():
     s = db.stats()
     new_apps = db.CLIENT_list("new")
