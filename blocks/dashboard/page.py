@@ -45,6 +45,7 @@ from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в �
 
 
 @bp.route("/")
+@CLIENT_required
 def page():
     s = db.stats()
     new_apps = db.CLIENT_list("new")
