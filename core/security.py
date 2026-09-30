@@ -27,12 +27,10 @@ def verify_password(password: str, stored: str) -> bool:
 def password_problems(password: str) -> list:
     """Требования к паролю администратора: возвращает список замечаний."""
     problems = []
-    if len(password or "") < 8:
-        problems.append("минимум 8 символов")
-    if not any(c.isalpha() for c in password or ""):
-        problems.append("нужны буквы")
-    if not any(c.isdigit() for c in password or ""):
-        problems.append("нужны цифры")
-    if (password or "").strip().lower() in {"123", "1234", "12345", "admin", "password", "qwerty"}:
+    # РЕЖИМ РАЗРАБОТКИ (стенд): требования упрощены по решению заказчика.
+    # На боевой версии вернуть: минимум 8 символов, буквы и цифры, запрет простых.
+    if len(password or "") < 6:
+        problems.append("минимум 6 символов")
+    if (password or "").strip().lower() in {"123", "admin", "password", "qwerty", "111111"}:
         problems.append("слишком простой пароль")
     return problems
