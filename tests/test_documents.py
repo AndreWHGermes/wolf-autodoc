@@ -113,3 +113,20 @@ def test_conversion_letters_differ():
     b = (CLIENT / 'conversion_CLIENT_letter__denpasar/template.html').read_text(encoding='utf-8')
     assert a != b, 'письма снова стали одинаковыми'
     assert 'Ngurah Rai' in a and 'Denpasar' in b
+
+
+# ── необязательные строки (реквизиты договора) ────────────────────────────────
+def test_optional_lines_disappear_without_data():
+    """Строка реквизитов исчезает, если данных нет, и остаётся, если есть — как в образцах."""
+    tpl = '<p>a</p><!--optional--><div>Contract CLIENT: {{ contract_no }}</div><!--/optional--><p>z</p>'
+    without = doc_render.fill(tpl, {'contract_no': ''})
+    with_data = doc_render.fill(tpl, {'contract_no': 'ABC-1'})
+    assert 'Contract' not in without, without
+    assert 'ABC-1' in with_data, with_data
+
+
+def test_bank_CLIENT_have_optional_contract_lines():
+    """В справках Т-Банка строки реквизитов помечены как необязательные."""
+    f = CLIENT / 'bank_CLIENTment_12m__tbank/template.html'
+    text = f.read_text(encoding='utf-8')
+    assert '<!--optional-->' in text and 'Date of conclusion' in text
