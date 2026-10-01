@@ -2325,17 +2325,17 @@ LIVE_UPDATE_JS = """<script>
     back.addEventListener('click', function(ev){
       ev.preventDefault();
       var want = window.confirm('Сохранить внесённые изменения?' + String.fromCharCode(10,10) + 'ОК — сохранить и вернуться в заявку' + String.fromCharCode(10) + 'Отмена — вернуться без сохранения');
-      var go = function(){ window.location.href = back.getAttribute('href'); };
-      if (!want) { go(); return; }
-      if (!saveBtn) { go(); return; }
+      var go = function(saved){ window.location.href = back.getAttribute('href') + (saved ? '?saved=1' : ''); };
+      if (!want) { go(false); return; }
+      if (!saveBtn) { go(false); return; }
       var CLIENT = {};
       CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){ CLIENT[inp.name] = inp.CLIENT; });
       var fd = new FormData();
       fd.append('CLIENT_json', JSON.stringify(CLIENT));
       fetch('/CLIENT/' + saveBtn.dataset.app + '/doc/' + saveBtn.dataset.tpl + '/save-CLIENT',
             {method:'POST', body:fd, credentials:'same-origin'})
-        .then(function(){ go(); })
-        .catch(function(){ go(); });
+        .then(function(){ go(true); })
+        .catch(function(){ go(false); });
     });
   })();
 
@@ -2356,7 +2356,20 @@ LIVE_UPDATE_JS = """<script>
         .then(function(r){ return r.json(); })
         .then(function(d){
           btn.disabled = false;
-          if (d && d.ok){ btn.textContent = '✅ Сохранено'; setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2200); }
+          if (d && d.ok){
+            btn.textContent = '✅ Сохранено';
+            var note = CLIENT.getElementById('save-note');
+            if (!note){
+              note = CLIENT.createElement('div');
+              note.id = 'save-note';
+              note.style.cssText = 'margin:8px 0 0;padding:8px 12px;border-radius:8px;background:#DCFCE7;' +
+                                   'color:#15803D;font-weight:700;font-size:13px;border:1px solid #86EFAC';
+              var panel = CLIENT.querySelector('.pl-vars');
+              if (panel && panel.parentNode) panel.parentNode.insertBefore(note, panel);
+            }
+            note.textContent = '✅ Значения сохранены в заявку — они уже в документе заявки';
+            setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2800);
+          }
           else { btn.textContent = '⚠️ не сохранилось'; setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2600); }
         })
         .catch(function(){

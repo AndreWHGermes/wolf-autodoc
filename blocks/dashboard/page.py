@@ -239,6 +239,9 @@ def app_view(app_id: int):
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
+    # вернулись из редактора документа с сохранением значений
+    if CLIENT.args.get("saved"):
+        flash("Значения документа сохранены — документ соберётся заново при следующем просмотре PDF", "ok")
     # Автоматический take убран — заявка остаётся "new" во входящих,
     # пока админ сам не нажмёт "Взять в работу"
     a = db.CLIENT_get(app_id)
@@ -303,6 +306,7 @@ def app_view(app_id: int):
     manager = db.q1(
         """SELECT bm.telegram_id, bm.full_name, bm.username
              FROM bot_CLIENT bm WHERE bm.id=?""",
+
         (a["bot_manager_id"],)) if a.get("bot_manager_id") else None
     manager_label = "—"
     if manager:
