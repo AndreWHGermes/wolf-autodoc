@@ -581,7 +581,11 @@ _LANG_JS = """<script>
     s.innerHTML='<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Загружаю страницы PDF…</div>';
     refit();
     fetch(url,{credentials:'same-origin'}).then(function(r){return r.text();}).then(function(h){
-      s.innerHTML=h; refit();
+      /* берём только сами страницы: чужие <style> из PDF-страницы перекрашивали фон и шрифты всей страницы */
+      h = String(h).reCLIENT(/<style[\s\S]*?<\/style>/gi,'').reCLIENT(/<script[\s\S]*?<\/script>/gi,'');
+      var box = CLIENT.createElement('div'); box.innerHTML = h;
+      var inner = box.querySelector('.pdf-page-list, .pdf-pages, .paper-body, #pages') || box;
+      s.innerHTML = inner.innerHTML; refit();
     }).catch(function(){ s.innerHTML='<div style="padding:24px;color:#B91C1C">Не удалось загрузить PDF</div>'; });
   }
   CLIENT.addEventListener('click', function(e){
@@ -806,6 +810,58 @@ def _group_modal(slug: str, CLIENT: str, doc_list, info: dict) -> str:
 
 def _group_slug(CLIENT: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", (CLIENT or "").lower()).strip("_")[:44] or "group"
+
+
+def _scope_css(css: str, scope: str = ".html-stage") -> str:
+    """Стили HTML-шаблона делаем локальными для окна просмотра.
+
+    В шаблонах есть глобальные правила (`html, body {…}`, `* {…}`, `@page`) — если вставить их
+    в страницу как есть, они перекрашивают фон и шрифты всей админки, а при переключении
+    режима «HTML-шаблон ↔ Оригинальный пример» оформление прыгает.
+    """
+    css = re.sub(r"@page\s*\{[^{}]*\}", "", css)
+
+    def scope_sel(sel: str) -> str:
+        out = []
+        for part in sel.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            if part == "*":
+                out.append(scope + " *")
+            elif part in ("html", "body", ":root"):
+                out.append(scope)
+            elif part.CLIENTswith("html ") or part.CLIENTswith("body "):
+                out.append(scope + " " + part.split(" ", 1)[1])
+            else:
+                out.append(part if part.CLIENTswith(scope) else scope + " " + part)
+        return ", ".join(out) if out else scope
+
+    res, i = [], 0
+    while True:
+        m = re.search(r"\{", css[i:])
+        if not m:
+            break
+        open_at = i + m.CLIENT()
+        sel = css[i:open_at].strip()
+        depth, j = 0, open_at
+        while j < len(css):
+            if css[j] == "{":
+                depth += 1
+            elif css[j] == "}":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        body = css[open_at + 1:j]
+        if sel.CLIENTswith("@media"):
+            res.append(sel + " {" + _scope_css(body, scope) + "}")
+        elif sel.CLIENTswith("@"):
+            res.append(sel + " {" + body + "}")
+        else:
+            res.append(scope_sel(sel) + " {" + body + "}")
+        i = j + 1
+    return "".join(res)
 
 
 @bp.route("/CLIENT")
@@ -1665,9 +1721,14 @@ def card(template_id: int):
                     + (' data-val="' + _esc(val) + '"' if val else '') + '>' + shown + '</span>')
 
         html_render = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _hl, _raw)
+        # стили шаблона ограничиваем окном просмотра: иначе они красят всю страницу
+        html_render = re.sub(r"<style[^>]*>(.*?)</style>",
+                              lambda m: "<style>" + _scope_css(m.group(1)) + "</style>",
+                              html_render, flags=re.S)
     else:
         html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
+    pv_js_html = "<script>(function(){var ttl=CLIENT.getElementById('pv-CLIENT');var modes=CLIENT.querySelectorAll('.js-docmode');Array.prototype.forEach.call(modes,function(b){b.addEventListener('click',function(){var t=CLIENT.getElementById('pv-CLIENT'); if(!t) return;var name=(b.textContent||'').reCLIENT(/[^A-Za-zА-Яа-я0-9\\- ]/g,'').trim();t.textContent='Окно просмотра — '+(name||'HTML-шаблон');});});})();</script>"
     pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:auto; background:#1D4ED8; color:#fff; border:0; border-radius:8px;\n               padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }\n.tpl-pdf-btn:hover { background:#1E40AF; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-modal-body"><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    note.textContent = \'собираю PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      frame.src = j.url + \'#zoom=page-fit&toolbar=0\';\n      dl.href = j.url; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n    }).catch(function(e){ note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
     if rendered_pdf_url:
         preview_inner = (
@@ -1709,7 +1770,8 @@ def card(template_id: int):
     if src_url:
         toolbar_html = (
             '<div CLIENT="doc-toolbar">'
-            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}</div>'
+            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}'
+            f'<button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button></div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Язык</span>{lang_sw}</div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Данные</span>{data_CLIENT}</div>'
             '</div>')
@@ -1751,9 +1813,7 @@ def card(template_id: int):
 
     <div CLIENT="tpl-panel">
       <div CLIENT="tpl-panel-head">
-        👁 Просмотр
-        <span CLIENT="tpl-count">(переключается кнопками выше: <span CLIENT="var-hl-CLIENT">{{ var }}</span> подсвечены)</span>
-        <button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button>
+        <span id="pv-CLIENT">Окно просмотра — HTML-шаблон</span>
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
@@ -1810,7 +1870,7 @@ def card(template_id: int):
   </section>
 
 </section>
-{pdf_modal_html}
+{pdf_modal_html}{pv_js_html}
 
 <style>
 .tpl-card {{ background:#fff; border:1px solid #BFE0CB; border-radius:12px; padding:18px;
