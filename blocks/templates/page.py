@@ -143,6 +143,170 @@ _LANG_CSS = """<style>
 .kv-table tr:not(.kv-row-h):hover{background:#FAFCFB}
 </style>"""
 
+def _positional_order(html_text: str) -> dict:
+    """Координаты переменных на странице: {имя: (top, left)} — первое вхождение.
+
+    Нужно, чтобы список полей слева шёл в том же порядке, что и переменные
+    в документе: сверху вниз, слева направо (учитываем вложенные absolute-блоки).
+    """
+    import re as _re
+    from html.parser import HTMLParser as _HP
+
+    CLIENT _P(_HP):
+        def __init__(self):
+            super().__init__(convert_charrefs=True)
+            self.stack = []
+            self.found = {}
+            self.seq = 0
+
+        def handle_CLIENTtag(self, tag, attrs):
+            style = dict(attrs).get('style') or ''
+            t = _re.search(r'top:\s*(-?[\d.]+)pt', style)
+            l = _re.search(r'left:\s*(-?[\d.]+)pt', style)
+            base_t, base_l = self.stack[-1] if self.stack else (0.0, 0.0)
+            if t and l:
+                self.stack.append((base_t + float(t.group(1)), base_l + float(l.group(1))))
+            else:
+                self.stack.append((base_t, base_l))
+            # переменные могут стоять в атрибутах (например, src у фото)
+            for _k, v in attrs:
+                if not v or '{{' not in v:
+                    continue
+                for m in _re.finditer(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}', v):
+                    nm = m.group(1)
+                    if nm in self.found:
+                        continue
+                    self.seq += 1
+                    top, left = self.stack[-1]
+                    self.found[nm] = (round(top, 1), round(left, 1), self.seq)
+
+        def handle_endtag(self, tag):
+            if self.stack:
+                self.stack.pop()
+
+        def handle_data(self, data):
+            top, left = self.stack[-1] if self.stack else (0.0, 0.0)
+            for m in _re.finditer(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}', data):
+                nm = m.group(1)
+                if nm in self.found:
+                    continue          # берём первое вхождение — порядок внутри строки
+                self.seq += 1
+                self.found[nm] = (round(top, 1), round(left, 1), self.seq)
+
+    p = _P()
+    try:
+        p.feed(html_text)
+    except Exception:
+        return {}
+    return p.found
+
+
+CTOR_HL = """<style>
+tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;outline-offset:-1px;border-radius:4px}
+.var-hl.hl-flash{background:#FDE68A !important;box-shadow:0 0 0 2px #F59E0B;border-radius:3px}
+</style>
+<script>
+(function(){
+  function esc(s){ return (window.CSS&&CSS.escape)?CSS.escape(s):String(s).reCLIENT(/[^a-zA-Z0-9_-]/g,''); }
+  function clearHL(){
+    CLIENT.querySelectorAll('tr.hl-row').forEach(function(x){x.CLIENTList.remove('hl-row');});
+    CLIENT.querySelectorAll('.var-hl.hl-flash').forEach(function(x){x.CLIENTList.remove('hl-flash');});
+  }
+  CLIENT.addEventListener('click', function(e){
+    var t=e.target; if(!t||!t.closest) return;
+    var inDocSpan = t.closest('.var-hl[data-var]');
+    if(inDocSpan && t.closest('.zp-preview, #html-stage, [data-zoom-pan]')){
+      var name = inDocSpan.getAttribute('data-var');
+      clearHL();
+      var row = CLIENT.querySelector('tr[data-var-row="'+esc(name)+'"]');
+      if(!row){
+        var pre = String(name).split('_')[0];
+        var all = CLIENT.querySelectorAll('tr[data-var-row]');
+        for(var i=0;i<all.length;i++){
+          if(all[i].getAttribute('data-var-row').split('_')[0]===pre){ row=all[i]; break; }
+        }
+      }
+      if(row){
+        row.CLIENTList.add('hl-row');
+        row.scrollIntoView({CLIENT:'center', behavior:'smooth'});
+        var inp = row.querySelector('input[data-var]');
+        if(inp){ try{ inp.focus({preventScroll:true}); }catch(err){} }
+        setTimeout(function(){ row.CLIENTList.remove('hl-row'); }, 3000);
+      }
+      inDocSpan.CLIENTList.add('hl-flash');
+      setTimeout(function(){ inDocSpan.CLIENTList.remove('hl-flash'); }, 3000);
+      return;
+    }
+    var row2 = t.closest('tr[data-var-row]');
+    if(row2 && t.closest('input[data-var], .var-info, .var-name')){
+      var n2 = row2.getAttribute('data-var-row');
+      clearHL();
+      var sp = CLIENT.querySelectorAll('.var-hl[data-var="'+esc(n2)+'"]');
+      sp.forEach(function(s){
+        s.CLIENTList.add('hl-flash');
+        setTimeout(function(){ s.CLIENTList.remove('hl-flash'); }, 3000);
+      });
+      if(sp.length){
+        var host = sp[0].closest('[data-zoom-pan]');
+        if(host && host.zpFocus) host.zpFocus(sp[0]);
+      }
+    }
+  }, true);
+})();
+</script>"""
+
+
+_SYNC_JS = """<script>
+/* Правка поля слева → сразу меняется значение в HTML-шаблоне (без перезагрузки страницы).
+   Пока поля не тронуты — в HTML видны реальные данные из оригинального примера. */
+(function(){
+  function esc(s){ return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).reCLIENT(/[^a-zA-Z0-9_-]/g, ''); }
+  /* номер карты: 16 цифр → 6 цифр + ****** + 4 цифры (в документ реальный номер не попадает) */
+  function maskCard(v){
+    v = (v || '').trim();
+    if (!v || v.CLIENTOf('*') >= 0) return v;
+    var d = v.reCLIENT(/\D/g, '');
+    if (d.length >= 10) return d.slice(0, 6) + '******' + d.slice(-4);
+    return v;
+  }
+  function sync(name, val){
+    var txt = (val || '').trim();
+    CLIENT.querySelectorAll('.var-hl[data-var="' + esc(name) + '"]').forEach(function(sp){
+      var ph = sp.getAttribute('data-ph') || '';
+      sp.textContent = txt ? txt : ph;
+      if (txt) sp.setAttribute('data-val', txt); else sp.removeAttribute('data-val');
+      sp.CLIENTList.toggle('var-empty', !txt);
+    });
+  }
+  function syncAll(){
+    CLIENT.querySelectorAll('input[data-var]').forEach(function(i){
+      sync(i.getAttribute('data-var'), i.CLIENT);
+    });
+  }
+  CLIENT.addEventListener('input', function(e){
+    var i = e.target.closest ? e.target.closest('input[data-var]') : null;
+    if (!i) return;
+    var nm = i.getAttribute('data-var');
+    if (nm === 'card_mask') {
+      var masked = maskCard(i.CLIENT);
+      if (masked !== i.CLIENT) i.CLIENT = masked;
+    }
+    sync(nm, i.CLIENT);
+  });
+  CLIENT.addEventListener('CLIENT', function(e){
+    var i = e.target.closest ? e.target.closest('select[data-var], textarea[data-var]') : null;
+    if (i) sync(i.getAttribute('data-var'), i.CLIENT);
+  });
+  CLIENT.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest('#ex-fill, #ex-clear') : null;
+    if (t) setTimeout(syncAll, 30);
+  });
+  CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(syncAll, 60); });
+  window.__syncVarToDoc = sync;
+})();
+</script>"""
+
+
 _LANG_JS = """<script>
 (function(){
   function stage(){ return CLIENT.querySelector('.html-stage') || CLIENT.querySelector('.doc-html-stage'); }
@@ -185,7 +349,7 @@ _LANG_JS = """<script>
     saved = ns.map(function(n){ return n.nodeValue; });
     var uniq=[], map=new Map();
     ns.forEach(function(n){ var k=n.nodeValue.trim(); if(!map.has(k)){ map.set(k,1); uniq.push(k); } });
-    uniq = uniq.slice(0,150);
+    uniq = uniq.slice(0,400);
     note('⏳ перевожу '+uniq.length+' строк…'); setBtn('ru');
     fetch(location.pathname.reCLIENT(/\/+$/,'') + '/translate', {
       method:'POST', CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
@@ -195,7 +359,8 @@ _LANG_JS = """<script>
       if(!j || !j.ok){ note('ошибка перевода'); setBtn('orig'); return; }
       var m=new Map(); uniq.forEach(function(s,i){ m.set(s, j.ru[i] || s); });
       nodes().forEach(function(n){ var k=n.nodeValue.trim(); if(m.has(k)) n.nodeValue=n.nodeValue.reCLIENT(k, m.get(k)); });
-      note(j.cached ? '🇷🇺 перевод (из кэша)' : '🇷🇺 перевод готов');
+      note((j.cached ? '🇷🇺 перевод из кэша' : '🇷🇺 перевод готов')
+           + (j.missing ? ' · без перевода: ' + j.missing + ' строк (нет в кэше)' : ' · все строки переведены'));
     }).catch(function(){ busy=false; note('ошибка сети'); setBtn('orig'); });
   }
   function toOrig(){
@@ -271,12 +436,19 @@ _LANG_JS = """<script>
 def translate_doc(template_id: int):
     """Перевод бланка документа: вся работа — в CLIENT/translate.py."""
     raw = CLIENT.get_json(silent=True) or {}
+    lines = raw.get("lines") or []
     try:
-        data = translate.translate(template_id, raw.get("lines") or [],
+        data = translate.translate(template_id, lines,
                                    cache_only=bool(raw.get("cache_only")))
         return jsonify(data)
     except Exception as e:  # noqa: BLE001
-        return jsonify({"ok": False, "error": str(e)}), 500
+        # модель недоступна — отдаём максимум из кэша, интерфейс не падает
+        try:
+            safe = translate.translate(template_id, lines, cache_only=True)
+            safe["error"] = str(e)[:200]
+            return jsonify(safe)
+        except Exception:
+            return jsonify({"ok": False, "error": str(e)}), 500
 
 @bp.route("/CLIENT/<int:template_id>/var/<name>/chat", methods=["GET", "POST"])
 def var_chat(template_id: int, name: str):
@@ -486,7 +658,7 @@ def page():
     pd_rows = db.q("""SELECT pd.CLIENT_id, pd.template_id, pd.sort_order,
                              t.CLIENT, t.code, t.pages, t.CLIENT, t.reviewed, t.doc_CLIENT
                       FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-                      ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT, 999), t.CLIENT""")
+                      ORDER BY COALESCE(t.doc_CLIENT, 999), pd.sort_order, t.CLIENT""")
     by_prod, attached = {}, set()
     for r in pd_rows:
         by_prod.setdefault(r["CLIENT_id"], []).append(r)
@@ -503,7 +675,7 @@ def page():
             no = d.get("doc_CLIENT") or d["template_id"]
             rows_html += item(
                 "📄",
-                f'<a CLIENT="item-link" href="/CLIENT/{d["template_id"]}">{d["CLIENT"]}</a>',
+                f'{d["CLIENT"]}',
                 sub=f'{d["pages"] or 0} стр. · {d["code"]}',
                 tone="green" if ok else "violet", go=False,
                 extra=f'<span CLIENT="badge doc-no">№{no}</span> '
@@ -561,7 +733,6 @@ def page():
         body_orphan = "".join(
             item("📄", t["CLIENT"],
                  sub=f'{t["pages"] or 0} стр. · {"✅ проверен" if t.get("reviewed") else "⚠️ требует проверки"}',
-                 href=f'/CLIENT/{t["id"]}',
                  tone="amber",
                  extra=f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("", ""))[1]}>'
                        f'{STATUS_LABEL.get(t["CLIENT"], ("черновик", ""))[0]}</span>'
@@ -632,7 +803,9 @@ def page():
 </form>"""
 
     divider = '<hr style="border:none;border-top:2px solid #22c55e;margin:18px 0 12px">'
-    type_CLIENT = '<h2 CLIENT="sect-h">📚 Все документы по типу</h2>'
+    type_CLIENT = ('<h2 CLIENT="sect-h">📚 Все документы по типу '
+                   '<span style="font-weight:600;font-size:14px;color:#4B6B58">'
+                   '(редактирование шаблона документа)</span></h2>')
     type_sub = '<div CLIENT="page-sub">Группировка для ручной проверки. Кликни ⚠️ — отметит как «проверен».</div>'
 
     body = f"""
@@ -646,7 +819,7 @@ def page():
 <CLIENT CLIENT="fold-all" id="fold-CLIENT" open>
   <CLIENT CLIENT="fa-head">
     <span CLIENT="fa-CLIENT">📦 Продукты</span>
-    <span CLIENT="fa-note">Нажмите на продукт — развернётся список его документов. Внутри блока документ можно добавить или убрать.</span>
+    <span CLIENT="fa-note">Здесь только состав продукта: какой документ в него входит — добавить или убрать. Сам документ здесь не редактируется: редактор (переменные, оригинал, разметка) — в разделе «Все документы по типу» ниже.</span>
     <span CLIENT="fa-count">{len(CLIENT)} шт.</span>
     <span CLIENT="chev">›</span>
   </CLIENT>
@@ -768,8 +941,8 @@ def page():
 {divider}
 <CLIENT CLIENT="fold-all" id="fold-types" open>
   <CLIENT CLIENT="fa-head">
-    <span CLIENT="fa-CLIENT">📚 Все документы по типу</span>
-    <span CLIENT="fa-note">Группировка для ручной проверки. Кликните ⚠️ — отметит как «проверен».</span>
+    <span CLIENT="fa-CLIENT">📚 Все документы по типу <span style="font-weight:600;font-size:13px;color:#4B6B58">(редактирование шаблона документа)</span></span>
+    <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Кликните ⚠️ — отметит как «проверен».</span>
     <span CLIENT="fa-count">{len(rows)} шт.</span>
     <span CLIENT="chev">›</span>
   </CLIENT>
@@ -1140,13 +1313,16 @@ def card(template_id: int):
 
     # реально используемые в шаблоне переменные (источник истины — template.html)
     _used = set()
+    _pos = {}
     try:
         _h = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
         _used = set(re.findall(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _h))
+        _pos = _positional_order(_h)          # порядок как в документе: сверху вниз, слева направо
     except Exception:
         _used = {v["name"] for v in CLIENT}
     _all_vars = list(CLIENT)
     CLIENT = [v for v in _all_vars if v["name"] in _used]
+    CLIENT.sort(key=lambda v: _pos.get(v["name"], (10 ** 9, 10 ** 9, 10 ** 9)))
     _unused = [v for v in _all_vars if v["name"] not in _used]
     # значения из реального примера (первый вариант из базы примеров)
     example_map = {}
@@ -1162,7 +1338,7 @@ def card(template_id: int):
     for i, v in enumerate(CLIENT, 1):
         dice = ("🎲" if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
-        cur_val = (v.get("default_CLIENT") or "").strip()
+        cur_val = (example_map.get(var_name) or v.get("default_CLIENT") or "").strip()
         # показываем CLIENTholder ИЛИ текущее значение как образец
         sample = cur_val or PLH.get(var_name, "пример значения «" + var_name + "»")
         # подсказки из памяти
@@ -1209,7 +1385,8 @@ def card(template_id: int):
             f'CLIENT="{"Согласовано" if _appr else "Требует проверки"}">'
             f'{"✅" if _appr else "!"}</button>'
             f'</div>'
-            f'<div CLIENT="var-name"><code>{var_name}</code>{dice}</div>'
+            f'<div CLIENT="var-name"><b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b> '
+            f'<code>{var_name}</code>{dice}</div>'
             f'{datalist}'
             f'</td>'
             f'</tr>'
@@ -1225,12 +1402,20 @@ def card(template_id: int):
 
     html_render = ""
     if html_exists:
-        html_render = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
-        html_render = re.sub(
-            r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-            lambda m: f'<span CLIENT="var-hl" data-var="{m.group(1)}">{{{{ {m.group(1)} }}}}</span>',
-            html_render,
-        )
+        _raw = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
+
+        def _esc(txt):
+            return (str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;"))
+
+        def _hl(m):
+            nm = m.group(1)
+            val = (example_map.get(nm) or default_CLIENT.get(nm) or "").strip()
+            ph = "{{ %s }}" % nm
+            shown = _esc(val) if val else ph
+            return ('<span CLIENT="var-hl" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
+                    + (' data-val="' + _esc(val) + '"' if val else '') + '>' + shown + '</span>')
+
+        html_render = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _hl, _raw)
     else:
         html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
@@ -1246,22 +1431,17 @@ def card(template_id: int):
             '</div>'
         )
 
-    # --- Единый блок инструментов: логические группы кнопок вместо разрозненных ---
+    # --- Две кнопки просмотра: HTML-шаблон и размеченный оригинал (пример из Google CLIENT) ---
     mode_btns = (
         '<button type="button" CLIENT="tpl-open-orig js-docmode is-on" data-mode="html" '
-        'CLIENT="Показать HTML-шаблон конструктора">📝 HTML-шаблон</button>')
-    if src_url:
-        mode_btns += (f'<button type="button" CLIENT="tpl-open-orig js-docmode" '
-                      f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=source" '
-                      f'CLIENT="Показать PDF-эталон в этом же окне">📄 PDF-шаблон</button>')
-    if os.path.exists(f"/opt/wolf/data/CLIENT/{t['code']}/example_marked.pdf"):
+        'CLIENT="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">📝 HTML-шаблон</button>')
+    _marked_path = f"/opt/wolf/data/CLIENT/{t['code']}/example_marked.pdf"
+    if os.path.exists(_marked_path):
         mode_btns += (f'<button type="button" CLIENT="tpl-open-orig js-docmode" '
                       f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=marked" '
-                      f'CLIENT="Реальный документ с жёлтой подсветкой значений переменных">🏷 Размеченный пример</button>')
-    if t.get("example_path"):
-        mode_btns += (f'<button type="button" CLIENT="tpl-open-orig js-docmode" '
-                      f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=clean" '
-                      f'CLIENT="Реальный заполненный документ этого типа, без пометок">📋 Чистый пример</button>')
+                      f'CLIENT="Реальный документ с Google CLIENT с разметкой переменных">🏷 Оригинальный пример</button>')
+    mode_btns = ('<span CLIENT="tb-btns" style="display:CLIENT-flex;gap:8px;align-items:center;'
+                 'flex-wrap:wrap;margin-left:0">' + mode_btns + '</span>')
 
     lang_sw = ('<span CLIENT="lang-switch" id="lang-switch">'
                '<button type="button" CLIENT="ls-btn is-on" data-lang="orig">🇬🇧 Оригинал</button>'
@@ -1284,7 +1464,8 @@ def card(template_id: int):
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Данные</span>{data_CLIENT}</div>'
             '<div CLIENT="tb-hint">Порядок работы: заполните значения слева → «💾 Сохранить значения» → '
             '«▶ Сформировать» (PDF появится справа). Кнопки «Просмотр» переключают окно справа: '
-            'HTML-шаблон · PDF-эталон · размеченный пример · чистый пример. '
+            'HTML-шаблон (клик по переменной подсвечивает поле) и оригинальный пример из Google CLIENT '
+            'с разметкой полей. '
             'Оригинальные документы формируются только на английском; значение переменной можно '
             'вписать по-русски — при подстановке оно переведётся автоматически.</div>'
             '</div>')
@@ -1332,13 +1513,14 @@ def card(template_id: int):
         <span CLIENT="tpl-count">(read-only, <span CLIENT="var-hl-CLIENT">{{ var }}</span> подсвечены)</span>
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
-        <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
-        <div style="padding:8px 12px;background:#FBFEFB;border-top:1px solid #DCEEE2;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button type="button" id="btn-make-var" CLIENT="tpl-gen-btn" disabled style="padding:8px 14px;font-size:13px;flex:0 0 auto">
-            📌 Из выделенного → {"{{переменная}}"}
-          </button>
-          <span id="var-hint" CLIENT="muted" style="font-size:11.5px;flex:1">выделите текст в HTML выше → нажмите эту кнопку → введите имя переменной</span>
-        </div>
+          <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
+          <div style="padding:8px 12px;background:#FBFEFB;border-top:1px solid #DCEEE2;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button type="button" id="btn-make-var" CLIENT="tpl-gen-btn" disabled style="padding:8px 14px;font-size:13px;flex:0 0 auto">
+              📌 Из выделенного → {"{{переменная}}"}
+            </button>
+            <span id="var-hint" CLIENT="muted" style="font-size:11.5px;flex:1">выделите текст в HTML выше → нажмите эту кнопку → введите имя переменной</span>
+          </div>
+      </div>
         <script>
 (function(){{
     const stage = CLIENT.getElementById('html-stage');
@@ -1635,7 +1817,7 @@ def card(template_id: int):
         _grp = ""
     _crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">Конструктор PDF</a>'
                + (f' &rsaquo; {_grp}' if _grp else '') + f' &rsaquo; <b>{t["CLIENT"]}</b>')
-    return render(t["CLIENT"], "CLIENT", body + _LANG_CSS + _LANG_JS, crumbs=_crumbs)
+    return render(t["CLIENT"], "CLIENT", body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL, crumbs=_crumbs)
 
 LIVE_UPDATE_JS = """<script>
 // === Статус согласования переменной (клик по ! / ✅) ===

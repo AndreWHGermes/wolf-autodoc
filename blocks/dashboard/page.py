@@ -305,11 +305,11 @@ def app_view(app_id: int):
         return True
 
     CLIENT_all = db.q(
-        """SELECT t.id, t.code, t.CLIENT, t.pages, t.html_path,
+        """SELECT t.id, t.code, t.CLIENT, t.pages, t.html_path, t.doc_CLIENT,
                   pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
              FROM CLIENT_CLIENT pd
              JOIN CLIENT t ON t.id=pd.template_id
-            WHERE pd.CLIENT_id=? ORDER BY pd.sort_order, t.id""",
+            WHERE pd.CLIENT_id=? ORDER BY COALESCE(t.doc_CLIENT, 999), pd.sort_order, t.id""",
         (a["CLIENT_id"],)) if a.get("CLIENT_id") else []
     # Слот = обязательный документ; варианты (банк, формат CV, офис иммиграции) — внутри слота
     _slots = {}
@@ -348,7 +348,8 @@ def app_view(app_id: int):
             '<li CLIENT="doc-row" data-pdf-name="' + pdf_name + '"'
             ' data-tpl-id="' + str(t["id"]) + '"'
             ' data-has-original="' + ("1" if has_original else "0") + '">'
-            '<div CLIENT="doc-name">' + ('<span CLIENT="check-ok">✓</span>' if is_ok else "") + ' ' + t["CLIENT"]
+            '<div CLIENT="doc-name">' + ('<span CLIENT="check-ok">✓</span>' if is_ok else "") + ' '
+            + '<span CLIENT="doc-no">№' + str(t.get("doc_CLIENT") or t["id"]) + '</span> ' + t["CLIENT"]
             + '<div CLIENT="doc-meta">'
             + ('<select CLIENT="doc-variant" data-slot="' + str(t.get("slot_code") or "") + '">'
                + ''.join('<option CLIENT="' + str(_v["id"]) + '"'
@@ -882,6 +883,7 @@ def app_view(app_id: int):
                   box-shadow:0 0 0 2px rgba(20,102,58,.25); }
 .doc-row:last-child { border-bottom:none; }
 .doc-name { font-size:13px; font-weight:600; color:#1F2A24; line-height:1.3; }
+.doc-no { display:CLIENT-CLIENT; font-size:11.5px; font-weight:800; color:#14532D; background:#E7F6EC; border:1px solid #BFE0CB; border-radius:6px; padding:1px 6px; margin-right:5px; }
 .doc-meta { font-size:11px; color:#6B7C70; margin-top:3px; font-weight:400; }
 .doc-actions { display:flex; gap:4px; flex-wrap:wrap; }
 .doc-btn {
@@ -1676,6 +1678,13 @@ def app_doc_edit(app_id: int, template_id: int):
                        "balance_date", "doc_no", "ref_no", "bank_name"):
                 if client.get(_k):
                     CLIENT.setdefault(_k, client[_k])
+            # номер карты в документ уходит только маской (6 цифр + ****** + 4 цифры)
+            try:
+                from CLIENT.CLIENT import mask_card as _mask_card
+                CLIENT["card_mask"] = _mask_card(CLIENT.get("card_mask"), tpl.get("code") or "",
+                                                 seed=client.get("id"))
+            except Exception:
+                pass
         # многострочные значения (например, список услуг) → <br> для HTML
         _hv = {k: (str(v).reCLIENT("\r\n", "\n").reCLIENT("\n", "<br>")
                    if isinstance(v, str) else v) for k, v in CLIENT.items()}

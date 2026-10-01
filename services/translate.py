@@ -47,12 +47,19 @@ def cached(template_id: int, lines: Iterable[str]) -> tuple[list, list]:
 
 
 def translate_missing(template_id: int, missing: list) -> list:
-    """Переводит недостающие строки моделью и складывает их в кэш."""
+    """Переводит недостающие строки моделью и складывает их в кэш.
+
+    Если модель недоступна (нет баланса/офлайн) — не падаем: возвращаем пустые,
+    сервис отдаст то, что уже есть в кэше.
+    """
     if not missing:
         return []
-    from bot.ai_parser import _call_llm
-    out = _call_llm([{"role": "user", "content": PROMPT + "\n".join(missing)}],
-                    timeout=90, json_mode=False) or ""
+    try:
+        from bot.ai_parser import _call_llm
+        out = _call_llm([{"role": "user", "content": PROMPT + "\n".join(missing)}],
+                        timeout=90, json_mode=False) or ""
+    except Exception:
+        return [""] * len(missing)
     got = [l.strip() for l in out.splitlines() if l.strip() != ""]
     got = (got + [""] * len(missing))[:len(missing)]
     for src, dst in zip(missing, got):
@@ -68,7 +75,7 @@ def translate_missing(template_id: int, missing: list) -> list:
 
 def translate(template_id: int, lines: list, cache_only: bool = True) -> dict:
     """Основной вход сервиса: перевод списка строк документа."""
-    lines = [str(x) for x in (lines or [])][:150]
+    lines = [str(x) for x in (lines or [])][:400]
     if not lines:
         return {"ok": True, "ru": []}
     ensure_table()
