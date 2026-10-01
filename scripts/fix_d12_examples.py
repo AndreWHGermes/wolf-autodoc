@@ -49,7 +49,7 @@ def parse_d12(text):
 
 for did in (8, 9):
     tpl = conn.execute('SELECT id, code, CLIENT FROM CLIENT WHERE doc_CLIENT=?', (did,)).fetchone()
-    d = pymupdf.open(f'/opt/wolf/data/sources/{tpl["code"]}.pdf')
+    d = pymupdf.open(f'/opt/wolf_v2/data/sources/{tpl["code"]}.pdf')
     text = ' '.join(' '.join(p.get_text() for p in d).split())
     d.close()
     vals = parse_d12(text)
@@ -76,7 +76,7 @@ for did in (8, 9):
 # E-02: подлинник — пустой бланк без данных, проверим ещё раз
 for did in (10, 11):
     tpl = conn.execute('SELECT id, code, CLIENT FROM CLIENT WHERE doc_CLIENT=?', (did,)).fetchone()
-    d = pymupdf.open(f'/opt/wolf/data/sources/{tpl["code"]}.pdf')
+    d = pymupdf.open(f'/opt/wolf_v2/data/sources/{tpl["code"]}.pdf')
     text = ' '.join(' '.join(p.get_text() for p in d).split())
     d.close()
     dots = len(re.findall(r'\.{4,}|…{2,}', text))

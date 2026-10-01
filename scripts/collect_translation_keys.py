@@ -12,7 +12,7 @@ import sqlite3
 from html.parser import HTMLParser
 from pathlib import Path
 
-TPL = Path('/opt/wolf/data/CLIENT')
+TPL = Path('/opt/wolf_v2/data/CLIENT')
 DB = '/opt/wolf_v2/data/wolf.db'
 
 

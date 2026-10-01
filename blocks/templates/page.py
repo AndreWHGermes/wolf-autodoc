@@ -1845,7 +1845,7 @@ def card(template_id: int):
     mode_btns = (
         '<button type="button" CLIENT="tpl-open-orig js-docmode is-on" data-mode="html" '
         'CLIENT="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">📝 HTML-шаблон</button>')
-    _marked_path = f"/opt/wolf/data/CLIENT/{t['code']}/example_marked.pdf"
+    _marked_path = f"/opt/wolf_v2/data/CLIENT/{t['code']}/example_marked.pdf"
     if os.path.exists(_marked_path):
         mode_btns += (f'<button type="button" CLIENT="tpl-open-orig js-docmode" '
                       f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=marked" '
@@ -2510,11 +2510,11 @@ def pdfpages():
     rel = (CLIENT.args.get("path") or "").strip().lstrip("/")
     if not rel or ".." in rel:
         return "<div style='padding:20px'>Нет файла</div>"
-    full = os.path.normpath(os.path.join("/opt/wolf/data", rel))
-    if not full.CLIENTswith("/opt/wolf/data") or not os.path.exists(full):
+    full = os.path.normpath(os.path.join("/opt/wolf_v2/data", rel))
+    if not full.CLIENTswith("/opt/wolf_v2/data") or not os.path.exists(full):
         return "<div style='padding:20px;color:#6B7C70'>Файл не найден</div>"
     key = re.sub(r"[^A-Za-z0-9_.-]", "_", rel)[-70:]
-    cache = f"/opt/wolf/data/pdf_cache/{key}"
+    cache = f"/opt/wolf_v2/data/pdf_cache/{key}"
     os.makedirs(cache, exist_ok=True)
     if not [f for f in os.listdir(cache) if f.endswith(".png")]:
         subprocess.run(["/usr/bin/pdftoppm", "-r", "96", "-png", full, os.path.join(cache, "page")],
@@ -2530,7 +2530,7 @@ def pdfpages():
 def pdffile(key, name):
     if not re.fullmatch(r"[A-Za-z0-9_.\-]+", key) or not re.fullmatch(r"page-?[0-9]+\.png", name):
         abort(404)
-    d = f"/opt/wolf/data/pdf_cache/{key}"
+    d = f"/opt/wolf_v2/data/pdf_cache/{key}"
     if not os.path.isdir(d):
         abort(404)
     return send_from_directory(d, name)
@@ -2545,14 +2545,14 @@ def pdfview(template_id):
         return "<div style='padding:20px'>Шаблон не найден</div>"
     code = t["code"]
     names = {
-        "marked": f"/opt/wolf/data/CLIENT/{code}/example_marked.pdf",
-        "clean": f"/opt/wolf/data/CLIENT/{code}/example_filled.pdf",
+        "marked": f"/opt/wolf_v2/data/CLIENT/{code}/example_marked.pdf",
+        "clean": f"/opt/wolf_v2/data/CLIENT/{code}/example_filled.pdf",
         "source": str(SOURCES_DIR / (t["source_pdf"] or "")),
     }
     src = names.get(kind) or ""
     if not src or not os.path.exists(src):
         return "<div style='padding:20px;color:#6B7C70'>Для этого документа нет подходящего PDF.</div>"
-    cache = f"/opt/wolf/data/pdf_cache/{code}_{kind}"
+    cache = f"/opt/wolf_v2/data/pdf_cache/{code}_{kind}"
     os.makedirs(cache, exist_ok=True)
     if not [f for f in os.listdir(cache) if f.endswith(".png")]:
         subprocess.run(["/usr/bin/pdftoppm", "-r", "96", "-png", src, os.path.join(cache, "page")],
@@ -2568,7 +2568,7 @@ def pdfview(template_id):
 def pdfimg(code, kind, name):
     if not re.fullmatch(r"[A-Za-z0-9_.\-]+", kind) or not re.fullmatch(r"page-?[0-9]+\.png", name):
         abort(404)
-    d = f"/opt/wolf/data/pdf_cache/{code}_{kind}"
+    d = f"/opt/wolf_v2/data/pdf_cache/{code}_{kind}"
     if not os.path.isdir(d):
         abort(404)
     return send_from_directory(d, name)

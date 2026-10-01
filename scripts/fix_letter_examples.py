@@ -142,7 +142,7 @@ conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
 for did in (13, 14, 15, 16):
     tpl = conn.execute('SELECT id, code, CLIENT FROM CLIENT WHERE doc_CLIENT=?', (did,)).fetchone()
-    vals = parse(f'/opt/wolf/data/sources/{tpl["code"]}.pdf')
+    vals = parse(f'/opt/wolf_v2/data/sources/{tpl["code"]}.pdf')
     print(f'=== №{did} {tpl["CLIENT"][:52]}')
     saved = 0
     for name in [r['name'] for r in conn.execute('SELECT name FROM template_CLIENT WHERE template_id=?',

@@ -62,7 +62,7 @@ conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
 for code in CODES:
     tpl = conn.execute('SELECT id, CLIENT, doc_CLIENT FROM CLIENT WHERE code=?', (code,)).fetchone()
-    src = f'/opt/wolf/data/CLIENT/{code}/example_filled.pdf'
+    src = f'/opt/wolf_v2/data/CLIENT/{code}/example_filled.pdf'
     t = flat_text(src)
     vals = parse_bank_CLIENTment(t)
     print(f'=== №{tpl["doc_CLIENT"]} {tpl["CLIENT"]}  ({code})')

@@ -16,7 +16,7 @@ import re
 
 import pymupdf
 
-ROOT = '/opt/wolf/data/gCLIENT_examples'
+ROOT = '/opt/wolf_v2/data/gCLIENT_examples'
 OUT = '/opt/wolf_v2/reports/card_source_research.json'
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 

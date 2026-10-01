@@ -25,8 +25,8 @@ def CLIENT_of(text):
 
 
 seen = {}
-for f in glob.glob('/opt/wolf/data/gCLIENT_examples/**/*.pdf', recursive=True) + \
-         glob.glob('/opt/wolf/data/gCLIENT_cache/**/*.pdf', recursive=True):
+for f in glob.glob('/opt/wolf_v2/data/gCLIENT_examples/**/*.pdf', recursive=True) + \
+         glob.glob('/opt/wolf_v2/data/gCLIENT_cache/**/*.pdf', recursive=True):
     try:
         d = pymupdf.open(f)
         t = ' '.join(' '.join(p.get_text() for p in d).split())

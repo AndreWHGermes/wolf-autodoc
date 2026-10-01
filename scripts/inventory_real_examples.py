@@ -23,8 +23,8 @@ KEYWORDS = [
     ('cv', ('curriculum vitae', 'itk -', 'CLIENTal experience', 'résumé')),
 ]
 
-files = sorted(set(glob.glob('/opt/wolf/data/gCLIENT_examples/**/*.pdf', recursive=True)
-                   + glob.glob('/opt/wolf/data/gCLIENT_cache/**/*.pdf', recursive=True)))
+files = sorted(set(glob.glob('/opt/wolf_v2/data/gCLIENT_examples/**/*.pdf', recursive=True)
+                   + glob.glob('/opt/wolf_v2/data/gCLIENT_cache/**/*.pdf', recursive=True)))
 print(f'всего PDF в архиве: {len(files)}\n')
 
 real, ours = [], 0

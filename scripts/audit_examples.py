@@ -30,7 +30,7 @@ print('-' * 132)
 problems = []
 for r in rows:
     code = r['code']
-    f = f'/opt/wolf/data/CLIENT/{code}/example_marked.pdf'
+    f = f'/opt/wolf_v2/data/CLIENT/{code}/example_marked.pdf'
     if not __import__('os').path.exists(f):
         print(f'{str(r["doc_CLIENT"]):>3} {code[:40]:40} — нет размеченного примера')
         problems.append((code, 'нет примера'))

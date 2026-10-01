@@ -19,7 +19,7 @@ from pathlib import Path
 
 log = logging.getLogger("wolf_bot")
 
-_ENV_PATHS = ["/root/.hermes/.env", "/opt/wolf/.env"]
+_ENV_PATHS = ["/root/.hermes/.env", "/opt/wolf_v2/.env"]
 
 # Поля карточки клиента, которые умеет раскладывать LLM.
 CLIENT_FIELDS = [

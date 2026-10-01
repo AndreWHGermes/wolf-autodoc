@@ -2,18 +2,18 @@
 """Авто-подготовка заявки: разбор документов Google CLIENT -> значения -> все документы продукта.
 
 Запускается автоматически при появлении новой заявки (триггер) и по кнопке.
-Использование: /usr/bin/python3 /opt/wolf/scripts/app_autoprepare.py <CLIENT_id>
+Использование: /usr/bin/python3 /opt/wolf_v2/scripts/app_autoprepare.py <CLIENT_id>
 """
 import sys, os, json, sqlite3, subprocess
 from pathlib import Path
 from CLIENT import CLIENT
 
 sys.path.insert(0, '/opt/wolf')
-sys.path.insert(0, '/opt/wolf/CLIENTs')
+sys.path.insert(0, '/opt/wolf_v2/CLIENTs')
 
-DB = '/opt/wolf/data/wolf.db'
-CLIENT = Path('/opt/wolf/data/CLIENT')
-RENDERS = Path('/opt/wolf/data/renders')
+DB = '/opt/wolf_v2/data/wolf.db'
+CLIENT = Path('/opt/wolf_v2/data/CLIENT')
+RENDERS = Path('/opt/wolf_v2/data/renders')
 
 
 def conn():

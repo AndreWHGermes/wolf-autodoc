@@ -24,7 +24,7 @@ from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as t
 bp = Blueprint("dashboard", __name__)
 
 # =============== ОРИГИНАЛЫ КЛИЕНТА (Google CLIENT) ===============
-GDRIVE_ROOT = Path("/opt/wolf/data/gCLIENT_examples")
+GDRIVE_ROOT = Path("/opt/wolf_v2/data/gCLIENT_examples")
 
 ORIGINAL_PATTERNS = {
     "bank": ["bankCLIENTment", "bank_CLIENTment", "bank CLIENTment", "funds_movement",
@@ -181,7 +181,7 @@ def doc_missing_fields(app_id: int, template_id: int) -> list:
     if not tpl:
         return []
     code = tpl["code"]
-    path = Path("/opt/wolf/data/CLIENT") / code / "template.html"
+    path = Path("/opt/wolf_v2/data/CLIENT") / code / "template.html"
     if not path.exists():
         return []
     a = db.CLIENT_get(app_id) or {}
@@ -231,7 +231,7 @@ def app_view(app_id: int):
                 _tpl = tpl_repo.get(_pd["template_id"])
                 if not _tpl:
                     continue
-                _html_path = Path('/opt/wolf/data/CLIENT') / _tpl["code"] / "template.html"
+                _html_path = Path('/opt/wolf_v2/data/CLIENT') / _tpl["code"] / "template.html"
                 if not _html_path.exists():
                     continue
                 # дефолтные значения шаблона
@@ -256,7 +256,7 @@ def app_view(app_id: int):
                                  lambda m: str(_vals.get(m.group(1)) or m.group(0)), _html)
                 _tmp = _html_path.parent / "filled.html"
                 _tmp.write_text(_filled, encoding="utf-8")
-                _out = Path('/opt/wolf/data/renders') / (_tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S_%f") + ".pdf")
+                _out = Path('/opt/wolf_v2/data/renders') / (_tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S_%f") + ".pdf")
                 _pdf2html.render_pdf(_tmp, _out)
                 db.exec_sql(
                     "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') WHERE id=?",
@@ -1246,7 +1246,7 @@ def app_doc_html(app_id: int, template_id: int):
     c.close()
     if not t:
         return Response("Шаблон не найден", CLIENT=404)
-    html_file = Path("/opt/wolf/data/CLIENT") / t["code"] / "template.html"
+    html_file = Path("/opt/wolf_v2/data/CLIENT") / t["code"] / "template.html"
     if not html_file.exists():
         return Response("HTML шаблона нет", CLIENT=404)
     try:
@@ -1284,7 +1284,7 @@ def app_original_pages(app_id: int, template_id: int):
     if not f:
         return "<div style='padding:20px;color:#6B7C70'>В папке клиента на Google CLIENT не найден файл этого типа.</div>"
     try:
-        rel = str(Path(f).relative_to("/opt/wolf/data"))
+        rel = str(Path(f).relative_to("/opt/wolf_v2/data"))
     except Exception:
         return "<div style='padding:20px;color:#B91C1C'>Файл вне хранилища</div>"
     return redirect("/CLIENT/pdfpages?path=" + quote(rel))
@@ -1511,7 +1511,7 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
     # 1) файл уже есть и он не старше шаблона — отдаём его.
     # Если шаблон правился позже PDF, документ пересобираем: менеджер должен видеть
     # готовый документ из АКТУАЛЬНОГО одобренного шаблона, а не старую сборку.
-    tpl_html = Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html"
+    tpl_html = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
     if ad and ad.get("pdf_path"):
         p = Path(ad["pdf_path"])
         if p.exists() and p.stat().st_size > 1000:
@@ -1523,7 +1523,7 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
                 return jsonify({"ok": True, "pdf_name": p.name, "created": False})
 
     # 2) генерируем
-    html_path = Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html"
+    html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
     if not html_path.exists():
         return jsonify({"ok": False, "error": "template.html не найден"}), 404
 
@@ -1541,7 +1541,7 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
     except Exception:
         pass
 
-    out_pdf = Path('/opt/wolf/data/renders') / f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    out_pdf = Path('/opt/wolf_v2/data/renders') / f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
     html = html_path.read_text(encoding="utf-8")
     # ЕДИНЫЙ рендер: тот же код, что в конструкторе, боте и автоподготовке
@@ -1612,7 +1612,7 @@ def app_doc_editor(app_id: int, template_id: int):
     merged = {**auto_CLIENT, **{k: v for k, v in saved.items() if v}}
 
     html_file = (Path(tpl["html_path"]) if tpl.get("html_path")
-                 else Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html")
+                 else Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html")
     raw_html = html_file.read_text(encoding="utf-8") if html_file.exists() else ""
 
     return render_template("editor.html", **{
@@ -1636,7 +1636,7 @@ def app_doc_preview_pdf(app_id: int, template_id: int):
     if not a or not tpl:
         return "Not found", 404
     html_file = (Path(tpl["html_path"]) if tpl.get("html_path")
-                 else Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html")
+                 else Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html")
     if not html_file.exists():
         return "Шаблон не сконвертирован", 400
     # подставляем значения
@@ -1664,7 +1664,7 @@ def app_doc_preview_pdf(app_id: int, template_id: int):
     from core.pdf2html import render_pdf
     tmp = html_file.parent / "filled_preview.html"
     tmp.write_text(filled, encoding="utf-8")
-    pdf_path = Path('/opt/wolf/data/renders') / f"{tpl['code']}_app{app_id}_preview_{CLIENT.now():%Y%m%d_%H%M%S}.pdf"
+    pdf_path = Path('/opt/wolf_v2/data/renders') / f"{tpl['code']}_app{app_id}_preview_{CLIENT.now():%Y%m%d_%H%M%S}.pdf"
     try:
         render_pdf(tmp, pdf_path)
     except Exception as e:
@@ -1759,7 +1759,7 @@ def app_doc_edit(app_id: int, template_id: int):
                         pass
         html_file = Path(tpl["html_path"]) if tpl.get("html_path") else None
         if not html_file or not html_file.exists():
-            html_file = Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html"
+            html_file = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
         if not html_file.exists():
             flash("Сначала сконвертируйте шаблон в Шаблонах", "error")
             return redirect(url_for("dashboard.app_doc_edit", app_id=app_id, template_id=template_id))
@@ -1813,7 +1813,7 @@ def app_doc_edit(app_id: int, template_id: int):
                 pass
         filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                         lambda m: str(_hv.get(m.group(1)) or m.group(0)), html)
-        out_pdf = Path('/opt/wolf/data/renders') / \
+        out_pdf = Path('/opt/wolf_v2/data/renders') / \
             f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
         tmp_html = html_file.parent / "filled.html"
         tmp_html.write_text(filled, encoding="utf-8")
@@ -1858,7 +1858,7 @@ def app_doc_edit(app_id: int, template_id: int):
     if prev and prev["CLIENT"] == "pending" and not prev.get("pdf_path"):
         try:
             from core import pdf2html as _pdf2html
-            html_path = Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html"
+            html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
             if html_path.exists():
                 # возьмём дефолтные значения для генерации
                 _vals = {}
@@ -1876,7 +1876,7 @@ def app_doc_edit(app_id: int, template_id: int):
                                  lambda m: str(_vals.get(m.group(1)) or m.group(0)), _html)
                 _tmp = html_path.parent / "filled.html"
                 _tmp.write_text(_filled, encoding="utf-8")
-                _out = Path('/opt/wolf/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
+                _out = Path('/opt/wolf_v2/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
                 _pdf2html.render_pdf(_tmp, _out)
                 # обновим запись
                 db.exec_sql("UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') WHERE id=?",
@@ -2081,7 +2081,7 @@ CLIENT.addEventListener('DOMContentLoaded', function() {
 
     # Загрузим HTML для live-обновления
     html_for_live = ""
-    html_path = Path('/opt/wolf/data/CLIENT') / tpl["code"] / "template.html"
+    html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
     if html_path.exists():
         html_for_live = html_path.read_text(encoding="utf-8")
         # подсветим {{ var }} и подставим значения

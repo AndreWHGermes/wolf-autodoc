@@ -20,8 +20,8 @@ import re
 import time
 from pathlib import Path
 
-CORE_DIR = Path(__file__).resolve().parent            # /opt/wolf/core
-DATA_DIR = Path("/opt/wolf/data")
+CORE_DIR = Path(__file__).resolve().parent            # /opt/wolf_v2/core
+DATA_DIR = Path("/opt/wolf_v2/data")
 TEMPLATES_DIR = CORE_DIR
 DOCS_DIR = DATA_DIR / "CLIENT"
 PREVIEW_DIR = DATA_DIR / "previews"
@@ -539,7 +539,7 @@ def run_conversion(doc: dict) -> dict:
     doc_id = doc["id"]
     src_pdf = Path(doc["source_pdf"])
     if not src_pdf.is_absolute():
-        src_pdf = Path("/opt/wolf/data/sources") / src_pdf
+        src_pdf = Path("/opt/wolf_v2/data/sources") / src_pdf
     if not src_pdf.exists():
         raise FileNotFoundError(f"нет исходного PDF: {src_pdf}")
 

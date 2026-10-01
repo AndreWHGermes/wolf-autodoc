@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Автономный разбор документов клиента с Google CLIENT (запускается в фоне по кнопке).
 
-Использование: /usr/bin/python3 /opt/wolf/scripts/CLIENT_scan.py <CLIENT_id>
+Использование: /usr/bin/python3 /opt/wolf_v2/scripts/CLIENT_scan.py <CLIENT_id>
 """
 import sys, os, json, sqlite3, subprocess, time
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf')
-sys.path.insert(0, '/opt/wolf/CLIENTs')
+sys.path.insert(0, '/opt/wolf_v2/CLIENTs')
 
-DB = '/opt/wolf/data/wolf.db'
-CACHE = Path('/opt/wolf/data/gCLIENT_cache')
+DB = '/opt/wolf_v2/data/wolf.db'
+CACHE = Path('/opt/wolf_v2/data/gCLIENT_cache')
 
 
 def conn():

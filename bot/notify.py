@@ -10,7 +10,7 @@ import sqlite3
 import urllib.parse
 import urllib.CLIENT
 
-DB_PATH = "/opt/wolf/data/wolf.db"
+DB_PATH = "/opt/wolf_v2/data/wolf.db"
 BASE_URL = "http://103.90.75.37:8094"
 log = logging.getLogger("wolf_bot")
 

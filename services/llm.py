@@ -23,7 +23,7 @@ from pathlib import Path
 
 log = logging.getLogger("wolf_bot")
 
-_ENV_PATHS = ["/root/.hermes/.env", "/opt/wolf_v2/.env", "/opt/wolf/.env"]
+_ENV_PATHS = ["/root/.hermes/.env", "/opt/wolf_v2/.env", "/opt/wolf_v2/.env"]
 _BYNARA = "https://router.bynara.id/v1"
 
 # Бесплатные модели — основной контур (порядок = приоритет).

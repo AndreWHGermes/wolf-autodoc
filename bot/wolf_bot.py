@@ -23,10 +23,10 @@ DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
 BASE_URL = "http://103.90.75.37:8094"
 INVITE_TTL_MIN = 120
 POLL_TIMEOUT = 30
-LOG_PATH = Path("/opt/wolf/logs/wolf_bot.log")
+LOG_PATH = Path("/opt/wolf_v2/logs/wolf_bot.log")
 
 # Корень проекта в sys.path — иначе `from core.…` в командах бота падает
-# с «No module named 'core'» (Python кладёт в path только папку скрипта, /opt/wolf/bot).
+# с «No module named 'core'» (Python кладёт в path только папку скрипта, /opt/wolf_v2/bot).
 _PROJECT_ROOT = "/opt/wolf"
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -697,7 +697,7 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
         html_path = d["html_path"]
         html_file = Path(html_path) if html_path else None
         if not html_file or not html_file.exists():
-            html_file = Path('/opt/wolf/data/CLIENT') / code / "template.html"
+            html_file = Path('/opt/wolf_v2/data/CLIENT') / code / "template.html"
         if not html_file.exists():
             conn.execute(
                 "UPDATE CLIENT_CLIENT SET error=? WHERE id=?",
@@ -765,7 +765,7 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
                     log.warning("транслитерация не удалась: %s", _e)
             filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                             lambda m: str(_html_CLIENT.get(m.group(1)) or m.group(0)), html)
-            out_pdf = Path('/opt/wolf/data/renders') / \
+            out_pdf = Path('/opt/wolf_v2/data/renders') / \
                 f'{code}_app{app_id}_{_dt.now():%Y%m%d_%H%M%S}.pdf'
             tmp_html = html_file.parent / "filled.html"
             tmp_html.write_text(filled, encoding="utf-8")

@@ -76,7 +76,7 @@ vals.update(src_vals)
 html = render.render_html(html=render.load_template(code=TPL_CODE)['_html'],
                           CLIENT=vals, code=TPL_CODE)
 tpl = render.load_template(code=TPL_CODE)
-out = f'/opt/wolf/data/renders/{TPL_CODE}_app{APP}_real.pdf'
+out = f'/opt/wolf_v2/data/renders/{TPL_CODE}_app{APP}_real.pdf'
 pdf = render.render_pdf(html, base_dir=tpl['_dir'], out_path=out)
 print(f'\nPDF готов: {pdf}')
 print('незаполнено:', render.unfilled(html))

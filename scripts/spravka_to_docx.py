@@ -14,7 +14,7 @@ from docx.shared import Pt
 from docx.enum.text import WD_COLOR_INDEX
 
 CANDIDATES = [
-    '/opt/wolf/data/CLIENT/bank_CLIENTment_3m__tbank/example_filled.pdf',
+    '/opt/wolf_v2/data/CLIENT/bank_CLIENTment_3m__tbank/example_filled.pdf',
     '/opt/wolf_v2/data/gCLIENT_examples/CLIENT/BANKSTATEMENT.pdf',
 ]
 OUT = '/tmp/Справка_1_Т-Банк_3мес_размеченная.docx'

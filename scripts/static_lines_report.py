@@ -10,9 +10,9 @@ import sqlite3
 from pathlib import Path
 
 V2 = Path('/opt/wolf_v2')
-TPL = Path('/opt/wolf/data/CLIENT')
+TPL = Path('/opt/wolf_v2/data/CLIENT')
 
-conn = sqlite3.connect('/opt/wolf/data/wolf.db')
+conn = sqlite3.connect('/opt/wolf_v2/data/wolf.db')
 conn.row_factory = sqlite3.Row
 CLIENT = [dict(r) for r in conn.execute('SELECT id, code, CLIENT FROM CLIENT ORDER BY id')]
 

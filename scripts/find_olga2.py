@@ -25,7 +25,7 @@ print("   всего записей:", hits)
 print()
 print("=== поиск по файлам данных (паспорта, кэш Google CLIENT)")
 import subprocess
-out = subprocess.run("grep -ril 'МАКАРОВ\|CLIENT' /opt/wolf_v2/data /opt/wolf/data 2>/dev/null | head -12", shell=True, capture_output=True, text=True).stdout
+out = subprocess.run("grep -ril 'МАКАРОВ\|CLIENT' /opt/wolf_v2/data /opt/wolf_v2/data 2>/dev/null | head -12", shell=True, capture_output=True, text=True).stdout
 print(out or "   ничего не найдено")
 print()
 print("=== Т-Банк: двухстрочные ФИО и адрес — нет ли наложений")

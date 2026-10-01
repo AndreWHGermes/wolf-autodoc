@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Починить html_path шаблонов: они указывали на файлы стенда №1 с вшитым текстом бланка.
 
-В /opt/wolf/data/CLIENT/*/template.html вместо переменных был вшит текст
+В /opt/wolf_v2/data/CLIENT/*/template.html вместо переменных был вшит текст
 («today date», «CLIENT date», «or equivalent», «Home adress»), из-за чего в готовый
 документ не подставлялись дата, период, сумма и ФИО. Правильные HTML — в данных приложения.
 """
