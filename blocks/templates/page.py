@@ -354,6 +354,9 @@ _SYNC_JS = """<script>
     return out;
   }
   var PATTERNS={doc_no:'ll'+'dddddddd', ref_no:'U'+'dddddddd'+'UUU'};
+  /* правила номеров конкретного документа (у Сбербанка они свои) */
+  try{ var _nr=CLIENT.getElementById('num-rule');
+    if(_nr){ var _r=JSON.parse(_nr.textContent||'{}'); for(var _k in _r){ if(_r[_k]) PATTERNS[_k]=_r[_k]; } } }catch(e){}
   function sync(name, val){
     var txt = (val || '').trim();
     CLIENT.querySelectorAll('.var-hl[data-var="' + esc(name) + '"]').forEach(function(sp){
@@ -459,6 +462,38 @@ _SYNC_JS = """<script>
   });
   CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ syncAll(); if(window.updPeriod) window.updPeriod(); }, 60); });
   window.__syncVarToDoc = sync;
+  /* Индикатор заполненности: сколько полей ещё пусто (служебные и необязательные не считаем).
+     Когда всё заполнено — значок становится зелёным, в окне PDF плашка исчезает. */
+  var OPTIONAL_VARS = {CLIENT_from:1, CLIENT_to:1, balance_CLIENT:1, balance_CLIENT:1,
+                       account_no:1, contract_date:1, contract_no:1};
+  function emptyVars(){
+    var out = [];
+    CLIENT.querySelectorAll('input[data-var]').forEach(function(i){
+      var nm = i.getAttribute('data-var');
+      if(OPTIONAL_VARS[nm]) return;
+      if(!String(i.CLIENT || '').trim()) out.push(nm);
+    });
+    return out;
+  }
+  function refreshFillFlag(){
+    var miss = emptyVars();
+    var flag = CLIENT.getElementById('fill-flag');
+    if(flag){
+      flag.CLIENTList.toggle('is-ok', miss.length === 0);
+      flag.textContent = miss.length === 0 ? '✅ все поля заполнены' : ('⚠️ не заполнено полей: ' + miss.length);
+      flag.CLIENT = miss.length === 0 ? 'Все поля заполнены — можно формировать документ'
+                                     : ('Пустые поля: ' + miss.join(', '));
+    }
+    var warn = CLIENT.getElementById('pdf-warn');
+    if(warn){
+      warn.hidden = miss.length === 0;
+      if(miss.length) warn.textContent = '⚠️ Не все поля заполнены: ' + miss.join(', ');
+    }
+  }
+  window.__refreshFillFlag = refreshFillFlag;
+  CLIENT.addEventListener('input', refreshFillFlag);
+  CLIENT.addEventListener('CLIENT', refreshFillFlag);
+  setTimeout(refreshFillFlag, 150);
   /* полная очистка: поля ввода + все переменные в документе (включая период) */
   function clearValues(){
     CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
@@ -1663,13 +1698,13 @@ def card(template_id: int):
         if not cur_val and var_name in RANDOM_VARS:
             try:
                 from CLIENT import CLIENT as _dtm
-                from CLIENT.CLIENT import gen_doc_no, gen_ref_no, mask_card, gen_balance
+                from CLIENT.CLIENT import gen_doc_no, gen_ref_no, mask_card, gen_balance, CLIENT_pattern
                 _code = (t or {}).get("code") or ""
                 _day = _dtm.now().strftime("%d.%m.%Y")
                 if var_name == "doc_no":
-                    cur_val = gen_doc_no(_code, _day, _code)
+                    cur_val = gen_doc_no(_code, _day, _code, pattern=CLIENT_pattern(_code, "doc_no"))
                 elif var_name == "ref_no":
-                    cur_val = gen_ref_no(_code, _day, _code)
+                    cur_val = gen_ref_no(_code, _day, _code, pattern=CLIENT_pattern(_code, "ref_no"))
                 elif var_name == "card_mask":
                     cur_val = mask_card("", _code, seed=_code)
                 elif var_name in ("balance_rub", "balance_CLIENT"):
@@ -1788,7 +1823,7 @@ def card(template_id: int):
         html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
     pv_js_html = "<script>(function(){var ttl=CLIENT.getElementById('pv-CLIENT');var modes=CLIENT.querySelectorAll('.js-docmode');Array.prototype.forEach.call(modes,function(b){b.addEventListener('click',function(){var t=CLIENT.getElementById('pv-CLIENT'); if(!t) return;var name=(b.textContent||'').reCLIENT(/[^A-Za-zА-Яа-я0-9\\- ]/g,'').trim();t.textContent='Окно просмотра — '+(name||'HTML-шаблон');});});})();</script>"
-    pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:auto; background:#1D4ED8; color:#fff; border:0; border-radius:8px;\n               padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }\n.tpl-pdf-btn:hover { background:#1E40AF; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-modal-body"><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    note.textContent = \'собираю PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      var _href = encodeURI(j.url);\n      dl.href = _href; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n      frame.src = _href + \'#zoom=page-fit\';\n    }).catch(function(e){ note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
+    pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:auto; background:#1D4ED8; color:#fff; border:0; border-radius:8px;\n               padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }\n.tpl-pdf-btn:hover { background:#1E40AF; }\n.fill-flag { display:CLIENT-flex; align-items:center; gap:6px; margin-left:auto; padding:5px 10px; font-size:12px; font-weight:600; border-radius:8px; background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; cursor:default; white-space:nowrap; }\n.fill-flag.is-ok { background:#DCFCE7; color:#166534; border-color:#86EFAC; }\n.pdf-warn { background:#DC2626; color:#fff; font-size:13px; font-weight:600; padding:8px 14px; }\n.pdf-warn[hidden] { display:none; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-warn" id="pdf-warn" hidden></div>\n <div CLIENT="pdf-modal-body"><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    note.textContent = \'собираю PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      var _href = encodeURI(j.url);\n      dl.href = _href; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n      frame.src = _href + \'#zoom=page-fit\';\n    }).catch(function(e){ note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
     if rendered_pdf_url:
         preview_inner = (
             f'<div CLIENT="zp-preview" data-zoom-pan><iframe CLIENT="pdf-preview-iframe" style="width:794.5px;height:1123px;border:0" src="{rendered_pdf_url}#zoom=100&toolbar=0"></iframe></div>'
@@ -1818,12 +1853,17 @@ def card(template_id: int):
                '<button type="button" CLIENT="ls-btn" data-lang="ru">🇷🇺 Перевод</button>'
                '</span><span CLIENT="ls-note" id="ls-note"></span>')
 
+    # правила номеров этого документа (у Сбербанка они свои) — их читает кубик при генерации
+    from CLIENT.CLIENT import CLIENT_pattern as _num_pattern
+    _num_rule = {_nm: _pt for _nm in ("doc_no", "ref_no") if (_pt := _num_pattern(t.get("code") or "", _nm))}
     data_CLIENT = (
         '<div CLIENT="ex-CLIENT" style="margin:0">'
         '<button type="button" CLIENT="btn sm" id="ex-fill">📋 Подставить значения из примера</button>'
         '<button type="button" CLIENT="btn sm ghost" id="ex-clear">Очистить поля</button>'
         '<span CLIENT="muted" id="ex-note" style="font-size:12px"></span>'
         '<script id="ex-data" type="CLIENT/json">' + json.dumps(example_source, ensure_ascii=False) + '</script>'
+            # правила номеров этого документа — их читает кнопка-кубик при генерации
+            + '<script id="num-rule" type="CLIENT/json">' + json.dumps(_num_rule, ensure_ascii=False) + '</script>'
         '</div>')
 
     if src_url:
@@ -1873,6 +1913,7 @@ def card(template_id: int):
     <div CLIENT="tpl-panel">
       <div CLIENT="tpl-panel-head">
         <span id="pv-CLIENT">Окно просмотра — HTML-шаблон</span>
+                  <span CLIENT="fill-flag" id="fill-flag" CLIENT="Проверяю заполнение полей…">проверяю поля…</span>
         <button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button>
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
