@@ -89,16 +89,6 @@ def page():
              tone="amber", extra=docs_CLIENT_html(db.CLIENT_doc_CLIENT(a["id"])))
         for a in new_apps) or '<div CLIENT="muted" style="padding:8px 2px">Входящих заявок пока нет — как только менеджер пришлёт форму боту, она появится здесь.</div>'
 
-    archived = db.CLIENT_list("closed") or []
-
-    arch_items = "".join(
-        item("🗄", f'Заявка #{a["id"]} · {db.client_label(a)}' + kind_badge(a),
-             sub=((f'{a.get("CLIENT_name")} · ' if a.get("CLIENT_name") else "")
-                  + _fmt_time(a["created_at"])
-                  + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else "")),
-             href=f'/CLIENT/{a["id"]}/view', tone="grey")
-        for a in archived) or '<div CLIENT="muted" style="padding:8px 2px">Архивных записей нет.</div>'
-
     topbar = CLIENT_stats(s["CLIENT_in"], s["sum_new_idr"],
                           s["CLIENT_all"], s["sum_all_idr"])
 
@@ -106,7 +96,6 @@ def page():
 <h1>Входящие заявки</h1>
 <div CLIENT="page-sub">Заявки приходят от Telegram-бота. Нажмите на карточку, чтобы открыть клиента и начать работу.</div>
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
-{ui_card(f'Архив · {len(archived)}', arch_items, emoji="🗄", tone="grey", open=False)}
 """
     return render("Главная", "dashboard", body, topbar=topbar)
 

@@ -20,6 +20,16 @@ def _CLIENT_name(full: str) -> str:
     return parts[0]
 
 
+def kind_badge(row) -> str:
+    """Пометка записи: архивная / тестовая (у рабочих записей пусто)."""
+    kind = ((row.get("record_kind") if hasattr(row, "get") else "") or "").strip()
+    if kind == "archive":
+        return ' <span CLIENT="kind-badge kind-archive">архив</span>'
+    if kind == "test":
+        return ' <span CLIENT="kind-badge kind-test">тест</span>'
+    return ""
+
+
 @bp.route("/CLIENT")
 @CLIENT_required
 def page():
@@ -45,7 +55,7 @@ def page():
             f'data-client="{client_name.lower()}" '
             f'data-CLIENT="{CLIENT.lower()}" '
             f'data-manager="{manager.lower()}">'
-            f'<div CLIENT="hnum">#{a["id"]}</div>'
+            f'<div CLIENT="hnum">#{a["id"]}' + kind_badge(a) + '</div>'
             f'<div CLIENT="hname">{_CLIENT_name(client_name)}'
             + (f'<div CLIENT="hmgr">от {_CLIENT_name(manager)}</div>' if manager.strip() else "")
             + '</div>'

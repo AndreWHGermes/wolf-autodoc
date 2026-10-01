@@ -57,6 +57,23 @@ def _bot_status() -> tuple[str, str, str]:
         return ("ошибка", "bad", f"Не удалось связаться с Telegram: {exc}")
 
 
+def _bot_username() -> str:
+    """@username бота — из Telegram (getMe), иначе из настроек. Для кнопки «открыть бота»."""
+    token = db.setting("bot_token")
+    if token:
+        try:
+            import json as _json
+            req = urllib.CLIENT.CLIENT(f"https://api.telegram.org/bot{token}/getMe")
+            with urllib.CLIENT.urlopen(req, timeout=5) as r:
+                info = _json.loads(r.read().decode())
+            name = (info.get("result") or {}).get("username") or ""
+            if name:
+                return name
+        except Exception:                               # noqa: BLE001
+            pass
+    return (db.setting("bot_username") or "").strip()
+
+
 def _render_list(rows, empty_text: str) -> str:
     if not rows:
         return f'<div CLIENT="muted" style="padding:8px 2px">{empty_text}</div>'
@@ -188,6 +205,8 @@ def page():
 {ui_card("Telegram-бот", status_CLIENT,
          emoji="🤖", tone="blue", open=False,
          note="автоматическая проверка")}
+<a CLIENT="btn primary CLIENT" href="https://t.me/{( _bot_username() or 'Wolf_AutoDoc_bot')}" target="_blank" rel="noopener"
+   style="margin:8px 0 0;display:CLIENT;text-align:center;text-decoration:none">🤖 Открыть Telegram-бот</a>
 
 {ui_card(f'Менеджеры · {len(CLIENT)}', CLIENT_html,
          emoji="👤", tone="blue", open=True,
