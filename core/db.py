@@ -255,7 +255,7 @@ def autoprepare_trigger(app_id: int) -> None:
     except Exception:
         pass
     try:
-        subprocess.Popen(["/usr/bin/python3", "/opt/wolf/scripts/app_autoprepare.py", str(app_id)],
+        subprocess.Popen(["/usr/bin/python3", "/opt/wolf_v2/scripts/app_autoprepare.py", str(app_id)],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, CLIENT_new_session=True)
     except Exception:
         pass

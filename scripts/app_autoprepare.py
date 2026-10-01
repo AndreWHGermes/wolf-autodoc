@@ -92,7 +92,7 @@ def main(app_id: int):
 
     # --- 1) разбор документов с Google CLIENT (если ещё не разбирали) ---
     try:
-        spec_path = '/opt/wolf/scripts/CLIENT_scan.py'
+        spec_path = '/opt/wolf_v2/scripts/CLIENT_scan.py'
         import importlib.util
         spec = importlib.util.spec_from_file_location('CLIENT_scan', spec_path)
         ds = importlib.util.module_from_spec(spec)

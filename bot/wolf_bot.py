@@ -1111,10 +1111,15 @@ def handle_update(upd: dict) -> None:
                 if _row:
                     form["CLIENT_name"] = _row["code"]
 
-        if not (form.get("full_name") or (form.get("CLIENT") and form.get("name"))):
-            send(chat_id, "❌ Не смог определить ФИО клиента. "
-                          "Пришлите данные — можно в свободной форме, "
-                          "например: «CLIENT клиент Иван Петров, виза C1».")
+        _CLIENT_in = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
+        _fio_in = bool(form.get("full_name") or (form.get("CLIENT") and form.get("name")))
+        if not _fio_in and not _CLIENT_in:
+            send(chat_id,
+                 "❌ Нужен ФИО клиента или ссылка на папку Google CLIENT —\n"
+                 "из документов система возьмёт ФИО и паспортные данные сама.\n\n"
+                 "Пришлите в свободной форме, например:\n"
+                 "«Иван Петров, виза C1, 4 500 000 IDR,\n"
+                 "папка https://CLIENT.google.com/CLIENT/folders/...»")
             return
         try:
             app_id, client_id = create_CLIENT(form, user)
@@ -1144,14 +1149,20 @@ def handle_update(upd: dict) -> None:
                                (app_id,)).fetchone()
         CLIENT_ok = bool(app_row and app_row["CLIENT_id"])
         prod_label = (form.get("CLIENT_name") or "").strip()
+        codes = [r["code"] for r in db().execute(
+            "SELECT code FROM CLIENT ORDER BY id").fetchall()]
+        _missing = []
         if not CLIENT_ok:
-            codes = [r["code"] for r in db().execute(
-                "SELECT code FROM CLIENT ORDER BY id").fetchall()]
             prod_label = "⚠️ НЕ РАСПОЗНАН"
-            warn = ("\n⚠️ Продукт не указан — документы НЕ сформированы.\n"
-                    "Отправьте сообщение со строкой:\n"
-                    f"«Название продукта: {codes[0] if codes else 'C1'}»\n"
-                    f"Доступные продукты: {', '.join(codes)}\n")
+            _missing.append(f"продукт (доступные: {', '.join(codes) or '—'})")
+        if not int(form.get("price_idr") or 0):
+            _missing.append("стоимость в IDR")
+        if not _CLIENT_in:
+            _missing.append("ссылка на папку Google CLIENT "
+                            "(из неё подтянутся ФИО, паспорт, банк)")
+        if _missing:
+            warn = ("\n⚠️ Не хватает: " + "; ".join(_missing) + "\n"
+                    "Дошлите это одним сообщением — администратор внесёт в заявку.\n")
         else:
             warn = ""
 
