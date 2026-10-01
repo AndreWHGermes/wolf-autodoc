@@ -355,14 +355,20 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     var valEl=bar.querySelector('.zp-val');
     function apply(){
       var cw=host.clientWidth||600;
+      // полоса прокрутки съедает часть окна — иначе правый край листа подрезается
+      var sbw=Math.max(0,(host.offsetWidth||cw)-(host.clientWidth||cw));
       var natW=content.offsetWidth||A4W, natH=content.offsetHeight||A4H;
-      s=(userScale!==null)?userScale:Math.max(MIN,Math.min(cw/natW,1));
+      var avail=Math.max(120, cw - sbw - 8);   // 8 px — небольшой воздух по краям
+      s=(userScale!==null)?userScale:Math.max(MIN,Math.min(avail/natW,1));
       s=Math.max(MIN,Math.min(s,MAX));
       content.style.transform='scale('+s+')';
       content.style.transformOrigin='top left';
       // Канвас занимает МАСШТАБИРОВАННЫЙ размер → появляется нативная прокрутка
       canvas.style.width=Math.ceil(natW*s)+'px';
       canvas.style.height=Math.ceil(natH*s)+'px';
+      // Лист по центру окна, если он уже окна
+      canvas.style.marginLeft=(natW*s<cw-sbw)?'auto':'0';
+      canvas.style.marginRight=(natW*s<cw-sbw)?'auto':'0';
       // Окно: высота листа, но не больше 78% экрана (без пустых полей)
       var maxH=Math.max(240,Math.round((window.innerHeight||800)*0.78));
       var targetH=Math.min(Math.ceil(natH*s),maxH);
@@ -414,6 +420,15 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     host.addEventListener('mousedown',down);
     CLIENT.addEventListener('mousemove',move);
     CLIENT.addEventListener('mouseup',up);
+    // Масштаб ставим сразу и повторяем, когда догрузились шрифты и картинки листа:
+    // раньше подгонка «догоняла» страницу уже после открытия
+    apply();
+    if(CLIENT.fonts && CLIENT.fonts.ready) CLIENT.fonts.ready.then(function(){ if(userScale===null) apply(); });
+    window.addEventListener('load', function(){ if(userScale===null) apply(); });
+    if(typeof ResizeObserver!=='undefined'){
+      var ro=new ResizeObserver(function(){ if(userScale===null) apply(); });
+      ro.observe(content);
+    }
     host.addEventListener('touchCLIENT',function(e){
       if(host.dataset.pannable==='1'&&e.touches.length===1){
         panning=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY;
