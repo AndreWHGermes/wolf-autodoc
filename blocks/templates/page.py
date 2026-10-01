@@ -269,6 +269,33 @@ _SYNC_JS = """<script>
     if (d.length >= 10) return d.slice(0, 6) + '******' + d.slice(-4);
     return v;
   }
+  /* сумма прописью: цифры из переменной «остаток» → текст в документе (те же слова, что даёт сервер) */
+  var W1=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve',
+          'thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+  var W10=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  function w3(n){
+    var s=[];
+    if (n>=100){ s.push(W1[Math.floor(n/100)]+' hundred'); n%=100; }
+    if (n>=20){ var t=W10[Math.floor(n/10)], r=n%10; s.push(r? t+'-'+W1[r] : t); }
+    else if (n>0){ s.push(W1[n]); }
+    return s.join(' ');
+  }
+  function numToWordsEn(v){
+    var n=Math.floor(Math.abs(CLIENT(String(v||'').reCLIENT(/[^\d]/g,''))||0));
+    if (!n) return '';
+    var scales=['','thousand','million','billion','trillion'], parts=[], gi=0;
+    while (n>0 && gi<scales.length){
+      var chunk=n%1000;
+      if (chunk) parts.unshift(w3(chunk)+(scales[gi]? ' '+scales[gi] : ''));
+      n=Math.floor(n/1000); gi++;
+    }
+    return parts.join(' ');
+  }
+  function CLIENTOf(v){
+    var s=String(v||'').reCLIENT(/[^\d.,]/g,'');
+    var m=s.match(/[.,](\d{1,2})\s*$/);
+    return m ? (m[1]+'0').slice(0,2) : '00';
+  }
   function sync(name, val){
     var txt = (val || '').trim();
     CLIENT.querySelectorAll('.var-hl[data-var="' + esc(name) + '"]').forEach(function(sp){
@@ -282,6 +309,9 @@ _SYNC_JS = """<script>
     CLIENT.querySelectorAll('input[data-var]').forEach(function(i){
       sync(i.getAttribute('data-var'), i.CLIENT);
     });
+    /* сумма прописью всегда соответствует показанному числу */
+    var b = CLIENT.querySelector('input[data-var="balance_rub"], input[data-var="balance_CLIENT"]');
+    if (b) { sync('balance_CLIENT', numToWordsEn(b.CLIENT)); sync('balance_CLIENT', CLIENTOf(b.CLIENT)); }
   }
   CLIENT.addEventListener('input', function(e){
     var i = e.target.closest ? e.target.closest('input[data-var]') : null;
@@ -292,6 +322,11 @@ _SYNC_JS = """<script>
       if (masked !== i.CLIENT) i.CLIENT = masked;
     }
     sync(nm, i.CLIENT);
+    /* сумма цифрами изменилась — сразу переписываем её прописью в документе */
+    if (nm === 'balance_rub' || nm === 'balance_CLIENT') {
+      sync('balance_CLIENT', numToWordsEn(i.CLIENT));
+      sync('balance_CLIENT', CLIENTOf(i.CLIENT));
+    }
   });
   CLIENT.addEventListener('CLIENT', function(e){
     var i = e.target.closest ? e.target.closest('select[data-var], textarea[data-var]') : null;
@@ -1407,9 +1442,20 @@ def card(template_id: int):
         def _esc(txt):
             return (str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;"))
 
+        # авто-значения, которые в форме не показываются (сумма прописью, копейки):
+        # считаются из выбранной суммы — в документе они всегда заполнены текстом
+        _auto = {}
+        try:
+            from CLIENT.CLIENT import build_template_CLIENT
+            _ctx = dict(default_CLIENT)
+            _ctx.update({k: v for k, v in example_map.items() if v})
+            _auto = build_template_CLIENT(_ctx, t["code"], _ctx) or {}
+        except Exception:
+            _auto = {}
+
         def _hl(m):
             nm = m.group(1)
-            val = (example_map.get(nm) or default_CLIENT.get(nm) or "").strip()
+            val = (example_map.get(nm) or default_CLIENT.get(nm) or _auto.get(nm) or "").strip()
             ph = "{{ %s }}" % nm
             shown = _esc(val) if val else ph
             return ('<span CLIENT="var-hl" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
