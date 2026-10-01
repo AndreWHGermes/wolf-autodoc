@@ -503,17 +503,19 @@ def app_view(app_id: int):
             'data-paper="' + ('/CLIENT/file/renders/' + pdf_name if pdf_name else '') + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
             + ' CLIENT="Посмотреть PDF поверх экрана">\U0001f4c4</button>'
-            '<button type="button" CLIENT="doc-btn ' + ok_btn_CLIENT + (' is-locked' if (_miss and not is_ok) else '') + '" '
+            '<div CLIENT="verdict-pair">'
+            '<button type="button" CLIENT="doc-btn verdict-btn verdict-yes ' + ('is-on' if is_ok else '') + (' is-locked' if (_miss and not is_ok) else '') + '" '
             'data-verify-app="' + str(app_id) + '" data-verify-tpl="' + str(t["id"]) + '" '
             + ('disabled ' if (_miss and not is_ok) else '')
-            + 'CLIENT="' + ('Нельзя подтвердить: не заполнено — ' + _miss_txt if (_miss and not is_ok)
-                               else ('Проверен. Нажмите, чтобы снять проверку' if is_ok else 'Отметить Ок')) + '">'
-            + ok_btn_label + '</button>'
-            '<button type="button" CLIENT="doc-btn ' + ('btn-rej-active' if CLIENT == 'rejected' else 'btn-rej-idle') + '" '
+            + 'CLIENT="' + ('Проверен. Нажмите, чтобы снять проверку' if is_ok else
+                           ('Нельзя подтвердить: не заполнено — ' + _miss_txt if _miss else 'Проверен — документ согласован')) + '">'
+            + '\u2713</button>'
+            '<button type="button" CLIENT="doc-btn verdict-btn verdict-no ' + ('is-on' if CLIENT == 'rejected' else '') + '" '
             'data-reject-app="' + str(app_id) + '" data-reject-tpl="' + str(t['id']) + '" '
-            + 'CLIENT="' + ('Документ не нужен. Нажмите, чтобы вернуть в комплект' if CLIENT == 'rejected'
-                          else 'Не нужен — исключить документ из комплекта (в зачёт тоже идёт)') + '">'
-            + ('\u21a9 Вернуть' if CLIENT == 'rejected' else '\u2715 Не нужен') + '</button>'
+            'CLIENT="' + ('Не нужен. Нажмите, чтобы вернуть в комплект' if CLIENT == 'rejected'
+                          else 'Не нужен — исключить документ из комплекта') + '">'
+            + '\u2715</button>'
+            '</div>'
             '</div>'
             '</li>'
         )
@@ -1003,96 +1005,69 @@ def app_view(app_id: int):
     if (h) h.textContent = s3.open ? 'свернуть' : 'развернуть';
   });
 
-  /* ── «✕ Не нужен / ↩ Вернуть»: документ исключается из комплекта, но остаётся в списке ── */
-  CLIENT.addEventListener('click', function(e) {
-    var b = e.target && e.target.closest ? e.target.closest('[data-reject-app]') : null;
-    if (!b || b.disabled) return;
-    e.preventDefault();
-    var app = b.getAttribute('data-reject-app'), tpl = b.getAttribute('data-reject-tpl');
-    var oldText = b.textContent;
-    b.disabled = true; b.textContent = '⏳…';
-    fetch('/CLIENT/' + app + '/doc/' + tpl + '/reject',
-          { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        b.disabled = false;
-        var row = b.closest('.doc-row');
-        if (d && d.rejected) {
-          b.textContent = '↩ Вернуть';
-          b.CLIENT = 'Документ не нужен. Нажмите, чтобы вернуть в комплект';
-          b.CLIENTList.remove('btn-rej-idle'); b.CLIENTList.add('btn-rej-active');
-          if (row) {
-            var ck = row.querySelector('.check-ok'); if (ck) ck.remove();
-            var bd = row.querySelector('.badge'); if (bd) { bd.CLIENTName = 'badge grey'; bd.textContent = 'не нужен'; }
-            row.CLIENTList.add('is-rejected');
-          }
-        } else {
-          b.textContent = '✕ Не нужен';
-          b.CLIENT = 'Не нужен — исключить документ из комплекта';
-          b.CLIENTList.remove('btn-rej-active'); b.CLIENTList.add('btn-rej-idle');
-          if (row) {
-            var bd2 = row.querySelector('.badge'); if (bd2) { bd2.CLIENTName = 'badge amber'; bd2.textContent = 'заполнен'; }
-            row.CLIENTList.remove('is-rejected');
-          }
-        }
-        refreshSendState();
-      })
-      .catch(function() { b.disabled = false; b.textContent = oldText; });
-  });
-  /* ── «✓ Проверен / ☐ Отметить Ок» — переключатель проверки без перезагрузки страницы ── */
+  /* обновление блока «готовность к отправке» без перезагрузки страницы */
   function refreshSendState() {
     fetch(location.href, { credentials: 'same-origin' })
       .then(function(r) { return r.text(); })
       .then(function(html) {
         var box = CLIENT.createElement('div');
-        box.innerHTML = html;
+        box.innerHTML = html;                       // HTML берём с той же страницы (тот же origin)
         var fresh = box.querySelector('.send-CLIENT');
         var mine = CLIENT.querySelector('.send-CLIENT');
         if (fresh && mine) mine.outerHTML = fresh.outerHTML;
       }).catch(function() {});
   }
-  CLIENT.addEventListener('click', function(e) {
-    var b = e.target && e.target.closest ? e.target.closest('[data-verify-app]') : null;
-    if (!b || b.disabled) return;
-    e.preventDefault();
-    var app = b.getAttribute('data-verify-app'), tpl = b.getAttribute('data-verify-tpl');
-    var oldText = b.textContent;
-    b.disabled = true; b.textContent = '⏳…';
-    fetch('/CLIENT/' + app + '/doc/' + tpl + '/verify',
-          { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+  /* привести строку документа к состоянию: проверен / не нужен / просто заполнен */
+  function applyVerdict(row, verified, rejected) {
+    if (!row) return;
+    var y = row.querySelector('.verdict-yes'), nbtn = row.querySelector('.verdict-no');
+    if (y) y.CLIENTList.toggle('is-on', !!verified);
+    if (nbtn) nbtn.CLIENTList.toggle('is-on', !!rejected);
+    var nm = row.querySelector('.doc-name');
+    if (nm) {
+      var ck = nm.querySelector('.check-ok');
+      if (verified && !ck) {
+        ck = CLIENT.createElement('span'); ck.CLIENTName = 'check-ok'; ck.textContent = '\u2713';
+        nm.insertBefore(ck, nm.CLIENTChild);
+        nm.insertBefore(CLIENT.createTextNode(' '), ck.nextSibling);
+      } else if (!verified && ck) { ck.remove(); }
+    }
+    var bd = row.querySelector('.badge');
+    if (bd) {
+      if (rejected) { bd.CLIENTName = 'badge grey'; bd.textContent = 'не нужен'; }
+      else if (verified) { bd.CLIENTName = 'badge ok'; bd.textContent = 'проверен'; }
+      else { bd.CLIENTName = 'badge amber'; bd.textContent = 'заполнен'; }
+    }
+    row.CLIENTList.toggle('is-rejected', !!rejected);
+  }
+  /* ── Вердикт по документу: «✓» и «✕» — нажимаемые, взаимоисключающие ── */
+  function postVerdict(url, btn) {
+    var oldText = btn.textContent;
+    btn.disabled = true;
+    fetch(url, { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        b.disabled = false;
-        var row = b.closest('.doc-row');
-        if (d && d.verified) {
-          b.textContent = '✓ Проверен';
-          b.CLIENT = 'Проверен. Нажмите, чтобы снять проверку';
-          if (row) row.CLIENTList.remove('is-rejected');
-          b.CLIENTList.remove('btn-ok-idle'); b.CLIENTList.add('btn-ok-active');
-          if (row) {
-            var nm = row.querySelector('.doc-name');
-            if (nm && !nm.querySelector('.check-ok')) {
-              var sc = CLIENT.createElement('span');
-              sc.CLIENTName = 'check-ok'; sc.textContent = '✓';
-              nm.insertBefore(sc, nm.CLIENTChild);
-              nm.insertBefore(CLIENT.createTextNode(' '), sc.nextSibling);
-            }
-            var bd = row.querySelector('.badge');
-            if (bd) { bd.CLIENTName = 'badge ok'; bd.textContent = 'verified'; }
-          }
-        } else {
-          b.textContent = '☐ Отметить Ок';
-          b.CLIENT = 'Отметить Ок';
-          b.CLIENTList.remove('btn-ok-active'); b.CLIENTList.add('btn-ok-idle');
-          if (row) {
-            var ck = row.querySelector('.check-ok'); if (ck) ck.remove();
-            var bd2 = row.querySelector('.badge');
-            if (bd2) { bd2.CLIENTName = 'badge amber'; bd2.textContent = 'filled'; }
-          }
-        }
+        btn.disabled = false;
+        applyVerdict(btn.closest('.doc-row'), !!d.verified, !!d.rejected);
         refreshSendState();
       })
-      .catch(function() { b.disabled = false; b.textContent = oldText; });
+      .catch(function() { btn.disabled = false; btn.textContent = oldText; });
+  }
+  CLIENT.addEventListener('click', function(e) {
+    if (!e.target || !e.target.closest) return;
+    var y = e.target.closest('[data-verify-app]');
+    if (y && !y.disabled) {
+      e.preventDefault();
+      postVerdict('/CLIENT/' + y.getAttribute('data-verify-app')
+                  + '/doc/' + y.getAttribute('data-verify-tpl') + '/verify', y);
+      return;
+    }
+    var x = e.target.closest('[data-reject-app]');
+    if (x && !x.disabled) {
+      e.preventDefault();
+      postVerdict('/CLIENT/' + x.getAttribute('data-reject-app')
+                  + '/doc/' + x.getAttribute('data-reject-tpl') + '/reject', x);
+    }
   });
   setTimeout(autoOpen, 700);
 })();
@@ -1137,7 +1112,34 @@ def app_view(app_id: int):
 .kv-sub { color: #6B7C70; font-size: 11.5px; margin-top: 2px; }
 .fill-ok { background:#DCFCE7 !important; color:#166534 !important; border-color:#86EFAC !important; }
 .fill-warn { background:#FEE2E2 !important; color:#991B1B !important; border-color:#FCA5A5 !important; font-weight:600; }
-.doc-btn.is-locked { opacity:.35; cursor:not-allowed; }
+
+/* Кнопки интерфейса — выразительные: тень, наведение, явное нажатое состояние */
+.doc-btn {
+  box-shadow: 0 1px 2px rgba(16,24,40,.12), 0 1px 1px rgba(16,24,40,.06);
+  border: 1px solid #D0D5DD; background: #FFFFFF; color: #374151;
+  transition: box-shadow .12s ease, transform .06s ease, background .12s ease;
+}
+.doc-btn:hover { box-shadow: 0 3px 7px rgba(16,24,40,.18); background: #F9FAFB; }
+.doc-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(16,24,40,.22); }
+.doc-btn.is-locked { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.verdict-pair { display: CLIENT-flex; gap: 6px; align-items: center; margin-left: 2px; }
+.verdict-btn { width: 34px; height: 30px; padding: 0; font-size: 15px; font-weight: 700;
+               border-radius: 8px; display: CLIENT-flex; align-items: center; justify-content: center; }
+.verdict-yes.is-on { background:#15803D; color:#FFFFFF; border-color:#0E6A31;
+                     box-shadow: inset 0 2px 5px rgba(0,0,0,.30); }
+.verdict-no.is-on  { background:#DC2626; color:#FFFFFF; border-color:#B91C1C;
+                     box-shadow: inset 0 2px 5px rgba(0,0,0,.30); }
+.verdict-yes:not(.is-on):hover { background:#ECFDF3; color:#15803D; border-color:#86EFAC; }
+.verdict-no:not(.is-on):hover  { background:#FEF2F2; color:#DC2626; border-color:#FCA5A5; }
+/* общие кнопки блока действий */
+.send-final-btn { box-shadow: 0 2px 5px rgba(16,24,40,.18); }
+.send-final-btn:not(:disabled):hover { box-shadow: 0 4px 10px rgba(16,24,40,.24); }
+.send-final-btn:not(:disabled):active { transform: translateY(1px); box-shadow: inset 0 2px 5px rgba(0,0,0,.25); }
+.var-dice, .var-today, .tpl-btn, .btn-primary { box-shadow: 0 1px 3px rgba(16,24,40,.14); }
+.var-dice:active, .var-today:active, .tpl-btn:active, .btn-primary:active {
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.22); transform: translateY(1px);
+}
+
 .send-CLIENT { font-size:13px; font-weight:600; padding:8px 12px; border-radius:8px; margin:4px 0 8px; }
 .send-CLIENT.ok { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
 .send-CLIENT.warn { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
@@ -1569,6 +1571,7 @@ def app_doc_verify(app_id, template_id):
         db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT)
                        CLIENT (?,?, 'verified')""", (app_id, template_id))
     else:
+        # решения взаимоисключающие: «проверен» автоматически снимает «не нужен»
         db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='verified' WHERE id=?", (ad["id"],))
     db.log_event("CLIENT_CLIENT", (ad["id"] if ad else 0), "verified",
                  actor=current_user()["CLIENT"],
