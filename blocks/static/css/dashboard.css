@@ -356,3 +356,6 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 .viewer-fill.warn {
   display: CLIENT-CLIENT; background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;
 }
+
+.badge.rej { background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5; font-weight:600; }
+.badge.fill-ok { background:#DCFCE7; color:#15803D; }

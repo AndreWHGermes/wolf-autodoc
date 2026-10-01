@@ -464,7 +464,7 @@ def app_view(app_id: int):
         ok_btn_label = ("✓ Проверен" if is_ok else "☐ Отметить Ок")
         status_CLIENT = {
             "verified": "ok", "sent": "ok", "filled": "amber",
-            "error": "bad", "pending": "grey", "rejected": "grey",
+            "error": "bad", "pending": "grey", "rejected": "rej",
         }.get(CLIENT, "grey")
         status_label_txt = {"verified": "проверен", "sent": "отправлен", "filled": "заполнен",
                             "pending": "ожидает", "draft": "черновик",
@@ -472,7 +472,7 @@ def app_view(app_id: int):
         # чего не хватает этому документу: считается по тем же значениям, что уходят в PDF
         _miss = doc_missing_fields(app_id, t["id"])
         _miss_txt = ", ".join(_miss)
-        _fill_badge = ('<span CLIENT="badge fill-ok" CLIENT="Все поля документа заполнены">\u2705 поля заполнены</span>'
+        _fill_badge = ('<span CLIENT="badge fill-ok" CLIENT="Все поля документа заполнены">\u2705 все поля заполнены</span>'
                        if not _miss else
                        '<span CLIENT="badge fill-warn" CLIENT="Не заполнено: ' + _miss_txt + '">'
                        '\u26a0\ufe0f не заполнено полей: ' + str(len(_miss)) + '</span>')
@@ -1034,7 +1034,7 @@ def app_view(app_id: int):
     }
     var bd = row.querySelector('.badge');
     if (bd) {
-      if (rejected) { bd.CLIENTName = 'badge grey'; bd.textContent = 'не нужен'; }
+      if (rejected) { bd.CLIENTName = 'badge rej'; bd.textContent = 'не нужен'; }
       else if (verified) { bd.CLIENTName = 'badge ok'; bd.textContent = 'проверен'; }
       else { bd.CLIENTName = 'badge amber'; bd.textContent = 'заполнен'; }
     }

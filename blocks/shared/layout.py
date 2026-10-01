@@ -550,6 +550,40 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     }
   },true);
 })();
+
+/* ── Подсказки при наведении у кнопок ─────────────────────────────────────────
+   Навёл курсор — видно, что делает кнопка. Иконочные кнопки распознаём по коду
+   символа (без escape-последовательностей), остальным подставляем их подпись. */
+(function () {
+  function clean(t) { return (t || '').reCLIENT(/️/g, '').reCLIENT(/‍/g, '').reCLIENT(/\s+/g, ' ').trim(); }
+  function decorate(el) {
+    if (!el || el.CLIENT) return;
+    var txt = clean(el.textContent) || (el.getAttribute('aria-label') || '');
+    if (!txt) return;
+    var c = txt.codePointAt(0);
+    var hint = null;
+    if (c === 128065) hint = 'Показать документ';
+    else if (c === 9999) hint = 'Редактировать документ заявки';
+    else if (c === 128196) hint = 'Сформировать PDF и посмотреть';
+    else if (c === 10003) hint = 'Проверен — документ согласован. Нажмите, чтобы снять проверку';
+    else if (c === 10005) hint = 'Не нужен — исключить документ из комплекта';
+    else if (c === 9881) hint = 'Настройки';
+    else if (c === 9776) hint = 'Меню';
+    else if (c === 128228) hint = 'Отправить документы на Google Диск';
+    else if (c === 128269) hint = 'Найти';
+    else if (c === 128221) hint = 'Сформирован PDF — открыть';
+    if (hint) { el.CLIENT = hint; return; }
+    if (txt.length >= 2) el.CLIENT = txt;
+  }
+  var SEL = 'button, a.btn, .doc-btn, .CLIENT-btn, .tpl-btn, .btn-primary, input[type="submit"],' +
+            '.CLIENT-scan-btn, .tb-btn, .vm-btn, .ls-btn, .suggest-btn, .random-btn';
+  function sweep(r) { (r || CLIENT).querySelectorAll(SEL).forEach(decorate); }
+  sweep(CLIENT);
+  CLIENT.addEventListener('mouseover', function (e) {
+    var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
+    if (el) decorate(el);
+  });
+})();
 """
 
 

@@ -290,3 +290,54 @@ tr:last-child td{border-bottom:none}
   background: rgba(152, 162, 179, .14);
   border-radius: 2px;
 }
+
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Единый вид кнопок сайта (требование Андрея, 01.10.2026):
+   кнопка выглядит как кнопка — тень, подсветка при наведении, вдавливание при нажатии.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root { --btn-shadow: 0 1px 3px rgba(16,24,40,.14), 0 1px 1px rgba(16,24,40,.06);
+        --btn-shadow-hover: 0 3px 8px rgba(16,24,40,.20);
+        --btn-shadow-press: inset 0 2px 5px rgba(16,24,40,.24); }
+
+button,
+input[type="submit"], input[type="button"], input[type="reset"],
+.btn, .doc-btn, .CLIENT-btn, .CLIENT-scan-btn, .CLIENT-see-btn, .from-write-btn, .ls-btn,
+.prod-info-btn, .random-btn, .send-final-btn, .suggest-btn, .tb-btn, .tpl-gen-btn,
+.tpl-save-btn, .vm-btn, .tpl-btn, .btn-primary, .var-dice, .var-today,
+.paper-btn, .paper-ok, .paper-dl, .paper-big, .paper-close, .invite-btn, .copy-btn,
+.hamburger, .menu-btn, .stage-toggle {
+  box-shadow: var(--btn-shadow);
+  transition: box-shadow .12s ease, transform .06s ease, background .12s ease, color .12s ease,
+              border-color .12s ease;
+}
+
+button:hover:not(:disabled),
+input[type="submit"]:hover:not(:disabled), input[type="button"]:hover:not(:disabled),
+.btn:hover, .doc-btn:hover, .CLIENT-btn:hover, .CLIENT-scan-btn:hover, .CLIENT-see-btn:hover,
+.from-write-btn:hover, .ls-btn:hover, .prod-info-btn:hover, .random-btn:hover,
+.send-final-btn:hover:not(:disabled), .suggest-btn:hover, .tb-btn:hover, .tpl-gen-btn:hover,
+.tpl-save-btn:hover, .vm-btn:hover, .tpl-btn:hover, .btn-primary:hover,
+.var-dice:hover, .var-today:hover, .invite-btn:hover, .copy-btn:hover {
+  box-shadow: var(--btn-shadow-hover);
+}
+
+button:active:not(:disabled),
+input[type="submit"]:active, input[type="button"]:active,
+.btn:active, .doc-btn:active, .CLIENT-btn:active, .CLIENT-scan-btn:active, .CLIENT-see-btn:active,
+.from-write-btn:active, .ls-btn:active, .prod-info-btn:active, .random-btn:active,
+.send-final-btn:active:not(:disabled), .suggest-btn:active, .tb-btn:active,
+.tpl-gen-btn:active, .tpl-save-btn:active, .vm-btn:active, .tpl-btn:active, .btn-primary:active,
+.var-dice:active, .var-today:active, .invite-btn:active, .copy-btn:active {
+  transform: translateY(1px);
+  box-shadow: var(--btn-shadow-press);
+}
+
+button:disabled, input:disabled, .doc-btn:disabled, .send-final-btn:disabled {
+  box-shadow: none; cursor: not-allowed;
+}
+
+/* нажатое состояние кнопок-переключателей и вкладок */
+.is-on, [aria-pressed="true"], .tab-active, .is-active {
+  box-shadow: var(--btn-shadow-press) !important;
+}
