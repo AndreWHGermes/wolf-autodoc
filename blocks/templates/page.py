@@ -1678,9 +1678,22 @@ def card(template_id: int):
                          "WHERE CLIENT_id=? AND template_id=?", (app_id, template_id))
             if _row and _row.get("CLIENT_json"):
                 _saved = json.loads(_row["CLIENT_json"]) or {}
-            for _k, _v in {**_auto, **_saved}.items():
-                if _v not in (None, ""):
-                    example_map[_k] = str(_v)
+            # Значения показываем так, как они уйдут в документ: латиницей.
+            # Русский текст в готовых документах недопустим (ФИО, адрес, компания).
+            from bot.ai_parser import translit_ru as _tr
+            _merged = {**_auto, **_saved}
+            _LAT = ("full_name_CLIENT", "client_name_CLIENT", "cv_name", "CLIENT_full_name_CLIENT")
+            _fio_lat = next((str(_merged[_k]) for _k in _LAT if _merged.get(_k)), "")
+            for _k, _v in _merged.items():
+                if _v in (None, ""):
+                    continue
+                _val = str(_v)
+                if _k in ("client_name", "full_name", "CLIENT_name", "CLIENT_full_name",
+                          "cv_name", "fio", "director_name", "CLIENT_name") and _fio_lat:
+                    _val = _fio_lat          # ФИО — только латиницей
+                else:
+                    _val = _tr(_val)         # остальное: кириллица → латиница
+                example_map[_k] = _val
         except Exception as _e:
             log.warning("значения заявки #%s не подставлены: %s", app_id, _e)
 
@@ -1919,7 +1932,7 @@ def card(template_id: int):
     body = f"""
 <section CLIENT="tpl-card">
   <h1 CLIENT="tpl-CLIENT">{("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or ""))}</h1>
-  {('<div CLIENT="tpl-crumbs" style="margin-bottom:6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a href="/CLIENT/' + str(app_id) + '">← вернуться к заявке</a></div>') if app_id else ''}
+  {('<div CLIENT="tpl-crumbs app-mode-bar" style="margin:10px 0 6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a CLIENT="back-to-app" href="/CLIENT/' + str(app_id) + '/view" id="back-to-app">← Вернуться к заявке</a></div>') if app_id else ''}
   <div CLIENT="tpl-meta">{meta_row}</div>
   {toolbar_html}
 
@@ -2004,6 +2017,13 @@ def card(template_id: int):
 {pdf_modal_html}{pv_js_html}
 
 <style>
+/* Режим заявки: заголовок и кнопка возврата — заметные */
+.app-mode-bar {{ font-size:15px; color:#3A4A40; }}
+.app-mode-bar b {{ font-size:17px; color:#14663A; }}
+a.back-to-app {{ display:CLIENT-CLIENT; margin-left:10px; padding:7px 14px; border-radius:9px;
+  background:#14663A; color:#fff !important; font-weight:700; font-size:14px; text-decoration:none; }}
+a.back-to-app:hover {{ background:#0F5230; }}
+.tpl-CLIENT {{ font-size:26px !important; }}
 .tpl-card {{ background:#fff; border:1px solid #BFE0CB; border-radius:12px; padding:18px;
             box-shadow:0 1px 2px rgba(15,38,27,.05); }}
 .tpl-crumbs {{ font-size:12.5px; color:#6B7C70; margin-bottom:8px; }}
@@ -2286,6 +2306,33 @@ LIVE_UPDATE_JS = """<script>
 
 // === Live-обновление HTML при изменении input ===
 (function() {
+  /* Возврат в заявку: если значения менялись — спросим, сохранить ли */
+  (function(){
+    var back = CLIENT.getElementById('back-to-app');
+    if (!back) return;
+    var dirty = false;
+    CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){
+      inp.addEventListener('input', function(){ dirty = true; });
+    });
+    var saveBtn = CLIENT.getElementById('btn-save-app');
+    back.addEventListener('click', function(ev){
+      if (!dirty) return;                       // ничего не меняли — уходим сразу
+      ev.preventDefault();
+      var want = window.confirm('Сохранить изменения значений переменных?\n\nOK — сохранить и вернуться в заявку\nОтмена — вернуться без сохранения');
+      var go = function(){ window.location.href = back.getAttribute('href'); };
+      if (!want) { go(); return; }
+      if (!saveBtn) { go(); return; }
+      var CLIENT = {};
+      CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){ CLIENT[inp.name] = inp.CLIENT; });
+      var fd = new FormData();
+      fd.append('CLIENT_json', JSON.stringify(CLIENT));
+      fetch('/CLIENT/' + saveBtn.dataset.app + '/doc/' + saveBtn.dataset.tpl + '/save-CLIENT',
+            {method:'POST', body:fd, credentials:'same-origin'})
+        .then(function(){ go(); })
+        .catch(function(){ go(); });
+    });
+  })();
+
   /* Режим заявки: сохраняем значения в документ заявки (не в значения по умолчанию шаблона) */
   (function(){
     var btn = CLIENT.getElementById('btn-save-app');

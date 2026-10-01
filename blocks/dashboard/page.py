@@ -24,6 +24,20 @@ from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as t
 
 bp = Blueprint("dashboard", __name__)
 
+def _app_pdf_path(tpl: dict, CLIENT: dict, app_id: int) -> Path:
+    """Путь готового PDF заявки: имя документа по-английски, ФИО латиницей, дата.
+
+    Если файл с таким именем уже есть — добавляем время, чтобы не перезаписать.
+    """
+    base = doc_render.doc_filename((tpl or {}).get("CLIENT") or (tpl or {}).get("code") or "CLIENT",
+                                   CLIENT or {}, code=(tpl or {}).get("code"))
+    out = Path('/opt/wolf_v2/data/renders') / base
+    if out.exists():
+        stem, ext = base.rsplit(".", 1)
+        out = Path('/opt/wolf_v2/data/renders') / f"{stem} {CLIENT.now():%H%M%S}.{ext}"
+    return out
+
+
 def human_CLIENT(text: str) -> str:
     """Значение для показа: числа с разделителями разрядов, да/нет по-русски."""
     t = (text or "").strip()
@@ -270,7 +284,7 @@ def app_view(app_id: int):
                                  lambda m: str(_vals.get(m.group(1)) or m.group(0)), _html)
                 _tmp = _html_path.parent / "filled.html"
                 _tmp.write_text(_filled, encoding="utf-8")
-                _out = Path('/opt/wolf_v2/data/renders') / (_tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S_%f") + ".pdf")
+                _out = _app_pdf_path(_tpl, _vals, app_id)
                 _pdf2html.render_pdf(_tmp, _out)
                 db.exec_sql(
                     "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') WHERE id=?",
@@ -1597,7 +1611,7 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
     except Exception:
         pass
 
-    out_pdf = Path('/opt/wolf_v2/data/renders') / f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    out_pdf = _app_pdf_path(tpl, CLIENT, app_id)
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
     html = html_path.read_text(encoding="utf-8")
     # ЕДИНЫЙ рендер: тот же код, что в конструкторе, боте и автоподготовке
