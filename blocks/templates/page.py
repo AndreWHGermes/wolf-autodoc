@@ -352,10 +352,9 @@ _SYNC_JS = """<script>
       var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
       var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
       if (f && nm === 'card_mask') {
-        /* номер карты: БИН остаётся в рамках своего банка (сбер или Т-Банк), остальное новое */
-        var cur = (f.CLIENT || '').reCLIENT(/\D/g, '');
-        var bins = (b.getAttribute('data-bins') || '220070').split(',');
-        var bin = cur.length >= 6 ? cur.slice(0, 6) : bins[Math.floor(Math.random() * bins.length)];
+        /* номер карты: и БИН, и остальные цифры берём новые — но только из набора своего банка */
+        var bins = (b.getAttribute('data-bins') || '220070').split(',').map(function(x){ return x.trim(); });
+        var bin = bins[Math.floor(Math.random() * bins.length)];
         f.CLIENT = maskCard(bin + genByPattern('dddddddddd'));
         sync(nm, f.CLIENT);
         f.dispatchEvent(new Event('input', {bubbles:true}));

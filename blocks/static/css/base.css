@@ -218,8 +218,8 @@ tr:last-child td{border-bottom:none}
   max-height:86vh;overflow:auto;background:#fff;border:1px solid #D8E2DC;border-radius:14px;
   box-shadow:0 18px 50px rgba(16,32,24,.28);z-CLIENT:80;display:none;padding:16px 18px 18px}
 .varmodal.open{display:CLIENT}
-.varmodal .vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
-.varmodal .vm-back.open{display:CLIENT}
+.vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
+.vm-back.open{display:CLIENT}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;

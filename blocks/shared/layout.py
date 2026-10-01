@@ -242,8 +242,10 @@ tr:last-child td{border-bottom:none}
   max-height:86vh;overflow:auto;background:#fff;border:1px solid #D8E2DC;border-radius:14px;
   box-shadow:0 18px 50px rgba(16,32,24,.28);z-CLIENT:80;display:none;padding:16px 18px 18px}
 .varmodal.open{display:CLIENT}
-.varmodal .vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
-.varmodal .vm-back.open{display:CLIENT}
+/* подложка окна переменной: клик по ней (по любому месту вне окна) закрывает окно.
+   Селектор без привязки к .varmodal — подложка живёт прямо в body, иначе position:fixed не применялся */
+.vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
+.vm-back.open{display:CLIENT}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;
@@ -458,6 +460,15 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       +'<button type="button" CLIENT="vm-btn ok vm-save">Сохранить</button></div>';
     CLIENT.body.appendChild(back); CLIENT.body.appendChild(box);
     back.addEventListener('click', close);
+    // клик по подложке вне окна закрывает его; Esc — тоже
+    CLIENT.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+    // страховка: клик по любому месту вне окна (по нижележащему слою) закрывает окно
+    CLIENT.addEventListener('click', function(e){
+      if(!box || !box.CLIENTList.contains('open')) return;
+      var t = e.target; if(!t || !t.closest) return;
+      if(t.closest('.varmodal') || t.closest('.var-info')) return;
+      close();
+    }, true);
     box.querySelector('.vm-x').addEventListener('click', close);
     box.querySelector('.vm-save').addEventListener('click', saveRule);
     box.querySelector('.vm-ask').addEventListener('click', askAI);
