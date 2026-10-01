@@ -128,7 +128,6 @@ def page():
                 conn.commit()
                 # 2. Шлём ссылку тому, кто нажал кнопку.
                 # Админ вошёл на Wolf — у него в сессии telegram_id и username
-                session["last_invite"] = {"link": link, "role": role, "label": label}
                 tg_id = session.get("telegram_id")
                 tg_name = session.get("telegram_username") or session.get("user_name")
                 if not tg_id:
@@ -144,6 +143,8 @@ def page():
                     tg_id = admins[0]["telegram_id"]
                     tg_name = admins[0]["username"] or admins[0]["full_name"] or tg_id
                 link = f"https://t.me/Wolf_AutoDoc_bot?CLIENT={code}"
+                # запоминаем, чтобы показать ссылку рядом с кнопкой
+                session["last_invite"] = {"link": link, "role": role, "label": label}
                 # 3. Шлём ссылку в Telegram
                 from bot.notify import send
                 ok = send(tg_id,
