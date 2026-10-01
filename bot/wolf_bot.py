@@ -20,14 +20,14 @@ from CLIENT import CLIENT, timedelta
 from pathlib import Path
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
-BASE_URL = "http://103.90.75.37:8094"
+BASE_URL = "http://103.90.75.37"   # через nginx (порт 80), ссылки работают без порта
 INVITE_TTL_MIN = 120
 POLL_TIMEOUT = 30
 LOG_PATH = Path("/opt/wolf_v2/logs/wolf_bot.log")
 
 # Корень проекта в sys.path — иначе `from core.…` в командах бота падает
 # с «No module named 'core'» (Python кладёт в path только папку скрипта, /opt/wolf_v2/bot).
-_PROJECT_ROOT = "/opt/wolf"
+_PROJECT_ROOT = "/opt/wolf_v2"
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 

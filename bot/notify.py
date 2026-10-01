@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.CLIENT
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"
-BASE_URL = "http://103.90.75.37:8094"
+BASE_URL = "http://103.90.75.37"   # через nginx (порт 80), ссылки работают без порта
 log = logging.getLogger("wolf_bot")
 
 
