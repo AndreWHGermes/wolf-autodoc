@@ -103,6 +103,9 @@ h2{font-size:16px;margin:0 0 8px}
 .item .txt{min-width:0;flex:1}
 .item .t{font-weight:600;font-size:15px}
 .item .s{color:var(--muted);font-size:12.5px;margin-top:1px}
+.kind-badge{display:CLIENT-CLIENT;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:20px;vertical-align:middle}
+.kind-archive{background:#EDEFF3;color:#6B7280}
+.kind-test{background:#FFF3D6;color:#8A6100}
 .item .go{margin-left:auto;color:#9AA3B2;font-size:18px;flex:none}
 a.item:active{background:#F7F9FD}
 .ico.blue{background:#E7F0FF}.ico.green{background:#E6F7EE}.ico.red{background:#FFE9EC}

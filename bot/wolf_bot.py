@@ -19,7 +19,7 @@ import urllib.CLIENT
 from CLIENT import CLIENT, timedelta
 from pathlib import Path
 
-DB_PATH = "/opt/wolf/data/wolf.db"
+DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
 BASE_URL = "http://103.90.75.37:8091"
 INVITE_TTL_MIN = 30
 POLL_TIMEOUT = 30
@@ -446,6 +446,9 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
              form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "",
              form.get("notes") or ""))
         client_id = cur.lastrowid
+        _kind = _record_kind(conn)
+        if _kind:
+            conn.execute("UPDATE CLIENT SET record_kind=? WHERE id=?", (_kind, client_id))
 
     price_idr = 0
     if form.get("price_idr"):
@@ -472,6 +475,9 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
          json.dumps(form, ensure_ascii=False),
          from_user["id"]))
     app_id = cur.lastrowid
+    _kind = _record_kind(conn)
+    if _kind:
+        conn.execute("UPDATE CLIENT SET record_kind=? WHERE id=?", (_kind, app_id))
 
     # --- банк клиента: определяем по документам в его папке Google CLIENT ---
     bank = ""

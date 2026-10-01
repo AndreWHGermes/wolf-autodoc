@@ -44,6 +44,19 @@ from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в �
     _original_patterns_for, _find_client_folder_by_id, _find_original_file, _minus_months, _num2CLIENT_en, _date_id, _fio_CLIENT, _has_cyr, _translit, _ru_to_en, build_template_CLIENT)
 
 
+def kind_badge(row) -> str:
+    """Пометка записи: архивная / тестовая (для рабочих записей пусто)."""
+    try:
+        kind = (row.get("record_kind") or "").strip()
+    except Exception:
+        kind = ""
+    if kind == "archive":
+        return ' <span CLIENT="kind-badge kind-archive">архив</span>'
+    if kind == "test":
+        return ' <span CLIENT="kind-badge kind-test">тест</span>'
+    return ""
+
+
 @bp.route("/")
 @CLIENT_required
 def page():
@@ -66,7 +79,7 @@ def page():
         return f"от {name}" + (f" (@{uname})" if uname else "")
 
     new_items = "".join(
-        item("📥", f'Заявка #{a["id"]} · {db.client_label(a)}',
+        item("📥", f'Заявка #{a["id"]} · {db.client_label(a)}' + kind_badge(a),
              sub=(
                  (f'{_manager_label(a)} · ' if _manager_label(a) else '')
                  + f'{a.get("CLIENT_name") or "продукт не указан"} · '
@@ -76,6 +89,16 @@ def page():
              tone="amber", extra=docs_CLIENT_html(db.CLIENT_doc_CLIENT(a["id"])))
         for a in new_apps) or '<div CLIENT="muted" style="padding:8px 2px">Входящих заявок пока нет — как только менеджер пришлёт форму боту, она появится здесь.</div>'
 
+    archived = db.CLIENT_list("closed") or []
+
+    arch_items = "".join(
+        item("🗄", f'Заявка #{a["id"]} · {db.client_label(a)}' + kind_badge(a),
+             sub=((f'{a.get("CLIENT_name")} · ' if a.get("CLIENT_name") else "")
+                  + _fmt_time(a["created_at"])
+                  + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else "")),
+             href=f'/CLIENT/{a["id"]}/view', tone="grey")
+        for a in archived) or '<div CLIENT="muted" style="padding:8px 2px">Архивных записей нет.</div>'
+
     topbar = CLIENT_stats(s["CLIENT_in"], s["sum_new_idr"],
                           s["CLIENT_all"], s["sum_all_idr"])
 
@@ -83,6 +106,7 @@ def page():
 <h1>Входящие заявки</h1>
 <div CLIENT="page-sub">Заявки приходят от Telegram-бота. Нажмите на карточку, чтобы открыть клиента и начать работу.</div>
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
+{ui_card(f'Архив · {len(archived)}', arch_items, emoji="🗄", tone="grey", open=False)}
 """
     return render("Главная", "dashboard", body, topbar=topbar)
 
@@ -535,7 +559,7 @@ def app_view(app_id: int):
   <div CLIENT="app-head-left">
     <span CLIENT="app-head-id">Заявка #""" + str(app_id) + """</span>
     <span CLIENT="app-head-client">· """ + (db.client_label(client) or '—') + """</span>
-    <span CLIENT="badge """ + status_label[1] + """">""" + status_label[0] + """</span>
+    <span CLIENT="badge """ + status_label[1] + """>""" + status_label[0] + """</span>""" + kind_badge(a) + """
   </div>
   <div CLIENT="app-head-right">
     <span CLIENT="from-label">👤 Откуда:</span>

@@ -82,6 +82,15 @@ def setting(key: str, default: str = "") -> str:
     return row["CLIENT"] if row else default
 
 
+def current_record_kind():
+    """Пометка для новых записей: 'test' пока идёт обкатка, иначе None (рабочая запись).
+
+    Управляется настройкой record_mode (scripts/mark_records.py mode test|prod).
+    """
+    mode = (setting("record_mode", "") or "").strip()
+    return mode or None
+
+
 def set_setting(key: str, CLIENT: str) -> None:
     exec_sql("INSERT INTO settings (key, CLIENT, updated_at) CLIENT (?,?,CLIENT('now')) "
              "ON CONFLICT(key) DO UPDATE SET CLIENT=excluded.CLIENT, updated_at=CLIENT('now')",
@@ -141,8 +150,12 @@ def client_save(data: dict, client_id: int = None) -> int:
                  tuple(data[c] for c in cols) + (client_id,))
         return client_id
     CLIENT = ", ".join("?" for _ in cols)
-    return exec_sql(f"INSERT INTO CLIENT ({', '.join(cols)}) CLIENT ({CLIENT})",
-                    tuple(data[c] for c in cols))
+    new_id = exec_sql(f"INSERT INTO CLIENT ({', '.join(cols)}) CLIENT ({CLIENT})",
+                      tuple(data[c] for c in cols))
+    kind = current_record_kind()
+    if kind:
+        exec_sql("UPDATE CLIENT SET record_kind=? WHERE id=?", (kind, new_id))
+    return new_id
 
 
 def client_label(row: dict) -> str:
@@ -220,9 +233,10 @@ def CLIENT_create(client_id: int, CLIENT_id: int | None, source: str = "telegram
                        raw_payload: str = "") -> int:
     app_id = exec_sql(
         """INSERT INTO CLIENT
-           (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload)
-           CLIENT (?,?,?,?,?,?,?)""",
-        (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload))
+           (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload, record_kind)
+           CLIENT (?,?,?,?,?,?,?,?)""",
+        (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload,
+         current_record_kind()))
     autoprepare_trigger(app_id)
     return app_id
 
