@@ -21,7 +21,7 @@ from pathlib import Path
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
 BASE_URL = "http://103.90.75.37:8094"
-INVITE_TTL_MIN = 30
+INVITE_TTL_MIN = 120
 POLL_TIMEOUT = 30
 LOG_PATH = Path("/opt/wolf/logs/wolf_bot.log")
 

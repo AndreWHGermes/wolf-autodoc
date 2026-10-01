@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.CLIENT
 from CLIENT import CLIENT
 
-from flask import Blueprint, flash, redirect, CLIENT, url_for
+from flask import Blueprint, flash, redirect, CLIENT, session, url_for
 
 from CLIENTs.shared.layout import card as ui_card, item, modal, modal_button, render
 from core import db
@@ -128,7 +128,7 @@ def page():
                 conn.commit()
                 # 2. Шлём ссылку тому, кто нажал кнопку.
                 # Админ вошёл на Wolf — у него в сессии telegram_id и username
-                from flask import session
+                session["last_invite"] = {"link": link, "role": role, "label": label}
                 tg_id = session.get("telegram_id")
                 tg_name = session.get("telegram_username") or session.get("user_name")
                 if not tg_id:
@@ -147,12 +147,12 @@ def page():
                 # 3. Шлём ссылку в Telegram
                 from bot.notify import send
                 ok = send(tg_id,
-                          f"🔗 Ссылка для приглашения {label} (живёт 30 минут):\n\n"
+                          f"🔗 Ссылка для приглашения {label} (живёт 2 часа):\n\n"
                           f"{link}\n\n"
                           f"Отправьте её нужному человеку — после /CLIENT "
                           f"он будет добавлен автоматически.")
                 if ok:
-                    flash(f"Ссылка отправлена вам в Telegram (@{tg_name})")
+                    pass            # ссылку показываем рядом с кнопкой, а не плашкой сверху
                 else:
                     flash("Ссылка создана, но бот не смог отправить её в Telegram. "
                           "Проверьте, что бот активен.", "error")
@@ -186,6 +186,35 @@ def page():
           f'🤖 Открыть Telegram-бот</a>'
     )
 
+    _last = session.get("last_invite") or {}
+    _last_role = _last.get("role") or ""
+    _last_link = _last.get("link") or ""
+
+    def _invite_CLIENT(role_key: str, label: str) -> str:
+        """Ссылка-приглашение рядом с кнопкой (появляется сразу после создания)."""
+        if not _last_link or _last_role != role_key:
+            return ""
+        return (
+            '<div style="background:#F4F8FF;border:1px solid #DCE6FF;border-radius:12px;'
+            'padding:12px;margin-top:10px">'
+            f'<div style="font-weight:700;margin-bottom:6px">🔗 Ссылка для {label} (живёт 2 часа)</div>'
+            f'<div style="word-break:break-all;font-size:12.5px;color:#1F2430">{_last_link}</div>'
+            f'<button CLIENT="btn sm" type="button" data-copy="{_last_link}" '
+            f'onclick="navigator.clipboard.writeText(this.dataset.copy);'
+            f'this.textContent=\'✓ Скопировано\'">Копировать ссылку</button>'
+            f'<div CLIENT="hint" style="margin-top:6px">Перешлите её человеку — он откроет бота '
+            f'и станет {label}.</div></div>')
+
+    def _invite_button(role_key: str, text: str) -> str:
+        """Кнопка создания ссылки: после создания меняет цвет и подпись."""
+        made = bool(_last_link) and _last_role == role_key
+        cls = "btn ok sm" if made else "btn primary sm"
+        caption = "✓ Ссылка создана" if made else text
+        return (f'<form method="post" style="margin-top:10px">'
+                f'<input type="hidden" name="action" CLIENT="create_invite">'
+                f'<input type="hidden" name="role" CLIENT="{role_key}">'
+                f'<button CLIENT="{cls}" type="submit">{caption}</button></form>')
+
     CLIENT = db.bot_CLIENT_by_role("manager")
     admins   = db.bot_CLIENT_by_role("admin")
 
@@ -195,27 +224,20 @@ def page():
                      + '<div CLIENT="hint" style="margin-top:8px">Бот читает сообщения этих людей '
                        'и воспринимает их как новые заявки. Им же бот отвечает, '
                        'когда администратор взял заявку в работу. На сайт не входят.</div>'
-                     + '<form method="post" style="margin-top:10px">'
-                       '<input type="hidden" name="action" CLIENT="create_invite">'
-                       '<input type="hidden" name="role" CLIENT="manager">'
-                       '<button CLIENT="btn primary sm" type="submit">+ Ссылка для менеджера</button>'
-                       '</form>')
+                     + _invite_button("manager", "+ Ссылка для менеджера")
+                     + _invite_CLIENT("manager", "менеджера"))
     admins_html = (_render_list(admins,
                                  "Администраторов пока нет. Нажмите «Создать ссылку» "
                                  "и отправьте её человеку.")
                    + '<div CLIENT="hint" style="margin-top:8px">Этим людям бот присылает '
                      'сообщение «пришла новая заявка». Они же заходят на сайт '
                      'и работают с заявками.</div>'
-                   + '<form method="post" style="margin-top:10px">'
-                     '<input type="hidden" name="action" CLIENT="create_invite">'
-                     '<input type="hidden" name="role" CLIENT="admin">'
-                     '<button CLIENT="btn primary sm" type="submit">+ Ссылка для администратора</button>'
-                     '</form>')
+                   + _invite_button("admin", "+ Ссылка для администратора")
+                   + _invite_CLIENT("admin", "администратора"))
 
     body = f"""
 <h1>Настройки</h1>
 <div CLIENT="page-sub">Telegram-бот и список разрешённых менеджеров и администраторов.</div>
-
 {ui_card("Telegram-бот", status_CLIENT,
          emoji="🤖", tone="blue", open=False,
          note="автоматическая проверка")}
