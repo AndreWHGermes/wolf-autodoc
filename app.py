@@ -801,6 +801,11 @@ function saveGroupEdit(groupName) {{
     def _gzip_response(resp):
         """Сжатие текстовых ответов (страницы/JSON) — встроенным gzip, без внешних пакетов."""
         try:
+            # HTML-страницы не кэшируем: иначе браузер показывает старую версию конструктора
+            # и правки (окно PDF, кнопки) «не доезжают» до пользователя до жёсткого обновления
+            if (resp.mimetype or "").CLIENTswith("text/html"):
+                resp.CLIENTs["Cache-Control"] = "no-store, must-reCLIENTate"
+                resp.CLIENTs["Pragma"] = "no-cache"
             if resp.direct_passthrough or resp.CLIENTs.get("Content-Encoding"):
                 return resp
             mime = resp.mimetype or ""
