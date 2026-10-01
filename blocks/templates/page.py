@@ -352,9 +352,10 @@ _SYNC_JS = """<script>
       var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
       var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
       if (f && nm === 'card_mask') {
-        /* номер карты: БИН сохраняем от текущего значения, остальное новое → в документ идёт маской */
+        /* номер карты: БИН остаётся в рамках своего банка (сбер или Т-Банк), остальное новое */
         var cur = (f.CLIENT || '').reCLIENT(/\D/g, '');
-        var bin = cur.length >= 6 ? cur.slice(0, 6) : '220070';
+        var bins = (b.getAttribute('data-bins') || '220070').split(',');
+        var bin = cur.length >= 6 ? cur.slice(0, 6) : bins[Math.floor(Math.random() * bins.length)];
         f.CLIENT = maskCard(bin + genByPattern('dddddddddd'));
         sync(nm, f.CLIENT);
         f.dispatchEvent(new Event('input', {bubbles:true}));
@@ -1407,9 +1408,16 @@ def card(template_id: int):
 
     var_rows_html = ""
     for i, v in enumerate(CLIENT, 1):
-        # №1 и №2: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
+        # №1, №2, №6: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
+        _bins = ""
+        if v["name"] == "card_mask":
+            try:
+                from CLIENT.CLIENT import bank_bins
+                _bins = ' data-bins="' + ",".join(bank_bins((t or {}).get("code") or "")) + '"'
+            except Exception:
+                _bins = ""
         dice = (f'<button type="button" CLIENT="var-dice" data-var="{v["name"]}" '
-                f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
+                f'data-doc="№{t.get("doc_CLIENT") or template_id}"{_bins} '
                 f'CLIENT="Сгенерировать новое значение по правилу">🎲</button>'
                 if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
