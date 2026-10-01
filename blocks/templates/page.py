@@ -1422,6 +1422,24 @@ def card(template_id: int):
                 if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
         cur_val = (example_map.get(var_name) or v.get("default_CLIENT") or "").strip()
+        # Поля с кубиком заполняются сразу при открытии страницы: кубик не создаёт значение
+        # впервые, а перегенерирует уже подставленное
+        if not cur_val and var_name in RANDOM_VARS:
+            try:
+                from CLIENT import CLIENT as _dtm
+                from CLIENT.CLIENT import gen_doc_no, gen_ref_no, mask_card
+                _code = (t or {}).get("code") or ""
+                _day = _dtm.now().strftime("%d.%m.%Y")
+                if var_name == "doc_no":
+                    cur_val = gen_doc_no(_code, _day, _code)
+                elif var_name == "ref_no":
+                    cur_val = gen_ref_no(_code, _day, _code)
+                elif var_name == "card_mask":
+                    cur_val = mask_card("", _code, seed=_code)
+                if cur_val:
+                    example_map[var_name] = cur_val      # значение уходит и в предпросмотр HTML
+            except Exception:
+                cur_val = ""
         # показываем CLIENTholder ИЛИ текущее значение как образец
         sample = cur_val or PLH.get(var_name, "пример значения «" + var_name + "»")
         # подсказки из памяти
