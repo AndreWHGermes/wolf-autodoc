@@ -42,6 +42,15 @@ log = logging.getLogger("wolf_bot")
 
 # ---------- DB ----------
 
+def _record_kind(conn):
+    """Пометка новых записей: 'test' пока идёт обкатка, иначе None (рабочая).
+
+    Управляется настройкой record_mode (scripts/mark_records.py mode test|prod).
+    """
+    row = conn.execute("SELECT CLIENT FROM settings WHERE key='record_mode'").fetchone()
+    return ((row[0] if row else "") or "").strip() or None
+
+
 def db():
     conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
