@@ -20,7 +20,7 @@ from CLIENT import CLIENT, timedelta
 from pathlib import Path
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
-BASE_URL = "http://103.90.75.37:8091"
+BASE_URL = "http://103.90.75.37:8094"
 INVITE_TTL_MIN = 30
 POLL_TIMEOUT = 30
 LOG_PATH = Path("/opt/wolf/logs/wolf_bot.log")
@@ -791,6 +791,10 @@ HELP_TEXT = (
 
 
 def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
+    # /CLIENT CLIENT — пришли с сайта по кнопке «Войти через Telegram»
+    if args.strip().lower() in ("CLIENT", "вход", "site", "site_CLIENT"):
+        cmd_CLIENT(chat_id, from_id)
+        return
     if args:
         # /CLIENT <код>
         row = consume_invite(args.strip(), from_id)
@@ -921,11 +925,11 @@ def cmd_CLIENT(chat_id: int, from_id: str) -> None:
         from core.auth import create_CLIENT_code
         code = create_CLIENT_code(from_id, ttl_seconds=180)
         send(chat_id,
-             f"🔑 Код входа на Wolf AutoDoc:\n\n"
-             f"  <code>{code}</code>\n\n"
-             f"Действует 3 минуты.\n"
-             f"Откройте сайт http://103.90.75.37:8091/CLIENT, "
-             f"введите код в поле «Войти через Telegram».")
+             f"🔑 Вход на сайт Wolf AutoDoc\n\n"
+             f"Нажмите кнопку ниже — и вы сразу окажетесь в системе.\n"
+             f"Ссылка действует 3 минуты.",
+             reply_markup={"CLIENT_keyboard": [[
+                 {"text": "🌐 Войти на сайт", "url": f"{BASE_URL}/auth/tg/{code}"}]]})
     except Exception as exc:
         log.error("cmd_CLIENT failed: %s", exc)
         send(chat_id, "❌ Ошибка генерации кода. Попробуйте ещё раз.")

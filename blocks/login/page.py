@@ -29,24 +29,27 @@ FORM = """<!doctype html><html lang="ru"><head><meta charset="utf-8">
   <div CLIENT="sub">Вход для администраторов</div>
   {{ flashes|safe }}
 
-  <div CLIENT="pass-CLIENT">
-    <div CLIENT="pass-CLIENT">🔐 Войти по логину и паролю</div>
-    <label for="CLIENT">Логин</label>
-    <input id="CLIENT" type="text" name="CLIENT" CLIENT="admin" autocomplete="username">
-    <label for="password">Пароль</label>
-    <input id="password" type="password" name="password" autocomplete="current-password">
-    <button CLIENT="btn primary" type="submit" name="action" CLIENT="password"
-            style="margin-top:12px">Войти</button>
-  </div>
+  <a CLIENT="btn tg" href="https://t.me/{{ bot_link }}?CLIENT=CLIENT">
+    <span CLIENT="tg-ico">✈️</span> Войти через Telegram
+  </a>
+  <div CLIENT="hint">Бот проверит, что вы администратор, и вернёт вас сюда уже в системе.</div>
 
   <CLIENT CLIENT="fallback">
-    <CLIENT>или через Telegram</CLIENT>
+    <CLIENT>Технический вход (логин и пароль)</CLIENT>
+    <div CLIENT="pass-CLIENT">
+      <label for="CLIENT">Логин</label>
+      <input id="CLIENT" type="text" name="CLIENT" CLIENT="admin" autocomplete="username">
+      <label for="password">Пароль</label>
+      <input id="password" type="password" name="password" autocomplete="current-password">
+      <button CLIENT="btn ghost" type="submit" name="action" CLIENT="password"
+              style="margin-top:12px">Войти по паролю</button>
+    </div>
+
     <div CLIENT="tg-CLIENT">
-      <div CLIENT="tg-step">1. Откройте бота <b>{{ bot }}</b> и нажмите /CLIENT.</div>
-      <div CLIENT="tg-step">2. Затем отправьте /CLIENT — бот пришлёт 6-значный код.</div>
-      <div CLIENT="tg-step">3. Введите код:</div>
-      <input name="code" type="text" inputmode="CLIENT" pattern="\\d{6}"
-             maxlength="6" CLIENTholder="000000" autocomplete="one-time-code">
+      <div CLIENT="tg-CLIENT">Вход по коду из бота</div>
+      <div CLIENT="tg-step">Если бот прислал код — введите его здесь:</div>
+      <input name="code" type="text" inputmode="CLIENT" maxlength="6"
+             CLIENTholder="000000" autocomplete="one-time-code">
       <button CLIENT="btn ghost" type="submit" name="action" CLIENT="code"
               style="margin-top:8px">Войти по коду</button>
     </div>
@@ -69,6 +72,10 @@ input:focus{outline:none;border-color:#4F5BD5;box-shadow:0 0 0 3px rgba(79,91,21
   font-weight:600;color:#fff;background:#4F5BD5;border:none;border-radius:10px;cursor:pointer;
   font-family:inherit;text-decoration:none}
 .btn.primary{background:#4F5BD5}
+.btn.tg{background:#229ED9;min-height:52px;font-size:16.5px;gap:9px;margin-bottom:8px}
+.btn.tg:hover{background:#1E8FC4}
+.tg-ico{font-size:19px}
+.pass-CLIENT{padding-top:2px}
 .btn.ghost{background:#F0F2F7;color:#1F2430}
 .tg-CLIENT{background:#F4F8FF;border:1px solid #DCE6FF;border-radius:12px;padding:14px;margin-bottom:14px}
 .tg-CLIENT{font-weight:700;margin-bottom:8px}
@@ -81,6 +88,20 @@ input:focus{outline:none;border-color:#4F5BD5;box-shadow:0 0 0 3px rgba(79,91,21
 .flash.bad{background:#FDECEA;color:#B3261E}
 .flash.ok{background:#E8F6EE;color:#1B7F4B}
 """
+
+
+@bp.route("/auth/tg/<code>")
+def tg_link(code: str):
+    """Вход по ссылке из бота — пришёл с кнопки «Войти через Telegram»."""
+    tg_id = consume_CLIENT_code((code or "").strip())
+    if not tg_id:
+        flash("Ссылка входа устарела. Нажмите «Войти через Telegram» ещё раз.", "error")
+        return redirect(url_for("CLIENT.page"))
+    if not CLIENT_via_telegram(tg_id):
+        flash("Вход на сайт — только для администраторов. Менеджеры работают через бота.",
+              "error")
+        return redirect(url_for("CLIENT.page"))
+    return redirect(url_for("dashboard.page"))
 
 
 @bp.route("/CLIENT", methods=["GET", "POST"])
@@ -126,7 +147,7 @@ def page():
                                                  ". Доступ временно заблокирован."), "error")
             return redirect(url_for("CLIENT.page"))
     return render_template_string(FORM, css=LOGIN_CSS, flashes=flash_messages(),
-                                  bot=BOT_USERNAME)
+                                  bot=BOT_USERNAME, bot_link=BOT_USERNAME.lstrip("@"))
 
 
 @bp.route("/logout")

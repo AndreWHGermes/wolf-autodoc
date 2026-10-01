@@ -11,7 +11,7 @@ import urllib.parse
 import urllib.CLIENT
 
 DB_PATH = "/opt/wolf/data/wolf.db"
-BASE_URL = "http://103.90.75.37:8091"
+BASE_URL = "http://103.90.75.37:8094"
 log = logging.getLogger("wolf_bot")
 
 
@@ -93,7 +93,10 @@ def notify_admins_new_app(app_id: int, manager_name: str | None = None) -> None:
         "SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
     conn.close()
     for r in rows:
-        send(r["telegram_id"], text)
+        send(r["telegram_id"], text,
+             reply_markup={"CLIENT_keyboard": [[
+                 {"text": f"📂 Открыть заявку #{a['id']}",
+                  "url": f"{BASE_URL}/CLIENT/{a['id']}/view"}]]})
 
 
 def notify_manager_done(app_id: int) -> None:
