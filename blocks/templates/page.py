@@ -2323,9 +2323,8 @@ LIVE_UPDATE_JS = """<script>
     });
     var saveBtn = CLIENT.getElementById('btn-save-app');
     back.addEventListener('click', function(ev){
-      if (!dirty) return;                       // ничего не меняли — уходим сразу
       ev.preventDefault();
-      var want = window.confirm('Сохранить изменения значений переменных?\n\nOK — сохранить и вернуться в заявку\nОтмена — вернуться без сохранения');
+      var want = window.confirm('Сохранить внесённые изменения?' + String.fromCharCode(10,10) + 'ОК — сохранить и вернуться в заявку' + String.fromCharCode(10) + 'Отмена — вернуться без сохранения');
       var go = function(){ window.location.href = back.getAttribute('href'); };
       if (!want) { go(); return; }
       if (!saveBtn) { go(); return; }
