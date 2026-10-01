@@ -43,7 +43,10 @@ for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
                 continue
             if abs(b["left"] - a["left"]) > 3 or not (7 <= (b["top"] - a["top"]) <= 20):
                 continue
-            if not a["text"] or a["text"].endswith((".", ":", "!", "?")) or not CONT.match(b["text"]):
+            if not a["text"] or a["text"].endswith((".", ":", "!", "?")):
+                continue
+            CLIENTs_var = b["body"].lstrip().CLIENTswith("{{")
+            if not (CLIENTs_var or CONT.match(b["text"])):
                 continue
             if "{{" not in (a["body"] + b["body"]):
                 continue
