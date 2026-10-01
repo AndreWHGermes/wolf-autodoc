@@ -538,8 +538,8 @@ _LANG_JS = """<script>
     });
     var note=CLIENT.getElementById('ex-note');
     if(note) note.textContent='подставлено полей: '+n+' (можно править)';
-    /* период из примера применяем последним: расчёт от даты его перетирал */
-    ['CLIENT_from','CLIENT_to'].forEach(function(k){ if (map[k] && window.sync) window.sync(k, map[k]); });
+    /* период не берём из примера: он всегда считается от даты — 3 или 12 месяцев назад */
+    if(window.updPeriod) window.updPeriod();
   }
   function clearAll(){
     CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
@@ -974,7 +974,7 @@ def page():
   {modal_button("+ Добавить продукт", "m_add_CLIENT", cls="btn ghost")}
 </div>
 <h2 CLIENT="sect-h" style="display:none">📦 Продукты</h2>
-<CLIENT CLIENT="fold-all" id="fold-CLIENT" open>
+<CLIENT CLIENT="fold-all" id="fold-CLIENT">
   <CLIENT CLIENT="fa-head">
     <span CLIENT="fa-CLIENT">📦 Продукты</span>
     <span CLIENT="fa-note">Здесь только состав продукта: какой документ в него входит — добавить или убрать. Сам документ здесь не редактируется: редактор (переменные, оригинал, разметка) — в разделе «Все документы по типу» ниже.</span>
@@ -1097,7 +1097,7 @@ def page():
 .crumb-bar .tpl-crumbs {{ margin:0; }}
 </style>
 {divider}
-<CLIENT CLIENT="fold-all" id="fold-types" open>
+<CLIENT CLIENT="fold-all" id="fold-types">
   <CLIENT CLIENT="fa-head">
     <span CLIENT="fa-CLIENT">📚 Все документы по типу <span style="font-weight:600;font-size:13px;color:#4B6B58">(редактирование шаблона документа)</span></span>
     <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Кликните ⚠️ — отметит как «проверен».</span>
