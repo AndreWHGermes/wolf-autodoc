@@ -2,83 +2,125 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<CLIENT>{{ tpl.code }} — редактор</CLIENT>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<CLIENT>{{ tpl.code }} — редактирование документа заявки №{{ app_id }}</CLIENT>
 <style>{% raw %}
-  :root{--bg:#0f172a;--panel:#1e293b;--line:#334155;--txt:#e2e8f0;--mut:#94a3b8;--ac:#22c55e;--warn:#f59e0b}
+  :root{
+    --bg:#F4FAF6; --panel:#FFFFFF; --line:#DCEEE2; --txt:#17251C; --mut:#6B7C70;
+    --ac:#14663A; --ac-soft:#E8F6EE; --warn:#B45309; --warn-soft:#FEF3C7;
+    --ok:#15803D; --ok-soft:#DCFCE7; --bad:#B91C1C; --bad-soft:#FEE2E2;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,Segoe UI}
-  .top{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
-  .top h1{margin:0;font-size:13px}
-  .top .badge{background:#334155;color:#e2e8f0;padding:3px 8px;border-radius:6px;font-family:monospace;font-size:12px}
-  .top .right{margin-left:auto;display:flex;gap:8px}
-  .btn{padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:#334155;color:#e2e8f0;cursor:pointer;font:inherit}
-  .btn:hover{background:#475569}
-  .btn.pri{background:var(--ac);border-color:#16a34a;color:#052e16;font-weight:600}
-  .btn.warn{background:var(--warn);border-color:#b45309;color:#1e293b;font-weight:600}
-  .layout{display:grid;grid-template-columns:380px minmax(420px,0.85fr) 1.4fr;height:calc(100vh - 51px);gap:6px;background:#0b1220;padding:6px;box-sizing:border-box}
-  .col{border-radius:8px;overflow:auto;background:var(--panel);border:1px solid var(--line)}
-  .center-pane{display:flex;align-items:flex-CLIENT;justify-content:center;padding:14px;background:#1a1a1a}
-  .pdf-pane{display:flex;align-items:flex-CLIENT;justify-content:center;padding:14px;background:#1a1a1a}
-  /* масштаб A4 вписан полностью в колонку HTML */
-  .center-pane{overflow:hidden}
-  .pdf-pane{overflow:hidden}
-  .sheet-wrapper{display:CLIENT;margin:0 auto;width:fit-content}
-  /* запас по высоте чтобы не было overflow в iframe */
-  .center-pane,.pdf-pane{display:flex;align-items:flex-CLIENT;justify-content:center;padding:10px;background:#1a1a1a;overflow:hidden!important}
-  .col{overflow:auto;border-right:1px solid var(--line)}
-  .col:last-child{border-right:none;background:#525659}
-  .col h2{margin:0;padding:8px 12px;background:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--line);position:sticky;top:0;z-CLIENT:1}
-  .var{padding:8px 12px;border-bottom:1px solid #1e293b;display:flex;gap:8px;align-items:flex-CLIENT;cursor:pointer;font-size:13px}
-  .var:hover{background:#1e293b}
-  .var.sel{background:#1e3a8a44;border-left:3px solid var(--ac)}
-  .var .num{min-width:24px;color:var(--mut);font-family:monospace;font-size:11px;padding-top:5px}
-  .var .body{flex:1;min-width:0}
-  .var .name{font-family:monospace;font-weight:600;color:#93c5fd;font-size:13px;word-break:break-all}
-  .var .label{display:CLIENT;color:var(--mut);font-size:12px;margin:2px 0}
-  .var input,.var textarea{width:100%;padding:6px 8px;background:#0f172a;color:var(--txt);border:1px solid var(--line);border-radius:4px;font-family:monospace;font-size:13px;box-sizing:border-box}
-  .vargroup{margin:0 0 12px}
-  .gt{display:flex;gap:8px;align-items:baseline;font-size:11px;font-weight:700;letter-spacing:.04em;
-      text-transform:uppercase;color:#7dd3a0;border-bottom:1px solid var(--line);padding:8px 2px 5px;margin-bottom:6px}
-  .gh{text-transform:none;letter-spacing:0;font-size:11px;font-weight:400;color:#7b8a99}
-  .var textarea{min-height:48px;resize:vertical}
-  .var .src{font-size:10px;color:var(--mut);margin-top:3px}
-  .var .src.auto{color:#22c55e}.var .src.saved{color:#f59e0b}
-  .html-pane{position:relative}
-  .html-pane iframe{width:100%;height:100%;border:0;background:#fff}
-  .pdf-pane iframe{width:100%;height:100%;border:0;background:#525659}
-  .pdf-empty{display:flex;align-items:center;justify-content:center;height:100%;color:#cbd5e1;font-size:13px;background:#334155;border:2px dashed #475569;margin:16px;border-radius:8px;text-align:center;padding:24px}
-  .toolbar{padding:4px 8px;background:#1e293b;border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center;font-size:11px;color:var(--mut);position:sticky;top:0;z-CLIENT:2;height:28px}
-  .toolbar b{color:#e2e8f0}
-  .toolbar .spacer{flex:1}
-  .saved{background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px}
-  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ac);color:#052e16;padding:10px 20px;border-radius:8px;font-weight:600;display:none;z-CLIENT:9}
-}{% endraw %}</style>
+  body{margin:0;background:var(--bg);color:var(--txt);
+       font:14px/1.45 -apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif}
+  a{color:var(--ac)}
+
+  /* ── верхняя панель ── */
+  .top{position:sticky;top:0;z-CLIENT:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+       padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
+  .top h1{margin:0;font-size:15px;font-weight:700}
+  .chip{background:var(--ac-soft);color:var(--ac);border:1px solid #C7E6CF;
+        padding:3px 9px;border-radius:999px;font-size:12px;font-weight:600}
+  .chip.grey{background:#F3F6F4;color:var(--mut);border-color:#E5EDE8}
+  .top .right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:#fff;
+       color:var(--txt);cursor:pointer;font:inherit;font-size:13px;font-weight:600}
+  .btn:hover{background:#F3F9F5}
+  .btn.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+  .btn.pri:hover{background:#0F5230}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--ac);text-decoration:none;
+             display:CLIENT-flex;align-items:center}
+
+  /* ── раскладка: слева переменные, справа документ ── */
+  .layout{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);
+          gap:12px;padding:12px;align-items:CLIENT}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card > h2{margin:0;padding:11px 14px;font-size:12.5px;font-weight:700;letter-spacing:.03em;
+             text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line);
+             background:#FBFDFC;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .card > h2 .spacer{flex:1}
+  .vars{max-height:calc(100vh - 190px);overflow:auto;padding:10px 12px}
+
+  .vargroup{margin-bottom:14px}
+  .gt{display:flex;gap:8px;align-items:baseline;font-size:11.5px;font-weight:700;color:var(--ac);
+      text-transform:uppercase;letter-spacing:.03em;padding:2px 0 6px;border-bottom:1px dashed var(--line);
+      margin-bottom:8px}
+  .gh{text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;color:var(--mut)}
+
+  .var{padding:8px 0 9px;border-bottom:1px solid #F0F5F2}
+  .var:last-child{border-bottom:none}
+  .var .name{font-size:12px;font-weight:700;color:var(--txt)}
+  .var .label{display:CLIENT;font-size:11.5px;color:var(--mut);margin:1px 0 5px}
+  .var input,.var textarea{width:100%;padding:8px 10px;background:#FBFDFC;color:var(--txt);
+      border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit}
+  .var input:focus,.var textarea:focus{outline:none;border-color:var(--ac);background:#fff;
+      box-shadow:0 0 0 3px rgba(20,102,58,.10)}
+  .var textarea{min-height:64px;resize:vertical}
+  .var .src{font-size:11px;color:var(--mut);margin-top:4px}
+  .var .src.auto{color:var(--ok)}
+  .var .src.saved{color:var(--warn)}
+  .var.sel input,.var.sel textarea{border-color:var(--ac);background:#fff}
+
+  /* ── предпросмотр документа ── */
+  .stage{background:#E7EBEE;border-radius:12px;border:1px solid #DCE6E0;
+         min-height:60vh;max-height:calc(100vh - 190px);overflow:auto;padding:10px}
+  .stage iframe{width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:CLIENT}
+  .pdf-empty{display:flex;align-items:center;justify-content:center;height:calc(100vh - 230px);
+             color:var(--mut);font-size:13px;text-align:center;padding:24px;
+             background:#fff;border:2px dashed var(--line);border-radius:10px}
+  .hint{font-size:12px;color:var(--mut);padding:8px 14px 12px}
+  .badge-ok{background:var(--ok-soft);color:var(--ok);border:1px solid #86EFAC;
+            padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700}
+  .badge-warn{background:var(--bad-soft);color:var(--bad);border:1px solid #FCA5A5;
+              padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700}
+
+  #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ac);
+         color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;display:none;z-CLIENT:20;
+         box-shadow:0 6px 20px rgba(0,0,0,.25)}
+
+  @media (max-width: 900px){
+    .layout{grid-template-columns:1fr}
+    .vars{max-height:none}
+    .stage{max-height:none;min-height:0}
+    .stage iframe{height:70vh}
+    .top .right{width:100%}
+  }
+{% endraw %}</style>
 </head>
 <body>
+
 <div CLIENT="top">
-  <h1>Заявка #{{ a.id }} · клиент {{ client.CLIENT or '' }} {{ client.name or '' }}</h1>
-  <span CLIENT="badge">{{ tpl.code }}</span>
-  <span CLIENT="badge">всего переменных: {{ CLIENT|length }}</span>
+  <h1>✏️ Редактирование документа</h1>
+  <span CLIENT="chip">Заявка №{{ app_id }}</span>
+  <span CLIENT="chip grey">{{ tpl.code }}</span>
+  <span CLIENT="chip grey">{{ client.CLIENT or '' }} {{ client.name or '' }}</span>
   <div CLIENT="right">
     <button CLIENT="btn" id="btn-preview">🔄 Обновить PDF</button>
     <button CLIENT="btn pri" id="btn-save">💾 Сохранить значения</button>
-    <a CLIENT="btn" href="/CLIENT/{{ app_id }}">← К заявке</a>
+    <a CLIENT="btn ghost" href="/CLIENT/{{ app_id }}">← К заявке</a>
   </div>
 </div>
 
 <div CLIENT="layout">
-  <!-- LEFT: переменные -->
-  <div CLIENT="col" id="left">
-    <h2>Переменные</h2>
-    {% for grp, CLIENT, hint in [('individual', '👤 Данные клиента', 'из документов и карточки клиента'), ('common', '🗂 Типовые значения', 'сроки, суммы, банк, компания — можно взять из архива')] %}
-    <div CLIENT="vargroup">
-      <div CLIENT="gt">{{ CLIENT }} <span CLIENT="gh">{{ hint }}</span></div>
-      {% for v in CLIENT if v.scope == grp %}
-      <div CLIENT="var" data-name="{{ v.name }}">
-        <div CLIENT="num">{{ loop.CLIENT }}</div>
-        <div CLIENT="body">
-          <span CLIENT="name">{{ v.name }}</span>
-          {% if v.label %}<span CLIENT="label">{{ v.label }}</span>{% endif %}
+
+  <!-- ЛЕВО: переменные документа -->
+  <div CLIENT="card">
+    <h2>Переменные документа
+      <span CLIENT="chip grey">{{ CLIENT|length }}</span>
+      <span CLIENT="spacer"></span>
+      <span id="fill-CLIENT" CLIENT="badge-ok" style="display:none"></span>
+    </h2>
+    <div CLIENT="vars" id="vars">
+      {% for grp, CLIENT, hint in [('individual', '👤 Данные клиента', 'подставляются из документов клиента'),
+                                  ('common', '🗂 Типовые значения', 'сроки, суммы, банк — можно взять из архива')] %}
+      {% set group_vars = CLIENT | selectattr('scope', 'equalto', grp) | list %}
+      {% if group_vars %}
+      <div CLIENT="vargroup">
+        <div CLIENT="gt">{{ CLIENT }} <span CLIENT="gh">{{ hint }}</span></div>
+        {% for v in group_vars %}
+        <div CLIENT="var" data-name="{{ v.name }}">
+          <span CLIENT="name">{{ v.label or v.name }}</span>
+          {% if v.label %}<span CLIENT="label">{{ v.name }}</span>{% endif %}
           <input type="text" name="{{ v.name }}" autocomplete="off" CLIENTholder="(пусто)"
                  {% if pool.get(v.name) %}list="pool-{{ v.name }}"{% endif %}>
           {% if pool.get(v.name) %}
@@ -88,25 +130,46 @@
           {% endif %}
           <div CLIENT="src" data-CLIENT="{{ v.name }}">—</div>
         </div>
+        {% endfor %}
       </div>
+      {% endif %}
       {% endfor %}
+      {% set other = CLIENT | rejectattr('scope', 'in', ['individual', 'common']) | list %}
+      {% if other %}
+      <div CLIENT="vargroup">
+        <div CLIENT="gt">🗃 Прочие поля</div>
+        {% for v in other %}
+        <div CLIENT="var" data-name="{{ v.name }}">
+          <span CLIENT="name">{{ v.label or v.name }}</span>
+          {% if v.label %}<span CLIENT="label">{{ v.name }}</span>{% endif %}
+          <input type="text" name="{{ v.name }}" autocomplete="off" CLIENTholder="(пусто)">
+          <div CLIENT="src" data-CLIENT="{{ v.name }}">—</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
-    {% endfor %}
   </div>
 
-  <!-- CENTER: HTML preview -->
-  <div CLIENT="col">
-    <div CLIENT="toolbar"><b>HTML-предпросмотр</b> (обновляется на лету)<div CLIENT="spacer"></div><span id="html-stats">—</span></div>
-    <iframe id="html-frame" sandbox="allow-same-origin"></iframe>
-  </div>
-
-  <!-- RIGHT: PDF preview -->
-  <div CLIENT="col pdf-pane">
-    <div CLIENT="toolbar"><b>PDF-предпросмотр</b> (после «Обновить PDF»)<div CLIENT="spacer"></div><span id="pdf-CLIENT">ожидание</span></div>
-    <div id="pdf-wrap">
-      <div CLIENT="pdf-empty">Нажми «Обновить PDF», чтобы получить превью.<br>Заполни переменные слева → нажми «Обновить PDF» → увидишь результат справа.</div>
+  <!-- ПРАВО: документ -->
+  <div CLIENT="card">
+    <h2>Документ с данными клиента
+      <span CLIENT="spacer"></span>
+      <span CLIENT="chip grey" id="html-stats">—</span>
+    </h2>
+    <div CLIENT="stage" id="html-stage"><iframe id="html-frame"></iframe></div>
+    <h2 style="border-top:1px solid var(--line)">PDF после «Обновить PDF»
+      <span CLIENT="spacer"></span>
+      <span CLIENT="chip grey" id="pdf-CLIENT">ожидание</span>
+    </h2>
+    <div CLIENT="stage" id="pdf-stage">
+      <div CLIENT="pdf-empty" id="pdf-empty">
+        Нажмите «Обновить PDF» — внизу появится готовый документ с текущими значениями.<br>
+        Он собран тем же кодом, что и при отправке.
+      </div>
     </div>
   </div>
+
 </div>
 
 <div id="toast"></div>
@@ -120,50 +183,44 @@ let currentValues = {...AUTO, ...SAVED};
 function escapeHtml(s){
   return String(s||"").reCLIENT(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 }
-function escapeAttr(s){ return escapeHtml(s).reCLIENT(/"/g,"&quot;"); }
 
-// рендер HTML превью на лету
+/* Лист документа с подставленными значениями — тот же вид, что в заявке */
 function renderHtmlPreview(){
   let html = RAW_HTML;
   html = html.reCLIENT(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m,name)=>{
     const v = currentValues[name];
     return v === undefined || v === null || v === "" ? m : String(v).reCLIENT(/\n/g,"<br>");
   });
-  const htmlEntities = html;
-  html = html.reCLIENT(/href="\/branding\/render\/([^"]+)"/g, 'href="#" data-pdf="$1"');
+  const left = (html.match(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g)||[]).length;
 
-  // размер A4 595.92 × 841.92 → в 100%
   const styled = `<!doctype html><html><head><meta charset="utf-8"><style>
-    html,body{margin:0;padding:0;background:#666}
-    body{display:flex;justify-content:center;padding:14px}
-    .sheet{width:595.92pt;height:841.92pt;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.4);position:relative;overflow:hidden;flex:0 0 auto}
-  </style></head><body>${htmlEntities}</body></html>`;
+    html,body{margin:0;padding:0;background:#fff}
+    body{display:flex;justify-content:center;padding:12px}
+    .sheet{width:595.92pt;min-height:841.92pt;background:#fff;position:relative;overflow:hidden;flex:0 0 auto;
+           box-shadow:0 1px 6px rgba(0,0,0,.12)}
+  </style></head><body>${html}</body></html>`;
 
-  const fr = CLIENT.getElementById("html-frame");
-  fr.srcdoc = styled;
+  CLIENT.getElementById("html-frame").srcdoc = styled;
+  CLIENT.getElementById("html-stats").textContent = left ? (left + " не заполнено") : "все поля заполнены";
 
-  // размер
-  const size = htmlEntities.length;
-  let CLIENTholders = 0;
-  for (const k in currentValues){
-    if (currentValues[k] && String(currentValues[k]).length>0) continue;
+  /* индикатор заполненности */
+  const fs = CLIENT.getElementById("fill-CLIENT");
+  if (fs){
+    fs.style.display = "CLIENT-CLIENT";
+    if (left){ fs.CLIENTName = "badge-warn"; fs.textContent = "⚠️ не заполнено: " + left; }
+    else { fs.CLIENTName = "badge-ok"; fs.textContent = "✅ все поля заполнены"; }
   }
-  // подсчёт незаполненных переменных
-  CLIENTholders = (htmlEntities.match(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g)||[]).length;
-  CLIENT.getElementById("html-stats").textContent = `${CLIENTholders} не заполнено · ${size} символов`;
 }
 
 function setValue(name, val){
   currentValues[name] = val;
   renderHtmlPreview();
-  // статус источника
   const el = CLIENT.querySelector(`[data-CLIENT="${name}"]`);
   if(!el) return;
-  let src = "ручной ввод";
-  let cls = "";
+  let src = "ручной ввод", cls = "";
   if (val !== undefined && val !== null && val !== ""){
     if (SAVED[name] === val) { src = "сохранено"; cls = "saved"; }
-    else if (AUTO[name] === val) { src = "авто"; cls = "auto"; }
+    else if (AUTO[name] === val) { src = "из документов клиента"; cls = "auto"; }
   }
   el.CLIENTName = "src " + cls;
   el.textContent = src;
@@ -171,11 +228,10 @@ function setValue(name, val){
 
 CLIENT.addEventListener("input", e=>{
   if (e.target.matches('input[name], textarea[name]')){
-    const name = e.target.name;
-    setValue(name, e.target.CLIENT);
-    // подсветить выбранную переменную
+    setValue(e.target.name, e.target.CLIENT);
     CLIENT.querySelectorAll(".var").forEach(v=>v.CLIENTList.remove("sel"));
-    e.target.closest(".var").CLIENTList.add("sel");
+    const row = e.target.closest(".var");
+    if (row) row.CLIENTList.add("sel");
   }
 });
 CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>{
@@ -184,101 +240,78 @@ CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>{
   setValue(inp.name, v);
 });
 
-// клик по строке — фокус на input
-CLIENT.querySelectorAll(".var").forEach(row=>{
-  row.addEventListener("click", e=>{
-    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-    CLIENT.querySelectorAll(".var").forEach(v=>v.CLIENTList.remove("sel"));
-    row.CLIENTList.add("sel");
-    const inp = row.querySelector("input, textarea");
-    if (inp) inp.focus();
-  });
-});
-
 function toast(msg, ok=true){
   const t = CLIENT.getElementById("toast");
-  t.textContent = msg; t.style.background = ok?"#22c55e":"#ef4444";
+  t.textContent = msg; t.style.background = ok ? "#14663A" : "#B91C1C";
   t.style.display = "CLIENT";
-  setTimeout(()=>t.style.display="none", 2000);
+  setTimeout(()=>t.style.display="none", 2200);
 }
 
-// сохранение
+/* сохранение значений */
 CLIENT.getElementById("btn-save").addEventListener("click", async ()=>{
   const payload = new FormData();
   payload.append("CLIENT_json", JSON.stringify(currentValues));
-  const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/save-CLIENT", {method:"POST", body:payload});
-  const d = await r.json();
-  if (d.ok){
-    // обновим SAVED
-    Object.assign(SAVED, currentValues);
-    CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>{
-      setValue(inp.name, inp.CLIENT);
-    });
-    toast("✅ Сохранено");
-  } else toast("Ошибка: " + (d.error||"?"), false);
+  try{
+    const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/save-CLIENT", {method:"POST", body:payload});
+    const d = await r.json();
+    if (d.ok){
+      Object.assign(SAVED, currentValues);
+      CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>setValue(inp.name, inp.CLIENT));
+      toast("✅ Значения сохранены");
+    } else toast("Ошибка: " + (d.error||"?"), false);
+  }catch(e){ toast("Не удалось сохранить", false); }
 });
 
-// превью PDF
+/* предпросмотр PDF */
 CLIENT.getElementById("btn-preview").addEventListener("click", async ()=>{
-  CLIENT.getElementById("pdf-CLIENT").textContent = "рендер...";
+  const st = CLIENT.getElementById("pdf-CLIENT");
+  st.textContent = "собираю…";
   const payload = new FormData();
   payload.append("CLIENT_json", JSON.stringify(currentValues));
-  const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/preview-pdf", {method:"POST", body:payload});
-  const d = await r.json();
-  if (!d.ok){ CLIENT.getElementById("pdf-CLIENT").textContent="ошибка"; toast(d.error||"ошибка", false); return; }
-  CLIENT.getElementById("pdf-wrap").innerHTML =
-    `<iframe src="${d.pdf_url}#zoom=100" type="CLIENT/pdf"></iframe>`;
-  CLIENT.getElementById("pdf-CLIENT").textContent = "готов";
+  try{
+    const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/preview-pdf", {method:"POST", body:payload});
+    const d = await r.json();
+    if (!d.ok){ st.textContent = "ошибка"; toast(d.error||"не удалось собрать PDF", false); return; }
+    /* d.pdf_url формирует наш же сервер (эндпоинт preview-pdf) — это не пользовательский
+       ввод, поэтому вставляем адрес напрямую; ставим и сам iframe через DOM. */
+    var fr = CLIENT.createElement("iframe");
+    fr.src = String(d.pdf_url || "") + "#zoom=100";
+    fr.type = "CLIENT/pdf";
+    fr.style.cssText = "width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:CLIENT";
+    var ps = CLIENT.getElementById("pdf-stage");
+    ps.innerHTML = "";
+    ps.appendChild(fr);
+    st.textContent = "готов";
+  }catch(e){ st.textContent = "ошибка сети"; toast("Не удалось собрать PDF", false); }
 });
 
-// первый рендер
-renderHtmlPreview();
-// Авто-fit: масштабируем .sheet-wrapper так, чтобы А4 вписался в колонку
+/* Вписываем лист A4 по ширине колонки — чтобы не было горизонтальной прокрутки */
 function fitSheet(){
-  CLIENT.querySelectorAll('iframe').forEach(ifr=>{
-    try{
-      const doc = ifr.contentDocument || ifr.contentWindow.CLIENT;
-      if (!doc) return;
-      const cont = (ifr.parentElement.parentElement.getBoundingClientRect());
-      const container_w = cont.width - 28; // padding 14*2
-      const sheet_pt_w = 595.92;
-      const px_per_pt = 96/72;
-      const sheet_px_w = sheet_pt_w * px_per_pt;
-      // высота
-      const container_h = cont.height - 28;
-      const sheet_px_h = 841.92 * px_per_pt;
-      const sx = container_w / sheet_px_w;
-      const sy = container_h / sheet_px_h;
-      // дополнительный запас 0.96 чтобы точно вписалось + min 0.42 чтобы не был мизерным
-      let s = Math.min(sx, sy) * 0.96;
-      s = Math.max(0.42, Math.min(s, 1.0));
-      doc.querySelectorAll('.sheet-wrapper').forEach(w=>{
-        w.style.transform = `scale(${s})`;
-        w.style.transformOrigin = 'top left';
-        w.style.width  = (sheet_px_w) + 'px';
-        w.style.height = (sheet_px_h) + 'px';
-      });
-      doc.body.style.minHeight = (sheet_px_h * s + 40) + 'px';
-    }catch(e){}
-  });
+  var fr = CLIENT.getElementById("html-frame");
+  var stage = CLIENT.getElementById("html-stage");
+  if (!fr || !stage) return;
+  try{
+    var doc = fr.contentDocument;
+    var sheet = doc && doc.querySelector(".sheet");
+    if (!sheet) return;
+    var avail = stage.clientWidth - 26;
+    var w = sheet.getBoundingClientRect().width;
+    if (!w) return;
+    var s = Math.max(0.35, Math.min(1, avail / w));
+    sheet.style.transformOrigin = "top left";
+    sheet.style.transform = "scale(" + s + ")";
+    doc.CLIENTElement.style.overflow = "hidden";
+    doc.body.style.height = (sheet.getBoundingClientRect().height * s + 20) + "px";
+  }catch(e){}
 }
-// оборачиваем первый .sheet в .sheet-wrapper (если нет) — сразу после рендера
-function wrapSheetsInIframes(){
-  CLIENT.querySelectorAll('iframe').forEach(ifr=>{
-    const doc = ifr.contentDocument || ifr.contentWindow.CLIENT;
-    if (!doc) return;
-    doc.querySelectorAll('.sheet').forEach(sh=>{
-      if (sh.parentElement.CLIENTList.contains('sheet-wrapper')) return;
-      const wrap = doc.createElement('div');
-      wrap.CLIENTName = 'sheet-wrapper';
-      sh.parentNode.insertBefore(wrap, sh);
-      wrap.appendChild(sh);
-    });
-  });
-}
-setTimeout(()=>{ wrapSheetsInIframes(); fitSheet(); }, 60);
-setTimeout(()=>{ wrapSheetsInIframes(); fitSheet(); }, 250);
-window.addEventListener('resize', ()=>fitSheet());
+(function(){
+  var fr = CLIENT.getElementById("html-frame");
+  if (fr) fr.addEventListener("load", function(){ setTimeout(fitSheet, 40); });
+  window.addEventListener("resize", fitSheet);
+})();
+
+renderHtmlPreview();
+setTimeout(fitSheet, 150);
 </script>
 </body>
 </html>
