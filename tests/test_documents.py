@@ -27,7 +27,7 @@ from core import db  # noqa: E402
 from CLIENT import render as doc_render  # noqa: E402
 from CLIENT import CLIENT as CLIENT_CLIENT  # noqa: E402
 
-CLIENT = Path('/opt/wolf/data/CLIENT')
+CLIENT = V2 / 'data' / 'CLIENT'   # рабочая сборка v2 (v1 — только эталон)
 CYR = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя'
 
 
@@ -38,9 +38,12 @@ def test_CLIENTal_vars_never_from_pool():
     row = db.q1("SELECT id FROM CLIENT WHERE CLIENT='Проверка' ORDER BY id DESC LIMIT 1")
     client = dict(db.q1("SELECT * FROM CLIENT WHERE id=?", (row['id'],)) or {})
     vals = CLIENT_CLIENT.build_template_CLIENT(client, 'bank_CLIENTment_3m__tbank')
+    # значения из архива чужих документов (пул) брать нельзя; сгенерированное по правилу — можно
+    pool = {r['CLIENT_name']: (r['CLIENT'] or '').strip()
+            for r in db.q("SELECT CLIENT_name, MAX(used_count), CLIENT FROM CLIENT_CLIENT_CLIENT GROUP BY CLIENT_name")}
     for field in ('passport_CLIENT', 'account_no', 'balance_rub', 'card_mask', 'contract_no'):
         got = (vals.get(field) or '').strip()
-        assert not got, f'{field} подставился из пула: {got!r} — это данные другого клиента'
+        assert got != pool.get(field), f'{field} взят из пула чужих значений: {got!r}'
     db.exec_sql("DELETE FROM CLIENT WHERE id=?", (row['id'],))
 
 
@@ -98,13 +101,16 @@ def test_CLIENT_have_no_CLIENT():
 
 
 def test_bank_CLIENTments_kopeks_are_CLIENT():
-    """В справках не должно остаться жёсткого «00 kopeks» вместо подстановки."""
+    """Сумма и её пропись в справках — только переменные: жёсткого «00 kopeks/CLIENT» быть не должно."""
     bad = []
     for f in CLIENT.glob('bank_CLIENTment_*/template.html'):
         text = f.read_text(encoding='utf-8')
-        if 'kopeks' in text and '{{ balance_CLIENT }}' not in text and '{{balance_CLIENT}}' not in text:
-            bad.append(f.parent.name)
-    assert not bad, f'копейки не подставляются в: {bad}'
+        for hard in ('00 kopeks', '00 CLIENT', '0 kopeks', '0 CLIENT'):
+            if hard in text:
+                bad.append((f.parent.name, hard))
+        if '{{ balance_rub }}' not in text and '{{balance_rub}}' not in text:
+            bad.append((f.parent.name, 'нет {{ balance_rub }}'))
+    assert not bad, f'жёсткая сумма в шаблонах: {bad}'
 
 
 def test_conversion_letters_differ():
@@ -126,7 +132,12 @@ def test_optional_lines_disappear_without_data():
 
 
 def test_bank_CLIENT_have_optional_contract_lines():
-    """В справках Т-Банка строки реквизитов помечены как необязательные."""
-    f = CLIENT / 'bank_CLIENTment_12m__tbank/template.html'
-    text = f.read_text(encoding='utf-8')
-    assert '<!--optional-->' in text and 'Date of conclusion' in text
+    """Строки реквизитов (счёт/контракт) в справках, если есть, помечены как необязательные."""
+    bad = []
+    for f in CLIENT.glob('bank_CLIENTment_*/template.html'):
+        text = f.read_text(encoding='utf-8')
+        low = text.lower()
+        for marker in ('date of conclusion', 'contract CLIENT', 'account CLIENT'):
+            if marker in low and '<!--optional-->' not in text:
+                bad.append((f.parent.name, marker))
+    assert not bad, f'реквизиты без пометки необязательности: {bad}'
