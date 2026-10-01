@@ -277,3 +277,13 @@ tr:last-child td{border-bottom:none}
   box-shadow:inset 3px 0 0 #F59E0B}
 .var-row, .var-field{cursor:pointer;transition:background .15s}
 
+
+
+/* Пустая переменная в окне просмотра: видно, где она стояла, но глазом отличается от заполненной */
+.html-stage .var-hl.var-empty,
+.html-stage .var-empty {
+  color: #98A2B3 !important;
+  font-style: italic;
+  background: rgba(152, 162, 179, .14);
+  border-radius: 2px;
+}

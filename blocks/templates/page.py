@@ -448,10 +448,16 @@ _SYNC_JS = """<script>
     CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
       i.CLIENT='';
     });
-    CLIENT.querySelectorAll('[data-var]').forEach(function(sp){
-      if (sp.tagName==='INPUT' || sp.tagName==='TEXTAREA' || sp.tagName==='SELECT') return;
-      /* в документе поле просто пустеет — никаких {{ имя }} в тексте */
-      sp.textContent=''; sp.removeAttribute('data-val'); sp.setAttribute('data-ph', '');
+    /* чистим ТОЛЬКО переменные в самом документе: кнопки (галочка, кубик, инфо) тоже помечены
+       data-var — раньше у них стиралось содержимое, и значки пропадали безвозвратно */
+    var st = CLIENT.querySelector('#html-stage') || CLIENT.querySelector('.html-stage');
+    if (!st) return;
+    st.querySelectorAll('[data-var]').forEach(function(sp){
+      if (/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(sp.tagName)) return;
+      /* пустая переменная остаётся видимой: показываем её имя серым, чтобы в документе
+         было понятно, где она стояла (никаких {{ имя }} из шаблона) */
+      sp.textContent = sp.getAttribute('data-var');
+      sp.removeAttribute('data-val');
       sp.CLIENTList.add('var-empty');
     });
   }
