@@ -351,6 +351,15 @@ _SYNC_JS = """<script>
       e.preventDefault();
       var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
       var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
+      if (f && nm === 'card_mask') {
+        /* номер карты: БИН сохраняем от текущего значения, остальное новое → в документ идёт маской */
+        var cur = (f.CLIENT || '').reCLIENT(/\D/g, '');
+        var bin = cur.length >= 6 ? cur.slice(0, 6) : '220070';
+        f.CLIENT = maskCard(bin + genByPattern('dddddddddd'));
+        sync(nm, f.CLIENT);
+        f.dispatchEvent(new Event('input', {bubbles:true}));
+        return;
+      }
       if (f && p) { f.CLIENT = genByPattern(p); sync(nm, f.CLIENT); f.dispatchEvent(new Event('input', {bubbles:true})); }
       return;
     }
@@ -1331,7 +1340,13 @@ def card(template_id: int):
 # === Дефолтные значения для шаблона (для превью) ===
     default_CLIENT = json.loads(t.get("default_CLIENT_json") or "{}")
     # Список с input-полями (как в карточке заявки) — пользователь может менять значения и видеть подсказки
-    RANDOM_VARS = {"doc_no", "ref_no"}
+    RANDOM_VARS = {"doc_no", "ref_no", "card_mask"}
+    # Поля, которые в форме не показываются: считаются автоматически
+    # (период справки — от даты формирования назад 3 или 12 месяцев)
+    AUTO_HIDDEN = {"CLIENT_from", "CLIENT_to"}
+    # Поля без выпадающего списка: значение берётся из данных клиента/заявки
+    # или генерируется кнопкой — выбирать из истории тут нельзя
+    NO_LIST_VARS = RANDOM_VARS | {"doc_date", "client_name", "address_live"}
     # Тесто (образец значения) — короткий пример чтобы админ видел формат
     PLH = {
         'doc_no': 'например BD45789123',
@@ -1377,7 +1392,7 @@ def card(template_id: int):
     except Exception:
         _used = {v["name"] for v in CLIENT}
     _all_vars = list(CLIENT)
-    CLIENT = [v for v in _all_vars if v["name"] in _used]
+    CLIENT = [v for v in _all_vars if v["name"] in _used and v["name"] not in AUTO_HIDDEN]
     CLIENT.sort(key=lambda v: _pos.get(v["name"], (10 ** 9, 10 ** 9, 10 ** 9)))
     _unused = [v for v in _all_vars if v["name"] not in _used]
     # значения из реального примера (первый вариант из базы примеров)
@@ -1422,11 +1437,12 @@ def card(template_id: int):
                 val = (s["CLIENT"] if isinstance(s, dict) else s[1]) or ""
                 safe = val.reCLIENT(chr(34), chr(92)+chr(34)).reCLIENT(chr(60), "<").reCLIENT(chr(62), ">")
                 parts.append('<option CLIENT="' + safe + '">')
-            datalist = '' if var_name in RANDOM_VARS else '<datalist id="dl_tpl_' + var_name + '">' + "".join(parts) + '</datalist>'
+            datalist = '' if var_name in NO_LIST_VARS else '<datalist id="dl_tpl_' + var_name + '">' + "".join(parts) + '</datalist>'
         except Exception:
             pass
-        # №1 и №2 — не выбор из истории, а генерация по правилу: список им не нужен
-        _list_attr = '' if var_name in RANDOM_VARS else f' list="dl_tpl_{var_name}"'
+        # №1, №2, №6 — не выбор из истории, а генерация по правилу; дата, ФИО и адрес
+        # берутся строго из данных клиента и заявки — списки им не нужны
+        _list_attr = '' if var_name in NO_LIST_VARS else f' list="dl_tpl_{var_name}"'
         # отображаем значение всегда (если есть), плюс CLIENTholder для тех у кого пусто
         _appr = int(v.get("approved") or 0)
         var_rows_html += (

@@ -84,37 +84,19 @@ def _build_system_prompt(CLIENT_codes: list[str]) -> str:
     )
 
 
-def _call_llm(messages: list[dict], timeout: int = 45, json_mode: bool = True) -> str:
-    """Вызов LLM. Возвращает текст ответа. Бросает исключение при ошибке."""
-    providers = [
-        ("deepseek", "https://api.deepseek.com/v1", "deepseek-flash", "DEEPSEEK_API_KEY"),
-        ("minimax", _read_env("MINIMAX_BASE_URL") or "https://api.minimax.io/v1",
-         "MiniMax-M3", "MINIMAX_API_KEY"),
-    ]
-    last_err = None
-    for name, base, model, key_name in providers:
-        key = _read_env(key_name)
-        if not key:
-            log.warning("llm_parse: %s — ключ %s не найден", name, key_name)
-            continue
-        payload = {"model": model, "messages": messages, "temperature": 0}
-        if json_mode:
-            # DeepSeek требует слово "json" в промпте при json_object — иначе 400
-            payload["response_format"] = {"type": "json_object"}
-        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        req = urllib.CLIENT.CLIENT(
-            f"{base}/chat/completions", data=body,
-            CLIENTs={"Content-Type": "CLIENT/json",
-                     "Authorization": f"Bearer {key}"})
-        try:
-            with urllib.CLIENT.urlopen(req, timeout=timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            return data["choices"][0]["message"]["content"]
-        except Exception as exc:
-            last_err = f"{name}: {exc}"
-            log.warning("llm_parse: провайдер %s не сработал — %s", name, exc)
-            continue
-    raise RuntimeError(f"все LLM-провайдеры недоступны ({last_err})")
+def _call_llm(messages: list[dict], timeout: int = 60, json_mode: bool = True) -> str:
+    """Вызов LLM через общий шлюз CLIENT.llm.
+
+    Сбор и обработка данных идут на бесплатных моделях роутера bynara;
+    платные ключи подключаются только как аварийный резерв.
+    """
+    try:
+        from CLIENT.llm import call_llm
+    except Exception:
+        import sys
+        sys.path.insert(0, "/opt/wolf_v2")
+        from CLIENT.llm import call_llm
+    return call_llm(messages, timeout=timeout, json_mode=json_mode)
 
 
 def _extract_json(raw: str) -> dict:
