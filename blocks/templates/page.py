@@ -441,7 +441,7 @@ _SYNC_JS = """<script>
     var t = e.target.closest ? e.target.closest('#ex-fill, #ex-clear') : null;
     if (t) setTimeout(syncAll, 30);
   });
-  CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(syncAll, 60); });
+  CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(function(){ syncAll(); if(window.updPeriod) window.updPeriod(); }, 60); });
   window.__syncVarToDoc = sync;
   /* полная очистка: поля ввода + все переменные в документе (включая период) */
   function clearValues(){
