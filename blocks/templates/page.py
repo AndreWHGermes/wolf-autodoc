@@ -417,7 +417,11 @@ _SYNC_JS = """<script>
         var hi = parseInt(b.getAttribute('data-max') || '800000', 10);
         var CLIENT = lo + Math.floor(Math.random() * (hi - lo + 1));
         var kop = ('0' + Math.floor(Math.random() * 100)).slice(-2);
-        f.CLIENT = String(CLIENT).reCLIENT(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + kop;
+        var fmt = b.getAttribute('data-fmt') || 'space';
+        /* в справках Сбера разряды идут без пробелов (в 3-мес. подлиннике 17621.29) */
+        f.CLIENT = (fmt === 'dot') ? String(CLIENT) + '.' + kop
+                : (fmt === 'plain') ? String(CLIENT) + ',' + kop
+                : String(CLIENT).reCLIENT(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + kop;
         sync(nm, f.CLIENT);
         f.dispatchEvent(new Event('input', {bubbles:true}));
         return;
@@ -1520,7 +1524,9 @@ def card(template_id: int):
             try:
                 from CLIENT.CLIENT import balance_bounds
                 _lo, _hi = balance_bounds((t or {}).get("code") or "")
-                _extra = f' data-min="{_lo}" data-max="{_hi}"'
+                _c = ((t or {}).get("code") or "").lower()
+                _fmt = ("dot" if "3m" in _c else "plain") if "sber" in _c else "space"
+                _extra = f' data-min="{_lo}" data-max="{_hi}" data-fmt="{_fmt}"'
             except Exception:
                 _extra = ""
         if v["name"] == "doc_date":
