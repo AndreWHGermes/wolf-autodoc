@@ -1719,13 +1719,21 @@ def card(template_id: int):
             from CLIENT.CLIENT import build_template_CLIENT
             _ctx = dict(default_CLIENT)
             _ctx.update({k: v for k, v in example_map.items() if v})
-            _auto = build_template_CLIENT(_ctx, t["code"], _ctx) or {}
+            # ФИО показываем по нашим правилам — с отчеством (в оригинальном примере отчества нет)\n            try:\n                from CLIENT.CLIENT import fio_full_for_display as _fio_disp\n                for _k in ("client_name", "full_name", "full_name_CLIENT", "cv_name",\n                           "CLIENT_name", "CLIENT_full_name", "CLIENT_full_name_CLIENT"):\n                    if _ctx.get(_k):\n                        _ctx[_k] = _fio_disp(str(_ctx[_k]))\n            except Exception:\n                pass\n        # ФИО в наших документах всегда с отчеством — в оригинальных примерах его нет\n        try:\n            from CLIENT.CLIENT import fio_full_for_display as _fio_disp\n            for _k in ("client_name", "full_name", "full_name_CLIENT", "cv_name",\n                       "CLIENT_name", "CLIENT_full_name", "CLIENT_full_name_CLIENT"):\n                if example_map.get(_k):\n                    example_map[_k] = _fio_disp(str(example_map[_k]))\n                if default_CLIENT.get(_k):\n                    default_CLIENT[_k] = _fio_disp(str(default_CLIENT[_k]))\n        except Exception:\n            pass\n                    _auto = build_template_CLIENT(_ctx, t["code"], _ctx) or {}
         except Exception:
             _auto = {}
 
         def _hl(m):
             nm = m.group(1)
             val = (example_map.get(nm) or default_CLIENT.get(nm) or _auto.get(nm) or "").strip()
+            # ФИО показываем по нашим правилам — с отчеством (в оригинальных примерах его нет)
+            if val and nm in ("client_name", "full_name", "full_name_CLIENT", "cv_name",
+                              "CLIENT_name", "CLIENT_full_name", "CLIENT_full_name_CLIENT"):
+                try:
+                    from CLIENT.CLIENT import fio_full_for_display as _fio_disp
+                    val = _fio_disp(val)
+                except Exception:
+                    pass
             ph = "{{ %s }}" % nm
             shown = _esc(val) if val else ph
             return ('<span CLIENT="var-hl" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
@@ -2341,7 +2349,7 @@ def make_pdf(template_id: int):
     filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
     tmp_html = HTML_DIR / t["code"] / "filled.html"
     tmp_html.write_text(filled, encoding="utf-8")
-    out_pdf = RENDER_DIR / f'{t["code"]}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT)
     try:
         pdf2html.render_pdf(tmp_html, out_pdf)
     except Exception as exc:                            # noqa: BLE001
@@ -2370,7 +2378,7 @@ def preview_pdf(template_id: int):
     filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
     tmp_html = HTML_DIR / t["code"] / "filled.html"
     tmp_html.write_text(filled, encoding="utf-8")
-    out_pdf = RENDER_DIR / f'{t["code"]}_preview_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT)
     try:
         pdf2html.render_pdf(tmp_html, out_pdf)
     except Exception as exc:                            # noqa: BLE001
