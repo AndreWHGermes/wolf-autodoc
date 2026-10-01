@@ -1468,6 +1468,12 @@ def upload():
 @CLIENT_required
 def card(template_id: int):
     t = _template(template_id)
+    # ?app=<id> — режим заявки: редактируем документ конкретной заявки её данными
+    app_id = CLIENT.args.get("app", type=int)
+    app_row = db.CLIENT_get(app_id) if app_id else None
+    if app_id and not app_row:
+        app_id = None
+    client = (db.client_get(app_row["client_id"]) if app_row else {}) or {}
     CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=? ORDER BY sort_order, name",
                      (template_id,))
     qa = json.loads(t["qa_json"]) if t["qa_json"] else {}
@@ -1660,6 +1666,23 @@ def card(template_id: int):
     # чистые значения реального примера — их подставляет кнопка «Из примера»
     # (в example_map ниже дописываются автозначения, но кнопка должна возвращать именно пример)
     example_source = dict(example_map)
+
+    # РЕЖИМ ЗАЯВКИ: значения берём из карточки клиента и сохранённых значений заявки,
+    # а не из тестового примера. Значения показываем латиницей — как они попадут в документ.
+    if app_id and app_row:
+        try:
+            from CLIENTs.dashboard.page import build_template_CLIENT as _btv
+            _auto = _btv(client, t["code"]) or {}
+            _saved = {}
+            _row = db.q1("SELECT CLIENT_json FROM CLIENT_CLIENT "
+                         "WHERE CLIENT_id=? AND template_id=?", (app_id, template_id))
+            if _row and _row.get("CLIENT_json"):
+                _saved = json.loads(_row["CLIENT_json"]) or {}
+            for _k, _v in {**_auto, **_saved}.items():
+                if _v not in (None, ""):
+                    example_map[_k] = str(_v)
+        except Exception as _e:
+            log.warning("значения заявки #%s не подставлены: %s", app_id, _e)
 
     var_rows_html = ""
     for i, v in enumerate(CLIENT, 1):
@@ -1895,7 +1918,8 @@ def card(template_id: int):
 
     body = f"""
 <section CLIENT="tpl-card">
-  <h1 CLIENT="tpl-CLIENT">📄 Документ №{t.get("doc_CLIENT") or template_id} — {t["CLIENT"]}</h1>
+  <h1 CLIENT="tpl-CLIENT">{("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or ""))}</h1>
+  {('<div CLIENT="tpl-crumbs" style="margin-bottom:6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a href="/CLIENT/' + str(app_id) + '">← вернуться к заявке</a></div>') if app_id else ''}
   <div CLIENT="tpl-meta">{meta_row}</div>
   {toolbar_html}
 
@@ -1904,6 +1928,7 @@ def card(template_id: int):
       <div CLIENT="tpl-panel-head">
         🔧 Переменные
         <span CLIENT="tpl-count">({len(CLIENT)}, все заполнены)</span>
+        {('<button type="button" CLIENT="btn" id="btn-save-app" data-app="' + str(app_id) + '" data-tpl="' + str(template_id) + '" style="margin-left:auto;margin-right:8px;font-size:12.5px;padding:6px 12px;background:#14663A;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer">💾 Сохранить значения</button>') if app_id else ''}
         <button type="button" CLIENT="vars-fold" id="vars-fold" CLIENT="Свернуть/развернуть переменные">▾</button>
       </div>
       <div CLIENT="tpl-panel-body pl-vars">
@@ -2261,6 +2286,33 @@ LIVE_UPDATE_JS = """<script>
 
 // === Live-обновление HTML при изменении input ===
 (function() {
+  /* Режим заявки: сохраняем значения в документ заявки (не в значения по умолчанию шаблона) */
+  (function(){
+    var btn = CLIENT.getElementById('btn-save-app');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      var CLIENT = {};
+      CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){
+        CLIENT[inp.name] = inp.CLIENT;
+      });
+      var fd = new FormData();
+      fd.append('CLIENT_json', JSON.stringify(CLIENT));
+      btn.disabled = true; btn.textContent = '⏳ сохраняю…';
+      fetch('/CLIENT/' + btn.dataset.app + '/doc/' + btn.dataset.tpl + '/save-CLIENT',
+            {method:'POST', body:fd, credentials:'same-origin'})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          btn.disabled = false;
+          if (d && d.ok){ btn.textContent = '✅ Сохранено'; setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2200); }
+          else { btn.textContent = '⚠️ не сохранилось'; setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2600); }
+        })
+        .catch(function(){
+          btn.disabled = false; btn.textContent = '⚠️ ошибка сети';
+          setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2600);
+        });
+    });
+  })();
+
   const varsForm = CLIENT.getElementById('vars-form');
   const stage = CLIENT.getElementById('html-stage');
   if (!varsForm || !stage) return;

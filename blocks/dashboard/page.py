@@ -445,7 +445,7 @@ def app_view(app_id: int):
             '<button type="button" CLIENT="doc-btn doc-view" data-pdf="' + pdf_name + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
             + ' CLIENT="Показать документ с данными клиента">👁</button>'
-            '<a CLIENT="doc-btn" href="/CLIENT/' + str(app_id) + '/doc/' + str(t["id"]) + '/editor" CLIENT="Редактировать переменные">\u270f\ufe0f</a>'
+            '<a CLIENT="doc-btn" href="/CLIENT/' + str(t["id"]) + '?app=' + str(app_id) + '" CLIENT="Редактировать документ заявки" target="_blank" rel="noopener">\u270f\ufe0f</a>'
             '<button type="button" CLIENT="doc-btn doc-paper" '
             'data-paper="' + ('/CLIENT/file/renders/' + pdf_name if pdf_name else '') + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
