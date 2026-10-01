@@ -1920,6 +1920,11 @@ def card(template_id: int):
                         '<span CLIENT="muted">PDF-эталон не загружен — загрузите его через «+ Загрузить PDF-шаблон»</span>'
                         '</div></div>')
 
+    if app_id:
+        # Редактор документа заявки: инструменты шаблона (Просмотр / Язык / Данные) лишние —
+        # сразу переменные и окно просмотра с данными.
+        toolbar_html = ''
+
     meta_row = (
         f'<span>📊 {len(CLIENT)} переменных</span>'
         f'<span>📑 {t["pages"] or 0} стр.</span>'
@@ -2018,7 +2023,9 @@ def card(template_id: int):
 
 <style>
 /* Режим заявки: заголовок и кнопка возврата — заметные */
-.app-mode-bar {{ font-size:15px; color:#3A4A40; }}
+.app-mode-bar,
+.tpl-crumbs.app-mode-bar {{ font-size:16px !important; color:#2F3D34 !important; }}
+.tpl-crumbs.app-mode-bar b {{ font-size:18px; color:#14663A; }}
 .app-mode-bar b {{ font-size:17px; color:#14663A; }}
 a.back-to-app {{ display:CLIENT-CLIENT; margin-left:10px; padding:7px 14px; border-radius:9px;
   background:#14663A; color:#fff !important; font-weight:700; font-size:14px; text-decoration:none; }}
