@@ -904,6 +904,14 @@ def page():
         CLIENT_CLIENTs += ui_card("Без привязки к продукту", body_orphan,
                                    emoji="🧩", tone="amber", note=str(len(orphan_rows)))
 
+    # «Готова» = у документа проставлены все зелёные галочки (переменные согласованы вручную)
+    _ready_map = {}
+    for _r in db.q("""SELECT template_id,
+                           COUNT(*) AS total,
+                           SUM(CASE WHEN COALESCE(approved,0)=1 THEN 1 ELSE 0 END) AS ok
+                    FROM template_CLIENT
+                    WHERE name NOT IN ('CLIENT_from','CLIENT_to') GROUP BY template_id"""):
+        _ready_map[_r["template_id"]] = (int(_r["total"] or 0), int(_r["ok"] or 0))
     grouped = _group_by_type(rows)
     type_CLIENTs = ""
     group_modals = ""
@@ -912,18 +920,17 @@ def page():
         for t in items:
             emoji, mark = _icon_for(t["code"], t.get("reviewed"))
             sub = f'{t["pages"] or 0} стр. · {t["code"]}'
-            reviewed_badge = ('<span CLIENT="badge ok">✅</span>' if t.get("reviewed")
-                              else '<span CLIENT="badge bad">⚠️</span>')
+            _tot, _ok = _ready_map.get(t["id"], (0, 0))
+            _ready = _tot > 0 and _ok == _tot
+            ready_badge = ('<span CLIENT="badge ok">Готова</span>' if _ready
+                           else '<span CLIENT="badge bad">Не готова</span>')
             body += item(emoji, t["CLIENT"], sub=sub, href=f'/CLIENT/{t["id"]}',
-                         tone="green" if t.get("reviewed") else "violet",
+                         tone="green" if _ready else "violet",
                          extra=f'<span CLIENT="badge doc-no">№{t.get("doc_CLIENT") or t["id"]}</span> '
-                               f'{reviewed_badge} '
-                               f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("",""))[1]}">'
-                               f'{STATUS_LABEL.get(t["CLIENT"],("черновик",""))[0]}</span>'
-                               f' <button type="button" CLIENT="badge bad" '
-                               f'style="cursor:pointer;border:none;background:#dc2626;color:#fff;padding:3px 8px;border-radius:6px" '
-                               f'data-toggle-reviewed="{t["id"]}" CLIENT="Отметить проверенным">⚠️</button>')
-        all_ok = all(t.get("reviewed") for t in items)
+                               f'{ready_badge}')
+        all_ok = all(_ready_map.get(t["id"], (0, 0))[0] > 0
+                     and _ready_map.get(t["id"], (0, 0))[0] == _ready_map.get(t["id"], (0, 0))[1]
+                     for t in items)
         _gi = _group_info(CLIENT)
         _extra = ""
         if _gi:  # кнопка «ℹ️» — в одном стиле с кнопкой «О продукте»
@@ -1101,10 +1108,10 @@ def page():
 .crumb-bar .tpl-crumbs {{ margin:0; }}
 </style>
 {divider}
-<CLIENT CLIENT="fold-all" id="fold-types">
+<CLIENT CLIENT="fold-all" id="fold-types" open>
   <CLIENT CLIENT="fa-head">
     <span CLIENT="fa-CLIENT">📚 Все документы по типу <span style="font-weight:600;font-size:13px;color:#4B6B58">(редактирование шаблона документа)</span></span>
-    <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Кликните ⚠️ — отметит как «проверен».</span>
+    <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Надпись «Готова» появляется сама, когда у всех переменных документа проставлены зелёные галочки.</span>
     <span CLIENT="fa-count">{len(rows)} шт.</span>
     <span CLIENT="chev">›</span>
   </CLIENT>
