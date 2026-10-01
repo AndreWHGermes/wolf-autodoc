@@ -540,7 +540,12 @@ _LANG_JS = """<script>
     var el=CLIENT.getElementById('ex-data'); if(!el) return;
     var map={}; try{ map=JSON.parse(el.textContent||'{}'); }catch(e){ return; }
     var n=0;
+    /* ФИО всегда берём из данных клиента: в оригинальных примерах отчества нет,
+       поэтому примером их не перетираем */
+    var SKIP={client_name:1,full_name:1,full_name_CLIENT:1,cv_name:1,CLIENT_name:1,
+              CLIENT_full_name:1,CLIENT_full_name_CLIENT:1,CLIENT:1,name:1,CLIENT:1};
     Object.keys(map).forEach(function(k){
+      if(SKIP[k]) return;
       var inp=CLIENT.querySelector('input[data-var="'+k+'"]');
       if(inp){ inp.CLIENT=map[k]; inp.dispatchEvent(new Event('input',{bubbles:true})); n++; }
       /* переменные без своего поля (период справки) ставим прямо в документ — как в примере */
