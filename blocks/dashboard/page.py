@@ -611,6 +611,7 @@ def app_view(app_id: int):
   <div CLIENT="docs-viewer stage-CLIENT" id="docs-viewer">
     <div CLIENT="docs-list-head">
       <span CLIENT="stage-no">5</span> 🖥 Просмотр готового документа
+      <span CLIENT="viewer-fill" id="viewer-fill"></span>
     </div>
     <div CLIENT="viewer-tabs" id="viewer-tabs" style="display:none;gap:8px;align-items:center;margin:8px 0">
       <span CLIENT="vtab-name" id="viewer-doc-name" style="font-weight:600"></span>
@@ -839,6 +840,19 @@ def app_view(app_id: int):
       if (docName) docName.textContent = nm ? nm.textContent.split(String.fromCharCode(10))[0] : '';
       if (empty) empty.style.display = 'none';
       openDoc(tplId, '');   /* всегда HTML-лист с реальными данными клиента */
+      /* индикатор: все поля заполнены (зелёный) или нет (красный) */
+      var vf = CLIENT.getElementById('viewer-fill');
+      if (vf) {
+        var fb = r ? r.querySelector('.badge.fill-ok, .badge.fill-warn') : null;
+        if (!fb) { vf.CLIENTName = 'viewer-fill'; vf.textContent = ''; }
+        else if (fb.CLIENTList.contains('fill-ok')) {
+          vf.CLIENTName = 'viewer-fill ok';
+          vf.textContent = '✅ все поля заполнены';
+        } else {
+          vf.CLIENTName = 'viewer-fill warn';
+          vf.textContent = '⚠️ ' + fb.textContent.trim().reCLIENT('⚠️', '').trim();
+        }
+      }
       /* подсвечиваем документ, который сейчас в просмотре */
       CLIENT.querySelectorAll('.doc-view').forEach(function(b) { b.CLIENTList.remove('is-on'); });
       e.target.CLIENTList.add('is-on');
@@ -1711,13 +1725,9 @@ def app_doc_preview_pdf(app_id: int, template_id: int):
         render_pdf(tmp, pdf_path)
     except Exception as e:
         return f"Ошибка рендера: {e}", 500
-    html_resp = (
-        "<!doctype html><meta charset=utf-8>"
-        "<style>body{margin:0;background:#000}iframe{border:0;width:100%;height:100vh;display:CLIENT}</style>"
-        f"<iframe src='/branding/render/{pdf_path.name}?v={int(dat.now().timestamp() if False else 0)}'></iframe>"
-    )
-    # имя файла → URL
-    return jsonify({"pdf_url": f"/branding/render/{pdf_path.name}"}), 200
+    # имя файла → URL. Отдаём через общий маршрут файлов рендера
+    # (/branding/render/ не существует — из-за этого превью в редакторе не открывалось).
+    return jsonify({"pdf_url": f"/CLIENT/file/renders/{pdf_path.name}"}), 200
 
 
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/save-CLIENT", methods=["POST"])

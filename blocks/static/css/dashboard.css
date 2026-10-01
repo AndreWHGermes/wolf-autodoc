@@ -344,3 +344,15 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
   border-radius: 8px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; margin-right: 6px;
 }
 .paper-bar .paper-big:hover { background: #D7EEE0; }
+
+/* индикатор заполненности в окне просмотра документа */
+.viewer-fill {
+  margin-left: 8px; font-size: 12px; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px; display: none;
+}
+.viewer-fill.ok {
+  display: CLIENT-CLIENT; background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC;
+}
+.viewer-fill.warn {
+  display: CLIENT-CLIENT; background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5;
+}
