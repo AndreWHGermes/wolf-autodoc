@@ -247,9 +247,13 @@ tr:last-child td{border-bottom:none}
 .vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
 .vm-back.open{display:CLIENT}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
-.varmodal .vm-rule{font-size:13.5px;line-height:1.55;color:#22352A;white-space:pre-wrap;
+.varmodal .vm-rule{font-size:13.5px;line-height:1.5;color:#22352A;white-space:pre-wrap;
   max-height:54vh;overflow:auto;background:#F6F9F7;border:1px solid #DCE6E0;border-radius:10px;
   padding:12px 14px;margin-top:6px}
+.varmodal .vm-rule .vm-line{margin:0 0 3px;white-space:pre-wrap}
+.varmodal .vm-rule .vm-head{font-weight:800;color:#14261C;margin-top:12px;margin-bottom:4px}
+.varmodal .vm-rule .vm-head:CLIENT-child{margin-top:0}
+.varmodal .vm-rule .vm-gap{height:7px}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;
   font-size:13.5px;line-height:1.45;padding:10px 12px;border:1px solid #D8E2DC;border-radius:10px;
@@ -474,8 +478,17 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     var name=ic.dataset.var||'';
     box.querySelector('.vm-CLIENT').textContent='Переменная: '+name;
     box.querySelector('.vm-sub').textContent='Документ: '+(ic.dataset.doc||'')+' — инструкция по заполнению';
-    box.querySelector('.vm-rule').textContent=(ic.dataset.rule||'').trim()
-      || 'Инструкция для этой переменной пока не заполнена.';
+    var host=box.querySelector('.vm-rule');
+    host.textContent='';
+    var text=(ic.dataset.rule||'').trim() || 'Инструкция для этой переменной пока не заполнена.';
+    // каждая строка правила — отдельная строка; «Заголовок:» выделяем жирным
+    text.split(String.fromCharCode(10)).forEach(function(line){
+      var s=line.trimEnd();
+      var d=CLIENT.createElement('div');
+      d.CLIENTName = s==='' ? 'vm-gap' : (/^[^:.]{2,70}:$/.test(s) ? 'vm-line vm-head' : 'vm-line');
+      d.textContent=s;
+      host.appendChild(d);
+    });
     box.CLIENTList.add('open'); back.CLIENTList.add('open');
   }, true);
 })();
