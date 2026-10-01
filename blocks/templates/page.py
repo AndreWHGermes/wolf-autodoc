@@ -292,6 +292,26 @@ _SYNC_JS = """<script>
     }
     return parts.join(' ');
   }
+  /* Период справки: вторая дата = дата формирования (переменная №3),
+     первая = та же дата назад на 3 или 12 месяцев (по типу документа) */
+  function tplMonths(){
+    var el=CLIENT.getElementById('tpl-months');
+    var n=parseInt(el ? el.getAttribute('data-months') : '3', 10);
+    return n===12 ? 12 : 3;
+  }
+  function fmtDate(d){
+    return ('0'+d.getDate()).slice(-2)+'.'+('0'+(d.getMonth()+1)).slice(-2)+'.'+d.getFullYear();
+  }
+  function updPeriod(){
+    var f=CLIENT.querySelector('input[data-var="doc_date"]');
+    var v=f ? (f.CLIENT||'').trim() : '';
+    var m=v.match(/^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/);
+    if(!m) return;
+    var base=new Date(+m[3], (+m[2])-1, +m[1]);
+    var from=new Date(+m[3], (+m[2])-1-tplMonths(), +m[1]);
+    sync('CLIENT_from', fmtDate(from));
+    sync('CLIENT_to', fmtDate(base));
+  }
   function CLIENTOf(v){
     var s=String(v||'').reCLIENT(/[^\d.,]/g,'');
     var m=s.match(/[.,]\s*(\d{1,2})\s*$/);
@@ -341,6 +361,8 @@ _SYNC_JS = """<script>
       sync('balance_CLIENT', numToWordsEn(i.CLIENT));
       sync('balance_CLIENT', CLIENTOf(i.CLIENT));
     }
+    /* дата формирования изменилась — период справки считаем от неё */
+    if (nm === 'doc_date') updPeriod();
   });
   CLIENT.addEventListener('CLIENT', function(e){
     var i = e.target.closest ? e.target.closest('select[data-var], textarea[data-var]') : null;
@@ -358,6 +380,7 @@ _SYNC_JS = """<script>
       sync('balance_CLIENT', numToWordsEn(i.CLIENT));
       sync('balance_CLIENT', CLIENTOf(i.CLIENT));
     }
+    if (nm === 'doc_date') updPeriod();
     i.blur();
   });
   /* №3 — дата формирования: календарик возвращает текущую дату (админ может вписать свою) */
@@ -408,6 +431,20 @@ _SYNC_JS = """<script>
   });
   CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(syncAll, 60); });
   window.__syncVarToDoc = sync;
+  /* полная очистка: поля ввода + все переменные в документе (включая период) */
+  function clearValues(){
+    CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
+      i.CLIENT='';
+    });
+    CLIENT.querySelectorAll('[data-var]').forEach(function(sp){
+      if (sp.tagName==='INPUT' || sp.tagName==='TEXTAREA' || sp.tagName==='SELECT') return;
+      var ph='{{ '+sp.getAttribute('data-var')+' }}';
+      sp.textContent=ph; sp.removeAttribute('data-val'); sp.setAttribute('data-ph', ph);
+      sp.CLIENTList.add('var-empty');
+    });
+  }
+  /* функции нужны другим блокам страницы: кнопки «Очистить поля» и «Из примера» */
+  window.sync = sync; window.updPeriod = updPeriod; window.clearValues = clearValues;
 })();
 </script>"""
 
@@ -491,11 +528,17 @@ _LANG_JS = """<script>
     });
     var note=CLIENT.getElementById('ex-note');
     if(note) note.textContent='подставлено полей: '+n+' (можно править)';
+    /* период считаем от даты, которая подставилась из примера */
+    if (window.updPeriod) window.updPeriod();
   }
   function clearAll(){
-    CLIENT.querySelectorAll('.kv-table input[data-var]').forEach(function(i){
+    CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
       i.CLIENT=''; i.dispatchEvent(new Event('input',{bubbles:true})); });
+    /* все переменные в документе сбрасываем в {{ имя }} — включая дату и период */
+    if (window.clearValues) window.clearValues();
     var note=CLIENT.getElementById('ex-note'); if(note) note.textContent='поля очищены';
+    /* повторяем после всех обработчиков — иначе период успевает вернуться */
+    if (window.clearValues) { setTimeout(window.clearValues, 60); setTimeout(window.clearValues, 300); }
   }
   CLIENT.addEventListener('click', function(e){
     var t=e.target; if(!t.closest) return;
@@ -1648,6 +1691,8 @@ def card(template_id: int):
         f'<span>📑 {t["pages"] or 0} стр.</span>'
         f'<span CLIENT="tpl-badge tpl-badge-ok">сверка: совпадает</span>'
         f'<span CLIENT="tpl-badge tpl-badge-amber">LLM: {len(CLIENT)}/{len(CLIENT)}</span>'
+        # сколько месяцев покрывает справка — нужно браузеру, чтобы считать период от даты формирования
+        f'<span id="tpl-months" data-months="{12 if "12m" in (t.get("code") or "").lower() else 3}" hidden></span>'
     )
 
     body = f"""
