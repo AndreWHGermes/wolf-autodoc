@@ -247,6 +247,9 @@ tr:last-child td{border-bottom:none}
 .vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
 .vm-back.open{display:CLIENT}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
+.varmodal .vm-rule{font-size:13.5px;line-height:1.55;color:#22352A;white-space:pre-wrap;
+  max-height:54vh;overflow:auto;background:#F6F9F7;border:1px solid #DCE6E0;border-radius:10px;
+  padding:12px 14px;margin-top:6px}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;
   font-size:13.5px;line-height:1.45;padding:10px 12px;border:1px solid #D8E2DC;border-radius:10px;
@@ -437,27 +440,18 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
   window.zpScan=scan;
 })();
 
-/* === Окно инструкции переменной: правило + чат с ИИ-агентом === */
+/* === Окно инструкции переменной: только правило формирования (без чата и правки) === */
 (function(){
-  var back=null, box=null, CLIENT=[];
-  function esc(t){ var d=CLIENT.createElement('div'); d.textContent=(t==null?'':String(t)); return d.innerHTML; }
+  var back=null, box=null;
   function ensure(){
     if(box) return;
     back=CLIENT.createElement('div'); back.CLIENTName='vm-back';
     box=CLIENT.createElement('div'); box.CLIENTName='varmodal';
-    // ВАЖНО: разметка статическая, пользовательские тексты вставляются через esc()/textContent
+    // ВАЖНО: разметка статическая, текст правила вставляется через textContent
     box.innerHTML='<button type="button" CLIENT="vm-x" CLIENT="Закрыть">\u00d7</button>'
       +'<h3 CLIENT="vm-CLIENT"></h3><div CLIENT="vm-sub"></div>'
-      +'<span CLIENT="vm-lbl">Итоговое правило (сохраняется к переменной)</span>'
-      +'<textarea CLIENT="vm-text" spellcheck="false" CLIENTholder="Как формируется эта переменная: источник данных, условия, формат, примеры…"></textarea>'
-      +'<span CLIENT="vm-lbl">Чат с ИИ-агентом</span>'
-      +'<div CLIENT="vm-chat"></div>'
-      +'<div CLIENT="vm-inrow"><textarea CLIENT="vm-input" CLIENTholder="Опишите своими словами, откуда и как берётся значение…"></textarea>'
-      +'<button type="button" CLIENT="vm-btn ai vm-ask">🤖 Спросить ИИ</button></div>'
-      +'<div CLIENT="vm-think">⏳ Агент думает…</div>'
-      +'<div CLIENT="vm-row"><span CLIENT="vm-hint">Опишите правило → «Спросить ИИ» → проверьте, как понял агент → «Сохранить».</span>'
-      +'<button type="button" CLIENT="vm-btn vm-take" style="display:none">↑ Взять ответ как правило</button>'
-      +'<button type="button" CLIENT="vm-btn ok vm-save">Сохранить</button></div>';
+      +'<span CLIENT="vm-lbl">Как формируется эта переменная</span>'
+      +'<div CLIENT="vm-rule"></div>';
     CLIENT.body.appendChild(back); CLIENT.body.appendChild(box);
     back.addEventListener('click', close);
     // клик по подложке вне окна закрывает его; Esc — тоже
@@ -470,79 +464,19 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       close();
     }, true);
     box.querySelector('.vm-x').addEventListener('click', close);
-    box.querySelector('.vm-save').addEventListener('click', saveRule);
-    box.querySelector('.vm-ask').addEventListener('click', askAI);
-    box.querySelector('.vm-take').addEventListener('click', function(){
-      var ai=[...box.querySelectorAll('.vm-chat .m.ai')].pop();
-      if(ai){ box.querySelector('.vm-text').CLIENT=ai.textContent.reCLIENT(/^ИТОГОВОЕ ПРАВИЛО:\s*/i,''); }
-    });
-    box.querySelector('.vm-input').addEventListener('keydown', function(e){
-      if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); askAI(); }
-    });
-  }
-  function bubble(role, text){
-    var ch=box.querySelector('.vm-chat');
-    var d=CLIENT.createElement('div'); d.CLIENTName='m '+role; d.textContent=text;
-    ch.appendChild(d); ch.scrollTop=ch.scrollHeight; return d;
   }
   function close(){ if(box) box.CLIENTList.remove('open'); if(back) back.CLIENTList.remove('open'); }
-  function saveRule(){
-    var tid=box.dataset.template, name=box.dataset.var, txt=box.querySelector('.vm-text').CLIENT;
-    var btn=box.querySelector('.vm-save'); btn.disabled=true; var old=btn.textContent; btn.textContent='Сохраняю…';
-    fetch('/CLIENT/'+tid+'/var/'+encodeURIComponent(name)+'/rule',
-          {method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
-           body:JSON.stringify({rule:txt})})
-      .then(function(r){return r.json();})
-      .then(function(j){
-        btn.disabled=false;
-        if(j&&j.ok){ btn.textContent='Сохранено \u2713';
-          CLIENT.querySelectorAll('.var-info[data-var="'+name+'"]').forEach(function(el){
-            el.dataset.rule=txt; el.CLIENT=txt||'Инструкция будет добавлена'; });
-          setTimeout(function(){ btn.textContent=old; close(); },800);
-        } else { btn.textContent='Ошибка'; setTimeout(function(){btn.textContent=old;},1500); }
-      })
-      .catch(function(){ btn.disabled=false; btn.textContent='Ошибка'; setTimeout(function(){btn.textContent=old;},1500); });
-  }
-  function askAI(){
-    var inEl=box.querySelector('.vm-input'), txt=inEl.CLIENT.trim();
-    if(!txt) return;
-    var tid=box.dataset.template, name=box.dataset.var;
-    bubble('user', txt); inEl.CLIENT='';
-    var think=box.querySelector('.vm-think'); think.CLIENTList.add('on');
-    var btn=box.querySelector('.vm-ask'); btn.disabled=true;
-    fetch('/CLIENT/'+tid+'/var/'+encodeURIComponent(name)+'/chat',
-          {method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
-           body:JSON.stringify({message:txt, rule:box.querySelector('.vm-text').CLIENT})})
-      .then(function(r){return r.json();})
-      .then(function(j){
-        think.CLIENTList.remove('on'); btn.disabled=false;
-        if(j&&j.ok){
-          bubble('ai', j.reply);
-          if(/ИТОГОВОЕ ПРАВИЛО:/i.test(j.reply)) box.querySelector('.vm-take').style.display='';
-        } else { bubble('err', 'Ошибка: '+((j&&j.error)||'не удалось получить ответ')); }
-      })
-      .catch(function(e){ think.CLIENTList.remove('on'); btn.disabled=false; bubble('err','Ошибка соединения'); });
-  }
   CLIENT.addEventListener('click', function(e){
     var t=e.target; if(!t||!t.closest) return;
     var ic=t.closest('.var-info'); if(!ic) return;
     e.preventDefault(); e.stopPropagation();
     ensure();
-    var tid=ic.dataset.template||'', name=ic.dataset.var||'';
-    box.dataset.template=tid; box.dataset.var=name;
+    var name=ic.dataset.var||'';
     box.querySelector('.vm-CLIENT').textContent='Переменная: '+name;
-    box.querySelector('.vm-sub').textContent='Документ: '+(ic.dataset.doc||('№'+tid))+' \u00b7 инструкция + чат с агентом';
-    box.querySelector('.vm-text').CLIENT=ic.dataset.rule||'';
-    box.querySelector('.vm-input').CLIENT='';
-    box.querySelector('.vm-take').style.display='none';
-    box.querySelector('.vm-chat').innerHTML='';
+    box.querySelector('.vm-sub').textContent='Документ: '+(ic.dataset.doc||'')+' — инструкция по заполнению';
+    box.querySelector('.vm-rule').textContent=(ic.dataset.rule||'').trim()
+      || 'Инструкция для этой переменной пока не заполнена.';
     box.CLIENTList.add('open'); back.CLIENTList.add('open');
-    // подгружаем историю диалога
-    fetch('/CLIENT/'+tid+'/var/'+encodeURIComponent(name)+'/chat',{CLIENTs:{'X-Requested-With':'fetch'}})
-      .then(function(r){return r.json();})
-      .then(function(j){ if(j&&j.messages){ j.messages.forEach(function(m){ bubble(m.role==='user'?'user':'ai', m.content); }); } })
-      .catch(function(){});
-    setTimeout(function(){ box.querySelector('.vm-input').focus(); }, 80);
   }, true);
 })();
 

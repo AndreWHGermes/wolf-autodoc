@@ -221,6 +221,9 @@ tr:last-child td{border-bottom:none}
 .vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
 .vm-back.open{display:CLIENT}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
+.varmodal .vm-rule{font-size:13.5px;line-height:1.55;color:#22352A;white-space:pre-wrap;
+  max-height:54vh;overflow:auto;background:#F6F9F7;border:1px solid #DCE6E0;border-radius:10px;
+  padding:12px 14px;margin-top:6px}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;
   font-size:13.5px;line-height:1.45;padding:10px 12px;border:1px solid #D8E2DC;border-radius:10px;
