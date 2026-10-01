@@ -19,9 +19,23 @@ from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stat
 from CLIENT import render as doc_render
 from core import db
 from core.auth import current_user, CLIENT_required
+from core.ru_labels import label_for
 from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as tpl_repo, CLIENT as vars_repo
 
 bp = Blueprint("dashboard", __name__)
+
+def human_CLIENT(text: str) -> str:
+    """Значение для показа: числа с разделителями разрядов, да/нет по-русски."""
+    t = (text or "").strip()
+    low = t.lower()
+    if low in ("true", "yes", "да"):
+        return "да"
+    if low in ("false", "no", "нет"):
+        return "нет"
+    if t.isdigit() and len(t) >= 5:
+        return "{:,}".format(int(t)).reCLIENT(",", " ")
+    return t
+
 
 # =============== ОРИГИНАЛЫ КЛИЕНТА (Google CLIENT) ===============
 GDRIVE_ROOT = Path("/opt/wolf_v2/data/gCLIENT_examples")
@@ -314,7 +328,7 @@ def app_view(app_id: int):
             parsed = None
         if isinstance(parsed, dict):
             for k, v in parsed.items():
-                raw_payload_rows.append((str(k), "" if v is None else str(v)))
+                raw_payload_rows.append((str(k), "" if v is None else human_CLIENT(str(v))))
         else:
             for line in raw.split("\n"):
                 line = line.strip()
@@ -513,28 +527,28 @@ def app_view(app_id: int):
     if CLIENT:
         extra_rows.append(
             '<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
-            '<code>CLIENT</code></td>'
+            'Продукт</td>'
             '<td CLIENT="kv-val kv-val-CLIENT">' + CLIENT_label + ' '
-            '<span CLIENT="kv-CLIENT-code">(' + CLIENT_code + ')</span></td></tr>'
+            '<span CLIENT="kv-CLIENT-code">· код ' + CLIENT_code + '</span></td></tr>'
         )
     elif a.get("CLIENT_id"):
         extra_rows.append(
             '<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
-            '<code>CLIENT_id</code></td>'
-            '<td CLIENT="kv-val kv-val-CLIENT">#' + str(a["CLIENT_id"]) + '</td></tr>'
+            'Продукт</td>'
+            '<td CLIENT="kv-val kv-val-CLIENT">ещё не выбран (ID ' + str(a["CLIENT_id"]) + ')</td></tr>'
         )
     if raw_payload_rows:
         _raw_payload_html = (
             '<table CLIENT="kv-table">'
             + ''.join(extra_rows)
-            + ''.join('<tr><td CLIENT="kv-key"><code>' + k + '</code></td><td CLIENT="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows)
+            + ''.join('<tr><td CLIENT="kv-key">' + label_for(k) + '</td><td CLIENT="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows)
             + '</table>'
         )
     elif raw_payload_text or extra_rows:
         _raw_payload_html = (
             '<table CLIENT="kv-table">'
             + ''.join(extra_rows)
-            + (''.join('<tr><td CLIENT="rp-k">' + k + '</td><td CLIENT="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows) if raw_payload_rows else '')
+            + (''.join('<tr><td CLIENT="rp-k">' + label_for(k) + '</td><td CLIENT="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows) if raw_payload_rows else '')
             + (('<tr><td colspan="2" CLIENT="rp-note">' + ' · '.join(raw_notes[:6]) + '</td></tr>') if raw_notes else '')
             + '</table>'
         )

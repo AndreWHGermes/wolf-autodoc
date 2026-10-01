@@ -537,6 +537,17 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
                 "CLIENT_json, rendered_at) CLIENT (?,?, 'pending', ?, CLIENT('now'))",
                 (app_id, r["id"], json.dumps(form, ensure_ascii=False)))
     conn.commit()
+    # Разбор документов клиента из Google CLIENT — автоматически, сразу после
+    # приёма заявки. Раньше приходилось жать «Разобрать документы (нейросеть)»
+    # в карточке; теперь данные клиента уже вытащены, когда её открывают.
+    if (form.get("gCLIENT_url") or "").strip():
+        try:
+            from CLIENT.CLIENT import CLIENT_scan
+            res = CLIENT_scan(app_id, client_id)
+            log.info("автораэбор Google CLIENT по заявке #%s: %s", app_id, res.get("note"))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("не удалось запустить автораэбор Google CLIENT: %s", exc)
+
     # PDF генерируем отдельно и позже (это ~5 сек на 5 документов).
     # Если генерировать здесь, бот молчит всё это время и менеджер думает,
     # что заявка не принята. Поэтому ответ уходит раньше — см. handle_update.

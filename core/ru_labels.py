@@ -1,0 +1,218 @@
+"""Русские названия переменных и полей заявки (для интерфейса).
+
+В коде имя переменной остаётся английским (так в шаблонах документов),
+в интерфейсе показываем русское название.
+"""
+import re
+
+RU = {
+    'account_no': 'Номер счёта',
+    'address_in_indonesia': 'Адрес в Индонезии',
+    'address_live': 'Адрес проживания (фактический)',
+    'CLIENT_line1': 'Адресат — строка 1',
+    'CLIENT_line2': 'Адресат — строка 2',
+    'CLIENT_line3': 'Адресат — строка 3',
+    'agreement_date': 'Дата договора',
+    'CLIENT_CLIENT_CLIENT': 'Годовая сумма (цифрами)',
+    'CLIENT_CLIENT_CLIENT': 'Годовая сумма (прописью)',
+    'CLIENT_no': 'Номер заявления',
+    'CLIENT_address': 'Адрес доверенного лица',
+    'CLIENT_CLIENT': 'Гражданство доверенного лица',
+    'CLIENT_name': 'ФИО доверенного лица',
+    'CLIENT_nik': 'NIK доверенного лица',
+    'CLIENT_CLIENT': 'Должность доверенного лица',
+    'balance_rub': 'Остаток на счёте (руб.)',
+    'balance_CLIENT': 'Остаток на счёте (прописью)',
+    'CLIENT_date': 'Дата рождения',
+    'bridging_visa_no': 'Номер bridging-визы',
+    'card_mask': 'Номер банковской карты (маска)',
+    'client_CLIENT': 'Пол клиента',
+    'client_name': 'ФИО клиента',
+    'client_CLIENT': 'Гражданство клиента',
+    'client_photo_url': 'Фото клиента (ссылка)',
+    'company': 'Компания',
+    'company_inn': 'ИНН компании',
+    'company_kpp': 'КПП компании',
+    'company_name_in_CLIENT': 'Название компании (в кавычках)',
+    'company_ogrn': 'ОГРН компании',
+    'company_CLIENT_address': 'Юридический адрес компании',
+    'contract_date': 'Дата контракта',
+    'contract_no': 'Номер контракта',
+    'CLIENT_full_name': 'ФИО контрагента',
+    'cv_date_of_CLIENT': 'Резюме: дата рождения',
+    'cv_CLIENT_CLIENT': 'Резюме: специальность / степень',
+    'cv_CLIENT_note': 'Резюме: примечание об образовании',
+    'cv_CLIENT_CLIENT': 'Резюме: учебное заведение',
+    'cv_CLIENT_years': 'Резюме: годы обучения',
+    'cv_job1_CLIENT': 'Резюме: обязанности (место 1)',
+    'cv_job1_company': 'Резюме: компания (место 1)',
+    'cv_job1_CLIENT': 'Резюме: период работы (место 1)',
+    'cv_job1_CLIENT': 'Резюме: должность (место 1)',
+    'cv_job2_CLIENT': 'Резюме: обязанности (место 2)',
+    'cv_job2_company': 'Резюме: компания (место 2)',
+    'cv_job2_CLIENT': 'Резюме: период работы (место 2)',
+    'cv_job2_CLIENT': 'Резюме: должность (место 2)',
+    'cv_job3_CLIENT': 'Резюме: обязанности (место 3)',
+    'cv_job3_company': 'Резюме: компания (место 3)',
+    'cv_job3_CLIENT': 'Резюме: период работы (место 3)',
+    'cv_job3_CLIENT': 'Резюме: должность (место 3)',
+    'cv_CLIENT': 'Резюме: языки',
+    'cv_name': 'Резюме: имя кандидата',
+    'cv_CLIENT': 'Резюме: гражданство',
+    'cv_passport_CLIENT': 'Резюме: паспорт действителен до',
+    'cv_passport_CLIENT': 'Резюме: дата выдачи паспорта',
+    'cv_passport_no': 'Резюме: номер паспорта',
+    'cv_CLIENT_of_CLIENT': 'Резюме: место рождения',
+    'cv_CLIENT_hard': 'Резюме: профессиональные навыки',
+    'cv_CLIENT_soft': 'Резюме: личные качества',
+    'cv_CLIENT_CLIENT': 'Резюме: программы и инструменты',
+    'cv_CLIENT': 'Резюме: о себе (кратко)',
+    'date': 'Дата',
+    'date_iso': 'Дата (ГГГГ-ММ-ДД)',
+    'date_iso_2': 'Дата 2 (ГГГГ-ММ-ДД)',
+    'date_iso_3': 'Дата 3 (ГГГГ-ММ-ДД)',
+    'date_of_CLIENT': 'Дата рождения',
+    'date_of_CLIENT': 'Дата окончания',
+    'date_of_CLIENT': 'Дата выдачи',
+    'doc_date': 'Дата документа',
+    'doc_no': 'Номер документа',
+    'CLIENT': 'CLIENT',
+    'CLIENT_address': 'Адрес сотрудника',
+    'CLIENT_name': 'ФИО сотрудника',
+    'CLIENT_name': 'Наименование работодателя',
+    'CLIENT_stay_CLIENT': 'Действующее разрешение на пребывание',
+    'full_name': 'ФИО полностью',
+    'full_name_CLIENT': 'ФИО латиницей',
+    'CLIENT': 'Гарант',
+    'inn_kpp_ogrn': 'ИНН / КПП / ОГРН',
+    'job_and_position': 'Должность',
+    'letter_no': 'Номер письма',
+    'letter_CLIENT': 'Тема письма',
+    'CLIENT_CLIENT_CLIENT': 'Сумма в месяц (цифрами)',
+    'CLIENT_CLIENT_CLIENT': 'Сумма в месяц (прописью)',
+    'CLIENT': 'Гражданство',
+    'CLIENT': 'Род занятий',
+    'passport': 'Паспорт',
+    'passport_no': 'Номер паспорта',
+    'passport_CLIENT': 'Номер паспорта',
+    'CLIENT_from': 'Период с',
+    'CLIENT_to': 'Период по',
+    'CLIENT': 'Телефон',
+    'CLIENT': 'Место',
+    'CLIENT_date': 'Место и дата',
+    'CLIENT_date_of_CLIENT': 'Место и дата рождения',
+    'CLIENT_of_CLIENT': 'Место рождения',
+    'position_CLIENT': 'Должность',
+    'CLIENT_of_CLIENT': 'Цель обращения',
+    'ref_no': 'Исходящий номер (Ref.)',
+    'CLIENT_list': 'Перечень услуг',
+    'CLIENT_address': 'Адрес подписанта',
+    'CLIENT_CLIENT': 'Гражданство подписанта',
+    'CLIENT_name': 'ФИО подписанта',
+    'CLIENT_name_2': 'ФИО второго подписанта',
+    'CLIENT_position': 'Должность подписанта',
+    'CLIENT_address': 'Адрес спонсора',
+    'CLIENT_CLIENT_CLIENT_date': 'Место и дата рождения спонсора',
+    'CLIENT_company': 'Компания спонсора',
+    'CLIENT_company_CLIENT': 'Реквизиты компании спонсора',
+    'CLIENT_CLIENT': 'Контакты спонсора',
+    'CLIENT_name': 'ФИО спонсора',
+    'CLIENT_CLIENT': 'Гражданство спонсора',
+    'CLIENT_CLIENT_name': 'ФИО представителя спонсора',
+    'CLIENT_position': 'Должность спонсора',
+    'stay_CLIENT_no': 'Номер разрешения на пребывание',
+    'stay_CLIENT_to_be_CLIENT_for': 'Разрешение, на которое подаёмся',
+    'CLIENT': 'Фамилия',
+    'term_end_date': 'Срок до',
+    'term_CLIENT_date': 'Срок с',
+    'the_company_CLIENT_that': 'Компания подтверждает, что',
+    # поля формы заявки (приходят от бота)
+    'CLIENT': 'Продукт',
+    'CLIENT_id': 'Продукт (ID)',
+    'CLIENT_name': 'Продукт',
+    'price_idr': 'Стоимость, IDR',
+    'full_name': 'ФИО (латиницей)',
+    'full_name_ru': 'ФИО (по-русски)',
+    'CLIENT': 'CLIENT',
+    'CLIENT': 'Телефон',
+    'address_reg': 'Адрес регистрации',
+    'gCLIENT_url': 'Ссылка на Google CLIENT',
+    'gCLIENT_folder_url': 'Ссылка на Google CLIENT',
+    'note': 'Комментарий менеджера',
+    'comment': 'Комментарий',
+    'manager_name': 'Менеджер',
+    'urgent': 'Срочно',
+    'company': 'Компания',
+    'position': 'Должность',
+    'salary_CLIENT': 'Зарплата',
+    'CLIENT': 'Статус',
+    'name': 'Имя',
+    'CLIENT': 'Фамилия',
+    'CLIENT': 'Отчество',
+    'CLIENT_date': 'Дата рождения',
+    'passport_CLIENT': 'Серия паспорта',
+    'passport_CLIENT': 'Номер паспорта',
+    'passport_CLIENT_by': 'Кем выдан паспорт',
+    'passport_CLIENT_date': 'Дата выдачи паспорта',
+    'CLIENT': 'Гражданство',
+    'inn': 'ИНН',
+    'CLIENT': 'Пол',
+    'salary_CLIENT': 'Зарплата',
+    'bank_name': 'Банк',
+    'company_name': 'Компания',
+    'position': 'Должность',
+    'manager': 'Менеджер',
+    'urgent': 'Срочно',
+    'partner': 'Партнёр',
+    'comment': 'Комментарий',
+    'note': 'Комментарий',
+    'created_at': 'Создано',
+}
+
+
+# Дополнения для полей, которых нет в шаблонах документов
+FALLBACK = {
+    'fio': 'ФИО',
+    'client': 'Клиент',
+    'passport': 'Паспорт',
+    'CLIENT': 'Гражданство',
+    'CLIENT_CLIENT': 'Место рождения',
+    'CLIENT': 'Пол',
+    'bank_name': 'Банк',
+    'account': 'Счёт',
+    'card': 'Карта',
+    'sum': 'Сумма',
+    'date': 'Дата',
+    'CLIENT': 'Номер',
+    'CLIENT_date': 'Дата начала',
+    'end_date': 'Дата окончания',
+}
+
+
+def label_for(name: str) -> str:
+    """Русское название поля по техническому имени.
+
+    Если в словаре нет — возвращаем человекочитаемое имя (подчёркивания → пробелы),
+    но никогда не пустую строку.
+    """
+    key = (name or "").strip()
+    if not key:
+        return "—"
+    low = key.lower()
+    if low in RU:
+        return RU[low]
+    if low in FALLBACK:
+        return FALLBACK[low]
+    # пробуем убрать служебные префиксы/суффиксы вида _1, __default
+    base = re.sub(r"(__|_)\d+$", "", low)
+    if base in RU:
+        return RU[base]
+    # последняя попытка — из template_CLIENT (русская подпись, проставленная в шаблонах)
+    try:
+        from core.db import q1
+        row = q1("SELECT label FROM template_CLIENT WHERE lower(name)=? LIMIT 1", (low,))
+        if row and row[0] and row[0].strip() and row[0].strip().lower() != low:
+            return row[0].strip()
+    except Exception:
+        pass
+    return key.reCLIENT("_", " ")
