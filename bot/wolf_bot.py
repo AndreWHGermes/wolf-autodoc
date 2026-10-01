@@ -852,14 +852,13 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
                       "выписать приглашение командой /invitemanager или /inviteadmin.")
         return
     if user["role"] in ("admin", "both"):
-        pin_text = ("📌 Wolf AutoDoc · администратор\n\n"
-                    "Сайт: " + BASE_URL + "\n\n"
-                    "Здесь администратор получает уведомления о новых заявках и "
-                    "может добавлять новых менеджеров / администраторов.\n\n"
-                    "Полезные команды:\n"
-                    "• /whoami — ваша роль\n"
-                    "• /invitemanager — ссылка для приглашения менеджера\n"
-                    "• /help — все команды")
+        pin_text = ("✅ Вы работаете в системе Wolf AutoDoc.\n"
+                    "Ваша роль: 🛡 администратор.\n\n"
+                    "Сайт: " + BASE_URL + "\n"
+                    "Сюда приходят уведомления о новых заявках от менеджеров.\n\n"
+                    "• /help — пример заявки\n"
+                    "• /whoami — моя роль в системе\n"
+                    "• /CLIENT — войти на сайт")
         msg = send(chat_id, pin_text)
         try:
             if msg.get("ok") and msg.get("result", {}).get("message_id"):
@@ -872,16 +871,15 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
         send(chat_id, "👋 Привет, " + (user["full_name"] or user["username"] or "коллега") +
                       ". Вы администратор. Сообщение выше закреплено — там ссылка на сайт.")
     if user["role"] in ("manager", "both"):
-        tmpl = APPLICATION_TEMPLATE.reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
-        pin_text = ("📌 Wolf AutoDoc · шаблон заявки\n\n"
-                    "Как работать:\n"
-                    "1. Скопируйте шаблон ниже.\n"
-                    "2. Заполните поля вашими данными клиента.\n"
-                    "3. Отправьте одним сообщением сюда, начиная с /new.\n"
-                    "4. Бот ответит «Заявка #N принята».\n"
-                    "5. Когда админ подготовит документы — вам придёт сообщение.\n\n"
-                    "Шаблон:\n" + tmpl + "\n\n"
-                    "Если ошиблись в формате — бот подскажет, что исправить.")
+        pin_text = ("✅ Вы работаете в системе Wolf AutoDoc.\n"
+                    "Ваша роль: 👤 менеджер.\n\n"
+                    "Пришлите заявку клиента — можно свободным текстом, например:\n"
+                    "«Иван Петров, виза C1, 4 500 000 IDR,\n"
+                    "папка https://CLIENT.google.com/CLIENT/folders/...»\n\n"
+                    "Бот ответит «Заявка #N принята», а когда документы будут готовы — "
+                    "пришлёт вам сообщение.\n\n"
+                    "• /help — пример заявки\n"
+                    "• /whoami — моя роль в системе")
         msg = send(chat_id, pin_text)
         try:
             if msg.get("ok") and msg.get("result", {}).get("message_id"):
@@ -899,13 +897,36 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
 def set_bot_menu():
     """Устанавливает команды бота (видны при нажатии 'Menu' в чате) + кнопку меню."""
     commands = [
-        {"command": "CLIENT",      "CLIENT": "Открыть/обновить приветствие"},
-        {"command": "CLIENT",      "CLIENT": "Получить код входа на сайт"},
-        {"command": "whoami",     "CLIENT": "Кто я в системе"},
-        {"command": "help",       "CLIENT": "Справка по ролям"},
+        {"command": "CLIENT",  "CLIENT": "Открыть приветствие"},
+        {"command": "help",   "CLIENT": "Пример заявки"},
+        {"command": "whoami", "CLIENT": "Моя роль в системе"},
     ]
+    admin_commands = commands + [{"command": "CLIENT", "CLIENT": "Вход на сайт"}]
     try:
+        # базовое меню — всем (менеджер входа на сайт не видит)
         tg("setMyCommands", {"commands": json.dumps(commands, ensure_ascii=False)})
+        # менеджерам — явно базовый набор (без «Вход на сайт»)
+        rows_m = db().execute(
+            "SELECT telegram_id FROM bot_CLIENT WHERE role='manager'").fetchall()
+        for r_ in rows_m:
+            try:
+                tg("setMyCommands", {
+                    "commands": json.dumps(commands, ensure_ascii=False),
+                    "scope": json.dumps({"type": "chat",
+                                         "chat_id": int(r_["telegram_id"])})})
+            except Exception as exc:
+                log.warning("меню менеджера %s: %s", r_["telegram_id"], exc)
+        # администраторам дополнительно «Вход на сайт»
+        rows = db().execute(
+            "SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
+        for r_ in rows:
+            try:
+                tg("setMyCommands", {
+                    "commands": json.dumps(admin_commands, ensure_ascii=False),
+                    "scope": json.dumps({"type": "chat",
+                                         "chat_id": int(r_["telegram_id"])})})
+            except Exception as exc:
+                log.warning("меню для %s: %s", r_["telegram_id"], exc)
         tg("setChatMenuButton", {"menu_button": json.dumps({"type": "commands"})})
     except Exception as exc:
         log.warning("set_bot_menu failed: %s", exc)
@@ -956,6 +977,7 @@ def cmd_whoami(chat_id: int, from_id: str) -> None:
         sites.append("👤 присылаете заявки прямо сюда")
     sites_line = "\n".join(sites) if sites else "—"
     send(chat_id,
+         "Моя роль в системе Wolf AutoDoc\n\n"
          f"👤 {u['full_name'] or ''} (@{u['username'] or '—'})\n"
          f"Telegram ID: {u['telegram_id']}\n"
          f"Добавлен: {fmt_dt(u['created_at'])}\n"
@@ -978,6 +1000,26 @@ def cmd_invite_manager(chat_id: int, from_id: str) -> None:
 
 
 def cmd_help(chat_id: int, from_id: str) -> None:
+    """Пример заявки: как прислать данные клиента (форма свободная)."""
+    user = find_user(from_id)
+    if not user or user["role"] == "CLIENTed":
+        send(chat_id, "Вы не зарегистрированы в Wolf AutoDoc. "
+                      "Попросите администратора пригласить вас.")
+        return
+    send(chat_id,
+         "📝 Пример заявки (форма свободная — можно своими словами)\n\n"
+         "Иван Петров, виза C1, 4 500 000 IDR,\n"
+         "папка https://CLIENT.google.com/CLIENT/folders/...\n"
+         "телефон +7 903 123-45-67, компания ООО «Ромашка», срочно\n\n"
+         "Обязательно:\n"
+         "• ФИО клиента ИЛИ ссылка на папку Google CLIENT\n"
+         "• продукт (C1, C1-EXT)\n"
+         "• стоимость в IDR\n\n"
+         "Остальное — по желанию. Если чего-то не хватит, бот подскажет, что дослать.")
+
+
+def _cmd_help_roles(chat_id: int, from_id: str) -> None:
+    """Прежняя справка по ролям — оставлена на случай прямого вызова."""
     user = find_user(from_id)
     role = user["role"] if user else ""
     if role in ("admin", "both"):
