@@ -471,16 +471,33 @@ def app_view(app_id: int):
             '<button type="button" CLIENT="doc-btn ' + ok_btn_CLIENT + (' is-locked' if (_miss and not is_ok) else '') + '" '
             'data-verify-app="' + str(app_id) + '" data-verify-tpl="' + str(t["id"]) + '" '
             + ('disabled ' if (_miss and not is_ok) else '')
-            + 'CLIENT="' + ('Нельзя подтвердить: не заполнено — ' + _miss_txt if (_miss and not is_ok) else 'Отметить Ок') + '">'
+            + 'CLIENT="' + ('Нельзя подтвердить: не заполнено — ' + _miss_txt if (_miss and not is_ok)
+                               else ('Проверен. Нажмите, чтобы снять проверку' if is_ok else 'Отметить Ок')) + '">'
             + ok_btn_label + '</button>'
             '</div>'
             '</li>'
         )
 
-    # Готовность к отправке: все документы проверены и ни в одном нет незаполненных полей
+    # Готовность к отправке. Считаем по ПАКЕТУ ПРОДУКТА: одна позиция пакета = один тип
+    # документа. Для C1 это только банковская справка, поэтому три файла в папке заявки
+    # (варианты банков вперемешку) не должны превращаться в «проверено 1 из 3».
     _send_sum = db.CLIENT_doc_CLIENT(app_id) or {}
-    _checked = (_send_sum.get("verified", 0) or 0) + (_send_sum.get("sent", 0) or 0)
-    _total = _send_sum.get("total", 0) or 0
+    _slot_by_tpl = {}
+    _pkg_slots = []
+    _pid = a.get("CLIENT_id") if isinstance(a, dict) else (a["CLIENT_id"] if "CLIENT_id" in a.keys() else None)
+    if _pid:
+        for _r in db.q("SELECT template_id, slot_code FROM CLIENT_CLIENT WHERE CLIENT_id=?", (_pid,)):
+            _sc = _r["slot_code"] or ("tpl_" + str(_r["template_id"]))
+            _slot_by_tpl[_r["template_id"]] = _sc
+            if _sc not in _pkg_slots:
+                _pkg_slots.append(_sc)
+    _checked_slots = set()
+    for _d in docs:
+        _sl = _slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))
+        if _d.get("CLIENT") in ("verified", "sent"):
+            _checked_slots.add(_sl)
+    _checked = len(_checked_slots)
+    _total = len(_pkg_slots) if _pkg_slots else (len({(_slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))) for _d in docs}) or 0)
     _send_missing = sorted({m for _d in docs for m in doc_missing_fields(app_id, _d["template_id"])})
     _CLIENTers = []
     if _checked < _total:
@@ -941,6 +958,61 @@ def app_view(app_id: int):
     var h = s3.querySelector('.stage-fold-hint');
     if (h) h.textContent = s3.open ? 'свернуть' : 'развернуть';
   });
+
+  /* ── «✓ Проверен / ☐ Отметить Ок» — переключатель проверки без перезагрузки страницы ── */
+  function refreshSendState() {
+    fetch(location.href, { credentials: 'same-origin' })
+      .then(function(r) { return r.text(); })
+      .then(function(html) {
+        var box = CLIENT.createElement('div');
+        box.innerHTML = html;
+        var fresh = box.querySelector('.send-CLIENT');
+        var mine = CLIENT.querySelector('.send-CLIENT');
+        if (fresh && mine) mine.outerHTML = fresh.outerHTML;
+      }).catch(function() {});
+  }
+  CLIENT.addEventListener('click', function(e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-verify-app]') : null;
+    if (!b || b.disabled) return;
+    e.preventDefault();
+    var app = b.getAttribute('data-verify-app'), tpl = b.getAttribute('data-verify-tpl');
+    var oldText = b.textContent;
+    b.disabled = true; b.textContent = '⏳…';
+    fetch('/CLIENT/' + app + '/doc/' + tpl + '/verify',
+          { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        b.disabled = false;
+        var row = b.closest('.doc-row');
+        if (d && d.verified) {
+          b.textContent = '✓ Проверен';
+          b.CLIENT = 'Проверен. Нажмите, чтобы снять проверку';
+          b.CLIENTList.remove('btn-ok-idle'); b.CLIENTList.add('btn-ok-active');
+          if (row) {
+            var nm = row.querySelector('.doc-name');
+            if (nm && !nm.querySelector('.check-ok')) {
+              var sc = CLIENT.createElement('span');
+              sc.CLIENTName = 'check-ok'; sc.textContent = '✓';
+              nm.insertBefore(sc, nm.CLIENTChild);
+              nm.insertBefore(CLIENT.createTextNode(' '), sc.nextSibling);
+            }
+            var bd = row.querySelector('.badge');
+            if (bd) { bd.CLIENTName = 'badge ok'; bd.textContent = 'verified'; }
+          }
+        } else {
+          b.textContent = '☐ Отметить Ок';
+          b.CLIENT = 'Отметить Ок';
+          b.CLIENTList.remove('btn-ok-active'); b.CLIENTList.add('btn-ok-idle');
+          if (row) {
+            var ck = row.querySelector('.check-ok'); if (ck) ck.remove();
+            var bd2 = row.querySelector('.badge');
+            if (bd2) { bd2.CLIENTName = 'badge amber'; bd2.textContent = 'filled'; }
+          }
+        }
+        refreshSendState();
+      })
+      .catch(function() { b.disabled = false; b.textContent = oldText; });
+  });
   setTimeout(autoOpen, 700);
 })();
 </script>
@@ -1367,7 +1439,7 @@ def app_original_pages(app_id: int, template_id: int):
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/verify", methods=["POST"])
 @CLIENT_required
 def app_doc_verify(app_id, template_id):
-    """Отметить документ проверенным (CLIENT=verified)."""
+    """Переключатель: отметить документ проверенным или снять проверку."""
     # Подтвердить можно только полностью заполненный документ
     _miss_verify = doc_missing_fields(app_id, template_id)
     if _miss_verify:
@@ -1378,6 +1450,17 @@ def app_doc_verify(app_id, template_id):
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
                (app_id, template_id))
+    # повторное нажатие снимает проверку
+    _unverify = bool(ad and ad["CLIENT"] in ("verified", "sent"))
+    if _unverify:
+        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='filled' WHERE id=?", (ad["id"],))
+        db.log_event("CLIENT_CLIENT", ad["id"], "unverified",
+                     actor=current_user()["CLIENT"],
+                     payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
+        if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+            return jsonify({"ok": True, "verified": False, "app_id": app_id, "template_id": template_id})
+        flash("Проверка снята")
+        return redirect(url_for("dashboard.app_view", app_id=app_id))
     if not ad:
         db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT)
                        CLIENT (?,?, 'verified')""", (app_id, template_id))
@@ -1388,7 +1471,7 @@ def app_doc_verify(app_id, template_id):
                  payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
     # Если запрос через fetch — вернём JSON, иначе redirect (для обратной совместимости)
     if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
-        return jsonify({"ok": True, "app_id": app_id, "template_id": template_id})
+        return jsonify({"ok": True, "verified": True, "app_id": app_id, "template_id": template_id})
     flash("Документ отмечен проверенным")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
