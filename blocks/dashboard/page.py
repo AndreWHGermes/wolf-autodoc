@@ -145,6 +145,52 @@ def app_CLIENT_CLIENT(app_id: int):
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
+# Переменные, которые система заполняет сама или которых может не быть: в проверку готовности не входят
+_AUTO_OR_OPTIONAL_VARS = {
+    "doc_no", "ref_no", "card_mask", "doc_date", "balance_rub", "balance_CLIENT",
+    "balance_CLIENT", "balance_CLIENT", "CLIENT_from", "CLIENT_to",
+    "account_no", "contract_date", "contract_no",
+}
+
+
+def doc_missing_fields(app_id: int, template_id: int) -> list:
+    """Каких данных не хватает документу заявки.
+
+    Считаем ровно по тем значениям, которые уходят в документ (та же сборка, что при
+    формировании PDF): незаполненными считаются переменные, оставшиеся в шаблоне без значения.
+    """
+    try:
+        from CLIENT.CLIENT import build_template_CLIENT
+        from CLIENT.render import VAR_RE, fill
+    except Exception:                                       # noqa: BLE001
+        return []
+    tpl = tpl_repo.get(template_id)
+    if not tpl:
+        return []
+    code = tpl["code"]
+    path = Path("/opt/wolf/data/CLIENT") / code / "template.html"
+    if not path.exists():
+        return []
+    a = db.CLIENT_get(app_id) or {}
+    client = db.client_get(a.get("client_id")) or {}
+    ad = db.q1("SELECT CLIENT_json FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+               (app_id, template_id)) or {}
+    doc_CLIENT = {}
+    if ad.get("CLIENT_json"):
+        try:
+            doc_CLIENT = json.loads(ad["CLIENT_json"] or "{}") or {}
+        except Exception:                                   # noqa: BLE001
+            doc_CLIENT = {}
+    try:
+        vals = build_template_CLIENT(client, code, doc_CLIENT) or {}
+    except Exception:                                       # noqa: BLE001
+        vals = dict(doc_CLIENT)
+    html = path.read_text(encoding="utf-8")
+    filled = fill(html, vals, keep_unfilled=True, template_code=code)
+    return sorted(set(VAR_RE.findall(filled)) - _AUTO_OR_OPTIONAL_VARS)
+
+
+
 @bp.route("/CLIENT/<int:app_id>/view")
 @CLIENT_required
 def app_view(app_id: int):
@@ -343,6 +389,13 @@ def app_view(app_id: int):
             "verified": "ok", "sent": "ok", "filled": "amber",
             "error": "bad", "pending": "grey",
         }.get(CLIENT, "grey")
+        # чего не хватает этому документу: считается по тем же значениям, что уходят в PDF
+        _miss = doc_missing_fields(app_id, t["id"])
+        _miss_txt = ", ".join(_miss)
+        _fill_badge = ('<span CLIENT="badge fill-ok" CLIENT="Все поля документа заполнены">\u2705 поля заполнены</span>'
+                       if not _miss else
+                       '<span CLIENT="badge fill-warn" CLIENT="Не заполнено: ' + _miss_txt + '">'
+                       '\u26a0\ufe0f не заполнено полей: ' + str(len(_miss)) + '</span>')
 
         doc_items_html += (
             '<li CLIENT="doc-row" data-pdf-name="' + pdf_name + '"'
@@ -357,7 +410,8 @@ def app_view(app_id: int):
                          for _v in t.get("variants", []))
                + '</select> ' if len(t.get("variants", [])) > 1 else '')
             + str(t["pages"] or 0) + ' стр. · '
-            + '<span CLIENT="badge ' + status_CLIENT + '">' + CLIENT + '</span>'
+            + '<span CLIENT="badge ' + status_CLIENT + '">' + CLIENT + '</span> '
+            + _fill_badge
             + ('<span CLIENT="badge orig-badge" style="margin-left:4px;background:#E0F2FE;color:#075985">📁 есть оригинал</span>' if has_original else "")
             + '</div></div>'
             '<div CLIENT="doc-actions">'
@@ -369,12 +423,32 @@ def app_view(app_id: int):
             '<button type="button" CLIENT="doc-btn doc-paper" data-paper="/CLIENT/file/renders/' + pdf_name + '" '
             + ('disabled style="opacity:.4;cursor:default"' if not pdf_name else "")
             + ' CLIENT="Открыть PDF поверх экрана">\U0001f4c4</button>'
-            '<button type="button" CLIENT="doc-btn ' + ok_btn_CLIENT + '" '
+            '<button type="button" CLIENT="doc-btn ' + ok_btn_CLIENT + (' is-locked' if (_miss and not is_ok) else '') + '" '
             'data-verify-app="' + str(app_id) + '" data-verify-tpl="' + str(t["id"]) + '" '
-            'CLIENT="Отметить Ок">' + ok_btn_label + '</button>'
+            + ('disabled ' if (_miss and not is_ok) else '')
+            + 'CLIENT="' + ('Нельзя подтвердить: не заполнено — ' + _miss_txt if (_miss and not is_ok) else 'Отметить Ок') + '">'
+            + ok_btn_label + '</button>'
             '</div>'
             '</li>'
         )
+
+    # Готовность к отправке: все документы проверены и ни в одном нет незаполненных полей
+    _send_sum = db.CLIENT_doc_CLIENT(app_id) or {}
+    _checked = (_send_sum.get("verified", 0) or 0) + (_send_sum.get("sent", 0) or 0)
+    _total = _send_sum.get("total", 0) or 0
+    _send_missing = sorted({m for _d in docs for m in doc_missing_fields(app_id, _d["template_id"])})
+    _CLIENTers = []
+    if _checked < _total:
+        _CLIENTers.append("проверено " + str(_checked) + " из " + str(_total) + " документов")
+    if _send_missing:
+        _CLIENTers.append("не заполнены поля: " + ", ".join(_send_missing[:6])
+                         + (" и ещё " + str(len(_send_missing) - 6) if len(_send_missing) > 6 else ""))
+    _send_ready = not _CLIENTers
+    send_CLIENT = (
+        '<div CLIENT="send-CLIENT ok">\u2705 Все документы проверены, поля заполнены — можно отправлять</div>'
+        if _send_ready else
+        '<div CLIENT="send-CLIENT warn">\u26d4 Отправить нельзя: ' + "; ".join(_CLIENTers) + '</div>'
+    )
 
     all_CLIENT = db.q("SELECT id, code, name FROM CLIENT ORDER BY id")
     CLIENT_select = ""
@@ -532,7 +606,8 @@ def app_view(app_id: int):
 
 <form method="post" action="/CLIENT/""" + str(app_id) + """/send" CLIENT="stage-CLIENT send-CLIENT">
   <div CLIENT="stage-no">6</div>
-  <button CLIENT="send-final-btn" type="submit"
+  """ + send_CLIENT + """
+  <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
           onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')">
     📤 Отправить документы на Google CLIENT
   </button>
@@ -820,6 +895,13 @@ def app_view(app_id: int):
 .kv-label { font-size: 11.5px; color: #6B7C70; margin-bottom: 4px; font-weight: 600; }
 .kv-main { font-weight: 700; font-size: 14px; color: #1F2A24; }
 .kv-sub { color: #6B7C70; font-size: 11.5px; margin-top: 2px; }
+.fill-ok { background:#DCFCE7 !important; color:#166534 !important; border-color:#86EFAC !important; }
+.fill-warn { background:#FEE2E2 !important; color:#991B1B !important; border-color:#FCA5A5 !important; font-weight:600; }
+.doc-btn.is-locked { opacity:.35; cursor:not-allowed; }
+.send-CLIENT { font-size:13px; font-weight:600; padding:8px 12px; border-radius:8px; margin:4px 0 8px; }
+.send-CLIENT.ok { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
+.send-CLIENT.warn { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
+.send-final-btn[disabled] { opacity:.45; cursor:not-allowed; }
 .CLIENT-btn {
   display: CLIENT-flex; align-items: center; gap: 6px;
   background: #229ED9; color: #fff !important;
@@ -1199,6 +1281,14 @@ def app_original_pages(app_id: int, template_id: int):
 @CLIENT_required
 def app_doc_verify(app_id, template_id):
     """Отметить документ проверенным (CLIENT=verified)."""
+    # Подтвердить можно только полностью заполненный документ
+    _miss_verify = doc_missing_fields(app_id, template_id)
+    if _miss_verify:
+        _msg = "Нельзя подтвердить документ: не заполнено — " + ", ".join(_miss_verify)
+        if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+            return jsonify({"ok": False, "error": _msg, "missing": _miss_verify})
+        flash(_msg, "error")
+        return redirect(url_for("dashboard.app_view", app_id=app_id))
     ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
                (app_id, template_id))
     if not ad:
@@ -2191,6 +2281,11 @@ def app_send(app_id: int):
     CLIENT = db.CLIENT_doc_CLIENT(app_id)
     if CLIENT.get("verified", 0) + CLIENT.get("sent", 0) < CLIENT.get("total", 0):
         flash("Не все документы проверены", "error")
+        return redirect(url_for("dashboard.app_view", app_id=app_id))
+    _miss_send = sorted({m for d in db.CLIENT_CLIENT(app_id)
+                         for m in doc_missing_fields(app_id, d["template_id"])})
+    if _miss_send:
+        flash("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]), "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     for d in db.CLIENT_CLIENT(app_id):
         if d["CLIENT"] in ("filled", "verified"):
