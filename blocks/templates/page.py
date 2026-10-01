@@ -4,6 +4,7 @@
 Главная вкладка — настройка шаблонов для продуктов визового агентства.
 """
 from __future__ import annotations
+import hashlib
 import os
 
 import json
@@ -2423,13 +2424,21 @@ def preview_pdf(template_id: int):
     CLIENT = {k: str(v or "").strip() for k, v in (raw.get("CLIENT") or {}).items()}
     html = html_file.read_text(encoding="utf-8")
     filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
-    tmp_html = HTML_DIR / t["code"] / "filled.html"
-    tmp_html.write_text(filled, encoding="utf-8")
     out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT, code=t["code"])
-    try:
-        pdf2html.render_pdf(tmp_html, out_pdf)
-    except Exception as exc:                            # noqa: BLE001
-        return jsonify({"ok": False, "error": f"PDF не собрался: {exc}"}), 500
+    # Те же значения → тот же документ: если PDF уже собран из этого же содержимого,
+    # отдаём готовый файл, не прогоняя weasyprint заново (повторные нажатия мгновенные).
+    stamp = out_pdf.with_suffix(".key")
+    digest = hashlib.md5(filled.encode("utf-8")).hexdigest()
+    fresh = out_pdf.exists() and stamp.exists() and stamp.read_text(encoding="utf-8").strip() == digest
+    if not fresh:
+        try:
+            doc_render.render_pdf(filled, out_path=out_pdf)
+        except Exception as exc:                        # noqa: BLE001
+            return jsonify({"ok": False, "error": f"PDF не собрался: {exc}"}), 500
+        try:
+            stamp.write_text(digest, encoding="utf-8")
+        except Exception:
+            pass
     return jsonify({"ok": True, "url": f"/CLIENT/file/renders/{out_pdf.name}",
                     "name": out_pdf.name})
 

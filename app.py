@@ -836,4 +836,10 @@ app = create_app()
 
 if __name__ == "__main__":
     print(f"Wolf_AutoDoc CRM → http://{WEB_HOST}:{WEB_PORT}  БД: {DB_PATH}")
+    # прогреваем сборщик PDF, чтобы первый документ у админа собирался быстро
+    try:
+        from CLIENT.render import warm_up as _warm_up
+        _warm_up()
+    except Exception:
+        pass
     serve(app, host=WEB_HOST, port=WEB_PORT, threads=8, channel_timeout=300)
