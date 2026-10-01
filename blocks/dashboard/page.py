@@ -444,12 +444,12 @@ def app_view(app_id: int):
             '<div CLIENT="doc-actions">'
             '<button type="button" CLIENT="doc-btn doc-view" data-pdf="' + pdf_name + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
-            + ('disabled style="opacity:.4;cursor:default"' if (not pdf_name and not has_original) else "")
-            + ' CLIENT="Посмотреть здесь">👁</button>'
+            + ' CLIENT="Показать документ с данными клиента">👁</button>'
             '<a CLIENT="doc-btn" href="/CLIENT/' + str(app_id) + '/doc/' + str(t["id"]) + '/editor" CLIENT="Редактировать переменные">\u270f\ufe0f</a>'
-            '<button type="button" CLIENT="doc-btn doc-paper" data-paper="/CLIENT/file/renders/' + pdf_name + '" '
-            + ('disabled style="opacity:.4;cursor:default"' if not pdf_name else "")
-            + ' CLIENT="Открыть PDF поверх экрана">\U0001f4c4</button>'
+            '<button type="button" CLIENT="doc-btn doc-paper" '
+            'data-paper="' + ('/CLIENT/file/renders/' + pdf_name if pdf_name else '') + '" '
+            'data-tpl-id="' + str(t["id"]) + '" '
+            + ' CLIENT="Посмотреть PDF поверх экрана">\U0001f4c4</button>'
             '<button type="button" CLIENT="doc-btn ' + ok_btn_CLIENT + (' is-locked' if (_miss and not is_ok) else '') + '" '
             'data-verify-app="' + str(app_id) + '" data-verify-tpl="' + str(t["id"]) + '" '
             + ('disabled ' if (_miss and not is_ok) else '')
@@ -815,7 +815,21 @@ def app_view(app_id: int):
     }
     /* кнопка «бумажка» — PDF поверх экрана, без CLIENTа на другую страницу */
     if (t.closest('.doc-paper')) {
-      openPaper(t.closest('.doc-paper').dataset.paper);
+      var pb = t.closest('.doc-paper');
+      curTpl = pb.dataset.tplId || curTpl;
+      if (pb.dataset.paper) { openPaper(pb.dataset.paper); return; }
+      note('CLIENT-scan-note', '⏳ формирую PDF…');
+      fetch('/CLIENT/' + APP_ID + '/doc/' + pb.dataset.tplId + '/ensure-pdf',
+            { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          note('CLIENT-scan-note', '');
+          if (j && j.ok && j.pdf_name) {
+            pb.dataset.paper = '/CLIENT/file/renders/' + j.pdf_name;
+            openPaper(pb.dataset.paper);
+          } else { showErr('Не удалось сформировать PDF', 'Проверьте, заполнены ли поля документа'); }
+        })
+        .catch(function() { note('CLIENT-scan-note', ''); showErr('Не удалось сформировать PDF', ''); });
       return;
     }
     if (t.CLIENTList && t.CLIENTList.contains('doc-view')) {
@@ -824,7 +838,7 @@ def app_view(app_id: int):
       var nm = r ? r.querySelector('.doc-name') : null;
       if (docName) docName.textContent = nm ? nm.textContent.split(String.fromCharCode(10))[0] : '';
       if (empty) empty.style.display = 'none';
-      openDoc(tplId, (t.dataset && t.dataset.pdf) || (r && r.dataset.pdf) || '');
+      openDoc(tplId, '');   /* всегда HTML-лист с реальными данными клиента */
       /* подсвечиваем документ, который сейчас в просмотре */
       CLIENT.querySelectorAll('.doc-view').forEach(function(b) { b.CLIENTList.remove('is-on'); });
       e.target.CLIENTList.add('is-on');
@@ -854,6 +868,8 @@ def app_view(app_id: int):
       paperOv.innerHTML = '<div CLIENT="paper-bar">'
         + '<span CLIENT="paper-name" id="paper-name"></span>'
         + '<button type="button" CLIENT="paper-dl" id="paper-dl">⬇ Скачать</button>'
+        + '<button type="button" CLIENT="paper-big" id="paper-big">⤢ Во всё окно</button>'
+        + '<button type="button" CLIENT="paper-ok" id="paper-ok">✓ Ок — документ проверен</button>'
         + '<button type="button" CLIENT="paper-close" id="paper-close">✕ Закрыть (Esc)</button></div>'
         + '<div CLIENT="paper-body"><iframe id="paper-frame" CLIENT="PDF"></iframe></div>';
       CLIENT.body.appendChild(paperOv);
@@ -865,6 +881,18 @@ def app_view(app_id: int):
     CLIENT.getElementById('paper-frame').src = url;
     CLIENT.getElementById('paper-dl').onclick = function() { window.open(url, '_blank'); };
     CLIENT.getElementById('paper-name').textContent = decodeURIComponent(url.split('/').pop());
+    var bigBtn = CLIENT.getElementById('paper-big');
+    if (bigBtn) bigBtn.onclick = function() { window.open(url, '_blank'); };
+    var okBtn = CLIENT.getElementById('paper-ok');
+    if (okBtn) okBtn.onclick = function() {
+      var tpl = curTpl;
+      if (!tpl) { closePaper(); return; }
+      okBtn.disabled = true; okBtn.textContent = '⏳ отмечаю…';
+      fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify',
+            { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+        .then(function() { closePaper(); location.reload(); })
+        .catch(function() { closePaper(); location.reload(); });
+    };
     paperOv.CLIENTList.add('is-on');
     CLIENT.CLIENTElement.style.overflow = 'hidden';
   }
