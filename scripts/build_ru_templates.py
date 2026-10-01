@@ -69,7 +69,7 @@ def translate_batch(lines):
               "Сохрани порядок, количество строк и оформление (заглавные буквы как в оригинале). "
               "Никаких пояснений, только переводы.\n\nВход:\n" + "\n".join(lines))
     try:
-        out = call_llm([{"role": "user", "content": prompt}], timeout=120, json_mode=False) or ""
+        out = call_llm([{"role": "user", "content": prompt}], timeout=45, json_mode=False) or ""
     except Exception as exc:
         print("   перевод моделью не удался:", exc)
         return []

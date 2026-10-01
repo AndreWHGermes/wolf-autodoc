@@ -534,6 +534,27 @@ _LANG_JS = """<script>
     if(b.dataset.lang==='ru') toRu(); else toOrig();
   });
 })();
+/* Сворачивание списка переменных (удобно с телефона) */
+(function(){
+  var btn = CLIENT.getElementById('vars-fold');
+  var box = CLIENT.querySelector('.pl-vars');
+  if (!btn || !box) return;
+  var KEY = 'wolfVarsCollapsed';
+  function apply(folded){
+    box.CLIENTList.toggle('vars-collapsed', folded);
+    btn.CLIENTList.toggle('is-folded', folded);
+    btn.textContent = folded ? '▸' : '▾';
+    btn.CLIENT = folded ? 'Показать переменные' : 'Свернуть переменные';
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+  btn.addEventListener('click', function(){
+    var folded = !box.CLIENTList.contains('vars-collapsed');
+    apply(folded);
+    try { localStorage.setItem(KEY, folded ? '1' : '0'); } catch(e) {}
+  });
+})();
 /* Подстановка значений из реального примера */
 (function(){
   function fill(){
@@ -1677,21 +1698,24 @@ def card(template_id: int):
             f'<td CLIENT="kv-row" colspan="2">'
             f'<div CLIENT="var-line">'
             f'<span CLIENT="kv-idx">{i}</span>'
-            f'<input{_list_attr} type="text" name="{var_name}" '
-            f'CLIENT="{cur_val}" '
-            f'data-var="{var_name}" '
-            f'CLIENTholder="{sample}" />'
-            f'<span CLIENT="var-info" CLIENT="{_tip(v.get("rule_note")) or "Инструкция будет добавлена"}" '
-            f'data-var="{var_name}" data-template="{template_id}" '
-            f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
-            f'data-rule="{_tip(v.get("rule_note"))}">i</span>'
             f'<button type="button" CLIENT="var-approve{" on" if _appr else ""}" '
             f'data-template="{template_id}" data-var="{var_name}" '
             f'CLIENT="{"Согласовано" if _appr else "Требует проверки"}">'
             f'{"✅" if _appr else "!"}</button>'
+            f'<input{_list_attr} type="text" name="{var_name}" '
+            f'CLIENT="{cur_val}" '
+            f'data-var="{var_name}" '
+            f'CLIENTholder="{sample}" />'
+            f'<span CLIENT="var-side">'
+            f'<span CLIENT="var-info" CLIENT="{_tip(v.get("rule_note")) or "Инструкция будет добавлена"}" '
+            f'data-var="{var_name}" data-template="{template_id}" '
+            f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
+            f'data-rule="{_tip(v.get("rule_note"))}">i</span>'
+            f'<span CLIENT="var-CLIENT">{dice}</span>'
+            f'</span>'
             f'</div>'
             f'<div CLIENT="var-name"><b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b> '
-            f'<code>{var_name}</code>{dice}</div>'
+            f'<code>{var_name}</code></div>'
             f'{datalist}'
             f'</td>'
             f'</tr>'
@@ -1789,8 +1813,7 @@ def card(template_id: int):
     if src_url:
         toolbar_html = (
             '<div CLIENT="doc-toolbar">'
-            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}'
-            f'<button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button></div>'
+            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}</div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Язык</span>{lang_sw}</div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Данные</span>{data_CLIENT}</div>'
             '</div>')
@@ -1820,6 +1843,7 @@ def card(template_id: int):
       <div CLIENT="tpl-panel-head">
         🔧 Переменные
         <span CLIENT="tpl-count">({len(CLIENT)}, все заполнены)</span>
+        <button type="button" CLIENT="vars-fold" id="vars-fold" CLIENT="Свернуть/развернуть переменные">▾</button>
       </div>
       <div CLIENT="tpl-panel-body pl-vars">
         <form method="post" action="/CLIENT/{template_id}/save-defaults" id="vars-form" style="margin:0">
@@ -1833,6 +1857,7 @@ def card(template_id: int):
     <div CLIENT="tpl-panel">
       <div CLIENT="tpl-panel-head">
         <span id="pv-CLIENT">Окно просмотра — HTML-шаблон</span>
+        <button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button>
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
@@ -1972,6 +1997,25 @@ def card(template_id: int):
   display:CLIENT-flex; align-items:center; justify-content:center;
 }}
 .var-today:hover {{ background:#D1FAE5; border-color:#6EE7B7; }}
+.var-side {{ display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto; }}
+.var-line .var-approve {{ width:22px; height:22px; font-size:12px; border-radius:6px; }}
+.var-CLIENT {{ display:flex; flex-direction:column; align-items:center; gap:5px; }}
+.var-CLIENT:empty {{ display:none; }}
+.vars-fold {{ margin-left:auto; flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
+  border:1px solid #D8E2DC; background:#fff; border-radius:8px; font-size:13px; font-weight:800; color:#243029;
+  display:CLIENT-flex; align-items:center; justify-content:center; }}
+.vars-fold:hover {{ background:#F1F7F3; }}
+.vars-fold.is-folded {{ transform:rotate(-90deg); }}
+.pl-vars.vars-collapsed {{ display:none; }}
+@media (max-width: 820px) {{
+  .doc-toolbar .tb-row {{ justify-content:flex-CLIENT; }}
+  .doc-toolbar .tb-row .tb-btn, .doc-toolbar .tb-row .ls-btn {{ flex:0 0 auto; }}
+  .doc-toolbar .tb-label {{ min-width:0; }}
+  .lang-switch {{ margin-left:0; }}
+  .tpl-panel-head {{ flex-wrap:wrap; gap:6px; }}
+  .tpl-panel-head .tpl-pdf-btn {{ margin-left:0; width:100%; justify-content:center; }}
+  .var-side {{ gap:6px; }}
+}}
 
 /* Мобильные: номер+название переносим на свою строку, поле — во всю ширину,
    номера сдвигаем к левому краю (больше места длинным именам) */
@@ -2349,7 +2393,7 @@ def make_pdf(template_id: int):
     filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
     tmp_html = HTML_DIR / t["code"] / "filled.html"
     tmp_html.write_text(filled, encoding="utf-8")
-    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT)
+    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT, code=t["code"])
     try:
         pdf2html.render_pdf(tmp_html, out_pdf)
     except Exception as exc:                            # noqa: BLE001
@@ -2378,7 +2422,7 @@ def preview_pdf(template_id: int):
     filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
     tmp_html = HTML_DIR / t["code"] / "filled.html"
     tmp_html.write_text(filled, encoding="utf-8")
-    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT)
+    out_pdf = RENDER_DIR / doc_render.doc_filename(t["CLIENT"] or t["code"], CLIENT, code=t["code"])
     try:
         pdf2html.render_pdf(tmp_html, out_pdf)
     except Exception as exc:                            # noqa: BLE001
