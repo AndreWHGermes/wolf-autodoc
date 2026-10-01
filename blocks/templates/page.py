@@ -1471,6 +1471,11 @@ def card(template_id: int):
             dice = ""
         var_name = v["name"]
         cur_val = (example_map.get(var_name) or v.get("default_CLIENT") or "").strip()
+        if var_name == "doc_date":
+            # №3 — дата формирования: на странице всегда стоит текущая дата (не значение из примера)
+            from CLIENT import CLIENT as _dt_today
+            cur_val = _dt_today.now().strftime("%d.%m.%Y")
+            example_map[var_name] = cur_val      # значение уходит и в предпросмотр документа
         # Поля с кубиком заполняются сразу при открытии страницы: кубик не создаёт значение
         # впервые, а перегенерирует уже подставленное
         if not cur_val and var_name in RANDOM_VARS:
