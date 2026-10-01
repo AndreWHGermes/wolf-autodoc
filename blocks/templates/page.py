@@ -1440,6 +1440,9 @@ def card(template_id: int):
                 example_map[v["name"]] = str(ex[0])
         except Exception:
             pass
+    # чистые значения реального примера — их подставляет кнопка «Из примера»
+    # (в example_map ниже дописываются автозначения, но кнопка должна возвращать именно пример)
+    example_source = dict(example_map)
 
     var_rows_html = ""
     for i, v in enumerate(CLIENT, 1):
@@ -1624,7 +1627,7 @@ def card(template_id: int):
         '<button type="button" CLIENT="btn sm" id="ex-fill">📋 Подставить значения из примера</button>'
         '<button type="button" CLIENT="btn sm ghost" id="ex-clear">Очистить поля</button>'
         '<span CLIENT="muted" id="ex-note" style="font-size:12px"></span>'
-        '<script id="ex-data" type="CLIENT/json">' + json.dumps(example_map, ensure_ascii=False) + '</script>'
+        '<script id="ex-data" type="CLIENT/json">' + json.dumps(example_source, ensure_ascii=False) + '</script>'
         '</div>')
 
     if src_url:
