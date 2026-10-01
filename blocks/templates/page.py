@@ -1043,13 +1043,18 @@ def page():
         CLIENT_CLIENTs += ui_card("Без привязки к продукту", body_orphan,
                                    emoji="🧩", tone="amber", note=str(len(orphan_rows)))
 
-    # «Готова» = у документа проставлены все зелёные галочки (переменные согласованы вручную)
+    # «Готова» = у каждой переменной документа есть значение или пример (подтянуто из данных
+    # клиента / CLIENT / генерации). Зелёные галочки для этого не нужны — они только для разработки.
     _ready_map = {}
     for _r in db.q("""SELECT template_id,
-                           COUNT(*) AS total,
-                           SUM(CASE WHEN COALESCE(approved,0)=1 THEN 1 ELSE 0 END) AS ok
-                    FROM template_CLIENT
-                    WHERE name NOT IN ('CLIENT_from','CLIENT_to') GROUP BY template_id"""):
+                            COUNT(*) AS total,
+                            SUM(CASE WHEN TRIM(COALESCE(default_CLIENT,'')) <> ''
+                                       OR (COALESCE(examples_json,'') NOT IN ('', '[]'))
+                                     THEN 1 ELSE 0 END) AS ok
+                     FROM template_CLIENT
+                     WHERE name NOT IN ('CLIENT_from','CLIENT_to','balance_CLIENT','balance_CLIENT',
+                                        'doc_no','ref_no','card_mask','doc_date','balance_rub','balance_CLIENT')
+                     GROUP BY template_id"""):
         _ready_map[_r["template_id"]] = (int(_r["total"] or 0), int(_r["ok"] or 0))
     grouped = _group_by_type(rows)
     type_CLIENTs = ""
@@ -1250,7 +1255,7 @@ def page():
 <CLIENT CLIENT="fold-all" id="fold-types" open>
   <CLIENT CLIENT="fa-head">
     <span CLIENT="fa-CLIENT">📚 Все документы по типу <span style="font-weight:600;font-size:13px;color:#4B6B58">(редактирование шаблона документа)</span></span>
-    <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Надпись «Готова» появляется сама, когда у всех переменных документа проставлены зелёные галочки.</span>
+    <span CLIENT="fa-note">Отсюда открывается сам документ: поля переменных, HTML-шаблон, оригинальный пример с разметкой и перевод. Надпись «Готова» появляется сама, когда у каждой переменной документа есть значение или пример — зелёные галочки для этого не требуются.</span>
     <span CLIENT="fa-count">{len(rows)} шт.</span>
     <span CLIENT="chev">›</span>
   </CLIENT>
