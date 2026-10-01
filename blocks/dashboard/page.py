@@ -197,13 +197,21 @@ def app_CLIENT_CLIENT(app_id: int):
         _cl_bank = (_cl_row.get("bank_name") or "").lower()
     except Exception:
         _cl_bank = ""
-    for t in new_CLIENT:
-        if not _bank_allows(t["code"], _cl_bank):
-            continue
+    # Взаимозаменяемые документы (банковские справки Тинькофф/Сбер, форма резюме, письмо
+    # Нгурах-Рай/Денпасар) — это один слот: в заявке должен быть ОДИН документ из группы.
+    _rows = db.q("""SELECT t.id, t.code, pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
+                      FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id = pd.template_id
+                      WHERE pd.CLIENT_id=? ORDER BY t.id""", (new_pid,))
+    _by_slot = {}
+    for _r in _rows:
+        _by_slot.setdefault(_r["slot_code"] or ("tpl_" + str(_r["id"])), []).append(_r)
+    for _slot, _variants in _by_slot.items():
+        _ok = [v for v in _variants if _bank_allows(v["code"], _cl_bank)] or _variants
+        _def = [v for v in _ok if v["is_default"]] or _ok
         db.exec_sql(
             "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, rendered_at) "
             "CLIENT (?, ?, 'pending', ?)",
-            (app_id, t["id"], now))
+            (app_id, _def[0]["id"], now))
     db.log_event("CLIENT", app_id, "CLIENT_CLIENTd", actor=current_user()["CLIENT"],
                  payload=json.dumps({"new_CLIENT": prod["code"]}, ensure_ascii=False))
     flash(f"Продукт изменён: {prod['name']}. Список документов обновлён.", "ok")
@@ -456,8 +464,11 @@ def app_view(app_id: int):
         ok_btn_label = ("✓ Проверен" if is_ok else "☐ Отметить Ок")
         status_CLIENT = {
             "verified": "ok", "sent": "ok", "filled": "amber",
-            "error": "bad", "pending": "grey",
+            "error": "bad", "pending": "grey", "rejected": "grey",
         }.get(CLIENT, "grey")
+        status_label_txt = {"verified": "проверен", "sent": "отправлен", "filled": "заполнен",
+                            "pending": "ожидает", "draft": "черновик",
+                            "rejected": "не нужен"}.get(CLIENT, CLIENT)
         # чего не хватает этому документу: считается по тем же значениям, что уходят в PDF
         _miss = doc_missing_fields(app_id, t["id"])
         _miss_txt = ", ".join(_miss)
@@ -479,7 +490,7 @@ def app_view(app_id: int):
                          for _v in t.get("variants", []))
                + '</select> ' if len(t.get("variants", [])) > 1 else '')
             + str(t["pages"] or 0) + ' стр. · '
-            + '<span CLIENT="badge ' + status_CLIENT + '">' + CLIENT + '</span> '
+            + '<span CLIENT="badge ' + status_CLIENT + '">' + status_label_txt + '</span> '
             + _fill_badge
             + ('<span CLIENT="badge orig-badge" style="margin-left:4px;background:#E0F2FE;color:#075985">📁 есть оригинал</span>' if has_original else "")
             + '</div></div>'
@@ -498,6 +509,11 @@ def app_view(app_id: int):
             + 'CLIENT="' + ('Нельзя подтвердить: не заполнено — ' + _miss_txt if (_miss and not is_ok)
                                else ('Проверен. Нажмите, чтобы снять проверку' if is_ok else 'Отметить Ок')) + '">'
             + ok_btn_label + '</button>'
+            '<button type="button" CLIENT="doc-btn ' + ('btn-rej-active' if CLIENT == 'rejected' else 'btn-rej-idle') + '" '
+            'data-reject-app="' + str(app_id) + '" data-reject-tpl="' + str(t['id']) + '" '
+            + 'CLIENT="' + ('Документ не нужен. Нажмите, чтобы вернуть в комплект' if CLIENT == 'rejected'
+                          else 'Не нужен — исключить документ из комплекта (в зачёт тоже идёт)') + '">'
+            + ('\u21a9 Вернуть' if CLIENT == 'rejected' else '\u2715 Не нужен') + '</button>'
             '</div>'
             '</li>'
         )
@@ -518,20 +534,22 @@ def app_view(app_id: int):
     _checked_slots = set()
     for _d in docs:
         _sl = _slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))
-        if _d.get("CLIENT") in ("verified", "sent"):
+        # в зачёт идёт и «проверен», и «не нужен» — администратор так или иначе решил по документу
+        if _d.get("CLIENT") in ("verified", "sent", "rejected"):
             _checked_slots.add(_sl)
     _checked = len(_checked_slots)
     _total = len(_pkg_slots) if _pkg_slots else (len({(_slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))) for _d in docs}) or 0)
-    _send_missing = sorted({m for _d in docs for m in doc_missing_fields(app_id, _d["template_id"])})
+    _send_missing = sorted({m for _d in docs if _d.get("CLIENT") != "rejected"
+                            for m in doc_missing_fields(app_id, _d["template_id"])})
     _CLIENTers = []
     if _checked < _total:
-        _CLIENTers.append("проверено " + str(_checked) + " из " + str(_total) + " документов")
+        _CLIENTers.append("согласовано " + str(_checked) + " из " + str(_total) + " документов")
     if _send_missing:
         _CLIENTers.append("не заполнены поля: " + ", ".join(_send_missing[:6])
                          + (" и ещё " + str(len(_send_missing) - 6) if len(_send_missing) > 6 else ""))
     _send_ready = not _CLIENTers
     send_CLIENT = (
-        '<div CLIENT="send-CLIENT ok">\u2705 Все документы проверены, поля заполнены — можно отправлять</div>'
+        '<div CLIENT="send-CLIENT ok">\u2705 Все документы согласованы — можно отправлять на Google Диск</div>'
         if _send_ready else
         '<div CLIENT="send-CLIENT warn">\u26d4 Отправить нельзя: ' + "; ".join(_CLIENTers) + '</div>'
     )
@@ -695,7 +713,9 @@ def app_view(app_id: int):
   <div CLIENT="stage-no">6</div>
   """ + send_CLIENT + """
   <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
-          onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')">
+          onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')"
+          """ + ('' if _send_ready else 'disabled ') + 'CLIENT="' + ('Отправить документы в Google CLIENT'
+                 if _send_ready else 'Сначала согласуйте документы: проверьте или отмените каждый') + '\">'"""
     📤 Отправить документы на Google CLIENT
   </button>
 </form>
@@ -983,6 +1003,42 @@ def app_view(app_id: int):
     if (h) h.textContent = s3.open ? 'свернуть' : 'развернуть';
   });
 
+  /* ── «✕ Не нужен / ↩ Вернуть»: документ исключается из комплекта, но остаётся в списке ── */
+  CLIENT.addEventListener('click', function(e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-reject-app]') : null;
+    if (!b || b.disabled) return;
+    e.preventDefault();
+    var app = b.getAttribute('data-reject-app'), tpl = b.getAttribute('data-reject-tpl');
+    var oldText = b.textContent;
+    b.disabled = true; b.textContent = '⏳…';
+    fetch('/CLIENT/' + app + '/doc/' + tpl + '/reject',
+          { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        b.disabled = false;
+        var row = b.closest('.doc-row');
+        if (d && d.rejected) {
+          b.textContent = '↩ Вернуть';
+          b.CLIENT = 'Документ не нужен. Нажмите, чтобы вернуть в комплект';
+          b.CLIENTList.remove('btn-rej-idle'); b.CLIENTList.add('btn-rej-active');
+          if (row) {
+            var ck = row.querySelector('.check-ok'); if (ck) ck.remove();
+            var bd = row.querySelector('.badge'); if (bd) { bd.CLIENTName = 'badge grey'; bd.textContent = 'не нужен'; }
+            row.CLIENTList.add('is-rejected');
+          }
+        } else {
+          b.textContent = '✕ Не нужен';
+          b.CLIENT = 'Не нужен — исключить документ из комплекта';
+          b.CLIENTList.remove('btn-rej-active'); b.CLIENTList.add('btn-rej-idle');
+          if (row) {
+            var bd2 = row.querySelector('.badge'); if (bd2) { bd2.CLIENTName = 'badge amber'; bd2.textContent = 'заполнен'; }
+            row.CLIENTList.remove('is-rejected');
+          }
+        }
+        refreshSendState();
+      })
+      .catch(function() { b.disabled = false; b.textContent = oldText; });
+  });
   /* ── «✓ Проверен / ☐ Отметить Ок» — переключатель проверки без перезагрузки страницы ── */
   function refreshSendState() {
     fetch(location.href, { credentials: 'same-origin' })
@@ -1011,6 +1067,7 @@ def app_view(app_id: int):
         if (d && d.verified) {
           b.textContent = '✓ Проверен';
           b.CLIENT = 'Проверен. Нажмите, чтобы снять проверку';
+          if (row) row.CLIENTList.remove('is-rejected');
           b.CLIENTList.remove('btn-ok-idle'); b.CLIENTList.add('btn-ok-active');
           if (row) {
             var nm = row.querySelector('.doc-name');
@@ -1458,6 +1515,29 @@ def app_original_pages(app_id: int, template_id: int):
     except Exception:
         return "<div style='padding:20px;color:#B91C1C'>Файл вне хранилища</div>"
     return redirect("/CLIENT/pdfpages?path=" + quote(rel))
+
+
+@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/reject", methods=["POST"])
+@CLIENT_required
+def app_doc_reject(app_id, template_id):
+    """Переключатель «не нужен»: убрать документ из комплекта или вернуть его обратно."""
+    ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+               (app_id, template_id))
+    if not ad:
+        db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT)
+                       CLIENT (?,?, 'rejected')""", (app_id, template_id))
+        _new_status = "rejected"
+    else:
+        _new_status = "filled" if ad["CLIENT"] == "rejected" else "rejected"
+        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT=? WHERE id=?", (_new_status, ad["id"]))
+    db.log_event("CLIENT_CLIENT", (ad["id"] if ad else 0), _new_status,
+                 actor=current_user()["CLIENT"],
+                 payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
+    if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+        return jsonify({"ok": True, "rejected": _new_status == "rejected",
+                        "app_id": app_id, "template_id": template_id})
+    flash("Документ исключён из комплекта" if _new_status == "rejected" else "Документ возвращён в комплект")
+    return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/verify", methods=["POST"])
