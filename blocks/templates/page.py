@@ -346,6 +346,34 @@ _SYNC_JS = """<script>
     var i = e.target.closest ? e.target.closest('select[data-var], textarea[data-var]') : null;
     if (i) sync(i.getAttribute('data-var'), i.CLIENT);
   });
+  /* Enter в поле принимает значение в текущей ячейке — без перезагрузки страницы */
+  CLIENT.addEventListener('keydown', function(e){
+    var i = e.target.closest ? e.target.closest('input[data-var]') : null;
+    if (!i || e.key !== 'Enter') return;
+    e.preventDefault();
+    var nm = i.getAttribute('data-var');
+    if (nm === 'card_mask') { var m = maskCard(i.CLIENT); if (m !== i.CLIENT) i.CLIENT = m; }
+    sync(nm, i.CLIENT);
+    if (nm === 'balance_rub' || nm === 'balance_CLIENT') {
+      sync('balance_CLIENT', numToWordsEn(i.CLIENT));
+      sync('balance_CLIENT', CLIENTOf(i.CLIENT));
+    }
+    i.blur();
+  });
+  /* №3 — дата формирования: календарик возвращает текущую дату (админ может вписать свою) */
+  CLIENT.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('.var-today') : null;
+    if (!b) return;
+    e.preventDefault();
+    var nm = b.getAttribute('data-var') || 'doc_date';
+    var f = CLIENT.querySelector('input[data-var="' + esc(nm) + '"]');
+    if (!f) return;
+    var d = new Date();
+    var pad = function(x){ return ('0' + x).slice(-2); };
+    f.CLIENT = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear();
+    sync(nm, f.CLIENT);
+    f.dispatchEvent(new Event('input', {bubbles: true}));
+  });
   CLIENT.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('.var-dice') : null;
     if (b) {
@@ -1304,10 +1332,6 @@ def card(template_id: int):
     if html_exists:
         html_CLIENT = (
             f'<div CLIENT="zp-preview" data-zoom-pan><div id="html-preview-stage" CLIENT="html-stage">{html_preview}</div></div>'
-            f'<div CLIENT="row tight" style="margin-top:6px;gap:6px;flex-wrap:wrap;align-items:center">'
-            f'<button type="button" CLIENT="btn sm primary" id="btn-make-var" disabled>📌 Из выделенного → {{переменная}}</button>'
-            f'<span CLIENT="muted" id="var-hint" style="font-size:12px;flex:1">выделите текст в HTML</span>'
-            f'</div>'
             f'<div CLIENT="row tight" style="margin-top:6px">'
             f'<form method="post" action="/CLIENT/{template_id}/save-html" style="flex:1;margin:0">'
             f'<input type="hidden" name="html_content" id="html_content">'
@@ -1434,10 +1458,17 @@ def card(template_id: int):
                 _extra = f' data-min="{_lo}" data-max="{_hi}"'
             except Exception:
                 _extra = ""
-        dice = (f'<button type="button" CLIENT="var-dice" data-var="{v["name"]}" '
-                f'data-doc="№{t.get("doc_CLIENT") or template_id}"{_extra} '
-                f'CLIENT="Сгенерировать новое значение по правилу">🎲</button>'
-                if v["name"] in RANDOM_VARS else "")
+        if v["name"] == "doc_date":
+            # №3: дата формирования документа — календарик возвращает текущую дату
+            dice = (f'<button type="button" CLIENT="var-today" data-var="{v["name"]}" '
+                    f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
+                    f'CLIENT="Подставить текущую дату">📅</button>')
+        elif v["name"] in RANDOM_VARS:
+            dice = (f'<button type="button" CLIENT="var-dice" data-var="{v["name"]}" '
+                    f'data-doc="№{t.get("doc_CLIENT") or template_id}"{_extra} '
+                    f'CLIENT="Сгенерировать новое значение по правилу">🎲</button>')
+        else:
+            dice = ""
         var_name = v["name"]
         cur_val = (example_map.get(var_name) or v.get("default_CLIENT") or "").strip()
         # Поля с кубиком заполняются сразу при открытии страницы: кубик не создаёт значение
@@ -1597,12 +1628,6 @@ def card(template_id: int):
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}</div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Язык</span>{lang_sw}</div>'
             f'<div CLIENT="tb-row"><span CLIENT="tb-label">Данные</span>{data_CLIENT}</div>'
-            '<div CLIENT="tb-hint">Порядок работы: заполните значения слева → «💾 Сохранить значения» → '
-            '«▶ Сформировать» (PDF появится справа). Кнопки «Просмотр» переключают окно справа: '
-            'HTML-шаблон (клик по переменной подсвечивает поле) и оригинальный пример из Google CLIENT '
-            'с разметкой полей. '
-            'Оригинальные документы формируются только на английском; значение переменной можно '
-            'вписать по-русски — при подстановке оно переведётся автоматически.</div>'
             '</div>')
     else:
         toolbar_html = ('<div CLIENT="doc-toolbar"><div CLIENT="tb-row">'
@@ -1634,10 +1659,6 @@ def card(template_id: int):
         <table CLIENT="kv-table" style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #DCEEE2;border-radius:6px;overflow:hidden">
           <tbody>{var_rows_html or '<tr><td CLIENT="muted" colspan="2">У шаблона нет переменных</td></tr>'}</tbody>
         </table>
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-          <button CLIENT="tpl-save-btn" type="submit" style="background:#16A34A;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px">💾 Сохранить значения</button>
-          <span CLIENT="muted" style="font-size:11.5px">значения по умолчанию используются при «Сформировать»</span>
-        </div>
         </form>
       </div>
     </div>
@@ -1649,12 +1670,6 @@ def card(template_id: int):
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
-          <div style="padding:8px 12px;background:#FBFEFB;border-top:1px solid #DCEEE2;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <button type="button" id="btn-make-var" CLIENT="tpl-gen-btn" disabled style="padding:8px 14px;font-size:13px;flex:0 0 auto">
-              📌 Из выделенного → {"{{переменная}}"}
-            </button>
-            <span id="var-hint" CLIENT="muted" style="font-size:11.5px;flex:1">выделите текст в HTML выше → нажмите эту кнопку → введите имя переменной</span>
-          </div>
       </div>
         <script>
 (function(){{
@@ -1804,6 +1819,13 @@ def card(template_id: int):
   display:CLIENT-flex; align-items:center; justify-content:center;
 }}
 .var-dice:hover {{ background:#E0E7FF; border-color:#A5B4FC; }}
+.var-today {{
+  flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
+  border:1px solid #BBF7D0; background:#ECFDF5; color:#047857;
+  border-radius:8px; font-size:15px; line-height:1;
+  display:CLIENT-flex; align-items:center; justify-content:center;
+}}
+.var-today:hover {{ background:#D1FAE5; border-color:#6EE7B7; }}
 
 /* Мобильные: номер+название переносим на свою строку, поле — во всю ширину,
    номера сдвигаем к левому краю (больше места длинным именам) */
