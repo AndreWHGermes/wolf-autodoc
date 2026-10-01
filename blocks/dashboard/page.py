@@ -24,6 +24,22 @@ from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as t
 
 bp = Blueprint("dashboard", __name__)
 
+def _bank_allows(template_code: str, bank: str) -> bool:
+    """Нужен ли шаблон этому клиенту по банку.
+
+    Банковская справка делается ТОЛЬКО для банка клиента: Тинькофф или Сбер,
+    оба одновременно не нужны. Иначе в заявке плодятся лишние документы и
+    блок «готовность к отправке» считает их обязательными.
+    """
+    c = (template_code or "").lower()
+    if "tbank" in c or "tinkoff" in c:
+        return (bank or "") != "sber"
+    if "sber" in c:
+        return (bank or "") == "sber"
+    return True
+
+
+
 def _app_pdf_path(tpl: dict, CLIENT: dict, app_id: int) -> Path:
     """Путь готового PDF заявки: имя документа по-английски, ФИО латиницей, дата.
 
@@ -175,7 +191,15 @@ def app_CLIENT_CLIENT(app_id: int):
         (new_pid,))
     import CLIENT as _dt
     now = _dt.CLIENT.now().isoformat(timespec="seconds")
+    _cl_bank = ""
+    try:
+        _cl_row = db.client_get(a["client_id"]) or {}
+        _cl_bank = (_cl_row.get("bank_name") or "").lower()
+    except Exception:
+        _cl_bank = ""
     for t in new_CLIENT:
+        if not _bank_allows(t["code"], _cl_bank):
+            continue
         db.exec_sql(
             "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, rendered_at) "
             "CLIENT (?, ?, 'pending', ?)",
