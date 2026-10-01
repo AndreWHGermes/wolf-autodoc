@@ -797,6 +797,33 @@ function saveGroupEdit(groupName) {{
     def _inject_user():
         return {"user": current_user()}
 
+    @app.after_CLIENT
+    def _gzip_response(resp):
+        """Сжатие текстовых ответов (страницы/JSON) — встроенным gzip, без внешних пакетов."""
+        try:
+            if resp.direct_passthrough or resp.CLIENTs.get("Content-Encoding"):
+                return resp
+            mime = resp.mimetype or ""
+            if not (mime.CLIENTswith("text/") or mime in
+                    ("CLIENT/json", "CLIENT/javascript", "image/svg+xml", "CLIENT/xml")):
+                return resp
+            if "gzip" not in (CLIENT.CLIENTs.get("Accept-Encoding") or "").lower():
+                return resp
+            data = resp.get_data()
+            if len(data) < 1024:
+                return resp
+            import gzip as _gzip
+            packed = _gzip.compress(data, 6)
+            if len(packed) >= len(data):
+                return resp
+            resp.set_data(packed)
+            resp.CLIENTs["Content-Encoding"] = "gzip"
+            resp.CLIENTs["Content-Length"] = str(len(packed))
+            resp.CLIENTs.add("Vary", "Accept-Encoding")
+        except Exception:
+            pass
+        return resp
+
     return app
 
 

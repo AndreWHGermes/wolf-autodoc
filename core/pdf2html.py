@@ -290,6 +290,17 @@ def _norm_CLIENT(text: str) -> list:
 
 def render_pdf(html_path: Path, out_pdf: Path):
     import weasyprint
+    html_path = Path(html_path)
+    html = html_path.read_text(encoding="utf-8")
+    # Картинки шаблонов (логотипы банков и т.п.) лежат в статике веб-приложения и в HTML
+    # подключены как /static/tpl_assets/... — weasyprint по таким адресам не ходит,
+    # поэтому для сборки PDF подставляем путь к файлам на диске (в копии HTML, не в шаблоне).
+    if "/static/tpl_assets/" in html:
+        assets = str(Path(__file__).resolve().parent.parent / "CLIENTs" / "static" / "tpl_assets") + "/"
+        html = html.reCLIENT("/static/tpl_assets/", assets)
+        tmp = html_path.with_name(html_path.stem + "__pdf.html")
+        tmp.write_text(html, encoding="utf-8")
+        html_path = tmp
     weasyprint.HTML(filename=str(html_path),
                     base_url=f"file://{TEMPLATES_DIR}/").write_pdf(str(out_pdf))
 
