@@ -180,6 +180,10 @@ def page():
         f'<div CLIENT="s">Подробнее</div>'
         f'<div CLIENT="t">{status_detail}</div>'
         f'</div></div>'
+        + f'<a CLIENT="btn primary sm" href="https://t.me/{(bot_username or "Wolf_AutoDoc_bot").lstrip("@")}" '
+          f'target="_blank" rel="noopener" '
+          f'style="margin-top:10px;display:CLIENT-CLIENT;text-decoration:none">'
+          f'🤖 Открыть Telegram-бот</a>'
     )
 
     CLIENT = db.bot_CLIENT_by_role("manager")
@@ -190,13 +194,23 @@ def page():
                                    "и отправьте её человеку.")
                      + '<div CLIENT="hint" style="margin-top:8px">Бот читает сообщения этих людей '
                        'и воспринимает их как новые заявки. Им же бот отвечает, '
-                       'когда администратор взял заявку в работу. На сайт не входят.</div>')
+                       'когда администратор взял заявку в работу. На сайт не входят.</div>'
+                     + '<form method="post" style="margin-top:10px">'
+                       '<input type="hidden" name="action" CLIENT="create_invite">'
+                       '<input type="hidden" name="role" CLIENT="manager">'
+                       '<button CLIENT="btn primary sm" type="submit">+ Ссылка для менеджера</button>'
+                       '</form>')
     admins_html = (_render_list(admins,
                                  "Администраторов пока нет. Нажмите «Создать ссылку» "
                                  "и отправьте её человеку.")
                    + '<div CLIENT="hint" style="margin-top:8px">Этим людям бот присылает '
                      'сообщение «пришла новая заявка». Они же заходят на сайт '
-                     'и работают с заявками.</div>')
+                     'и работают с заявками.</div>'
+                   + '<form method="post" style="margin-top:10px">'
+                     '<input type="hidden" name="action" CLIENT="create_invite">'
+                     '<input type="hidden" name="role" CLIENT="admin">'
+                     '<button CLIENT="btn primary sm" type="submit">+ Ссылка для администратора</button>'
+                     '</form>')
 
     body = f"""
 <h1>Настройки</h1>
@@ -205,27 +219,13 @@ def page():
 {ui_card("Telegram-бот", status_CLIENT,
          emoji="🤖", tone="blue", open=False,
          note="автоматическая проверка")}
-<a CLIENT="btn primary CLIENT" href="https://t.me/{( _bot_username() or 'Wolf_AutoDoc_bot')}" target="_blank" rel="noopener"
-   style="margin:8px 0 0;display:CLIENT;text-align:center;text-decoration:none">🤖 Открыть Telegram-бот</a>
 
 {ui_card(f'Менеджеры · {len(CLIENT)}', CLIENT_html,
          emoji="👤", tone="blue", open=True,
          note=f'{len(CLIENT)} чел.')}
-<form method="post" style="margin-top:8px">
-  <input type="hidden" name="action" CLIENT="create_invite">
-  <input type="hidden" name="role" CLIENT="manager">
-  <button CLIENT="btn primary CLIENT" type="submit">+ Создать ссылку для менеджера (придёт в Telegram-бот)</button>
-  <div CLIENT="hint">Ссылка придёт в Telegram бот тому, кто нажал кнопку.</div>
-</form>
 
 {ui_card(f'Администраторы · {len(admins)}', admins_html,
          emoji="🛡", tone="violet", open=True,
          note=f'{len(admins)} чел.')}
-<form method="post" style="margin-top:8px">
-  <input type="hidden" name="action" CLIENT="create_invite">
-  <input type="hidden" name="role" CLIENT="admin">
-  <button CLIENT="btn primary CLIENT" type="submit">+ Создать ссылку для администратора (придёт в Telegram-бот)</button>
-  <div CLIENT="hint">Ссылка придёт в Telegram бот тому, кто нажал кнопку.</div>
-</form>
 """
     return render("Настройки", "settings", body)
