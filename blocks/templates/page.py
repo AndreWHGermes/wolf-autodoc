@@ -213,6 +213,13 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
     CLIENT.querySelectorAll('tr.hl-row').forEach(function(x){x.CLIENTList.remove('hl-row');});
     CLIENT.querySelectorAll('.var-hl.hl-flash').forEach(function(x){x.CLIENTList.remove('hl-flash');});
   }
+  /* связанные переменные: сумма цифрой и её написание прописью подсвечиваются вместе */
+  function linkedTo(name){
+    if(name==='balance_rub'||name==='balance_CLIENT'||name==='balance_CLIENT'||name==='balance_CLIENT'){
+      return ['balance_rub','balance_CLIENT','balance_CLIENT','balance_CLIENT'].filter(function(x){ return x!==name; });
+    }
+    return [];
+  }
   CLIENT.addEventListener('click', function(e){
     var t=e.target; if(!t||!t.closest) return;
     var inDocSpan = t.closest('.var-hl[data-var]');
@@ -238,6 +245,13 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
       }
       inDocSpan.CLIENTList.add('hl-flash');
       setTimeout(function(){ inDocSpan.CLIENTList.remove('hl-flash'); }, 3000);
+      /* сумма цифрой ↔ сумма прописью: подсвечиваем обе части */
+      linkedTo(name).forEach(function(nm){
+        CLIENT.querySelectorAll('.var-hl[data-var="'+esc(nm)+'"]').forEach(function(s2){
+          s2.CLIENTList.add('hl-flash');
+          setTimeout(function(){ s2.CLIENTList.remove('hl-flash'); }, 3000);
+        });
+      });
       return;
     }
     var row2 = t.closest('tr[data-var-row]');
@@ -247,6 +261,7 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
       /* дата формирования связана с периодом: подсвечиваем и её, и обе даты во второй строке */
       var names = [n2];
       if(n2 === 'doc_date'){ names.push('CLIENT_from', 'CLIENT_to'); }
+      linkedTo(n2).forEach(function(x){ names.push(x); });
       var sp = [];
       names.forEach(function(nm){
         CLIENT.querySelectorAll('.var-hl[data-var="'+esc(nm)+'"]').forEach(function(s){
