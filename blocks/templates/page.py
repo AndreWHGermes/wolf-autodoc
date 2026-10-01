@@ -1668,6 +1668,7 @@ def card(template_id: int):
     else:
         html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
+    pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:auto; background:#1D4ED8; color:#fff; border:0; border-radius:8px;\n               padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }\n.tpl-pdf-btn:hover { background:#1E40AF; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-modal-body"><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    note.textContent = \'собираю PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      frame.src = j.url + \'#zoom=page-fit&toolbar=0\';\n      dl.href = j.url; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n    }).catch(function(e){ note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
     if rendered_pdf_url:
         preview_inner = (
             f'<div CLIENT="zp-preview" data-zoom-pan><iframe CLIENT="pdf-preview-iframe" style="width:794.5px;height:1123px;border:0" src="{rendered_pdf_url}#zoom=100&toolbar=0"></iframe></div>'
@@ -1750,8 +1751,9 @@ def card(template_id: int):
 
     <div CLIENT="tpl-panel">
       <div CLIENT="tpl-panel-head">
-        📄 HTML-шаблон
-        <span CLIENT="tpl-count">(read-only, <span CLIENT="var-hl-CLIENT">{{ var }}</span> подсвечены)</span>
+        👁 Просмотр
+        <span CLIENT="tpl-count">(переключается кнопками выше: <span CLIENT="var-hl-CLIENT">{{ var }}</span> подсвечены)</span>
+        <button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button>
       </div>
       <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
@@ -1807,28 +1809,8 @@ def card(template_id: int):
     </div>
   </section>
 
-  <section CLIENT="tpl-row-result">
-    <div CLIENT="tpl-gen-card">
-      <div CLIENT="tpl-gen-lbl">🧪 Готовый PDF</div>
-      <div CLIENT="tpl-gen-hint">
-        На основании переменных слева<br>
-        и HTML-шаблона — сформировать<br>
-        готовый PDF и показать справа.
-      </div>
-      <form method="post" action="/CLIENT/{template_id}/render" style="margin:0">
-        <input type="hidden" name="default_only" CLIENT="1">
-        <button CLIENT="tpl-gen-btn" type="submit">
-          ▶ Сформировать
-          <small>PDF появится справа →</small>
-        </button>
-      </form>
-    </div>
-
-    <div CLIENT="tpl-preview">
-      {preview_inner}
-    </div>
-  </section>
 </section>
+{pdf_modal_html}
 
 <style>
 .tpl-card {{ background:#fff; border:1px solid #BFE0CB; border-radius:12px; padding:18px;
@@ -2297,6 +2279,33 @@ def make_pdf(template_id: int):
     db.log_event("template", template_id, "rendered", payload=out_pdf.name)
     flash(f"PDF сформирован: {out_pdf.name}")
     return redirect(url_for("CLIENT.card", template_id=template_id) + f"?pdf={out_pdf.name}#preview")
+
+
+@bp.route("/CLIENT/<int:template_id>/preview_pdf", methods=["POST"])
+@CLIENT_required
+def preview_pdf(template_id: int):
+    """PDF из текущих значений формы — для всплывающего окна «Посмотреть сформированный PDF».
+
+    Ничего не сохраняем: ни значения переменных, ни правила — только собираем PDF по тому,
+    что сейчас стоит в полях страницы, и отдаём ссылку на файл.
+    """
+    t = _template(template_id)
+    html_file = HTML_DIR / t["code"] / "template.html"
+    if not html_file.exists():
+        return jsonify({"ok": False, "error": "HTML-шаблон не сконвертирован"}), 400
+    raw = CLIENT.get_json(silent=True) or {}
+    CLIENT = {k: str(v or "").strip() for k, v in (raw.get("CLIENT") or {}).items()}
+    html = html_file.read_text(encoding="utf-8")
+    filled = doc_render.fill(html, CLIENT, keep_unfilled=True, template_code=t["code"])
+    tmp_html = HTML_DIR / t["code"] / "filled.html"
+    tmp_html.write_text(filled, encoding="utf-8")
+    out_pdf = RENDER_DIR / f'{t["code"]}_preview_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    try:
+        pdf2html.render_pdf(tmp_html, out_pdf)
+    except Exception as exc:                            # noqa: BLE001
+        return jsonify({"ok": False, "error": f"PDF не собрался: {exc}"}), 500
+    return jsonify({"ok": True, "url": f"/CLIENT/file/renders/{out_pdf.name}",
+                    "name": out_pdf.name})
 
 
 @bp.route("/CLIENT/pdfpages")
