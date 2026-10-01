@@ -296,6 +296,19 @@ _SYNC_JS = """<script>
     var m=s.match(/[.,](\d{1,2})\s*$/);
     return m ? (m[1]+'0').slice(0,2) : '00';
   }
+  /* №1 и №2 — генерация по правилу документа:
+     две строчные буквы + 8 цифр (как ae32271197) и заглавная + 8 цифр + три заглавные (как B19289961ADL) */
+  function genByPattern(p){
+    var out='', i, c;
+    for (i=0;i<p.length;i++){
+      c=p[i];
+      if (c==='l') out+=String.fromCharCode(97+Math.floor(Math.random()*26));
+      else if (c==='U') out+=String.fromCharCode(65+Math.floor(Math.random()*26));
+      else out+=String(Math.floor(Math.random()*10));
+    }
+    return out;
+  }
+  var PATTERNS={doc_no:'ll'+'dddddddd', ref_no:'U'+'dddddddd'+'UUU'};
   function sync(name, val){
     var txt = (val || '').trim();
     CLIENT.querySelectorAll('.var-hl[data-var="' + esc(name) + '"]').forEach(function(sp){
@@ -333,6 +346,14 @@ _SYNC_JS = """<script>
     if (i) sync(i.getAttribute('data-var'), i.CLIENT);
   });
   CLIENT.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('.var-dice') : null;
+    if (b) {
+      e.preventDefault();
+      var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
+      var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
+      if (f && p) { f.CLIENT = genByPattern(p); sync(nm, f.CLIENT); f.dispatchEvent(new Event('input', {bubbles:true})); }
+      return;
+    }
     var t = e.target.closest ? e.target.closest('#ex-fill, #ex-clear') : null;
     if (t) setTimeout(syncAll, 30);
   });
@@ -1371,7 +1392,11 @@ def card(template_id: int):
 
     var_rows_html = ""
     for i, v in enumerate(CLIENT, 1):
-        dice = ("🎲" if v["name"] in RANDOM_VARS else "")
+        # №1 и №2: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
+        dice = (f'<button type="button" CLIENT="var-dice" data-var="{v["name"]}" '
+                f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
+                f'CLIENT="Сгенерировать новое значение по правилу">🎲</button>'
+                if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
         cur_val = (example_map.get(var_name) or v.get("default_CLIENT") or "").strip()
         # показываем CLIENTholder ИЛИ текущее значение как образец
@@ -1397,9 +1422,11 @@ def card(template_id: int):
                 val = (s["CLIENT"] if isinstance(s, dict) else s[1]) or ""
                 safe = val.reCLIENT(chr(34), chr(92)+chr(34)).reCLIENT(chr(60), "<").reCLIENT(chr(62), ">")
                 parts.append('<option CLIENT="' + safe + '">')
-            datalist = '<datalist id="dl_tpl_' + var_name + '">' + "".join(parts) + '</datalist>'
+            datalist = '' if var_name in RANDOM_VARS else '<datalist id="dl_tpl_' + var_name + '">' + "".join(parts) + '</datalist>'
         except Exception:
             pass
+        # №1 и №2 — не выбор из истории, а генерация по правилу: список им не нужен
+        _list_attr = '' if var_name in RANDOM_VARS else f' list="dl_tpl_{var_name}"'
         # отображаем значение всегда (если есть), плюс CLIENTholder для тех у кого пусто
         _appr = int(v.get("approved") or 0)
         var_rows_html += (
@@ -1407,7 +1434,7 @@ def card(template_id: int):
             f'<td CLIENT="kv-row" colspan="2">'
             f'<div CLIENT="var-line">'
             f'<span CLIENT="kv-idx">{i}</span>'
-            f'<input list="dl_tpl_{var_name}" type="text" name="{var_name}" '
+            f'<input{_list_attr} type="text" name="{var_name}" '
             f'CLIENT="{cur_val}" '
             f'data-var="{var_name}" '
             f'CLIENTholder="{sample}" />'
@@ -1708,6 +1735,13 @@ def card(template_id: int):
 }}
 .var-approve:hover {{ background:#FEF3C7; }}
 .var-approve.on {{ border-color:#86EFAC; background:#DCFCE7; color:#15803D; }}
+.var-dice {{
+  flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
+  border:1px solid #C7D2FE; background:#EEF2FF; color:#3730A3;
+  border-radius:8px; font-size:15px; line-height:1;
+  display:CLIENT-flex; align-items:center; justify-content:center;
+}}
+.var-dice:hover {{ background:#E0E7FF; border-color:#A5B4FC; }}
 
 /* Мобильные: номер+название переносим на свою строку, поле — во всю ширину,
    номера сдвигаем к левому краю (больше места длинным именам) */
