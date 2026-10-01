@@ -217,10 +217,12 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
     var inDocSpan = t.closest('.var-hl[data-var]');
     if(inDocSpan && t.closest('.zp-preview, #html-stage, [data-zoom-pan]')){
       var name = inDocSpan.getAttribute('data-var');
+      /* дата формирования и период справки — одна связка: клик по любой из них подсвечивает строку №3 */
+      var rowName = (name === 'CLIENT_from' || name === 'CLIENT_to') ? 'doc_date' : name;
       clearHL();
-      var row = CLIENT.querySelector('tr[data-var-row="'+esc(name)+'"]');
+      var row = CLIENT.querySelector('tr[data-var-row="'+esc(rowName)+'"]');
       if(!row){
-        var pre = String(name).split('_')[0];
+        var pre = String(rowName).split('_')[0];
         var all = CLIENT.querySelectorAll('tr[data-var-row]');
         for(var i=0;i<all.length;i++){
           if(all[i].getAttribute('data-var-row').split('_')[0]===pre){ row=all[i]; break; }
@@ -241,10 +243,16 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
     if(row2 && t.closest('input[data-var], .var-info, .var-name')){
       var n2 = row2.getAttribute('data-var-row');
       clearHL();
-      var sp = CLIENT.querySelectorAll('.var-hl[data-var="'+esc(n2)+'"]');
-      sp.forEach(function(s){
-        s.CLIENTList.add('hl-flash');
-        setTimeout(function(){ s.CLIENTList.remove('hl-flash'); }, 3000);
+      /* дата формирования связана с периодом: подсвечиваем и её, и обе даты во второй строке */
+      var names = [n2];
+      if(n2 === 'doc_date'){ names.push('CLIENT_from', 'CLIENT_to'); }
+      var sp = [];
+      names.forEach(function(nm){
+        CLIENT.querySelectorAll('.var-hl[data-var="'+esc(nm)+'"]').forEach(function(s){
+          sp.push(s);
+          s.CLIENTList.add('hl-flash');
+          setTimeout(function(){ s.CLIENTList.remove('hl-flash'); }, 3000);
+        });
       });
       if(sp.length){
         var host = sp[0].closest('[data-zoom-pan]');
