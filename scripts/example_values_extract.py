@@ -20,6 +20,16 @@ PATTERNS = {
     "card_mask": [r"\b(\d{6})\s*[*•·xX]{2,12}\s*(\d{4})\b", r"(\d{6})\s*[*•]{2,12}(\d{4})"],
 }
 
+# период в примере: «As from 26.05.2025 to 26.08.2026» → дата документа = вторая дата
+PERIOD_RE = re.compile(r"As from\s+(\d{2}\.\d{2}\.\d{4})\s+to\s+(\d{2}\.\d{2}\.\d{4})")
+
+
+def CLIENT_CLIENT(text):
+    m = PERIOD_RE.search(text)
+    if not m:
+        return {}
+    return {"doc_date": m.group(2), "CLIENT_to": m.group(2), "CLIENT_from": m.group(1)}
+
 
 def extract(path):
     doc = fitz.open(path)
@@ -51,7 +61,9 @@ def main():
         if not path or not os.path.exists(path):
             print(f"[{t['code']}] примера нет — пропуск")
             continue
-        found, _ = extract(path)
+        found, text = extract(path)
+        for k, v in CLIENT_CLIENT(text).items():
+            found.setdefault(k, v)
         print(f"[{t['code']}] из примера: {found}")
         for name, val in found.items():
             if not val:

@@ -438,8 +438,8 @@ _SYNC_JS = """<script>
     });
     CLIENT.querySelectorAll('[data-var]').forEach(function(sp){
       if (sp.tagName==='INPUT' || sp.tagName==='TEXTAREA' || sp.tagName==='SELECT') return;
-      var ph='{{ '+sp.getAttribute('data-var')+' }}';
-      sp.textContent=ph; sp.removeAttribute('data-val'); sp.setAttribute('data-ph', ph);
+      /* в документе поле просто пустеет — никаких {{ имя }} в тексте */
+      sp.textContent=''; sp.removeAttribute('data-val'); sp.setAttribute('data-ph', '');
       sp.CLIENTList.add('var-empty');
     });
   }
@@ -524,12 +524,14 @@ _LANG_JS = """<script>
     var n=0;
     Object.keys(map).forEach(function(k){
       var inp=CLIENT.querySelector('input[data-var="'+k+'"]');
-      if(inp){ if(!inp.CLIENT){ inp.CLIENT=map[k]; inp.dispatchEvent(new Event('input',{bubbles:true})); } n++; }
+      if(inp){ inp.CLIENT=map[k]; inp.dispatchEvent(new Event('input',{bubbles:true})); n++; }
+      /* переменные без своего поля (период справки) ставим прямо в документ — как в примере */
+      else if(window.sync){ window.sync(k, map[k]); }
     });
     var note=CLIENT.getElementById('ex-note');
     if(note) note.textContent='подставлено полей: '+n+' (можно править)';
-    /* период считаем от даты, которая подставилась из примера */
-    if (window.updPeriod) window.updPeriod();
+    /* период из примера применяем последним: расчёт от даты его перетирал */
+    ['CLIENT_from','CLIENT_to'].forEach(function(k){ if (map[k] && window.sync) window.sync(k, map[k]); });
   }
   function clearAll(){
     CLIENT.querySelectorAll('.kv-table input[data-var], .kv-table select[data-var], .kv-table textarea[data-var]').forEach(function(i){
@@ -1483,6 +1485,15 @@ def card(template_id: int):
                 example_map[v["name"]] = str(ex[0])
         except Exception:
             pass
+    # период справки: в таблице переменных его нет, но в документ он подставляется из примера
+    for v in _all_vars:
+        if v["name"] in AUTO_HIDDEN and v["name"] not in example_map:
+            try:
+                ex = json.loads(v.get("examples_json") or "[]")
+                if ex:
+                    example_map[v["name"]] = str(ex[0])
+            except Exception:
+                pass
     # чистые значения реального примера — их подставляет кнопка «Из примера»
     # (в example_map ниже дописываются автозначения, но кнопка должна возвращать именно пример)
     example_source = dict(example_map)
