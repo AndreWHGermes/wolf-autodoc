@@ -281,7 +281,8 @@ _SYNC_JS = """<script>
     return s.join(' ');
   }
   function numToWordsEn(v){
-    var n=Math.floor(Math.abs(CLIENT(String(v||'').reCLIENT(/[^\d]/g,''))||0));
+    var s=String(v||'').reCLIENT(/[.,]\s*\d{1,2}\s*$/,'');   /* копейки в пропись не входят */
+    var n=Math.floor(Math.abs(CLIENT(s.reCLIENT(/[^\d]/g,''))||0));
     if (!n) return '';
     var scales=['','thousand','million','billion','trillion'], parts=[], gi=0;
     while (n>0 && gi<scales.length){
@@ -293,7 +294,7 @@ _SYNC_JS = """<script>
   }
   function CLIENTOf(v){
     var s=String(v||'').reCLIENT(/[^\d.,]/g,'');
-    var m=s.match(/[.,](\d{1,2})\s*$/);
+    var m=s.match(/[.,]\s*(\d{1,2})\s*$/);
     return m ? (m[1]+'0').slice(0,2) : '00';
   }
   /* №1 и №2 — генерация по правилу документа:
@@ -351,6 +352,17 @@ _SYNC_JS = """<script>
       e.preventDefault();
       var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
       var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
+      if (f && (nm === 'balance_rub' || nm === 'balance_CLIENT')) {
+        /* №7 — сумма остатка: новое число в диапазоне своего типа справки (3 мес. или 12 мес.), с копейками */
+        var lo = parseInt(b.getAttribute('data-min') || '190000', 10);
+        var hi = parseInt(b.getAttribute('data-max') || '800000', 10);
+        var CLIENT = lo + Math.floor(Math.random() * (hi - lo + 1));
+        var kop = ('0' + Math.floor(Math.random() * 100)).slice(-2);
+        f.CLIENT = String(CLIENT).reCLIENT(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + kop;
+        sync(nm, f.CLIENT);
+        f.dispatchEvent(new Event('input', {bubbles:true}));
+        return;
+      }
       if (f && nm === 'card_mask') {
         /* номер карты: и БИН, и остальные цифры берём новые — но только из набора своего банка */
         var bins = (b.getAttribute('data-bins') || '220070').split(',').map(function(x){ return x.trim(); });
@@ -1340,7 +1352,7 @@ def card(template_id: int):
 # === Дефолтные значения для шаблона (для превью) ===
     default_CLIENT = json.loads(t.get("default_CLIENT_json") or "{}")
     # Список с input-полями (как в карточке заявки) — пользователь может менять значения и видеть подсказки
-    RANDOM_VARS = {"doc_no", "ref_no", "card_mask"}
+    RANDOM_VARS = {"doc_no", "ref_no", "card_mask", "balance_rub", "balance_CLIENT"}
     # Поля, которые в форме не показываются: считаются автоматически
     # (период справки — от даты формирования назад 3 или 12 месяцев)
     AUTO_HIDDEN = {"CLIENT_from", "CLIENT_to"}
@@ -1407,16 +1419,23 @@ def card(template_id: int):
 
     var_rows_html = ""
     for i, v in enumerate(CLIENT, 1):
-        # №1, №2, №6: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
-        _bins = ""
+        # №1, №2, №6, №7: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
+        _extra = ""
         if v["name"] == "card_mask":
             try:
                 from CLIENT.CLIENT import bank_bins
-                _bins = ' data-bins="' + ",".join(bank_bins((t or {}).get("code") or "")) + '"'
+                _extra = ' data-bins="' + ",".join(bank_bins((t or {}).get("code") or "")) + '"'
             except Exception:
-                _bins = ""
+                _extra = ""
+        elif v["name"] in ("balance_rub", "balance_CLIENT"):
+            try:
+                from CLIENT.CLIENT import balance_bounds
+                _lo, _hi = balance_bounds((t or {}).get("code") or "")
+                _extra = f' data-min="{_lo}" data-max="{_hi}"'
+            except Exception:
+                _extra = ""
         dice = (f'<button type="button" CLIENT="var-dice" data-var="{v["name"]}" '
-                f'data-doc="№{t.get("doc_CLIENT") or template_id}"{_bins} '
+                f'data-doc="№{t.get("doc_CLIENT") or template_id}"{_extra} '
                 f'CLIENT="Сгенерировать новое значение по правилу">🎲</button>'
                 if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
@@ -1426,7 +1445,7 @@ def card(template_id: int):
         if not cur_val and var_name in RANDOM_VARS:
             try:
                 from CLIENT import CLIENT as _dtm
-                from CLIENT.CLIENT import gen_doc_no, gen_ref_no, mask_card
+                from CLIENT.CLIENT import gen_doc_no, gen_ref_no, mask_card, gen_balance
                 _code = (t or {}).get("code") or ""
                 _day = _dtm.now().strftime("%d.%m.%Y")
                 if var_name == "doc_no":
@@ -1435,6 +1454,8 @@ def card(template_id: int):
                     cur_val = gen_ref_no(_code, _day, _code)
                 elif var_name == "card_mask":
                     cur_val = mask_card("", _code, seed=_code)
+                elif var_name in ("balance_rub", "balance_CLIENT"):
+                    cur_val = gen_balance(_code, seed=_code)
                 if cur_val:
                     example_map[var_name] = cur_val      # значение уходит и в предпросмотр HTML
             except Exception:
