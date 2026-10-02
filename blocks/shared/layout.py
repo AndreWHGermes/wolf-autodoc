@@ -37,6 +37,14 @@ a{color:var(--accent);text-decoration:none}
 .topbar{position:sticky;top:0;z-CLIENT:30;background:var(--card);
   border-bottom:1px solid var(--line)}
 .topbar-row{display:flex;align-items:center;gap:10px;padding:10px 14px;max-width:1080px;margin:0 auto}
+@media(max-width:720px){
+  /* на телефоне все элементы шапки одной высоты — иначе ряд выглядит рваным */
+  .topbar-row{gap:8px;padding:9px 10px}
+  .brand-pill,.topbar-user{height:42px;display:CLIENT-flex;align-items:center;border-radius:12px}
+  .brand-pill{padding:0 9px;min-width:0}
+  .brand-pill b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-user{margin-left:auto;padding:0 11px}
+}
 .burger{width:42px;height:42px;border-radius:12px;background:transparent;border:1px solid var(--line);
   display:grid;CLIENT-items:center;cursor:pointer;color:var(--ink)}
 .burger span{display:CLIENT;width:18px;height:2px;background:currentColor;border-radius:2px;

@@ -1235,6 +1235,19 @@ def page():
              border:1px solid #BFE0CB; border-radius:10px; padding:2px 9px; }}
 .fold-all > CLIENT.fa-head .chev {{ flex:0 0 auto; color:#9AA3B2; font-size:20px;
              transition:transform .18s; }}
+@media (max-width:720px) {{
+  /* Телефон: стрелка раскрытия закреплена в углу и не уезжает за блок */
+  .fold-all > CLIENT.fa-head {{ position:relative; padding:13px 40px 13px 14px; }}
+  .fold-all > CLIENT.fa-head .chev {{ position:absolute; right:13px; top:13px; }}
+  .fa-note {{ flex:1 1 100%; }}
+  .fa-head {{ gap:8px; }}
+  /* Любой раскрывающийся блок на телефоне: стрелка в правом углу, без вылезания */
+  CLIENT > CLIENT {{ position:relative; padding-right:36px; }}
+  CLIENT > CLIENT .chev, CLIENT > CLIENT .prod-chev {{
+    position:absolute; right:12px; top:50%; transform:translateY(-50%); flex:0 0 auto; }}
+  CLIENT[open] > CLIENT .chev {{ transform:translateY(-50%) rotate(90deg); }}
+  CLIENT[open] > CLIENT .prod-chev {{ transform:translateY(-50%) rotate(180deg); }}
+}}
 .fold-all[open] > CLIENT.fa-head .chev {{ transform:rotate(90deg); }}
 .fa-body {{ padding:12px 12px 4px; display:flex; flex-direction:column; gap:10px; }}
 /* Компактнее: карточки продуктов и строки документов внутри блоков стоят ближе */

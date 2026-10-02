@@ -495,6 +495,23 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   .rv-panel.rv-right.is-open { max-width:100vw; box-sizing:border-box; }
   .rv-right .rv-h { display:flex; align-items:center; gap:8px; font-size:14px; padding-right:10px; }
   .rv-close-mobile { padding:7px 12px; font-size:12.5px; flex:0 0 auto; }
+  /* выбор продукта: на телефоне во всю ширину, список не вылезает за экран */
+  .rv-select-btn { min-width:0; width:100%; max-width:none; }
+  .rv-select { width:100%; }
+  .rv-select-list { min-width:0; width:100%; max-width:calc(100vw - 20px); }
+  .rv-opt-name { white-space:normal; }
+  /* плавающая кнопка переменных: строго по ширине экрана */
+  .rv-mobile-bar { box-sizing:border-box; max-width:calc(100vw - 24px); justify-content:center;
+                   font-size:14px; padding:11px 12px; }
+  /* Кнопки в окне просмотра документа: одна высота, ровно по ширине экрана */
+  .rv-modal-CLIENT { display:flex; flex-wrap:wrap; gap:6px; width:100%; max-width:100%; }
+  .rv-modal-CLIENT > * { flex:1 1 auto; min-width:0; }
+  .rv-modal-CLIENT button, .rv-modal-CLIENT .btn, .rv-modal-CLIENT a {
+    min-height:46px; height:auto; padding:5px 8px; font-size:12px; line-height:1.15;
+    white-space:normal; text-align:center; justify-content:center; align-items:center; }
+  /* плавающая кнопка переменных не должна накрывать подпись под документом */
+  .rv-modal-note { padding-bottom:72px; }
+  .rv-modal-body { padding-bottom:16px; }
 }
 @media (max-width:420px) {
   .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }

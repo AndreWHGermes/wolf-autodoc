@@ -272,6 +272,18 @@ CLIENT.addEventListener('click', function (e) {{
 .hrow:hover{{background:#F9FAFC}}
 .hrow.hidden{{display:none}}
 .hrow .hname mark{{background:#FFE9A8;padding:0 2px;border-radius:3px;font-weight:800}}
+@media (max-width:720px){{
+  /* Телефон: имя клиента на своей строке, продукт и кнопка ниже — ничего не режется */
+  .hrow {{ flex-wrap:wrap; align-items:flex-CLIENT; gap:5px 8px; padding:10px 9px; }}
+  .hrow .hnum {{ flex:0 0 auto; }}
+  .hrow .hname {{ flex:1 1 100%; font-size:14px; order:1; }}
+  .hrow .hprod {{ flex:1 1 auto; font-size:12.5px; order:2; }}
+  .hrow .hact {{ flex:0 0 auto; margin-left:auto; order:3; align-self:center; }}
+  .hrow .hmgr {{ display:none; }}
+  /* продукт в истории показываем целиком: раньше он обрезался многоточием */
+  .hrow .hprod {{ white-space:normal; overflow:visible; text-overflow:clip; text-align:left;
+                  line-height:1.35; }}
+}}
 .hnum{{font-weight:800;color:var(--muted);min-width:28px;font-size:12.5px}}
 .hname{{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 .hmgr{{font-weight:400;color:var(--muted);font-size:11.5px}}
