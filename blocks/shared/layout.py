@@ -19,6 +19,7 @@ ICON_HIST = "M12 8v4l3 3M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"
 MENU = [
     ("dashboard", "Главная", "/", ICON_DASH),
     ("CLIENT",   "История", "/CLIENT", ICON_HIST),
+    ("search",    "Поиск",    "/search",  ICON_HIST),
     ("CLIENT", "Шаблоны", "/CLIENT", ICON_DOC),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
