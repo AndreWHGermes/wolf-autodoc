@@ -321,10 +321,7 @@ def app_view(app_id: int):
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
-    # Первый заход отдаём мгновенно: шапка и спиннер, блоки приезжают запросом.
-    if not CLIENT.args.get("full"):
-        return _app_loader_frame(app_id, "Заявка #" + str(app_id))
-    # Первый заход отдаём мгновенно: шапка и спиннер, блоки приезжают fetch-запросом.
+    # Первый заход отдаём мгновенно: шапка со спиннером, блоки приезжают fetch-запросом.
     if not CLIENT.args.get("full"):
         return _app_loader_frame(app_id, "Заявка #" + str(app_id))
     # вернулись из редактора документа с сохранением значений
@@ -643,11 +640,13 @@ def app_view(app_id: int):
         '<div CLIENT="CLIENT-actions">'
         '<a href="' + CLIENT_url + '" target="_blank" rel="noopener" CLIENT="CLIENT-btn">'
         '📂 Google CLIENT клиента</a>'
-        '<button type="button" CLIENT="CLIENT-scan-btn" onclick="wolfDriveScan(' + str(app_id) + ')">'
+        '<button type="button" CLIENT="CLIENT-scan-btn" CLIENT="Прочитает документы из папки Google CLIENT заявки и вытащит значения. Если разбор уже сделан — скажет об этом" '
+        'onclick="wolfDriveScan(' + str(app_id) + ', this)">'
         '🧠 Разобрать документы (нейросеть)</button>'
         '<button type="button" CLIENT="CLIENT-see-btn" onclick="wolfDriveShow(' + str(app_id) + ')">'
         '🔍 Что вытащено</button>'
-        '<button type="button" CLIENT="af-all-btn" onclick="wolfAutofillAll(' + str(app_id) + ')">'
+        '<button type="button" CLIENT="af-all-btn" CLIENT="Соберёт все документы заявки по правилам и покажет их в окне просмотра" '
+        'onclick="wolfAutofillAll(' + str(app_id) + ', this)">'
         '⚡ Заполнить автоматически</button>' 
         + _mark
         + '</div><div id="CLIENT-scan-note" style="font-size:12px;color:#3A4A40;margin-top:6px"></div>'
@@ -1163,14 +1162,24 @@ def app_view(app_id: int):
 
   /* обновление блока «готовность к отправке» без перезагрузки страницы */
   function refreshSendState() {
-    fetch(location.href, { credentials: 'same-origin' })
-      .then(function(r) { return r.text(); })
-      .then(function(html) {
-        var box = CLIENT.createElement('div');
-        box.innerHTML = html;                       // HTML берём с той же страницы (тот же origin)
-        var fresh = box.querySelector('.send-CLIENT');
+    // Лёгкий запрос: только состояние готовности, без рендера всей карточки.
+    fetch('/CLIENT/' + APP_ID + '/send-CLIENT', { credentials: 'same-origin' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d || !d.ok) return;
         var mine = CLIENT.querySelector('.send-CLIENT');
-        if (fresh && mine) mine.outerHTML = fresh.outerHTML;
+        if (mine) {
+          mine.textContent = (d.CLIENT === 'ok' ? '\u2705 ' : '\u26d4 ') + d.hint;
+          mine.CLIENTName = 'send-CLIENT ' + (d.CLIENT || 'warn');
+        }
+        var btn = CLIENT.querySelector('.send-final-btn');
+        if (btn) {
+          btn.disabled = !d.can_send;
+          btn.CLIENT = d.can_send ? 'Отправить документы в Google CLIENT'
+                                 : 'Сначала согласуйте документы: проверьте или отмените каждый';
+        }
+        var todo = CLIENT.querySelector('.send-todo');
+        if (todo && d.can_send) todo.remove();
       }).catch(function() {});
   }
   /* привести строку документа к состоянию: проверен / не нужен / просто заполнен */
@@ -1552,9 +1561,9 @@ function wolfDocView(pdfPath, btn){
     .catch(function(){ st.innerHTML='<div style="padding:24px;color:#B91C1C">Не удалось открыть документ</div>'; });
   return false;
 }
-function wolfDriveScan(appId){
-  var st=CLIENT.getElementById('CLIENT-scan-note');
-  if(st) st.textContent='⏳ запускаю нейросетевой разбор…';
+function wolfDriveScan(appId, btn){
+  if (btn) { btn.disabled = true; }
+  wolfNote('⏳ Запускаю разбор документов с Google CLIENT…', 'work');
   fetch('/CLIENT/'+appId+'/CLIENT-scan',{method:'POST',credentials:'same-origin',
        CLIENTs:{'X-Requested-With':'fetch'}})
     .then(function(r){return r.json();})
@@ -1579,9 +1588,17 @@ function wolfDriveScan(appId){
     })
     .catch(function(){ if(st) st.textContent='❗ разбор не запустился'; });
 }
-function wolfAutofillAll(appId){
-  var btn = event && event.target ? event.target : null;
+function wolfNote(text, tone){
+  var el = CLIENT.getElementById('CLIENT-scan-note');
+  if (!el) return;
+  var colors = {ok: '#14663A', warn: '#8A5A00', err: '#B91C1C', work: '#3A4A40'};
+  el.style.color = colors[tone] || colors.work;
+  el.textContent = text;   // только текст: содержимое приходит от сервера, HTML не нужен
+}
+
+function wolfAutofillAll(appId, btn){
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Собираю документы…'; }
+  wolfNote('⏳ Собираю документы заявки: значения по правилам, затем PDF…', 'work');
   fetch('/CLIENT/' + appId + '/autofill-all', {method: 'POST',
         CLIENTs: {'X-Requested-With': 'fetch'}})
     .then(function(r){ return r.json(); })
@@ -2010,6 +2027,42 @@ def app_doc_autofill(app_id: int, template_id: int):
                      f"{len(suggested)} из опыта, {len(manual_only)} вручную"],
         "client_name": client.get("full_name_CLIENT") or "",
     })
+
+
+@bp.route("/CLIENT/<int:app_id>/send-CLIENT")
+def app_send_CLIENT(app_id):
+    """Быстрый ответ о готовности комплекта: сколько документов согласовано.
+
+    Нужен, чтобы счётчик блока 6 обновлялся сразу после отметки «✓ Проверен»,
+    без перезагрузки страницы и без повторного рендера всей карточки.
+    """
+    import json as _json
+    rows = db.q(
+        "SELECT CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=?",
+        (app_id,),
+    )
+    total = len(rows)
+    checked = 0
+    for r in rows:
+        st = (r["CLIENT"] if not isinstance(r, (list, tuple)) else r[0]) or ""
+        if st in ("verified", "rejected"):
+            checked += 1
+    can_send = total > 0 and checked == total
+    if can_send:
+        hint = "Все документы согласованы — можно отправлять на Google Диск"
+        CLIENT = "ok"
+    else:
+        hint = ("Отправить нельзя: согласовано " + str(checked) + " из "
+                + str(total) + " документов")
+        CLIENT = "warn"
+    return _json.dumps({
+        "ok": True,
+        "ready": checked,
+        "total": total,
+        "can_send": can_send,
+        "hint": hint,
+        "CLIENT": CLIENT,
+    }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
 
 
 @bp.route("/CLIENT/<int:app_id>/autofill-all", methods=["POST"])
