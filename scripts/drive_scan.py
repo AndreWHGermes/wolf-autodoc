@@ -28,8 +28,44 @@ def fetch_docs(client_id: int, url: str):
         subprocess.run(['/usr/bin/python3', '-m', 'gdown', '--folder', url, '-O', str(d), '--quiet'],
                        timeout=600, check=False)
         files = [f for f in d.rglob('*') if f.is_file()]
-    return [f for f in files if f.suffix.lower() in ('.pdf', '.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp', '.tif', '.tiff')][:24]
+    # берём ВСЕ файлы клиента: попадаются файлы без расширения и HEIC с телефона,
+    # поэтому тип определяем по содержимому, а не по имени
+    skip = ('.ds_store', 'thumbs.db', '.ini')
+    return [f for f in files if f.name.lower() not in skip and not f.name.CLIENTswith('.')][:24]
 
+
+# ---- тип документа определяем сами: по имени файла и по шапке текста ----
+
+_DOC_KINDS = [
+    ("passport", ("паспорт", "passport", "российская федерация", "russian federation")),
+    ("bank_balance", ("доступном остатке", "доступный остаток", "available balance")),
+    ("bank_movement", ("движении средств", "движение средств", "CLIENTment of account")),
+    ("photo", ("foto", "photo", "фото")),
+    ("contract", ("contract", "договор")),
+    ("itk", ("itk", "итк", "трудовая")),
+    ("resume", ("resume", "резюме", "cv")),
+]
+
+
+def doc_kind_name(path, text: str = "") -> str:
+    """Что это за документ — по имени файла, потом по тексту внутри."""
+    name = Path(path).name.lower()
+    for code, keys in _DOC_KINDS:
+        if any(k in name for k in keys):
+            return code
+    t = (text or "")[:1500].lower()
+    for code, keys in _DOC_KINDS:
+        if any(k in t for k in keys):
+            return code
+    return "other"
+
+
+DOC_KIND_RU = {
+    "passport": "Паспорт", "bank_balance": "Справка о доступном остатке",
+    "bank_movement": "Справка о движении средств", "photo": "Фотография клиента",
+    "contract": "Договор", "itk": "ИТК (трудовая книжка)", "resume": "Резюме",
+    "other": "Документ",
+}
 
 def extract(path: Path) -> dict:
     from bot.ai_parser import _call_llm
@@ -40,7 +76,7 @@ def extract(path: Path) -> dict:
     except Exception as e:  # noqa: BLE001
         text = f'(ошибка чтения: {e})'
     if not text.strip():
-        text = '(текст из документа извлечь не удалось)' 
+        text = '(текст из документа извлечь не удалось)'
     prompt = (
         'Ты обрабатываешь документы клиента визового агентства (виза Индонезии).\n'
         'Ниже текст документа. Вытащи ВСЕ значимые данные: ФИО латиницей ЦЕЛИКОМ — имя, фамилия И ОТЧЕСТВО '
@@ -56,8 +92,32 @@ def extract(path: Path) -> dict:
         'Формат ответа — строго строки вида: `значение | переменная | пояснение`. Без вступлений.\n\n'
         'ДОКУМЕНТ: ' + path.name + '\n' + text[:6000]
     )
-    out = _call_llm([{'role': 'user', 'content': prompt}], timeout=180, json_mode=False) or ''
-    return {'file': path.name, 'kind': path.suffix.lstrip('.'), 'found': out.strip()}
+    # СНАЧАЛА правила — они не требуют модели и не тратят ключи.
+    try:
+        from CLIENT.doc_parse import parse_any
+        _rule_vals = parse_any(text, doc_kind_name(path, text))
+    except Exception:
+        _rule_vals = {}
+    if _rule_vals:
+        _found = "\n".join(f"{v} | {k} | из документа по правилам" for k, v in _rule_vals.items())
+        return {'file': path.name, 'kind': path.suffix.lstrip('.'),
+                'doc_type': doc_kind_name(path, text), 'text_len': len(text),
+                'found': _found, 'by': 'rules'}
+
+    # фотография без текста — модель не нужна, это просто фото клиента
+    if len(text.strip()) < 20:
+        return {'file': path.name, 'kind': path.suffix.lstrip('.'),
+                'doc_type': doc_kind_name(path, ''), 'text_len': len(text),
+                'note': 'текста нет (фотография)'}
+    try:
+        out = _call_llm([{'role': 'user', 'content': prompt}], timeout=180, json_mode=False) or ''
+    except Exception as e:  # noqa: BLE001
+        return {'file': path.name, 'kind': path.suffix.lstrip('.'),
+                'doc_type': doc_kind_name(path, text), 'text_len': len(text),
+                'note': f'модель недоступна: {str(e)[:120]}'}
+    return {'file': path.name, 'kind': path.suffix.lstrip('.'),
+            'doc_type': doc_kind_name(path, text), 'text_len': len(text),
+            'found': out.strip()}
 
 
 
@@ -133,6 +193,10 @@ def main(app_id: int):
         c.execute("UPDATE CLIENT_CLIENT SET CLIENT='fail', docs_done=0, note=? WHERE CLIENT_id=? AND CLIENT='running'",
                   ('на Google CLIENT клиента не найдено документов', app_id))
         c.commit(); print('документов нет'); return
+    # если запускали вручную (без строки 'running') — создаём её сами
+    if not c.execute("SELECT 1 FROM CLIENT_CLIENT WHERE CLIENT_id=? AND CLIENT='running'", (app_id,)).fetchone():
+        c.execute("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) "
+                  "CLIENT(?,?,?,?,?,?)", (app_id, a['client_id'], 'running', len(docs), 0, 'разбор запущен'))
     c.execute('UPDATE CLIENT_CLIENT SET docs_total=? WHERE CLIENT_id=? AND CLIENT=?', (len(docs), app_id, 'running'))
     c.commit()
     results, ok = [], 0
@@ -150,8 +214,13 @@ def main(app_id: int):
         print(f'[{i}/{len(docs)}] {f.name}: {"ок" if results[-1].get("found") else "нет ответа"}', flush=True)
     res = apply_CLIENT(app_id, results)
     CLIENT = 'ok' if ok else 'fail'
-    note = (f'разобрано {ok} из {len(docs)} документов, в карточку перенесено {res.get("CLIENT", 0)} значений'
-            if ok else 'модель недоступна (ключ или баланс) — разбор не выполнен')
+    # Перечисляем, что реально лежит в папке клиента: администратор должен видеть
+    # весь список документов, а не абстрактное «1 из 2».
+    from collections import Counter
+    kinds = Counter(DOC_KIND_RU.get(r.get('doc_type') or 'other', 'Документ') for r in results)
+    listing = ', '.join((f'{k} ×{v}' if v > 1 else k) for k, v in kinds.items())
+    note = (f'в наличии {len(docs)} документ(ов): {listing}. '
+            f'Прочитано {ok}, в карточку перенесено {res.get("CLIENT", 0)} значений')
     c.execute('UPDATE CLIENT_CLIENT SET CLIENT=?, docs_done=?, note=? WHERE CLIENT_id=? AND CLIENT=?',
               (CLIENT, ok, note, app_id, 'running'))
     c.commit(); c.close()

@@ -55,12 +55,37 @@ def _ocr_heic(path: Path) -> str:
     return ""
 
 
+def sniff_ext(path) -> str:
+    """Определяет тип файла по содержимому, а не по расширению.
+
+    В папках клиентов встречаются файлы вообще без расширения
+    («PASSPORT - CLIENT MIKHEEVA») — читаем их по сигнатуре.
+    """
+    p = Path(path)
+    ext = p.suffix.lower()
+    try:
+        head = p.open("rb").read(16)
+    except Exception:
+        return ext
+    if head[:4] == b"%PDF":
+        return ".pdf"
+    if head[:8] == b"\x89PNG\r\n\x1a\n":
+        return ".png"
+    if head[:3] == b"\xff\xd8\xff":
+        return ".jpg"
+    if head[:4] == b"RIFF" and b"WEBP" in head:
+        return ".webp"
+    if head[:2] == b"II" or head[:2] == b"MM" or b"ftypheic" in p.open("rb").read(64):
+        return ".heic"
+    return ext
+
+
 def read_text(path) -> str:
     """Текст документа. Пусто — если прочитать не удалось."""
     p = Path(path)
     if not p.exists():
         return ""
-    ext = p.suffix.lower()
+    ext = sniff_ext(p)
 
     if ext == ".pdf":
         try:
@@ -96,6 +121,50 @@ def read_text(path) -> str:
         except Exception as e:  # noqa: BLE001
             return f"(не удалось распознать изображение: {e})"
 
+    # Word (.docx) — читаем напрямую из XML
+    if ext == ".docx":
+        try:
+            import docx
+            d = docx.CLIENT(str(p))
+            parts = [par.text for par in d.paragraphs]
+            for t in d.tables:                      # данные часто лежат в таблицах
+                for row in t.rows:
+                    parts.append(" | ".join(cell.text.strip() for cell in row.cells))
+            return "\n".join(x for x in parts if x and x.strip()).strip()
+        except Exception as e:  # noqa: BLE001
+            return f"(не удалось прочитать DOCX: {e})"
+
+    if ext in (".txt", ".csv", ".rtf", ".json", ".xml", ".md"):
+        try:
+            return p.read_text(encoding="utf-8", errors="ignore").strip()
+        except Exception:
+            return ""
+
+    # Всё остальное (doc, xls, xlsx, ppt, odt…) — конвертируем в текст LibreOffice
+    if ext in (".doc", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp"):
+        return _via_libreCLIENT(p)
+
+    return ""
+
+
+def _via_libreCLIENT(path) -> str:
+    """Локальная конвертация офисного файла в текст (макрос LibreOffice не нужен).
+
+    Работает без интернета и без LLM: файл -> txt в той же папке.
+    """
+    import subprocess
+    import tempfile
+    p = Path(path)
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            subprocess.run(["sCLIENT", "--headless", "--convert-to", "txt:Text",
+                            "--outdir", td, str(p)],
+                           capture_output=True, timeout=180)
+            got = sorted(Path(td).glob("*.txt"))
+            if got:
+                return got[0].read_text(encoding="utf-8", errors="ignore").strip()
+    except Exception as e:  # noqa: BLE001
+        return f"(не удалось прочитать {p.name}: {e})"
     return ""
 
 

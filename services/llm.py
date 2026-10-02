@@ -35,7 +35,10 @@ FREE_PROVIDERS = [
 
 # Платные — только если бесплатные не ответили (админ может отключить: WOLF_LLM_PAID_FALLBACK=0).
 PAID_PROVIDERS = [
+    # рабочий ключ DeepSeek (проверен живым запросом) — первый в резерве
+    ("deepseek-andreyl", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY_CLIENTL"),
     ("deepseek", "https://api.deepseek.com/v1", "deepseek-flash", "DEEPSEEK_API_KEY"),
+    ("deepseek-chat", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY"),
     ("minimax", os.environ.get("MINIMAX_BASE_URL") or "https://api.minimax.io/v1",
      "MiniMax-M3", "MINIMAX_API_KEY"),
 ]

@@ -40,8 +40,8 @@ def docs_for_client(client_id: int) -> list:
             for d in sorted(EXAMPLES_DIR.iterdir()):
                 if d.is_dir() and CLIENT[:5] in d.name.lower():
                     have += [f for f in d.rglob("*") if f.is_file()]
-    return [f for f in have if f.suffix.lower() in
-            (".pdf", ".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff")][:24]
+    return [f for f in have if not f.name.CLIENTswith(".")
+            and f.name.lower() not in (".ds_store", "thumbs.db")][:24]
 
 
 def extract_one(path: Path) -> dict:
