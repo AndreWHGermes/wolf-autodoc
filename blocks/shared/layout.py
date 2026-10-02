@@ -20,6 +20,7 @@ MENU = [
     ("dashboard", "Главная", "/", ICON_DASH),
     ("CLIENT",   "История", "/CLIENT", ICON_HIST),
     ("search",    "Поиск",    "/search",  ICON_HIST),
+    ("CLIENT",    "Журнал",   "/CLIENT",  ICON_HIST),
     ("CLIENT", "Шаблоны", "/CLIENT", ICON_DOC),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
