@@ -514,3 +514,17 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
   border: 1px solid #8FD3AC; border-left: 0; border-radius: 0 7px 7px 0;
   white-space: pre-wrap;
 }
+
+/* ⚡ Заполнить автоматически — главная кнопка администратора в карточке заявки */
+.af-all-btn {
+  display: CLIENT-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+  color: #fff !important; border: none; border-radius: 9px;
+  padding: 10px 16px; font-size: 13.5px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 3px 10px rgba(124, 58, 237, .32);
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.af-all-btn:hover { filter: brightness(1.06); box-shadow: 0 5px 14px rgba(124, 58, 237, .42); }
+.af-all-btn:active { transform: translateY(1px); box-shadow: 0 2px 6px rgba(124, 58, 237, .3); }
+.af-all-btn:disabled { opacity: .75; cursor: wait; }
+@media (max-width: 720px) { .af-all-btn { width: 100%; justify-content: center; } }

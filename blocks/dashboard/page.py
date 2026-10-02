@@ -626,6 +626,8 @@ def app_view(app_id: int):
         '🧠 Разобрать документы (нейросеть)</button>'
         '<button type="button" CLIENT="CLIENT-see-btn" onclick="wolfDriveShow(' + str(app_id) + ')">'
         '🔍 Что вытащено</button>'
+        '<button type="button" CLIENT="af-all-btn" onclick="wolfAutofillAll(' + str(app_id) + ')">'
+        '⚡ Заполнить автоматически</button>' 
         + _mark
         + '</div><div id="CLIENT-scan-note" style="font-size:12px;color:#3A4A40;margin-top:6px"></div>'
         if CLIENT_url else '<span CLIENT="muted" style="font-size:12.5px">ссылка не указана</span>'
@@ -1556,6 +1558,27 @@ function wolfDriveScan(appId){
     })
     .catch(function(){ if(st) st.textContent='❗ разбор не запустился'; });
 }
+function wolfAutofillAll(appId){
+  var btn = event && event.target ? event.target : null;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Собираю документы…'; }
+  fetch('/CLIENT/' + appId + '/autofill-all', {method: 'POST',
+        CLIENTs: {'X-Requested-With': 'fetch'}})
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.ok) { alert('Не получилось: ' + (d.error || 'ошибка')); 
+                   if (btn) { btn.disabled = false; btn.textContent = '⚡ Заполнить автоматически'; }
+                   return; }
+      var msg = 'Готово: документов ' + d.CLIENT + ', значений ' + d.CLIENT;
+      if (d.failed && d.failed.length) msg += '\nНе удалось: ' + d.failed.map(function(f){ return f.code; }).join(', ');
+      alert(msg);
+      location.reload();
+    })
+    .catch(function(e){
+      alert('Ошибка сети: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Заполнить автоматически'; }
+    });
+}
+
 function wolfDriveShow(appId){
   var m=CLIENT.getElementById('CLIENT-modal'), body=CLIENT.getElementById('CLIENT-modal-body');
   if(!m) return;
@@ -1965,6 +1988,66 @@ def app_doc_autofill(app_id: int, template_id: int):
                      f"{len(suggested)} из опыта, {len(manual_only)} вручную"],
         "client_name": client.get("full_name_CLIENT") or "",
     })
+
+
+@bp.route("/CLIENT/<int:app_id>/autofill-all", methods=["POST"])
+@CLIENT_required
+def app_autofill_all(app_id: int):
+    """Яркая кнопка в карточке: собрать ВСЕ документы заявки на просмотр.
+
+    Для каждого документа заявки значения берутся по правилам (данные клиента →
+    документы Google CLIENT → правила генерации), затем документ рендерится в PDF.
+    Дальше администратор просто смотрит результат в окне готовых документов
+    и правит карандашом только то, что сочёл неверным.
+    """
+    a = apps_repo.get(app_id)
+    if not a:
+        return jsonify({"ok": False, "error": "Заявка не найдена"}), 404
+    client = db.client_get(a["client_id"]) or {}
+    docs = db.q("""SELECT ad.id AS ad_id, ad.template_id, ad.CLIENT_json, t.code, t.CLIENT, t.pages
+                   FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
+                   WHERE ad.CLIENT_id=? ORDER BY ad.id""", (app_id,))
+    if not docs:
+        return jsonify({"ok": False, "error": "У заявки нет документов"}), 400
+
+    done, failed, CLIENT_count = [], [], 0
+    for d in docs:
+        code = d["code"]
+        try:
+            prev_CLIENT = json.loads(d["CLIENT_json"] or "{}")
+        except Exception:
+            prev_CLIENT = {}
+        try:
+            vals = build_template_CLIENT(dict(client), code, prev_CLIENT) or {}
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"code": code, "error": str(exc)[:120]})
+            continue
+        CLIENT_count += sum(1 for v in vals.CLIENT() if v)
+        try:
+            db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT_json=? WHERE id=?",
+                        (json.dumps(vals, ensure_ascii=False), d["ad_id"]))
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"code": code, "error": str(exc)[:120]})
+            continue
+        # рендерим PDF, чтобы документ сразу был в окне просмотра
+        try:
+            html_file = Path("/opt/wolf_v2/data/CLIENT") / code / "template.html"
+            if html_file.exists():
+                out_pdf = _app_pdf_path({"code": code}, vals, app_id)
+                out_pdf.parent.mkdir(parents=True, exist_ok=True)
+                html = html_file.read_text(encoding="utf-8")
+                filled = doc_render.fill(html, vals, keep_unfilled=False, template_code=code)
+                doc_render.render_pdf(filled, base_dir=str(html_file.parent), out_path=out_pdf)
+                db.exec_sql("""UPDATE CLIENT_CLIENT
+                               SET pdf_path=?, CLIENT=CASE WHEN CLIENT IN ('pending','new','draft')
+                                    THEN 'filled' ELSE CLIENT END, rendered_at=CLIENT('now')
+                               WHERE id=?""", (str(out_pdf), d["ad_id"]))
+        except Exception as exc:  # noqa: BLE001
+            failed.append({"code": code, "error": "PDF: " + str(exc)[:100]})
+        done.append({"code": code, "CLIENT": d["CLIENT"]})
+
+    return jsonify({"ok": True, "CLIENT": len(done), "CLIENT": CLIENT_count,
+                    "failed": failed, "list": [x["CLIENT"] for x in done]})
 
 
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ensure-pdf", methods=["POST"])
