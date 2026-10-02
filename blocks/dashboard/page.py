@@ -587,20 +587,32 @@ def app_view(app_id: int):
             _mark = '<span CLIENT="CLIENT-mark fail" CLIENT="' + (_CLIENT_scan["note"] or "Автоматическое прочтение не выполнено") + '">❗ не разобрано</span>'
     else:
         _mark = '<span CLIENT="CLIENT-mark">ещё не разбиралось</span>'
-    # автопроверка содержимого папки: есть ли паспорт клиента (обязательный документ)
+    # Перечень того, что реально лежит в папке Google CLIENT (по свежему разбору).
+    # Устаревшие отметки автопроверки не показываем — они противоречат разбору.
     try:
-        _pchk = db.q1("""SELECT CLIENT, note FROM CLIENT_CLIENT
-                          WHERE CLIENT_id=? AND CLIENT IN ('checked','warn')
-                          ORDER BY id DESC LIMIT 1""", (app_id,))
+        import json as _json
+        _rk = db.q1("""SELECT payload FROM CLIENT_CLIENT
+                       WHERE CLIENT_id=? AND payload IS NOT NULL
+                       ORDER BY id DESC LIMIT 1""", (app_id,))
+        _payload = _json.loads((_rk or {}).get("payload") or "[]")
     except Exception:
-        _pchk = None
-    if _pchk:
-        if (_pchk["CLIENT"] or "") == "checked":
-            _mark += ('<span CLIENT="CLIENT-mark ok" CLIENT="В папке Google CLIENT есть паспорт клиента">'
-                      '\U0001f4c1 ' + (_pchk["note"] or "паспорт найден") + '</span>')
+        _payload = []
+    if _payload:
+        from collections import Counter as _Counter
+        _RU = {"passport": "Паспорт", "bank_balance": "Справка о доступном остатке",
+               "bank_movement": "Справка о движении средств", "photo": "Фотография клиента",
+               "contract": "Договор", "itk": "ИТК (трудовая)", "resume": "Резюме",
+               "other": "Документ"}
+        _kinds = _Counter(_RU.get(it.get("doc_type") or "other", "Документ") for it in _payload)
+        _listing = ", ".join((k + " \u00d7" + str(v)) if v > 1 else k for k, v in _kinds.items())
+        _read = sum(1 for it in _payload if it.get("found") or it.get("note"))
+        _has_pass = any((it.get("doc_type") == "passport") for it in _payload)
+        _mark += ('<span CLIENT="CLIENT-mark ok" CLIENT="Что лежит в папке Google CLIENT">'
+                  '\U0001f4c1 в наличии ' + str(len(_payload)) + ': ' + _listing + '</span>')
+        if _has_pass:
+            _mark += '<span CLIENT="CLIENT-mark ok" CLIENT="Паспорт клиента прочитан">✅ паспорт прочитан</span>'
         else:
-            _mark += ('<span CLIENT="CLIENT-mark fail" CLIENT="В папке Google CLIENT не нашлось паспорта клиента">'
-                      '\u26a0\ufe0f ' + (_pchk["note"] or "паспорт не найден") + '</span>')
+            _mark += '<span CLIENT="CLIENT-mark fail" CLIENT="В папке нет паспорта клиента">⚠️ паспорта в папке нет</span>'
     CLIENT_btn = (
         '<div CLIENT="CLIENT-actions">'
         '<a href="' + CLIENT_url + '" target="_blank" rel="noopener" CLIENT="CLIENT-btn">'
@@ -772,7 +784,8 @@ def app_view(app_id: int):
 <form method="post" action="/CLIENT/""" + str(app_id) + """/send" CLIENT="stage-CLIENT send-CLIENT">
   <div CLIENT="stage-no">6</div>
   """ + send_CLIENT + """
-  <div CLIENT="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b></div>
+  <div CLIENT="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b>.</div>
+  """ + ('' if _send_ready else '<div CLIENT="send-hint send-todo">Чтобы кнопка стала активной, у каждого документа блока 4 нажмите <b>✓ Проверен</b> (документ нужен и согласован) или <b>✕</b> (документ не нужен). Счётчик блока 6 считает и то, и другое.</div>') + """
   <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
           onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')"
           """ + ('' if _send_ready else 'disabled ') + 'CLIENT="' + ('Отправить документы в Google CLIENT'
@@ -814,6 +827,22 @@ def app_view(app_id: int):
     var all = CLIENT.querySelectorAll('.doc-toolbar ' + sel);
     for (var i = 0; i < all.length; i++) all[i].CLIENTList.toggle('is-on', all[i].dataset[attr] === val);
   }
+  function syncWatermark() {
+    /* Знак «данные не подставлены»: держим его видимым над превью, пока этап 2 не пройден */
+    var wm = CLIENT.getElementById('paper-watermark');
+    if (!wm) return;
+    var viewer = CLIENT.querySelector('.docs-viewer');
+    if (!viewer) return;
+    if (typeof DATA_READY !== 'undefined' && !DATA_READY) {
+      if (wm.parentNode !== viewer) viewer.appendChild(wm);
+      wm.style.display = 'flex';
+      viewer.CLIENTList.add('has-watermark');
+    } else {
+      wm.style.display = 'none';
+      viewer.CLIENTList.remove('has-watermark');
+    }
+  }
+
   function loadRemote(url, what) {
     hideAll();
     if (stage) stage.innerHTML = '<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Загружаю ' + (what || '') + '…</div>';
@@ -1153,7 +1182,7 @@ def app_view(app_id: int):
     }
     if (typeof openModal === 'function') openModal('app-text-modal');
   });
-  setTimeout(autoOpen, 700);
+  setTimeout(function() { syncWatermark(); setTimeout(autoOpen, 700); }, 300);
 })();
 </script>
 
