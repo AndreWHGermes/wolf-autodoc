@@ -416,3 +416,7 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 /* Знак «данные не подставлены» поверх превью документа (блок 5) */
 .docs-viewer { position: relative; }
 .docs-viewer.has-watermark .zp-preview { opacity: .55; filter: grayscale(.35); }
+
+/* Блок 3: значения, вытащенные из документов Google CLIENT */
+.kv-key-CLIENT { background: #E7F6EC !important; color: #1E3A2A !important; }
+.kv-src { font-size: 10.5px; color: #6B7C70; background: #F1F7F3; border-radius: 4px; padding: 1px 6px; margin-left: 4px; }

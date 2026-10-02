@@ -48,7 +48,12 @@ _DOC_KINDS = [
 
 
 def doc_kind_name(path, text: str = "") -> str:
-    """Что это за документ — по имени файла, потом по тексту внутри."""
+    """Что это за документ.
+
+    Порядок: имя файла (самый надёжный признак) → текст внутри.
+    Важно: имя файла проверяем ДО текста — у паспорта-фотографии текста
+    может не быть вовсе, а имя «PASSPORT - …» всё равно говорит, что это паспорт.
+    """
     name = Path(path).name.lower()
     for code, keys in _DOC_KINDS:
         if any(k in name for k in keys):
@@ -124,9 +129,11 @@ def extract(path: Path) -> dict:
 # ---- применение извлечённых значений ----
 CLIENT_MAP = {
     "full_name_CLIENT": "full_name_CLIENT", "full_name_ru": "full_name_ru",
+    "CLIENT_CLIENT": "CLIENT",
     "CLIENT": "CLIENT", "CLIENT": "CLIENT", "name": "name",
     "date_of_CLIENT": "CLIENT_date", "CLIENT_date": "CLIENT_date",
-    "CLIENT_of_CLIENT": "CLIENT_CLIENT", "passport_CLIENT": "passport_CLIENT",
+    "CLIENT_of_CLIENT": "CLIENT_CLIENT", "CLIENT_CLIENT": "CLIENT_CLIENT",
+    "passport_CLIENT": "passport_CLIENT",
     "passport_CLIENT_full": "passport_CLIENT", "CLIENT": "CLIENT",
     "CLIENT": "CLIENT", "address_live": "address_live",
     "CLIENT": "CLIENT", "CLIENT": "CLIENT", "bank_name": "bank_name",

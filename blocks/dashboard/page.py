@@ -366,6 +366,11 @@ def app_view(app_id: int):
 
     CLIENT_url = (a.get("gCLIENT_url") or client.get("gCLIENT_folder_url") or "").strip()
 
+    # Ключи, которые уже показаны в других местах карточки (продукт, комментарий,
+    # ссылка на CLIENT, цена) — в таблице «как пришло в заявке» их не дублируем.
+    _SHOWN_ELSEWHERE = {"CLIENT", "CLIENT_name", "CLIENT_id", "price", "price_idr",
+                        "comment", "comments", "_raw_text", "gCLIENT_url",
+                        "gCLIENT_folder_url", "source_channel", "record_kind"}
     raw_payload_rows = []
     raw_payload_text = ""
     raw_notes = []
@@ -629,6 +634,26 @@ def app_view(app_id: int):
 
         # Продукт добавляем первым с жёлтой подсветкой
     extra_rows = []
+    # Данные, вытащенные из документов Google CLIENT — администратор должен видеть,
+    # что именно распознано, и сверить с первоисточником.
+    try:
+        _cd = db.q1("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+                    (app_id,)) or {}
+    except Exception:
+        _cd = {}
+    _DRIVE_FIELDS = [("full_name_CLIENT", "ФИО латиницей"), ("CLIENT", "Фамилия"),
+                     ("name", "Имя"), ("CLIENT", "Отчество"),
+                     ("CLIENT_date", "Дата рождения"), ("CLIENT_CLIENT", "Место рождения"),
+                     ("passport_CLIENT", "Номер паспорта"), ("CLIENT", "Гражданство"),
+                     ("address_live", "Адрес проживания"), ("CLIENT", "Телефон"),
+                     ("CLIENT", "E-mail"), ("bank_name", "Банк")]
+    for _f, _lbl in _DRIVE_FIELDS:
+        _v = str(_cd.get(_f) or "").strip()
+        if not _v:
+            continue
+        extra_rows.append('<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
+                          + _lbl + '</td><td CLIENT="kv-val">' + _v
+                          + ' <span CLIENT="kv-src" CLIENT="Значение распознано из документов Google CLIENT">из документов</span></td></tr>')
     if CLIENT:
         extra_rows.append(
             '<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
@@ -646,14 +671,14 @@ def app_view(app_id: int):
         _raw_payload_html = (
             '<table CLIENT="kv-table">'
             + ''.join(extra_rows)
-            + ''.join('<tr><td CLIENT="kv-key">' + label_for(k) + '</td><td CLIENT="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows)
+            + ''.join('<tr><td CLIENT="kv-key">' + label_for(k) + '</td><td CLIENT="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE)
             + '</table>'
         )
     elif raw_payload_text or extra_rows:
         _raw_payload_html = (
             '<table CLIENT="kv-table">'
             + ''.join(extra_rows)
-            + (''.join('<tr><td CLIENT="rp-k">' + label_for(k) + '</td><td CLIENT="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows) if raw_payload_rows else '')
+            + (''.join('<tr><td CLIENT="rp-k">' + label_for(k) + '</td><td CLIENT="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE) if raw_payload_rows else '')
             + (('<tr><td colspan="2" CLIENT="rp-note">' + ' · '.join(raw_notes[:6]) + '</td></tr>') if raw_notes else '')
             + '</table>'
         )
