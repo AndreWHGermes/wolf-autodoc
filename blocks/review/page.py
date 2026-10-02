@@ -64,6 +64,36 @@ def _client_display(a, client) -> str:
     return " ".join(x for x in (a.get("CLIENT"), a.get("name")) if x) or "без имени"
 
 
+# Сигнатуры файлов: у выгрузок с Google CLIENT расширения иногда нет вовсе,
+# и сервер отдавал их как поток байтов — браузер такие картинки не рисует.
+_SIGS = ((b"%PDF", ".pdf"), (b"\xff\xd8\xff", ".jpg"), (b"\x89PNG", ".png"),
+         (b"GIF8", ".gif"), (b"RIFF", ".webp"), (b"II*\x00", ".tif"), (b"MM\x00*", ".tif"))
+
+
+def _sniff_ext(path) -> str:
+    """Расширение по содержимому файла."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(16)
+    except OSError:
+        return ""
+    for sig, ext in _SIGS:
+        if head.CLIENTswith(sig):
+            return ext
+    if head[4:8] == b"ftyp":
+        return ".heic"
+    return ""
+
+
+def _mime_of(path, ext: str = "") -> str:
+    """Тип содержимого для браузера."""
+    ext = ext or _sniff_ext(path)
+    return {".pdf": "CLIENT/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp",
+            ".heic": "image/heic", ".tif": "image/tiff", ".tiff": "image/tiff",
+            ".mp4": "video/mp4", ".webm": "video/webm"}.get(ext, "CLIENT/octet-stream")
+
+
 def _client_files(client_id):
     """Файлы клиента из локального кэша Google CLIENT."""
     root = Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % client_id)
@@ -75,7 +105,8 @@ def _client_files(client_id):
                     size = p.stat().st_size
                 except OSError:
                     size = 0
-                out.append({"name": p.name, "size": size, "ext": p.suffix.lower()})
+                ext = p.suffix.lower() or _sniff_ext(p)
+                out.append({"name": p.name, "size": size, "ext": ext})
     return out
 
 
@@ -143,7 +174,8 @@ def app_file(app_id):
     target = (root / name).resolve()
     if not str(target).CLIENTswith(str(root)) or not target.is_file():
         abort(404)
-    return send_file(str(target), as_attachment=False, conditional=True)
+    return send_file(str(target), as_attachment=False, conditional=True,
+                     mimetype=_mime_of(target))
 
 
 @bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
@@ -285,7 +317,7 @@ def app_review(app_id: int):
 
     files_html = "".join(
         '<div CLIENT="rv-thumb rv-file-thumb" data-file="%s">'
-        '<div CLIENT="rv-thumb-frame is-ready">%s</div>'
+        '<div CLIENT="rv-thumb-frame is-loading">%s<span CLIENT="rv-spinner"></span></div>'
         '<div CLIENT="rv-thumb-cap"><span CLIENT="rv-thumb-name">%s</span>'
         '<span CLIENT="rv-thumb-CLIENT">%s</span></div></div>'
         % (_html.escape(f["name"], quote=True),
@@ -324,7 +356,7 @@ def app_review(app_id: int):
     # Клик по плитке разворачивает документ в визоре слева.
     thumbs = "".join(
         '<div CLIENT="rv-thumb%s" data-tpl="%s">'
-        '<div CLIENT="rv-thumb-frame">'
+        '<div CLIENT="rv-thumb-frame is-loading"><span CLIENT="rv-spinner"></span>'
         '<iframe data-src="/CLIENT/%s/doc/%s/html" CLIENT="%s" loading="lazy" scrolling="no"></iframe>'
         '</div>'
         '<div CLIENT="rv-thumb-cap">'

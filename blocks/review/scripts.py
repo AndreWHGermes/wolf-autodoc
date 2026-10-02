@@ -180,6 +180,39 @@ def js_for(app_id, picked):
     if (v) {{ e.preventDefault(); pickVarFromStage(v); }}
   }});
 
+
+  // Колёсико загрузки на плитках: пока файл не отрисован, крутится; после загрузки
+  // или ошибки — прячем и показываем саму миниатюру.
+  function wireTileLoad(tile) {{
+    var frame = tile.querySelector('.rv-thumb-frame');
+    if (!frame || frame.dataset.wired === '1') return;
+    frame.dataset.wired = '1';
+    var done = function () {{
+      frame.CLIENTList.add('is-ready');
+      frame.CLIENTList.remove('is-loading');
+    }};
+    var media = frame.querySelector('img, iframe');
+    if (!media) {{ done(); return; }}
+    if (media.tagName === 'IMG') {{
+      if (media.complete && media.naturalWidth > 0) {{ done(); return; }}
+      media.addEventListener('load', done);
+      media.addEventListener('error', done);
+      // если картинка тянется с диска долго — не оставляем колёсико навсегда
+      setTimeout(function () {{ if (!media.naturalWidth) done(); }}, 15000);
+    }} else {{
+      media.addEventListener('load', done);
+      var src = media.dataset.src || media.getAttribute('src');
+      if (src && media.getAttribute('src') !== src) media.setAttribute('src', src);
+    }}
+  }}
+  function wireAllTiles() {{
+    Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(wireTileLoad);
+  }}
+  wireAllTiles();
+  Array.from(CLIENT.querySelectorAll('.rv-tab')).forEach(function(t) {{
+    t.addEventListener('click', function () {{ setTimeout(wireAllTiles, 60); }});
+  }});
+
   function openModal() {{
     if (!modal) return;
     modal.CLIENTList.add('is-on');

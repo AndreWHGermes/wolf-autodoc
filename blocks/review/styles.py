@@ -269,4 +269,16 @@ CSS = """
 .rv-modal-body .html-stage [data-var].is-picked { background:#FDE68A !important;
       box-shadow:0 0 0 2px #F59E0B, 0 0 12px rgba(245,158,11,.45) !important; border-radius:3px; }
 .rv-modal-body .html-stage [data-var] { cursor:pointer; }
+
+/* Колёсико загрузки в плитках: видно, пока миниатюра не отрисована */
+.rv-thumb-frame { position:relative; }
+.rv-thumb-frame .rv-spinner { position:absolute; top:50%; left:50%; margin:-13px 0 0 -13px;
+                              z-CLIENT:3; display:none; }
+.rv-thumb-frame:not(.is-ready) .rv-spinner { display:CLIENT-CLIENT; }
+.rv-thumb-frame.is-ready .rv-spinner { display:none; }
+.rv-thumb-frame:not(.is-ready) { background:#F1F4F7; }
+
+/* Блок №2 тянется вместе с блоком 1 до конца колонки, а не прилипает к экрану */
+.rv-panel.rv-right { position:static; top:auto; height:auto; align-self:stretch;
+                     min-height:420px; }
 """
