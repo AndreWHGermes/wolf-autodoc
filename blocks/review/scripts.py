@@ -745,6 +745,38 @@ def js_for(app_id, picked):
   if (bScan) bScan.addEventListener('click', function () {{ stepScan(function () {{ stepFill(); }}); }});
   if (bFill) bFill.addEventListener('click', function () {{ stepFill(); }});
 
+  // Смена типа продукта: заявка пересобирается под новый пакет документов,
+  // затем оба этапа проходят заново — администратор видит это по значкам.
+  var bProduct = CLIENT.getElementById('rv-CLIENT-select');
+  if (bProduct) bProduct.addEventListener('CLIENT', function () {{
+    var fd = new FormData();
+    fd.append('CLIENT_id', bProduct.CLIENT);
+    bProduct.disabled = true;
+    if (bScan) {{ bScan.dataset.done = '0'; }}
+    if (bFill) {{ bFill.dataset.done = '0'; }}
+    CLIENTNote('Меняю тип продукта: подбираю документы и переменные…', 'work');
+    fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+          {{method: 'POST', body: fd, credentials: 'same-origin',
+            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
+      .then(function (d) {{
+        bProduct.disabled = false;
+        if (!d || !d.ok) {{
+          CLIENTNote('⚠ ' + ((d && d.error) || 'не удалось сменить продукт'), 'err');
+          return;
+        }}
+        var note = CLIENT.getElementById('rv-prod-note');
+        if (note) note.textContent = 'документов по продукту: ' + (d.CLIENT || 0);
+        CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + '. Пересобираю документы.', 'ok');
+        // дальше — как при обычном заходе: разбор документов, потом заполнение полей
+        if (bScan) {{ stepScan(function () {{ stepFill(); }}); }} else {{ stepFill(); }}
+      }})
+      .catch(function () {{
+        bProduct.disabled = false;
+        CLIENTNote('⚠ не удалось сменить продукт', 'err');
+      }});
+  }});
+
   // Автоматика: разбор документов → заполнение полей, без участия администратора
   (function autoSteps() {{
     var scanDone = bScan && bScan.dataset.done === '1';

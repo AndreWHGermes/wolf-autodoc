@@ -407,4 +407,13 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-auto-fill { background:#6D4AC4 !important; border-color:#6D4AC4 !important; }
 .rv-auto-fill:hover { background:#5E3EB0 !important; }
 .rv-auto-fill[data-done="1"] { box-shadow:0 0 0 2px #D9CDF5 inset; }
+
+/* Тип продукта заявки: видно, какой нужен клиенту, и можно поменять */
+.rv-prod { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.rv-prod-k { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:#8C9A91; }
+.rv-prod-select { font:inherit; font-size:12.5px; font-weight:600; color:#1F5133;
+                  border:1px solid #CBE3D4; background:#F4FBF6; border-radius:9px;
+                  padding:5px 8px; max-width:420px; cursor:pointer; }
+.rv-prod-select:hover { background:#EAF6EE; }
+.rv-prod-note { font-size:11px; color:#7C8A80; }
 """

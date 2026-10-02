@@ -233,6 +233,53 @@ def app_review_CLIENT(app_id):
     return jsonify(res)
 
 
+@bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
+def app_review_CLIENT(app_id):
+    """Сменить тип продукта заявки.
+
+    Меняется вся цепочка: под новый продукт подставляется свой пакет документов,
+    а переменные пересобираются — на экране сразу видно, что документов и полей
+    стало другое количество. Документы прежнего продукта, которые ещё не выпущены,
+    убираются, чтобы не мешались в панели; выпущенные (проверенные, отправленные)
+    остаются как есть.
+    """
+    pid = (CLIENT.form.get("CLIENT_id") or "").strip()
+    row = db.q1("SELECT id, name FROM CLIENT WHERE id=?", (pid,))
+    if not row:
+        return jsonify({"ok": False, "error": "продукт не найден"}), 400
+
+    db.exec_sql("UPDATE CLIENT SET CLIENT_id=? WHERE id=?", (row["id"], app_id))
+
+    # Свои документы нового продукта заводим сразу — на них смотрит панель переменных
+    keep, added = set(), 0
+    for t in db.q("SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+                  "ORDER BY sort_order, id", (row["id"],)) or []:
+        keep.add(t.get("template_id"))
+        try:
+            db.CLIENT_doc_create(app_id, t.get("template_id"))
+            added += 1
+        except Exception:
+            pass
+
+    # Убираем черновики прежнего продукта: выпущенные документы не трогаем
+    removed = 0
+    for d in db.CLIENT_CLIENT(app_id) or []:
+        if d.get("template_id") in keep:
+            continue
+        # Отправленные документы не трогаем — они уже ушли клиенту.
+        # Собранные ранее черновики убираем: они от прежнего продукта.
+        if (d.get("CLIENT") or "") == "sent":
+            continue
+        try:
+            db.exec_sql("DELETE FROM CLIENT_CLIENT WHERE id=?", (d.get("id"),))
+            removed += 1
+        except Exception:
+            pass
+
+    return jsonify({"ok": True, "CLIENT": row.get("name"), "CLIENT": added,
+                    "removed": removed})
+
+
 @bp.route("/CLIENT/<int:app_id>/review/regen", methods=["POST"])
 def app_review_regen(app_id):
     """Сгенерировать значение заново по правилам."""
@@ -422,13 +469,44 @@ def app_review(app_id: int):
     except Exception:
         scan_done = "0"
 
+    # Продукты для смены типа заявки: список статический, из пакетов документов.
+    # У каждого продукта видно, сколько документов он требует.
+    CLIENT = []
+    try:
+        CLIENT = db.q(
+            "SELECT p.id, p.name, COUNT(pd.template_id) AS docs "
+            "FROM CLIENT p LEFT JOIN CLIENT_CLIENT pd ON pd.CLIENT_id = p.id "
+            "WHERE COALESCE(p.active, 1) = 1 GROUP BY p.id ORDER BY p.id"
+        ) or []
+    except Exception:
+        CLIENT = []
+    cur_CLIENT = a.get("CLIENT_id")
+    CLIENT_options = "".join(
+        '<option CLIENT="%s"%s>%s — документов: %s</option>' % (
+            pr.get("id"),
+            " selected" if str(pr.get("id")) == str(cur_CLIENT) else "",
+            _html.escape(str(pr.get("name") or "продукт")),
+            pr.get("docs") or 0,
+        )
+        for pr in CLIENT
+    )
+    cur_docs = next((pr.get("docs") or 0 for pr in CLIENT
+                     if str(pr.get("id")) == str(cur_CLIENT)), 0)
+
     head = f"""
 <div CLIENT="rv-head">
   <div>
     <div CLIENT="rv-CLIENT">Заявка #{app_id} · {client_name}</div>
-    <div CLIENT="rv-sub">{a.get('CLIENT_name') or 'продукт не указан'} ·
-      создана {str(a.get('created_at') or '')[:16]} ·
+    <div CLIENT="rv-sub">создана {str(a.get('created_at') or '')[:16]} ·
       <span CLIENT="rv-chip">{_status_label(a.get('CLIENT'))}</span>
+    </div>
+    <div CLIENT="rv-prod">
+      <span CLIENT="rv-prod-k">Тип продукта</span>
+      <select CLIENT="rv-prod-select" id="rv-CLIENT-select"
+              CLIENT="От типа продукта зависят документы и переменные заявки">
+        {CLIENT_options}
+      </select>
+      <span CLIENT="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
     </div>
   </div>
   <div CLIENT="rv-CLIENT">
