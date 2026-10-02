@@ -15,7 +15,7 @@ from pathlib import Path
 
 from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, send_file, url_for
 
-from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, render
+from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, modal, render
 from CLIENT import render as doc_render
 from core import db
 from core.auth import current_user, CLIENT_required
@@ -662,6 +662,10 @@ def app_view(app_id: int):
                          '<span CLIENT="acf-label">\U0001f4ac Комментарий менеджера</span>'
                          '<div CLIENT="acf-text">' + _safe_comment + '</div></div>')
 
+    # окно с полным текстом заявки (открывается из заголовка блока 3)
+    _text_modal_html = modal("app-text-modal", "\U0001f4c4 Текст заявки",
+                             '<pre CLIENT="app-text-pre" id="app-text-pre">Загрузка…</pre>')
+
     body = """
 <div CLIENT="app-card-green">
 
@@ -698,6 +702,8 @@ def app_view(app_id: int):
   <CLIENT CLIENT="ui-card-head">
     <span CLIENT="stage-no">3</span><span CLIENT="ui-card-emoji">📋</span>
     Входные данные заявки <span CLIENT="ui-card-meta">""" + str(len(raw_payload_rows)) + """ полей</span>
+    <button type="button" CLIENT="app-text-btn" data-app-text="1"
+            CLIENT="Полный текст заявки: как её прислал менеджер — уходит на Google Диск вместе с документами">\U0001f4c4 Текст заявки</button>
     <span CLIENT="stage-fold-hint">свернуть</span><span CLIENT="chev">›</span>
   </CLIENT>
   <div CLIENT="ui-card-body">
@@ -705,6 +711,7 @@ def app_view(app_id: int):
   </div>
 </CLIENT>
 
+""" + _text_modal_html + """
 <div CLIENT="stage-CLIENT">Документы</div>
 <div CLIENT="docs-section">
   <div CLIENT="docs-list-wrap stage-CLIENT">
@@ -742,8 +749,7 @@ def app_view(app_id: int):
 <form method="post" action="/CLIENT/""" + str(app_id) + """/send" CLIENT="stage-CLIENT send-CLIENT">
   <div CLIENT="stage-no">6</div>
   """ + send_CLIENT + """
-  <a CLIENT="send-final-btn app-text-btn" href="/CLIENT/""" + str(app_id) + """/text-file" target="_blank" rel="noopener"
-     CLIENT="Обычный текстовый файл заявки — уходит на Google CLIENT вместе с документами">\U0001f4c4 Текст заявки</a>
+  <div CLIENT="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b></div>
   <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
           onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')"
           """ + ('' if _send_ready else 'disabled ') + 'CLIENT="' + ('Отправить документы в Google CLIENT'
