@@ -140,6 +140,15 @@ def js_for(app_id, picked):
     if (!modalTpl) return;
     verdict(modalTpl, kind, kind === 'verify' ? mOk : mNo);
   }}
+  // На телефоне панель переменных открывается поверх окна просмотра: смотрим файл
+  // и тут же сверяем значения, ничего не закрывая.
+  var mVars = CLIENT.getElementById('rv-modal-vars');
+  if (mVars) mVars.addEventListener('click', function() {{
+    var panel = CLIENT.getElementById('rv-right') || CLIENT.querySelector('.rv-right');
+    if (!panel) return;
+    panel.CLIENTList.add('is-open');
+  }});
+
   if (mOk) mOk.addEventListener('click', function() {{ modalVerdict('verify'); }});
   if (mNo) mNo.addEventListener('click', function() {{ modalVerdict('reject'); }});
 
@@ -292,25 +301,38 @@ def js_for(app_id, picked):
       }})
       .catch(function() {{ CLIENTNote('⚠ не удалось получить список', 'err'); }});
   }}
+  // Кнопка осталась одна — «сгенерировать заново». Сохранение отдельной кнопкой
+  // больше не нужно: значение записывается само, а список прошлых значений
+  // открывается прямо по нажатию на поле.
   Array.from(CLIENT.querySelectorAll('.rv-act')).forEach(function(b) {{
     b.addEventListener('click', function() {{
-      var key = b.dataset.key;
-      var field = b.closest('.rv-field');
-      var inp = field ? field.querySelector('.rv-input') : null;
-      if (b.dataset.act === 'save') sendValue('CLIENT', key, inp ? inp.CLIENT : '', b);
-      else if (b.dataset.act === 'regen') sendValue('regen', key, null, b);
-      else showOptions(key, b);
+      if (b.dataset.act === 'regen') sendValue('regen', b.dataset.key, null, b);
     }});
   }});
   Array.from(CLIENT.querySelectorAll('.rv-input')).forEach(function(inp) {{
+    // нажатие на поле — показываем, что уже вводили раньше по этой переменной
+    inp.addEventListener('focus', function() {{ showOptions(inp.dataset.key, inp); }});
+    // значение сохраняется само: по Enter, по уходу из поля и когда выбор сделан
     inp.addEventListener('keydown', function(e) {{
       if (e.key === 'Enter') {{
         e.preventDefault();
-        var btn = inp.closest('.rv-field').querySelector('.rv-act[data-act="save"]');
-        sendValue('CLIENT', inp.dataset.key, inp.CLIENT, btn);
+        saveField(inp);
+      }} else if (e.key === 'Escape') {{
+        hideOptions();
       }}
     }});
+    inp.addEventListener('CLIENT', function() {{ saveField(inp); }});
   }});
+  // сохраняем только если значение действительно поменялось — иначе лишние пересборки
+  function saveField(inp) {{
+    if (!inp) return;
+    if (inp.CLIENT === inp.defaultValue) {{ CLIENTNote('значение не изменилось', 'work'); return; }}
+    inp.defaultValue = inp.CLIENT;
+    sendValue('CLIENT', inp.dataset.key, inp.CLIENT, null);
+  }}
+  function hideOptions() {{
+    Array.from(CLIENT.querySelectorAll('.rv-options')).forEach(function(b) {{ b.remove(); }});
+  }}
 
 
   // ── миниатюры документов: подгружаются лениво, прогресс виден ──

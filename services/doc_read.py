@@ -55,6 +55,40 @@ def _ocr_heic(path: Path) -> str:
     return ""
 
 
+def mrz_text(path) -> str:
+    """Машиночитаемая зона паспорта отдельным проходом.
+
+    В паспорте РФ MRZ — самый надёжный источник имени и фамилии латиницей.
+    Общее распознавание страницы эту полосу часто портит: мелкий шрифт, шум
+    голограммы. Поэтому читаем её отдельно: обрезаем нижнюю часть, увеличиваем
+    и распознаём только заглавными буквами и цифрами.
+    """
+    try:
+        import pytesseract
+        from PIL import Image, ImageOps
+
+        img = Image.open(path)
+        try:
+            img = ImageOps.exif_transpose(img)
+        except Exception:
+            pass
+        if img.mode not in ("RGB", "L"):
+            img = img.convert("RGB")
+        w, h = img.size
+        crop = img.crop((0, int(h * 0.78), w, h))
+        crop = crop.resize((crop.width * 2, crop.height * 2), Image.LANCZOS)
+        crop = ImageOps.grayscale(crop)
+        out = pytesseract.image_to_string(
+            crop, lang="eng", config="--psm 6 "
+            "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
+        )
+        # Строки MRZ разделяем переводом строки: склеенные в одну, они дают
+        # мусор в разборе (третья часть ФИО захватывает цифры соседней строки).
+        return "\n".join(ln.strip() for ln in (out or "").splitlines() if ln.strip())
+    except Exception:
+        return ""
+
+
 def sniff_ext(path) -> str:
     """Определяет тип файла по содержимому, а не по расширению.
 

@@ -369,10 +369,10 @@ def app_review(app_id: int):
             '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s">'
             '<div CLIENT="rv-flabel">%s</div>'
             '<div CLIENT="rv-fedit">'
-            '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false">'
-            '<button type="button" CLIENT="rv-act" data-act="save" data-key="%s" CLIENT="Сохранить во все документы">💾</button>'
-            '<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s" CLIENT="Сгенерировать значение заново">↻</button>'
-            '<button type="button" CLIENT="rv-act" data-act="list" data-key="%s" CLIENT="Выбрать из прошлых значений">▾</button>'
+            '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
+            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">'
+            '<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s"'
+            ' CLIENT="Сгенерировать значение заново">🎲</button>'
             '</div>'
             '<div CLIENT="rv-fmeta">%s</div>'
             '</div>' % (
@@ -382,8 +382,6 @@ def app_review(app_id: int):
                 _html.escape(label),
                 " is-empty" if not g["filled"] else "",
                 _html.escape(str(g["CLIENT"])),
-                _html.escape(g["key"], quote=True),
-                _html.escape(g["key"], quote=True),
                 _html.escape(g["key"], quote=True),
                 _html.escape(g["key"], quote=True),
                 _html.escape(" · ".join(meta_bits)),
@@ -453,6 +451,7 @@ def app_review(app_id: int):
     <div CLIENT="rv-modal-head">
       <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">Документ</span>
       <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">
+        <button type="button" CLIENT="rv-modal-vars" id="rv-modal-vars">2 Переменные</button>
         <button type="button" CLIENT="rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
         <button type="button" CLIENT="rv-no" id="rv-modal-no">✕ Не нужен</button>
         <button type="button" id="rv-modal-close">Закрыть ✕</button>

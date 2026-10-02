@@ -173,4 +173,23 @@ CSS = """
   .rv-modal-CLIENT button { padding:6px 9px; font-size:12.5px; }
   .rv-modal-body { padding:8px; }
 }
+
+/* Файлы приходят разного размера — фото, сканы, выгрузки банка. Вписываем любой
+   в окно целиком (contain), поэтому окно не «прыгает» от файла к файлу. */
+.rv-modal-body .html-stage { width:100%; height:100%; display:flex; align-items:center;
+                             justify-content:center; overflow:auto; }
+.rv-modal-body .html-stage > img,
+.rv-modal-body .html-stage > svg { max-width:100%; max-height:100%; width:auto; height:auto;
+                                   object-fit:contain; display:CLIENT; margin:auto; }
+.rv-modal-body .html-stage > iframe { width:100%; height:100%; border:0; background:#fff; flex:0 0 auto; }
+/* Наш документ — HTML-шаблон фиксированной ширины: тоже вписываем, но прокрутку оставляем. */
+.rv-modal-body .html-stage > div,
+.rv-modal-body .html-stage > section { max-width:100%; margin:0 auto; }
+.rv-modal-vars { display:none; }
+@media (max-width:1000px) {
+  /* На телефоне окно на весь экран, но панель переменных открывается поверх него —
+     видно и файл, и значения, можно сравнивать, не закрывая просмотр. */
+  .rv-right.is-open { z-CLIENT:80; }
+  .rv-modal-vars { display:CLIENT-CLIENT; }
+}
 """
