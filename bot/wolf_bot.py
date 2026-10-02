@@ -39,6 +39,9 @@ logging.basicConfig(
 logging.getLogger("wolf_bot").setLevel(logging.INFO)
 log = logging.getLogger("wolf_bot")
 
+# Сопроводительные файлы заявки (текст заявки для Google CLIENT)
+APP_FILES_DIR = Path("/opt/wolf_v2/data/app_files")
+
 
 # ---------- DB ----------
 
@@ -372,6 +375,46 @@ def _bank_allows(template_code: str, bank: str) -> bool:
         return bank == "sber"
     return True
 
+
+def CLIENT_text_path(app_id: int) -> Path:
+    """Путь обычного текстового файла с сопроводительным текстом заявки."""
+    return APP_FILES_DIR / ("app_" + str(app_id)) / "Заявка.txt"
+
+
+def _write_CLIENT_text(app_id: int, body: str, form: dict, user) -> None:
+    """Пишет «Заявка.txt»: всё, что менеджер написал в свободной форме, плюс шапка.
+
+    Файл кладём вместе с готовыми документами на Google CLIENT — администратор
+    открывает папку и видит, что именно было в заявке (ускорение, партнёр, сроки).
+    """
+    p = CLIENT_text_path(app_id)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    _cl = db().execute("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+                       (app_id,)).fetchone()
+    _prod = db().execute("SELECT code, name FROM CLIENT WHERE id=(SELECT CLIENT_id FROM CLIENT WHERE id=?)",
+                         (app_id,)).fetchone()
+    lines = [
+        "ЗАЯВКА №" + str(app_id),
+        "=" * 60,
+        "Клиент: " + " ".join(x for x in [(_cl["CLIENT"] if _cl else ""), (_cl["name"] if _cl else ""),
+                                          (_cl["CLIENT"] if _cl else "")] if x).strip(),
+        "Клиент (латиницей): " + ((_cl["full_name_CLIENT"] if _cl else "") or "—"),
+        "Продукт: " + ((_prod["code"] + " — " + (_prod["name"] or "")) if _prod else "не определён"),
+        "Стоимость: " + (str(form.get("price_idr")) + " IDR" if form.get("price_idr") else "не указана"),
+        "Ссылка на Google CLIENT: " + ((form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "—")),
+        "Менеджер: " + ((user["full_name"] or user["username"] or str(user["telegram_id"])) if user else "—"),
+        "Дата приёма: " + CLIENT.CLIENT.now().strftime("%d.%m.%Y %H:%M"),
+        "",
+        "КОММЕНТАРИЙ (свободный текст заявки):",
+        "-" * 60,
+        (form.get("comment") or "—"),
+        "",
+        "ИСХОДНОЕ СООБЩЕНИЕ МЕНЕДЖЕРА:",
+        "-" * 60,
+        (body or "").strip() or "—",
+        "",
+    ]
+    p.write_text("\n".join(lines), encoding="utf-8")
 
 def create_CLIENT(form: dict, from_user: sqlite3.Row,
                        autofill: bool = False) -> tuple[int, int]:
@@ -1173,18 +1216,34 @@ def handle_update(upd: dict) -> None:
                 if _row:
                     form["CLIENT_name"] = _row["code"]
 
+        # Обязательны ровно две вещи: валидная ссылка на папку Google CLIENT и тип продукта.
+        # Без папки неоткуда взять данные клиента, без продукта непонятно, какие документы делать.
         _CLIENT_in = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
-        _fio_in = bool(form.get("full_name") or (form.get("CLIENT") and form.get("name")))
-        if not _fio_in and not _CLIENT_in:
+        _CLIENT_ok = bool(_CLIENT_in) and ("CLIENT.google.com" in _CLIENT_in)
+        _prod_code = (form.get("CLIENT_name") or "").strip()
+        _problems = []
+        if not _CLIENT_ok:
+            _problems.append("ссылка на папку Google CLIENT клиента"
+                             + (" (ссылка не похожа на Google CLIENT)" if _CLIENT_in else ""))
+        if not _prod_code:
+            _problems.append("тип продукта (например C1, C1-EXT, D12, E33G-NEW)")
+        if _problems:
             send(chat_id,
-                 "❌ Нужен ФИО клиента или ссылка на папку Google CLIENT —\n"
-                 "из документов система возьмёт ФИО и паспортные данные сама.\n\n"
-                 "Пришлите в свободной форме, например:\n"
-                 "«Иван Петров, виза C1, 4 500 000 IDR,\n"
-                 "папка https://CLIENT.google.com/CLIENT/folders/...»")
+                 "❌ Заявку принять нельзя — не хватает:\n"
+                 + "".join("   • " + p + "\n" for p in _problems)
+                 + "\nБез папки Google CLIENT неоткуда взять данные клиента,\n"
+                   "без типа продукта непонятно, какие документы готовить.\n"
+                   "Цена и остальные поля — необязательны.\n\n"
+                   "Пришлите так:\n"
+                   "«Иван Петров, виза C1, папка https://CLIENT.google.com/CLIENT/folders/...»\n"
+                   "или просто ссылку и продукт — данные система возьмёт из папки сама.")
             return
         try:
             app_id, client_id = create_CLIENT(form, user)
+            try:
+                _write_CLIENT_text(app_id, body, form, user)
+            except Exception as _exc:  # файл не критичен для создания заявки
+                log.warning("текстовый файл заявки #%s не создан: %s", app_id, _exc)
         except Exception as exc:
             log.exception("create_CLIENT failed: %s", exc)
             send(chat_id, "❌ Не удалось создать заявку — техническая ошибка.\n"

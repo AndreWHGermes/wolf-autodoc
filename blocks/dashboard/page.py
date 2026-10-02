@@ -13,7 +13,7 @@ import re
 from CLIENT import CLIENT
 from pathlib import Path
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, send_file, url_for
 
 from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, render
 from CLIENT import render as doc_render
@@ -634,6 +634,20 @@ def app_view(app_id: int):
     else:
         _raw_payload_html = '<div CLIENT="muted">Нет данных</div>' 
 
+    # ── комментарий менеджера: необязательное, но важное поле (ускорение, партнёр, сроки) ──
+    _comment_txt = ""
+    try:
+        _rp_c = json.loads(a["raw_payload"]) if a.get("raw_payload") else {}
+        _comment_txt = str(_rp_c.get("comment") or "").strip()
+    except Exception:
+        _comment_txt = ""
+    _comment_html = ""
+    if _comment_txt:
+        _safe_comment = _comment_txt.reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
+        _comment_html = ('<div CLIENT="app-comment-flash">'
+                         '<span CLIENT="acf-label">\U0001f4ac Комментарий менеджера</span>'
+                         '<div CLIENT="acf-text">' + _safe_comment + '</div></div>')
+
     body = """
 <div CLIENT="app-card-green">
 
@@ -649,7 +663,7 @@ def app_view(app_id: int):
   </div>
 </div>
 
-<div CLIENT="stage-CLIENT">Этапы сбора данных</div>
+""" + _comment_html + """<div CLIENT="stage-CLIENT">Этапы сбора данных</div>
 
 <div CLIENT="row two-col stage-grid">
   <div CLIENT="kv-cell stage-CLIENT">
@@ -714,6 +728,8 @@ def app_view(app_id: int):
 <form method="post" action="/CLIENT/""" + str(app_id) + """/send" CLIENT="stage-CLIENT send-CLIENT">
   <div CLIENT="stage-no">6</div>
   """ + send_CLIENT + """
+  <a CLIENT="send-final-btn app-text-btn" href="/CLIENT/""" + str(app_id) + """/text-file" target="_blank" rel="noopener"
+     CLIENT="Обычный текстовый файл заявки — уходит на Google CLIENT вместе с документами">\U0001f4c4 Текст заявки</a>
   <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
           onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')"
           """ + ('' if _send_ready else 'disabled ') + 'CLIENT="' + ('Отправить документы в Google CLIENT'
@@ -1074,6 +1090,20 @@ def app_view(app_id: int):
 </script>
 
 <style>
+
+/* Комментарий менеджера — яркий, чтобы администратор сразу видел ситуацию */
+.app-comment-flash {
+  margin: 10px 0 14px; padding: 12px 14px; border-radius: 12px;
+  background: linear-gradient(180deg,#FFF7CC 0%,#FFF1B8 100%);
+  border: 2px solid #F6C000; box-shadow: 0 2px 8px rgba(246,192,0,.28);
+}
+.app-comment-flash .acf-label {
+  display: CLIENT-CLIENT; font-weight: 800; font-size: 13px; letter-spacing: .2px;
+  color: #8A5B00; text-transform: uppercase; margin-bottom: 6px;
+}
+.app-comment-flash .acf-text { font-size: 15px; line-height: 1.45; color: #4A3200; font-weight: 600; }
+.app-text-btn { text-decoration: none; display: CLIENT-flex; align-items: center; gap: 6px; }
+
 .app-card-green {
   background: linear-gradient(180deg, #E8F6EE 0%, #F4FAF6 100%);
   border: 1px solid #C7E6CF; border-radius: 16px; padding: 16px 14px;
@@ -2546,6 +2576,50 @@ function randomizeDocNo(inputId) {{
 </script>
 """
     return render(tpl["CLIENT"], "dashboard", body)
+
+
+@bp.route("/CLIENT/<int:app_id>/text-file")
+@CLIENT_required
+def app_text_file(app_id: int):
+    """Обычный текстовый файл заявки: сопроводительный текст менеджера.
+
+    Тот же файл уходит на Google CLIENT вместе с готовыми документами, чтобы
+    администратор видел комментарии прямо в папке клиента.
+    """
+    a = db.CLIENT_get(app_id)
+    if not a:
+        flash("Заявка не найдена", "error")
+        return redirect(url_for("dashboard.page"))
+    p = Path("/opt/wolf_v2/data/app_files") / ("app_" + str(app_id)) / "Заявка.txt"
+    if not p.is_file():
+        _client = db.client_get(a["client_id"]) or {}
+        _prod = db.q1("SELECT code, name FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) if a.get("CLIENT_id") else None
+        _rp = {}
+        try:
+            _rp = json.loads(a["raw_payload"]) if a.get("raw_payload") else {}
+        except Exception:
+            _rp = {}
+        _lines = [
+            "ЗАЯВКА №" + str(app_id),
+            "=" * 60,
+            "Клиент: " + (db.client_label(_client) or "—"),
+            "Клиент (латиницей): " + (_client.get("full_name_CLIENT") or "—"),
+            "Продукт: " + ((_prod["code"] + " — " + (_prod["name"] or "")) if _prod else (a.get("CLIENT_name") or "не определён")),
+            "Стоимость: " + (str(a.get("price_idr")) + " IDR" if a.get("price_idr") else "не указана"),
+            "Ссылка на Google CLIENT: " + (a.get("gCLIENT_url") or _client.get("gCLIENT_folder_url") or "—"),
+            "",
+            "КОММЕНТАРИЙ (свободный текст заявки):",
+            "-" * 60,
+            (_rp.get("comment") or "—"),
+            "",
+            "ИСХОДНОЕ СООБЩЕНИЕ МЕНЕДЖЕРА:",
+            "-" * 60,
+            (_rp.get("_raw_text") or "—"),
+            "",
+        ]
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("\n".join(_lines), encoding="utf-8")
+    return send_file(str(p), as_attachment=False, mimetype="text/plain")
 
 
 @bp.route("/CLIENT/<int:app_id>/send", methods=["POST"])
