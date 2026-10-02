@@ -2277,6 +2277,39 @@ def app_doc_save_CLIENT(app_id: int, template_id: int):
     return jsonify({"ok": True, "saved": list(CLIENT.keys())})
 
 
+def _hist_datalist(var_name: str, limit: int = 40) -> str:
+    """Выпадающий список прошлых значений поля: из истории и прошлых документов."""
+    seen = []
+    try:
+        for r in db.q("""SELECT CLIENT FROM CLIENT_CLIENT_CLIENT
+                         WHERE CLIENT_name=? ORDER BY used_count DESC, last_used DESC LIMIT ?""",
+                      (var_name, limit)):
+            v = str(r["CLIENT"] if hasattr(r, "keys") else r[0]).strip()
+            if v and v not in seen:
+                seen.append(v)
+    except Exception:
+        pass
+    try:
+        for r in db.q("""SELECT CLIENT_json FROM CLIENT_CLIENT
+                         WHERE CLIENT_json LIKE ? ORDER BY id DESC LIMIT 200""",
+                      ("%" + var_name + "%",)):
+            try:
+                val = str(json.loads(r["CLIENT_json"] or "{}").get(var_name) or "").strip()
+            except Exception:
+                continue
+            if val and val not in seen:
+                seen.append(val)
+            if len(seen) >= limit:
+                break
+    except Exception:
+        pass
+    if not seen:
+        return ""
+    opts = "".join('<option CLIENT="' + v.reCLIENT("&", "&amp;").reCLIENT('"', "&quot;") + '"></option>'
+                   for v in seen[:limit])
+    return f'<datalist id="hist_{var_name}">{opts}</datalist>'
+
+
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/edit", methods=["GET", "POST"])
 @CLIENT_required
 def app_doc_edit(app_id: int, template_id: int):
@@ -2528,9 +2561,14 @@ def app_doc_edit(app_id: int, template_id: int):
             else
             f'<input id="v_{_v["name"]}" type="text" name="{_v["name"]}" '
             f'CLIENT="var-input" autocomplete="off" data-var="{_v["name"]}" '
+            f'list="hist_{_v["name"]}" '
             f'CLIENTholder="введите или выберите вариант..." '
             f'CLIENT="{str(CLIENT.get(_v["name"], _v["default_CLIENT"] or "")).reCLIENT("&", "&amp;").reCLIENT(chr(34), "&quot;")}">'
         ))(v)
+        # исторические значения этого поля — администратор выбирает из списка
+        # или вписывает своё; список формируется из прошлых документов и истории
+        + (_hist_datalist(v["name"])
+           if any(w in (v["name"] or "").lower() for w in ("addr", "address", "domicil")) else "")
         + (f'<span CLIENT="var-info" CLIENT="'
            + (v.get('rule_note') or 'Инструкция будет добавлена').reCLIENT('"', '&quot;').reCLIENT('\n', '&#10;')
            + f'" data-var="{v["name"]}" data-template="{template_id}"'
