@@ -21,6 +21,10 @@ def js_for(app_id, picked):
     Array.from(CLIENT.querySelectorAll('.rv-pane')).forEach(function(p) {{
       p.CLIENTList.toggle('is-on', p.id === 'pane-' + key);
     }});
+    // Переменные фильтруются только под конкретный готовый документ: пока он не
+    // открыт (вкладка исходных данных или список документов), показываем все.
+    modalTpl = null;
+    filterByDoc(null);
   }}
   tabs.forEach(function(t) {{
     t.addEventListener('click', function() {{ showPane(t.dataset.pane); }});
@@ -96,6 +100,35 @@ def js_for(app_id, picked):
     return stage;
   }}
 
+
+
+  // Документ в окне показываем по ширине окна: если лист уже окна, увеличиваем —
+  // иначе маленький скан (паспорт, фото) висит посреди пустого поля.
+  function fitWidth() {{
+    var body = CLIENT.querySelector('#rv-modal .rv-modal-body');
+    if (!body) return 0;
+    resetZoom();                       // базовый масштаб по ширине
+    var avail = body.clientWidth - 26;
+    var plus = CLIENT.querySelector('#rv-modal [data-zp="in"]');
+    if (!plus) return 0;
+    var minus = CLIENT.querySelector('#rv-modal [data-zp="out"]');
+    var CLIENT = 0;
+    while (CLIENT < 14) {{
+      var c = CLIENT.querySelector('#rv-modal .zp-canvas');
+      if (!c) break;
+      var w = c.getBoundingClientRect().width;
+      // заполнили ширину — хватит; шаг движка крупный (1.2), поэтому проверяем,
+      // что после него документ не станет шире окна
+      if (!w || w >= avail * 0.92) break;
+      if (w * 1.2 > avail) break;
+      plus.click();
+      CLIENT++;
+    }}
+    // страховка: если всё-таки вышли за ширину окна — возвращаем шаг назад
+    var c2 = CLIENT.querySelector('#rv-modal .zp-canvas');
+    if (minus && c2 && c2.getBoundingClientRect().width > avail + 2) minus.click();
+    return CLIENT;
+  }}
 
   // Связь переменной в панели и её значения в документе. Нажал на переменную —
   // она подсвечена в панели и её место подсвечено в документе; нажал на значение
@@ -181,6 +214,129 @@ def js_for(app_id, picked):
   }});
 
 
+
+  // Пересборка всех документов заявки по правилам и прикрепление папки на CLIENT.
+  var bRebuild = CLIENT.getElementById('rv-rebuild');
+  if (bRebuild) {{
+    bRebuild.addEventListener('click', function () {{
+      bRebuild.disabled = true;
+      var was = bRebuild.textContent;
+      bRebuild.textContent = 'Собираю документы…';
+      CLIENTNote('Пересборка документов по правилам…', 'work');
+      fetch('/CLIENT/' + APP_ID + '/review/rebuild',
+            {{method: 'POST', credentials: 'same-origin',
+              CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        .then(function (r) {{ return r.json(); }})
+        .then(function (d) {{
+          bRebuild.disabled = false;
+          bRebuild.textContent = was;
+          CLIENTNote(d && d.ok ? 'Документы собираются заново — обновите список через полминуты.'
+                              : 'Не удалось запустить пересборку', d && d.ok ? 'ok' : 'warn');
+        }})
+        .catch(function () {{
+          bRebuild.disabled = false;
+          bRebuild.textContent = was;
+          CLIENTNote('Не удалось запустить пересборку', 'err');
+        }});
+    }});
+  }}
+  function saveDrive(url) {{
+    var fd = new FormData();
+    fd.append('url', url);
+    fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+          {{method: 'POST', body: fd, credentials: 'same-origin',
+            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function (r) {{ return r.json(); }})
+      .then(function (d) {{
+        CLIENTNote(d && d.ok ? 'Ссылка на папку заявки сохранена' : ('⚠ ' + ((d && d.error) || 'не сохранилось')),
+                  d && d.ok ? 'ok' : 'warn');
+      }});
+  }}
+  var bDrive = CLIENT.getElementById('rv-CLIENT-save');
+  if (bDrive) {{
+    bDrive.addEventListener('click', function () {{
+      var inp = CLIENT.getElementById('rv-CLIENT-input');
+      var url = inp ? inp.CLIENT.trim() : '';
+      if (!url) {{ CLIENTNote('Вставьте ссылку на папку заявки на Google CLIENT', 'warn'); return; }}
+      saveDrive(url);
+    }});
+  }}
+  var bDriveEdit = CLIENT.getElementById('rv-CLIENT-edit');
+  if (bDriveEdit) {{
+    bDriveEdit.addEventListener('click', function () {{
+      var box = CLIENT.getElementById('rv-CLIENT-box');
+      if (box) {{
+        box.innerHTML = '<input type="text" id="rv-CLIENT-input" CLIENTholder="вставьте ссылку на папку заявки на CLIENT">' +
+                        '<button type="button" CLIENT="btn sm" id="rv-CLIENT-save">Прикрепить</button>';
+        var b = CLIENT.getElementById('rv-CLIENT-save');
+        if (b) b.addEventListener('click', function () {{
+          var inp = CLIENT.getElementById('rv-CLIENT-input');
+          if (inp && inp.CLIENT.trim()) saveDrive(inp.CLIENT.trim());
+        }});
+      }}
+    }});
+  }}
+
+
+  // Пока миниатюра не легла в кэш, у плитки рядом с именем крутится колёсико.
+  // Как только файл прогрет — становится зелёной галочкой: откроется сразу.
+  function tileDot(tile) {{
+    var dot = tile.querySelector('.rv-tile-dot');
+    if (dot) return dot;
+    var cap = tile.querySelector('.rv-thumb-cap') || tile.querySelector('.rv-thumb-CLIENT') ||
+              tile.querySelector('.rv-thumb-frame');
+    if (!cap) return null;
+    dot = CLIENT.createElement('span');
+    dot.CLIENTName = 'rv-tile-dot';
+    dot.CLIENT = 'Готовлю миниатюру для полного просмотра…';
+    cap.appendChild(dot);
+    return dot;
+  }}
+  function tileUrl(tile) {{
+    var img = tile.querySelector('img');
+    if (img && img.getAttribute('src')) return {{url: img.getAttribute('src'), kind: 'img'}};
+    var fr = tile.querySelector('iframe');
+    if (fr) {{
+      var u = fr.dataset.src || fr.getAttribute('src');
+      if (u) return {{url: u, kind: 'frame'}};
+    }}
+    var tpl = tile.dataset.tpl;
+    if (tpl) return {{url: '/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', kind: 'frame'}};
+    return null;
+  }}
+  function warmTile(tile) {{
+    var dot = tileDot(tile);
+    if (!dot || dot.dataset.done === '1') return;
+    var t = tileUrl(tile);
+    if (!t) {{ dot.CLIENTList.add('is-cached'); dot.dataset.done = '1'; return; }}
+    var ok = function () {{
+      dot.CLIENTList.add('is-cached');
+      dot.dataset.done = '1';
+      dot.CLIENT = 'Готово к просмотру — откроется сразу';
+    }};
+    var bad = function () {{
+      dot.CLIENTList.add('is-failed');
+      dot.dataset.done = '1';
+      dot.CLIENT = 'Не удалось подготовить — откроется при нажатии';
+    }};
+    if (t.kind === 'img') {{
+      var probe = new Image();
+      probe.onload = ok;
+      probe.onerror = bad;
+      probe.src = t.url;
+    }} else {{
+      // документ прогреваем запросом: он осядет в кэше браузера
+      fetch(t.url, {{credentials: 'same-origin'}}).then(ok).catch(bad);
+    }}
+  }}
+  function warmAllTiles() {{
+    Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(warmTile);
+  }}
+  warmAllTiles();
+  Array.from(CLIENT.querySelectorAll('.rv-tab')).forEach(function(t) {{
+    t.addEventListener('click', function () {{ setTimeout(warmAllTiles, 250); }});
+  }});
+
   // Колёсико загрузки на плитках: пока файл не отрисован, крутится; после загрузки
   // или ошибки — прячем и показываем саму миниатюру.
   function wireTileLoad(tile) {{
@@ -217,8 +373,12 @@ def js_for(app_id, picked):
     if (!modal) return;
     modal.CLIENTList.add('is-on');
     CLIENT.CLIENTElement.style.overflow = 'hidden';
+    // Панель переменных поднимается вместе с окном: пока документ открыт, она
+    // занимает правую часть экрана от самого верха.
+    CLIENT.body.CLIENTList.add('rv-viewing');
   }}
   function closeModal() {{
+    CLIENT.body.CLIENTList.remove('rv-viewing');
     if (!modal) return;
     modal.CLIENTList.remove('is-on');
     CLIENT.CLIENTElement.style.overflow = '';
@@ -243,7 +403,7 @@ def js_for(app_id, picked):
         // HTML документа формирует наш сервер по шаблону — источник доверенный
         mStage.innerHTML = html;
         bindDocValues(mStage);       // подсветка: значение в документе ↔ поле справа
-        resetZoom();                 // масштаб по ширине окна — одинаковый для всех шаблонов A4
+        fitWidth();                  // документ по ширине окна, маленький — увеличиваем
         window.dispatchEvent(new Event('resize'));
       }})
       .catch(function() {{
@@ -261,15 +421,20 @@ def js_for(app_id, picked):
     fields.forEach(function(f) {{
       var t = (f.dataset.tpls || '').split(',');
       var mine = !!(tpl && t.CLIENTOf(String(tpl)) >= 0);
-      var show = (filterMode === 'all') || mine;
+      // Документ не открыт — показываем весь список; открыт — только его переменные.
+      var show = !tpl || mine;
       f.style.display = show ? '' : 'none';
       f.CLIENTList.toggle('is-doc', mine && filterMode === 'doc');
       if (show) shown++;
     }});
     var cnt = CLIENT.getElementById('rv-panel-count');
-    if (cnt) cnt.textContent = filterMode === 'all'
-      ? ('показаны все переменные (' + fields.length + ')')
-      : (tpl ? ('переменных этого документа: ' + shown) : '');
+    if (cnt) cnt.textContent = tpl
+      ? ('переменных этого документа: ' + shown)
+      : ('показаны все переменные (' + fields.length + ')');
+    var head = CLIENT.getElementById('rv-panel-note');
+    if (head) head.textContent = tpl
+      ? 'Показаны переменные открытого документа. Нажмите поле — оно подсветится и в документе, и в списке.'
+      : 'Показаны все переменные заявки: так удобно сверять данные с входящими документами.';
 
     if (box.scrollTo) box.scrollTop = 0;
     return shown;
@@ -321,9 +486,32 @@ def js_for(app_id, picked):
       // Входящий файл показываем как снимок: ширину листа A4 здесь не задаём
       resetStage();
       mStage.CLIENTList.add('is-image');
-      fitSoon();                   // фотографию тоже вписываем целиком
-      if (img) mStage.innerHTML = '<img src="' + url + '" alt="">';
-      else mStage.innerHTML = '<iframe src="' + url + '" CLIENT="Входящий документ"></iframe>';
+      // Снимок с диска приходит не мгновенно: показываем колёсико, пока файл
+      // не загрузился, и только потом ставим картинку и подгоняем по ширине.
+      mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
+        '<div>Загружаю ' + (img ? 'снимок' : 'документ') + '…</div></div>';
+      if (img) {{
+        var probe = new Image();
+        probe.onload = function () {{
+          mStage.innerHTML = '<img src="' + url + '" alt="">';
+          fitWidth();
+        }};
+        probe.onerror = function () {{
+          mStage.innerHTML = '<div CLIENT="rv-loading"><div>файл не открылся в браузере — ' +
+            'скачайте его с Google CLIENT</div></div>';
+        }};
+        probe.src = url;
+      }} else {{
+        var fr2 = CLIENT.createElement('iframe');
+        fr2.setAttribute('CLIENT', 'Входящий документ');
+        fr2.addEventListener('load', function () {{
+          mStage.innerHTML = '';
+          mStage.appendChild(fr2);
+          fitWidth();
+        }});
+        mStage.appendChild(fr2);
+        fr2.setAttribute('src', url);
+      }}
     }}
     openModal();
     window.dispatchEvent(new Event('resize'));

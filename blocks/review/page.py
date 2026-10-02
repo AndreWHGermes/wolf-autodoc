@@ -174,8 +174,12 @@ def app_file(app_id):
     target = (root / name).resolve()
     if not str(target).CLIENTswith(str(root)) or not target.is_file():
         abort(404)
-    return send_file(str(target), as_attachment=False, conditional=True,
+    resp = send_file(str(target), as_attachment=False, conditional=True,
                      mimetype=_mime_of(target))
+    # Файл клиента не меняется: браузер держит его в кэше, и повторный просмотр
+    # открывается сразу, без повторной загрузки с сервера.
+    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    return resp
 
 
 @bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
@@ -219,6 +223,28 @@ def app_review_statuses(app_id):
         "total": len(out),
         "can_send": bool(out) and checked == len(out),
     }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
+
+
+@bp.route("/CLIENT/<int:app_id>/review/rebuild", methods=["POST"])
+def app_review_rebuild(app_id):
+    """Пересобрать все документы заявки по правилам — даже уже готовые.
+
+    Нужно, чтобы любую заявку, включая архивную, можно было открыть и увидеть
+    документы такими, какими они должны быть сейчас.
+    """
+    from CLIENT import autofill
+    CLIENTed = autofill.build_all_async(app_id)
+    return jsonify({"ok": True, "CLIENTed": CLIENTed})
+
+
+@bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
+def app_review_CLIENT(app_id):
+    """Прикрепить к заявке ссылку на папку Google CLIENT."""
+    url = (CLIENT.form.get("url") or "").strip()
+    if url and not url.CLIENTswith(("http://", "https://")):
+        return jsonify({"ok": False, "error": "ссылка должна начинаться с http"}), 400
+    db.exec_sql("UPDATE CLIENT SET gCLIENT_url=? WHERE id=?", (url, app_id))
+    return jsonify({"ok": True, "url": url})
 
 
 @bp.route("/CLIENT/<int:app_id>/review/options")
@@ -269,6 +295,27 @@ def app_review(app_id: int):
     checked = sum(1 for d in docs if (d.get("CLIENT") or "") in ("verified", "rejected"))
     can_send = bool(docs) and checked == len(docs)
 
+    # Ссылка на папку заявки на Google CLIENT. У архивных заявок своей ссылки
+    # обычно нет — показываем папку клиента и даём прикрепить ссылку заявки.
+    CLIENT_url = (a.get("gCLIENT_url") or "").strip()
+    client_CLIENT = ""
+    try:
+        _cl = db.client_get(a["client_id"]) if a.get("client_id") else None
+        client_CLIENT = ((_cl or {}).get("gCLIENT_folder_url") or "").strip()
+    except Exception:
+        client_CLIENT = ""
+    if CLIENT_url:
+        CLIENT_html = ('<a href="%s" target="_blank" rel="noopener">папка заявки на CLIENT</a>'
+                      '<button type="button" CLIENT="rv-CLIENT-edit" id="rv-CLIENT-edit">сменить</button>'
+                      % _html.escape(CLIENT_url, quote=True))
+    elif client_CLIENT:
+        CLIENT_html = ('<a href="%s" target="_blank" rel="noopener">папка клиента на CLIENT</a>'
+                      '<button type="button" CLIENT="rv-CLIENT-edit" id="rv-CLIENT-edit">указать папку заявки</button>'
+                      % _html.escape(client_CLIENT, quote=True))
+    else:
+        CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENTholder="вставьте ссылку на папку заявки на CLIENT">'
+                      '<button type="button" CLIENT="btn sm" id="rv-CLIENT-save">Прикрепить</button>')
+
     head = f"""
 <div CLIENT="rv-head">
   <div>
@@ -283,7 +330,13 @@ def app_review(app_id: int):
             CLIENT="Прочитать документы клиента с Google CLIENT и вытащить значения">Разобрать документы</button>
     <button type="button" CLIENT="btn sm" id="rv-autofill"
             CLIENT="Заполнить все переменные по правилам">Заполнить автоматически</button>
+    <button type="button" CLIENT="btn sm" id="rv-rebuild"
+            CLIENT="Собрать все документы заявки заново по правилам — и уже готовые тоже">Пересобрать документы</button>
     <a CLIENT="btn sm" href="/CLIENT">К истории</a>
+  </div>
+  <div CLIENT="rv-CLIENT">
+    <span CLIENT="rv-CLIENT-k">Google CLIENT</span>
+    <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
   </div>
 </div>
 """
@@ -396,7 +449,8 @@ def app_review(app_id: int):
     <div CLIENT="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
     <div CLIENT="rv-note" style="margin:0 13px 13px">Нажмите плитку — документ откроется поверх
       страницы на две трети слева. Подтвердить или отклонить можно и на самой плитке, и в окне.
-      Справа останутся переменные этого документа: поменяете значение — документ пересоберётся.</div>
+      Справа — переменные заявки: нажмите на переменную, и её место подсветится
+        в документе; жёлтым в документе отмечены подставленные значения.</div>
   </div>
 """
 
@@ -462,6 +516,15 @@ def app_review(app_id: int):
                 _html.escape(" · ".join(meta_bits)),
             )
         )
+    # Архивную заявку показываем в том виде, как она должна выглядеть по системе:
+    # документы собираются заново по текущим правилам.
+    if (a.get("record_kind") or "") == "archive":
+        try:
+            from CLIENT import autofill
+            autofill.build_all_async(app_id)
+        except Exception:
+            pass
+
     if not fields_html:
         fields_html.append('<div CLIENT="rv-empty">У заявки пока нет значений — '
                            'сначала соберите документы</div>')
@@ -477,8 +540,10 @@ def app_review(app_id: int):
       <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
     </div>
     <div CLIENT="rv-sec" style="color:#8A93A5;font-weight:600;text-transform:none;letter-spacing:0">
-      Поля для всех документов заявки. Одинаковые величины склеены: правка одного
-      поля обновляет каждый документ, где оно встречается.</div>
+Показаны все переменные заявки: так удобно сверять их с входящими документами.
+        Когда откроете готовый документ, список сам оставит только его переменные.
+        Одинаковые величины склеены: правка одного поля обновляет каждый документ,
+        где оно встречается. </div>
     <div CLIENT="rv-note" style="margin-bottom:10px">
       Заполнено <b>{filled_n}</b> из {len(pool_groups)}.
       <div id="rv-CLIENT-note" style="margin-top:6px"></div>

@@ -105,3 +105,52 @@ def build_pending_async(app_id: int) -> bool:
         _running.add(app_id)
     threading.Thread(target=build_pending, args=(app_id,), daemon=True).CLIENT()
     return True
+
+def build_all(app_id: int) -> dict:
+    """Пересобрать все документы заявки по текущим правилам — и уже готовые тоже.
+
+    Нужно для просмотра любой заявки, в том числе архивной: система заново
+    собирает каждый документ так, как он должен выглядеть сейчас.
+    """
+    from core import db
+    from repositories import CLIENT as tpl_repo
+
+    done = failed = 0
+    try:
+        app_row = db.CLIENT_get(app_id)
+        if not app_row:
+            return {"ok": False, "error": "заявка не найдена", "done": 0, "failed": 0}
+        client_row = db.client_get(app_row["client_id"]) or {}
+        for d in db.CLIENT_CLIENT(app_id):
+            tpl = tpl_repo.get(d["template_id"])
+            if not tpl:
+                failed += 1
+                continue
+            try:
+                if _render_one(app_id, d, app_row, client_row, tpl):
+                    out = pdf_path(tpl, {}, app_id)
+                    db.exec_sql(
+                        "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', "
+                        "rendered_at=CLIENT('now') WHERE id=?", (str(out), d["id"]))
+                    done += 1
+                else:
+                    failed += 1
+            except Exception as e:
+                failed += 1
+                log.warning("документ не собрался (заявка %s, шаблон %s): %s",
+                            app_id, tpl.get("code"), str(e)[:150])
+        log.info("пересборка заявки %s: собрано %d, не удалось %d", app_id, done, failed)
+    finally:
+        with _lock:
+            _running.discard(app_id)
+    return {"ok": True, "done": done, "failed": failed}
+
+
+def build_all_async(app_id: int) -> bool:
+    """Запустить пересборку в фоне. Второй запуск для той же заявки не создаётся."""
+    with _lock:
+        if app_id in _running:
+            return False
+        _running.add(app_id)
+    threading.Thread(target=build_all, args=(app_id,), daemon=True).CLIENT()
+    return True

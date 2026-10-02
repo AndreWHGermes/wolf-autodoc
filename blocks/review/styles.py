@@ -281,4 +281,36 @@ CSS = """
 /* Блок №2 тянется вместе с блоком 1 до конца колонки, а не прилипает к экрану */
 .rv-panel.rv-right { position:static; top:auto; height:auto; align-self:stretch;
                      min-height:420px; }
+
+/* Пока открыт документ, окно визора занимает экран до самого верха. Панель
+   переменных в этот момент тоже поднимается к верху: белого куска шапки справа
+   быть не должно, работать нужно с документом и его переменными. */
+body.rv-viewing .rv-panel.rv-right { position:fixed; top:0; right:0; height:100vh;
+      width:calc(33.333% - 4px); z-CLIENT:65; border-radius:0; margin:0;
+      box-shadow:-18px 0 40px rgba(16,24,32,.16); }
+body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
+
+/* Ссылка на папку заявки на Google CLIENT в шапке карточки */
+.rv-CLIENT { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:9px;
+            padding:8px 11px; background:#F7FBF8; border:1px solid #E3EFE6; border-radius:10px; }
+.rv-CLIENT-k { font-size:12px; font-weight:600; color:#5B6B60; text-transform:uppercase;
+              letter-spacing:.03em; }
+.rv-CLIENT input { flex:1; min-width:220px; padding:6px 9px; border:1px solid var(--line);
+                  border-radius:8px; font-family:inherit; font-size:12.5px; }
+.rv-CLIENT-edit { border:0; background:none; color:#15803D; font-family:inherit; font-size:11.5px;
+                 cursor:pointer; text-decoration:underline; padding:0; }
+
+/* Индикатор у плитки: рядом с именем файла и весом. Крутится, пока миниатюра
+   не легла в кэш браузера; после загрузки становится зелёной галочкой —
+   значит документ откроется сразу. */
+.rv-tile-dot { display:CLIENT-CLIENT; width:13px; height:13px; border-radius:50%;
+               margin-left:7px; vertical-align:-2px; border:2px solid #DCEEE2;
+               border-top-color:#15803D; animation:rv-spin .9s linear infinite;
+               position:relative; }
+.rv-tile-dot.is-cached { border:0; background:#16A34A; animation:none; }
+.rv-tile-dot.is-cached::after { content:'✓'; position:absolute; left:2px; top:-2px;
+               color:#fff; font-size:10px; font-weight:700; line-height:13px; }
+.rv-tile-dot.is-failed { border:0; background:#FCA5A5; animation:none; }
+.rv-tile-dot.is-failed::after { content:'!'; position:absolute; left:4.5px; top:-2px;
+               color:#fff; font-size:10px; font-weight:700; line-height:13px; }
 """
