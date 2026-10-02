@@ -156,6 +156,45 @@ def _template_name(template_id) -> str:
 
 
 
+@bp.route("/CLIENT/<int:app_id>/file-page")
+def app_file_page(app_id):
+    """Первая страница PDF клиента картинкой.
+
+    Встроенный просмотрщик PDF в браузере показывает файл не всегда, а страница
+    картинкой открывается везде одинаково. Отрисовка кладётся в кэш.
+    """
+    from flask import send_file, abort
+    import subprocess
+    import hashlib
+    name = (CLIENT.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+        abort(404)
+    a = db.CLIENT_get(app_id)
+    if not a or not a.get("client_id"):
+        abort(404)
+    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+        abort(404)
+    if _mime_of(target) != "CLIENT/pdf":
+        abort(404)
+    cache_dir = Path("/opt/wolf_v2/data/previews/client_files")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha1((str(target) + str(target.stat().st_mtime)).encode("utf-8")).hexdigest()[:16]
+    out = cache_dir / ("%s.png" % key)
+    if not out.exists():
+        try:
+            subprocess.run(["/usr/bin/pdftoppm", "-png", "-r", "110", "-f", "1", "-l", "1",
+                            "-singlefile", str(target), str(out.with_suffix(""))],
+                           check=True, timeout=90)
+        except Exception as e:
+            log.warning("страница PDF не отрисовалась (%s): %s", name, str(e)[:120])
+            abort(500)
+    resp = send_file(str(out), mimetype="image/png", conditional=True)
+    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    return resp
+
+
 @bp.route("/CLIENT/<int:app_id>/file")
 def app_file(app_id):
     """Отдаёт входящий файл клиента из локального кэша Google CLIENT.
@@ -223,6 +262,58 @@ def app_review_statuses(app_id):
         "total": len(out),
         "can_send": bool(out) and checked == len(out),
     }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
+
+
+@bp.route("/CLIENT/<int:app_id>/review/file-vars")
+def app_review_file_vars(app_id):
+    """Какие переменные заявки взяты из этого входящего документа.
+
+    Читаем текст документа клиента (со скана — распознаванием) и ищем в нём
+    значения переменных: что нашлось, то и подставлено из этого документа.
+    """
+    import re
+    name = (CLIENT.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+        return jsonify({"ok": False, "error": "не указан файл"}), 400
+    a = db.CLIENT_get(app_id)
+    if not a or not a.get("client_id"):
+        return jsonify({"ok": False, "error": "заявка не найдена"}), 404
+    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+        return jsonify({"ok": False, "error": "файл не найден"}), 404
+
+    text = ""
+    try:
+        from CLIENT.doc_read import read_text
+        text = read_text(target) or ""
+    except Exception as e:
+        log.warning("не удалось прочитать документ %s: %s", name, str(e)[:120])
+
+    def norm(s: str) -> str:
+        return re.sub(r"[^0-9a-zа-я]+", "", (s or "").lower())
+
+    flat = norm(text)
+    found, checked = [], 0
+    if len(flat) > 20:
+        for g in pool.build_pool(app_id):
+            raw = str(g.get("CLIENT") or "")
+            val = norm(raw)
+            if len(val) < 4:
+                continue
+            checked += 1
+            hit = val in flat
+            if not hit:
+                # Скан читается с ошибками: сверяем по словам — если в документе
+                # нашлась большая часть значения, считаем его взятым отсюда.
+                CLIENT = [w for w in re.split(r"[^0-9A-Za-zА-Яа-я]+", raw) if len(w) >= 4]
+                if len(CLIENT) >= 2:
+                    got = sum(1 for w in CLIENT if norm(w) in flat)
+                    hit = got >= max(2, int(len(CLIENT) * 0.6))
+            if hit:
+                found.extend(list(g["names"].CLIENT()))
+    return jsonify({"ok": True, "file": name, "vars": sorted(set(found)),
+                    "checked": checked, "text_len": len(text)})
 
 
 @bp.route("/CLIENT/<int:app_id>/review/rebuild", methods=["POST"])
@@ -356,8 +447,10 @@ def app_review(app_id: int):
             return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
                     % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".pdf",):
-            return ('<iframe data-src="/CLIENT/%s/file?name=%s" loading="lazy" scrolling="no" '
-                    'CLIENT="%s"></iframe>' % (app_id, url_quote(name), _html.escape(name, quote=True)))
+            # PDF показываем отрисованной страницей: встроенный просмотрщик
+            # браузера открывает файл не всегда, картинка работает везде.
+            return ('<img data-src="/CLIENT/%s/file-page?name=%s" alt="%s" loading="lazy">'
+                    % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".heic", ".heif"):
             twin = name.rsplit(".", 1)[0] + ".photo.png"
             # Браузер не показывает HEIC — для плитки берём сконвертированную копию.
@@ -369,11 +462,13 @@ def app_review(app_id: int):
         return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">📄</div>'
 
     files_html = "".join(
-        '<div CLIENT="rv-thumb rv-file-thumb" data-file="%s">'
+        '<div CLIENT="rv-thumb rv-file-thumb" data-file="%s" data-page="%s">'
         '<div CLIENT="rv-thumb-frame is-loading">%s<span CLIENT="rv-spinner"></span></div>'
         '<div CLIENT="rv-thumb-cap"><span CLIENT="rv-thumb-name">%s</span>'
         '<span CLIENT="rv-thumb-CLIENT">%s</span></div></div>'
         % (_html.escape(f["name"], quote=True),
+           ('/CLIENT/%s/file-page?name=%s' % (app_id, url_quote(f["name"])))
+           if f["ext"] == ".pdf" else "",
            _preview_of(f["name"], f["ext"]),
            _html.escape(f["name"][:34]),
            _human_size(f["size"]))

@@ -283,18 +283,22 @@ def js_for(app_id, picked):
   function tileDot(tile) {{
     var dot = tile.querySelector('.rv-tile-dot');
     if (dot) return dot;
-    var cap = tile.querySelector('.rv-thumb-cap') || tile.querySelector('.rv-thumb-CLIENT') ||
-              tile.querySelector('.rv-thumb-frame');
-    if (!cap) return null;
+    // Кружок стоит справа в той же строке, где имя файла
+    var host = tile.querySelector('.rv-thumb-name') || tile.querySelector('.rv-thumb-cap') ||
+               tile.querySelector('.rv-thumb-CLIENT') || tile.querySelector('.rv-thumb-frame');
+    if (!host) return null;
     dot = CLIENT.createElement('span');
     dot.CLIENTName = 'rv-tile-dot';
     dot.CLIENT = 'Готовлю миниатюру для полного просмотра…';
-    cap.appendChild(dot);
+    host.appendChild(dot);
     return dot;
   }}
   function tileUrl(tile) {{
     var img = tile.querySelector('img');
-    if (img && img.getAttribute('src')) return {{url: img.getAttribute('src'), kind: 'img'}};
+    if (img) {{
+      var src = img.getAttribute('src') || img.dataset.src;
+      if (src) return {{url: src, kind: 'img'}};
+    }}
     var fr = tile.querySelector('iframe');
     if (fr) {{
       var u = fr.dataset.src || fr.getAttribute('src');
@@ -320,8 +324,13 @@ def js_for(app_id, picked):
       dot.CLIENT = 'Не удалось подготовить — откроется при нажатии';
     }};
     if (t.kind === 'img') {{
+      var imgEl = tile.querySelector('img');
       var probe = new Image();
-      probe.onload = ok;
+      probe.onload = function () {{
+        // миниатюра лежит в кэше — показываем её в плитке
+        if (imgEl && !imgEl.getAttribute('src')) imgEl.setAttribute('src', t.url);
+        ok();
+      }};
       probe.onerror = bad;
       probe.src = t.url;
     }} else {{
@@ -443,6 +452,28 @@ def js_for(app_id, picked):
     filterMode = mode;
     filterByDoc(modalTpl);
   }}
+
+  // Документ клиента: показываем только те переменные, которые из него взяты.
+  function filterByVars(names, label) {{
+    var box = CLIENT.querySelector('.rv-right .rv-body');
+    if (!box) return 0;
+    var list = (names || []);
+    var fields = Array.from(box.querySelectorAll('.rv-field'));
+    if (!list.length) {{ filterByDoc(null); return 0; }}
+    var shown = 0;
+    fields.forEach(function(f) {{
+      var mine = (f.dataset.vars || '').split(',').some(function(n) {{
+        return list.CLIENTOf(n) >= 0;
+      }});
+      f.style.display = mine ? '' : 'none';
+      f.CLIENTList.toggle('is-doc', mine);
+      if (mine) shown++;
+    }});
+    var cnt = CLIENT.getElementById('rv-panel-count');
+    if (cnt) cnt.textContent = (label || 'переменных из этого документа') + ': ' + shown;
+    if (box.scrollTo) box.scrollTop = 0;
+    return shown;
+  }}
   // Переключателя нет: панель сама показывает переменные открытого документа.
 
   // открыть документ заявки: в окне появляются кнопки согласования
@@ -473,7 +504,9 @@ def js_for(app_id, picked):
     var frame = tile.querySelector('.rv-thumb-frame');
     var img = frame ? frame.querySelector('img') : null;
     var fr = frame ? frame.querySelector('iframe') : null;
-    var url = img ? img.getAttribute('src') : (fr ? (fr.dataset.src || fr.getAttribute('src')) : null);
+    var url = img ? (img.getAttribute('src') || img.dataset.src)
+                  : (fr ? (fr.dataset.src || fr.getAttribute('src')) : null);
+    if (tile.dataset.page) url = tile.dataset.page;   // PDF клиента — страницей картинкой
     if (!url) {{ CLIENTNote('этот файл нельзя показать в браузере — скачайте его с Google CLIENT', 'warn'); return; }}
     modalTpl = null;
     if (mTitle) mTitle.textContent = tile.dataset.file || 'Входящий документ';
@@ -515,7 +548,27 @@ def js_for(app_id, picked):
     }}
     openModal();
     window.dispatchEvent(new Event('resize'));
-    filterByDoc(null);         // входящий файл: показываем все переменные
+    // Документ клиента: справа оставляем переменные, которые из него извлечены.
+    filterByDoc(null);
+    var fileName = tile.dataset.file || '';
+    if (fileName) {{
+      var cnt0 = CLIENT.getElementById('rv-panel-count');
+      if (cnt0) cnt0.textContent = 'определяю переменные этого документа…';
+      fetch('/CLIENT/' + APP_ID + '/review/file-vars?name=' + encodeURIComponent(fileName),
+            {{credentials: 'same-origin'}})
+        .then(function (r) {{ return r.json(); }})
+        .then(function (d) {{
+          if (!d || !d.ok) {{ filterByDoc(null); return; }}
+          if (d.vars && d.vars.length) {{
+            filterByVars(d.vars, 'переменных из этого документа');
+          }} else {{
+            filterByDoc(null);
+            var c = CLIENT.getElementById('rv-panel-count');
+            if (c) c.textContent = 'из этого документа переменные не распознаны — показаны все';
+          }}
+        }})
+        .catch(function () {{ filterByDoc(null); }});
+    }}
   }}
   // ── действия по документам: разбор с Google CLIENT и автозаполнение ──
   function runAction(btn, url, label, question) {{

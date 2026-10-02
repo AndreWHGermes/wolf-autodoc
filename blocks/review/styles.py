@@ -73,7 +73,9 @@ CSS = """
                          text-align:center; color:#6B7C70; font-size:12px; }
 .rv-thumb-frame.is-ready::after { content:none; }
 .rv-thumb-cap { padding:8px 10px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:3px; }
-.rv-thumb-name { font-size:13px; color:var(--ink); font-weight:600; }
+.rv-thumb-name { font-size:13px; color:var(--ink); font-weight:600; display:flex;
+                align-items:center; gap:6px; }
+.rv-thumb-name .rv-tile-dot { margin-left:auto; flex:0 0 auto; }
 .rv-thumb-CLIENT { font-size:11.5px; color:var(--muted); }
 .rv-thumbs-bar { padding:0 13px 11px; font-size:12.5px; color:var(--muted); }
 
