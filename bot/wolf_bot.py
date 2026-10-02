@@ -572,7 +572,10 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
             "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
             "WHERE pd.CLIENT_id=?", (CLIENT_id,)).fetchall()
         for r in rows:
-            if not _bank_allows(r["code"], bank):
+            # Банк клиента определён — берём справку только этого банка.
+            # Банк ещё не определён — даём ОБА варианта (Тинькофф и Сбер),
+            # администратор выберет нужный кнопкой «Проверен».
+            if bank and not _bank_allows(r["code"], bank):
                 log.info("шаблон %s пропущен — банк клиента %s",
                          r["code"], (bank or "—").upper())
                 continue
