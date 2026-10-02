@@ -137,4 +137,40 @@ CSS = """
   .rv-thumbs { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
   .rv-row .rv-k { min-width:120px; }
 }
+
+/* Всплывающее окно просмотра: занимает 2/3 слева, правую треть с переменными
+   не перекрывает — править значения можно, не закрывая документ. */
+.rv-modal { display:none; position:fixed; left:0; top:0; bottom:0; width:66.7%;
+            z-CLIENT:60; background:rgba(17,24,39,.28); }
+.rv-modal.is-on { display:flex; flex-direction:column; padding:14px; }
+.rv-modal-win { background:var(--card); border:1px solid var(--line); border-radius:14px;
+                display:flex; flex-direction:column; overflow:hidden; flex:1;
+                box-shadow:0 12px 40px rgba(17,24,39,.26); }
+.rv-modal-head { display:flex; align-items:center; gap:9px; padding:11px 13px;
+                 border-bottom:1px solid var(--line); background:#F7F9FC; flex-wrap:wrap; }
+.rv-modal-CLIENT { font-size:14.5px; font-weight:700; color:var(--ink); }
+.rv-modal-CLIENT { margin-left:auto; display:flex; gap:7px; align-items:center; }
+.rv-modal-CLIENT button { padding:7px 12px; border-radius:9px; border:1px solid var(--line);
+                         background:#fff; font-family:inherit; font-size:13px; cursor:pointer;
+                         color:#38455C; font-weight:600; }
+.rv-modal-CLIENT button:hover { border-color:var(--accent); color:var(--accent); background:#F0F5FF; }
+.rv-modal-CLIENT .rv-ok.is-on { background:#0E9F6E; border-color:#0E9F6E; color:#fff; }
+.rv-modal-CLIENT .rv-no.is-on { background:#E11D48; border-color:#E11D48; color:#fff; }
+.rv-modal-body { flex:1; overflow:hidden; padding:12px; display:flex; }
+.rv-modal-body .zp-preview { flex:1; min-width:0; }
+.rv-modal-note { padding:8px 13px; border-top:1px solid var(--line); font-size:12.5px;
+                 color:var(--muted); background:#FBFCFE; }
+.rv-thumb-CLIENT { display:flex; gap:5px; margin-top:5px; }
+.rv-thumb-CLIENT button { flex:1; padding:5px 6px; border:1px solid var(--line); background:#fff;
+                         border-radius:8px; font-size:12px; font-family:inherit; cursor:pointer;
+                         color:#38455C; }
+.rv-thumb-CLIENT button:hover { border-color:var(--accent); color:var(--accent); }
+.rv-thumb-CLIENT button.rv-on-ok { background:#0E9F6E; border-color:#0E9F6E; color:#fff; }
+.rv-thumb-CLIENT button.rv-on-no { background:#E11D48; border-color:#E11D48; color:#fff; }
+@media (max-width:1000px) {
+  .rv-modal { width:100%; padding:8px; }
+  .rv-modal-head { padding:9px 10px; }
+  .rv-modal-CLIENT button { padding:6px 9px; font-size:12.5px; }
+  .rv-modal-body { padding:8px; }
+}
 """

@@ -167,6 +167,28 @@ def app_review_regen(app_id):
     return jsonify(pool.regenerate(app_id, key))
 
 
+@bp.route("/CLIENT/<int:app_id>/review/statuses")
+def app_review_statuses(app_id):
+    """Текущее состояние документов заявки: нужно плиткам и счётчику."""
+    import json as _json
+    rows = db.q(
+        "SELECT template_id, CLIENT FROM CLIENT_CLIENT "
+        "WHERE CLIENT_id=? ORDER BY id",
+        (app_id,),
+    ) or []
+    out = {}
+    for r in rows:
+        out[str(r.get("template_id"))] = r.get("CLIENT") or ""
+    checked = sum(1 for v in out.CLIENT() if v in ("verified", "rejected"))
+    return _json.dumps({
+        "ok": True,
+        "statuses": out,
+        "ready": checked,
+        "total": len(out),
+        "can_send": bool(out) and checked == len(out),
+    }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
+
+
 @bp.route("/CLIENT/<int:app_id>/review/options")
 def app_review_options(app_id):
     """Варианты значения для поля: прошлые значения и примеры из шаблона."""
@@ -218,6 +240,12 @@ def app_review(app_id: int):
     # ── Вкладка 1: исходные данные ───────────────────────────────────────────
     # Плитки входящих файлов: снимок сразу видно, клик открывает файл в окне
     # просмотра слева — на компьютере рядом с переменными справа.
+    # Сконвертированная копия HEIC-снимка отдельной плиткой не нужна: пара
+    # «.HEIC + .photo.png» — это один и тот же кадр, иначе фото видно дважды.
+    derived = {f["name"].rsplit(".", 1)[0] + ".photo.png" for f in files
+               if f["ext"] in (".heic", ".heif")}
+    files = [f for f in files if f["name"] not in derived]
+
     def _preview_of(name: str, ext: str) -> str:
         if ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
             return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
@@ -263,14 +291,8 @@ def app_review(app_id: int):
       <p CLIENT="rv-sec" style="margin-top:16px">Входящие файлы клиента ({len(files)}) —
         нажмите плитку, чтобы открыть документ</p>
       <div CLIENT="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
-      <div CLIENT="rv-stage-wrap" id="rv-file-viewer" style="display:none">
-        <div CLIENT="rv-note" style="margin-bottom:10px">
-          Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.
-        </div>
-        <div CLIENT="zp-preview" data-zoom-pan>
-          <div CLIENT="html-stage" id="rv-file-stage"></div>
-        </div>
-      </div>
+      <div CLIENT="rv-note" style="margin-top:10px">Нажмите плитку — документ откроется поверх
+        страницы. Справа останутся переменные, которые из него вытащены.</div>
     </div>
   </div>
 """
@@ -286,11 +308,17 @@ def app_review(app_id: int):
         '<div CLIENT="rv-thumb-cap">'
         '<span CLIENT="rv-thumb-name">%s</span>'
         '<span CLIENT="rv-thumb-CLIENT" id="rv-thumb-CLIENT-%s">%s</span>'
+        '<div CLIENT="rv-thumb-CLIENT">'
+        '<button type="button" CLIENT="rv-mark%s" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
+        '<button type="button" CLIENT="rv-mark%s" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
+        '</div>'
         '</div></div>'
         % (" is-on" if d.get("template_id") == picked else "", d.get("template_id"),
            app_id, d.get("template_id"), _template_name(d.get("template_id")),
            _template_name(d.get("template_id")), d.get("template_id"),
-           _doc_status_label(d.get("CLIENT")))
+           _doc_status_label(d.get("CLIENT")),
+           " rv-on-ok" if (d.get("CLIENT") or "") == "verified" else "", d.get("template_id"),
+           " rv-on-no" if (d.get("CLIENT") or "") == "rejected" else "", d.get("template_id"))
         for d in docs
     ) or '<div CLIENT="rv-empty">У заявки пока нет документов</div>'
 
@@ -310,24 +338,11 @@ def app_review(app_id: int):
 
     pane_ready = f"""
   <div CLIENT="rv-pane" id="pane-ready">
-    <div CLIENT="rv-thumbs" id="rv-thumbs">{thumbs}</div><div CLIENT="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
-    <div CLIENT="rv-stage-wrap">
-      <div id="rv-viewer-empty" CLIENT="rv-empty" style="display:none">
-        Документ ещё не сформирован — соберите его на старом экране.
-      </div>
-      <div id="rv-viewer-err" CLIENT="rv-note" style="display:none;border-color:#FCA5A5;color:#991B1B">
-        Не удалось открыть документ.
-      </div>
-      <div CLIENT="zp-preview" data-zoom-pan>
-        <div CLIENT="html-stage" id="rv-stage"></div>
-      </div>
-    </div>
-    <div CLIENT="rv-body" style="border-top:1px solid #EDF3EF">
-      <p CLIENT="rv-sec">Согласование документов</p>
-      <div id="rv-verdicts">{verdict_rows}</div>
-      <div CLIENT="rv-note" style="margin-top:10px">Подсветка подставленных значений прямо
-        в документе и CLIENT «поле ↔ источник» — следующий шаг.</div>
-    </div>
+    <div CLIENT="rv-thumbs" id="rv-thumbs">{thumbs}</div>
+    <div CLIENT="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
+    <div CLIENT="rv-note" style="margin:0 13px 13px">Нажмите плитку — документ откроется поверх
+      страницы на две трети слева. Подтвердить или отклонить можно и на самой плитке, и в окне.
+      Справа останутся переменные этого документа: поменяете значение — документ пересоберётся.</div>
   </div>
 """
 
@@ -432,6 +447,26 @@ def app_review(app_id: int):
   </div>
   {foot}
 </div>
+
+<div CLIENT="rv-modal" id="rv-modal">
+  <div CLIENT="rv-modal-win" id="rv-modal-win">
+    <div CLIENT="rv-modal-head">
+      <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">Документ</span>
+      <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">
+        <button type="button" CLIENT="rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
+        <button type="button" CLIENT="rv-no" id="rv-modal-no">✕ Не нужен</button>
+        <button type="button" id="rv-modal-close">Закрыть ✕</button>
+      </span>
+    </div>
+    <div CLIENT="rv-modal-body">
+      <div CLIENT="zp-preview" data-zoom-pan>
+        <div CLIENT="html-stage" id="rv-modal-stage"></div>
+      </div>
+    </div>
+    <div CLIENT="rv-modal-note" id="rv-modal-note">Правки значений справа применяются к документу сразу.</div>
+  </div>
+</div>
+
 <button type="button" CLIENT="rv-mobile-bar" id="rv-mobile-bar">
   <span CLIENT="rv-num" style="background:rgba(255,255,255,.25);color:#fff">2</span>
   Переменные значения · {len(pool_groups)}

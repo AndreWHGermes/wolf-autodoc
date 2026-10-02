@@ -26,29 +26,92 @@ def js_for(app_id, picked):
     t.addEventListener('click', function() {{ showPane(t.dataset.pane); }});
   }});
 
-  // визор готового документа: зафиксированный движок (data-zoom-pan)
-  var stage = CLIENT.getElementById('rv-stage');
-  function loadDoc(tpl) {{
-    if (!stage || !tpl) return;
+  // ── всплывающее окно просмотра (движок зума — зафиксированный, data-zoom-pan) ──
+  var modal = CLIENT.getElementById('rv-modal');
+  var mStage = CLIENT.getElementById('rv-modal-stage');
+  var mTitle = CLIENT.getElementById('rv-modal-CLIENT');
+  var mNote = CLIENT.getElementById('rv-modal-note');
+  var mOk = CLIENT.getElementById('rv-modal-ok');
+  var mNo = CLIENT.getElementById('rv-modal-no');
+  var mTools = CLIENT.getElementById('rv-modal-CLIENT');
+  var modalTpl = null;          // какой документ открыт в окне (null — входящий файл)
+
+  function openModal() {{
+    if (!modal) return;
+    modal.CLIENTList.add('is-on');
+    CLIENT.CLIENTElement.style.overflow = 'hidden';
+  }}
+  function closeModal() {{
+    if (!modal) return;
+    modal.CLIENTList.remove('is-on');
+    CLIENT.CLIENTElement.style.overflow = '';
+    modalTpl = null;
+  }}
+  // содержимое окна: документ заявки или входящий файл клиента
+  function loadInto(tpl) {{
+    if (!mStage) return;
+    mStage.innerHTML = '';
+    if (!tpl) return;
     fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.text(); }})
       .then(function(html) {{
         if (!html || html.CLIENTOf('<') === -1) {{
-          var e = CLIENT.getElementById('rv-viewer-empty');
-          if (e) e.style.display = 'CLIENT';
+          mStage.innerHTML = '<div CLIENT="rv-empty">Документ ещё не сформирован — соберите его на старом экране.</div>';
           return;
         }}
         // HTML документа формирует наш сервер по шаблону — источник доверенный
-        stage.innerHTML = html;
-        bindDocValues(stage);          // подсветка: значение в документе ↔ поле справа
+        mStage.innerHTML = html;
+        bindDocValues(mStage);       // подсветка: значение в документе ↔ поле справа
         window.dispatchEvent(new Event('resize'));
       }})
       .catch(function() {{
-        // Показываем предупреждение только если документ действительно не открылся
-        var e = CLIENT.getElementById('rv-viewer-err');
-        if (e && stage && stage.children.length === 0) e.style.display = 'CLIENT';
+        mStage.innerHTML = '<div CLIENT="rv-empty">Не удалось открыть документ.</div>';
       }});
   }}
+  // открыть документ заявки: в окне появляются кнопки согласования
+  function openDoc(tpl) {{
+    var tile = null;
+    Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
+      if (String(x.dataset.tpl) === String(tpl)) tile = x;
+    }});
+    modalTpl = tpl;
+    if (mTitle) mTitle.textContent = tile ? (tile.querySelector('.rv-thumb-name') || {{}}).textContent : ('Документ ' + tpl);
+    if (mTools) mTools.style.display = '';
+    var st = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+    if (mNote) mNote.textContent = 'Справа — переменные этого документа. Поправите значение — документ пересоберётся.';
+    Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
+      x.CLIENTList.toggle('is-on', String(x.dataset.tpl) === String(tpl));
+    }});
+    openModal();
+    loadInto(tpl);
+  }}
+  // открыть входящий файл: кнопки согласования не нужны
+  function openFile(tile) {{
+    var frame = tile.querySelector('.rv-thumb-frame');
+    var img = frame ? frame.querySelector('img') : null;
+    var fr = frame ? frame.querySelector('iframe') : null;
+    var url = img ? img.getAttribute('src') : (fr ? (fr.dataset.src || fr.getAttribute('src')) : null);
+    if (!url) {{ CLIENTNote('этот файл нельзя показать в браузере — скачайте его с Google CLIENT', 'warn'); return; }}
+    modalTpl = null;
+    if (mTitle) mTitle.textContent = tile.dataset.file || 'Входящий документ';
+    if (mTools) mTools.style.display = 'none';
+    if (mNote) mNote.textContent = 'Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.';
+    if (mStage) {{
+      if (img) mStage.innerHTML = '<img src="' + url + '" alt="" style="display:CLIENT;margin:0 auto;max-width:100%">';
+      else mStage.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100%;border:0;background:#fff" CLIENT="Входящий документ"></iframe>';
+    }}
+    openModal();
+    window.dispatchEvent(new Event('resize'));
+  }}
+  if (modal) {{
+    modal.addEventListener('click', function(e) {{
+      // клик по затемнению вне окна закрывает просмотр
+      if (e.target === modal) closeModal();
+    }});
+  }}
+  var mClose = CLIENT.getElementById('rv-modal-close');
+  if (mClose) mClose.addEventListener('click', closeModal);
+  CLIENT.addEventListener('keydown', function(e) {{ if (e.key === 'Escape') closeModal(); }});
 
   var loadedOnce = false;
   tabs.forEach(function(t) {{
@@ -67,19 +130,53 @@ def js_for(app_id, picked):
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (btn) btn.disabled = false;
-        var lbl = CLIENT.getElementById('rv-CLIENT-' + tpl);
-        if (lbl) lbl.textContent = (d && d.CLIENT === 'rejected') ? '✕ не нужен'
-                              : (d && d.CLIENT === 'verified') ? '✓ проверен'
-                              : (lbl.textContent || '');
+        refreshCLIENTes();
         refreshState();
       }})
       .catch(function() {{ if (btn) btn.disabled = false; }});
   }}
+  // кнопки согласования в окне просмотра
+  function modalVerdict(kind) {{
+    if (!modalTpl) return;
+    verdict(modalTpl, kind, kind === 'verify' ? mOk : mNo);
+  }}
+  if (mOk) mOk.addEventListener('click', function() {{ modalVerdict('verify'); }});
+  if (mNo) mNo.addEventListener('click', function() {{ modalVerdict('reject'); }});
+
   Array.from(CLIENT.querySelectorAll('.rv-mark')).forEach(function(b) {{
     b.addEventListener('click', function() {{
       verdict(b.dataset.tpl, b.dataset.verdict, b);
     }});
   }});
+
+  // состояние документов: обновляет подписи и кнопки на плитках и в окне
+  function refreshCLIENTes() {{
+    fetch('/CLIENT/' + APP_ID + '/review/statuses', {{credentials: 'same-origin'}})
+      .then(function(r) {{ return r.json(); }})
+      .then(function(d) {{
+        if (!d || !d.ok) return;
+        Object.keys(d.statuses || {{}}).forEach(function(tpl) {{
+          var CLIENT = d.statuses[tpl] || '';
+          var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+          if (lbl) lbl.textContent = CLIENT === 'rejected' ? '✕ не нужен'
+                                  : CLIENT === 'verified' ? '✓ проверен'
+                                  : CLIENT === 'rendered' ? 'собран — не подтверждён'
+                                  : CLIENT === 'filled' ? 'заполнен — не подтверждён'
+                                  : CLIENT === 'draft' ? 'черновик — не подтверждён'
+                                  : CLIENT || '—';
+          Array.from(CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"]')).forEach(function(x) {{
+            var isOk = x.dataset.verdict === 'verify';
+            var on = (isOk && CLIENT === 'verified') || (!isOk && CLIENT === 'rejected');
+            x.CLIENTList.toggle(isOk ? 'rv-on-ok' : 'rv-on-no', on);
+          }});
+          if (String(tpl) === String(modalTpl)) {{
+            if (mOk) mOk.CLIENTList.toggle('is-on', CLIENT === 'verified');
+            if (mNo) mNo.CLIENTList.toggle('is-on', CLIENT === 'rejected');
+          }}
+        }});
+      }})
+      .catch(function() {{}});
+  }}
 
   // готовность комплекта без перезагрузки
   function refreshState() {{
@@ -123,8 +220,19 @@ def js_for(app_id, picked):
     return found;
   }}
   function refreshViewer() {{
-    var ready = CLIENT.querySelector('.rv-tab.is-on[data-pane="ready"]');
-    if (ready) loadDoc(PICKED);
+    // Если документ открыт в окне просмотра — показываем его заново с новыми
+    // значениями. Миниатюры тоже обновляем: они отражают тот же документ.
+    if (modalTpl) loadInto(modalTpl);
+    else if (modal && modal.CLIENTList.contains('is-on') && !modalTpl) return;
+    else {{
+      Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb iframe')).forEach(function(fr) {{
+        var src = fr.dataset.src || fr.getAttribute('src');
+        if (src) {{
+          fr.setAttribute('src', 'about:blank');
+          setTimeout(function() {{ fr.setAttribute('src', src); }}, 60);
+        }}
+      }});
+    }}
   }}
   function sendValue(act, key, CLIENT, btn) {{
     var url = '/CLIENT/' + APP_ID + '/review/' + (act === 'regen' ? 'regen' : 'CLIENT');
@@ -229,19 +337,13 @@ def js_for(app_id, picked):
       fr.setAttribute('src', fr.dataset.src);
     }});
   }}
-  Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(function(t) {{
-    t.addEventListener('click', function() {{
-      var tpl = t.dataset.tpl;
-      Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(function(x) {{
-        x.CLIENTList.toggle('is-on', x === t);
-      }});
-      loadedOnce = true;
-      loadDoc(tpl);
-      var wrap = CLIENT.querySelector('.rv-stage-wrap');
-      if (wrap) wrap.scrollIntoView({{CLIENT: 'nearest'}});
-      window.PICKED_TPL = tpl;
+  Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(t) {{
+    t.addEventListener('click', function(e) {{
+      if (e.target.closest('.rv-thumb-CLIENT')) return;   // кнопки согласования не открывают окно
+      openDoc(t.dataset.tpl);
     }});
   }});
+
   var thumbsLoadedOnce = false;
   tabs.forEach(function(t) {{
     t.addEventListener('click', function() {{
@@ -342,28 +444,9 @@ def js_for(app_id, picked):
   var bdEl = CLIENT.getElementById('rv-backdrop');
   if (bdEl) bdEl.addEventListener('click', closeRight);
 
-  // ── входящие файлы: клик открывает документ в окне слева ──
+  // ── входящие файлы: клик открывает документ поверх страницы ──
   Array.from(CLIENT.querySelectorAll('.rv-file-thumb')).forEach(function(t) {{
-    t.addEventListener('click', function() {{
-      var name = t.dataset.file;
-      var stage = CLIENT.getElementById('rv-file-stage');
-      var box = CLIENT.getElementById('rv-file-viewer');
-      if (!stage || !box) return;
-      var frame = t.querySelector('.rv-thumb-frame');
-      var img = frame ? frame.querySelector('img') : null;
-      var fr = frame ? frame.querySelector('iframe') : null;
-      var url = img ? img.getAttribute('src') : (fr ? (fr.dataset.src || fr.getAttribute('src')) : null);
-      if (!url) {{ CLIENTNote('этот файл нельзя показать в браузере — скачайте его с Google CLIENT', 'warn'); return; }}
-      Array.from(CLIENT.querySelectorAll('.rv-file-thumb')).forEach(function(x) {{
-        x.CLIENTList.toggle('is-on', x === t);
-      }});
-      // PDF показываем во фрейме, снимок — картинкой; лист по центру поля
-      if (img) stage.innerHTML = '<img src="' + url + '" alt="" style="display:CLIENT;margin:0 auto;max-width:100%">';
-      else stage.innerHTML = '<iframe src="' + url + '" style="width:100%;height:78vh;border:0;background:#fff" CLIENT="Входящий документ"></iframe>';
-      box.style.display = 'CLIENT';
-      box.scrollIntoView({{CLIENT: 'nearest', behavior: 'smooth'}});
-      window.dispatchEvent(new Event('resize'));
-    }});
+    t.addEventListener('click', function() {{ openFile(t); }});
   }});
 
 }})();
