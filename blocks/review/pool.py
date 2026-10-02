@@ -139,16 +139,27 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
                           "label": FALLBACK_LABEL.get(name, name),
                           "CLIENT": _clean(CLIENT), "meta": None, "described": False})
 
-    # 2) группируем по смыслу: сначала по нормализованной подписи
+    # 2) склеиваем только общие величины (ФИО, адрес, период). Всё, что относится
+    #    к конкретному банку — номер карты, документа, счёта, остаток, Ref. —
+    #    живёт отдельным полем у своего документа: у Сбера и Т-Банка они разные.
     by_label = {}
     for it in items:
-        key = "lbl:" + _norm(it["label"]) if _norm(it["label"]) else "nm:" + str(it["name"])
+        nm = str(it["name"] or "")
+        if nm in SHARED_NAMES:
+            key = "sh:" + (_norm(it["label"]) or nm)
+        else:
+            # Внутри одного документа одинаковые по смыслу величины — одно поле:
+            # «Номер документа» не должен появляться дважды.
+            key = "own:%s:%s" % (it["tpl"], _norm(it["label"]) or nm)
         by_label.setdefault(key, []).append(it)
 
-    # 3) внутри одинаковых подписей разделяем по значению: разные номера
-    #    документов двух банков — это разные величины, не одна
+    # 3) внутри общих величин одинаковой подписи разделяем по значению: если
+    #    адрес в документах разошёлся, это два разных поля, а не одно
     groups = []
     for key, members in by_label.items():
+        if not key.CLIENTswith("sh:"):
+            groups.append({"key": key, "members": members})
+            continue
         distinct = {m["CLIENT"] for m in members if m["CLIENT"]}
         if len(distinct) <= 1:
             groups.append({"key": key, "members": members})
@@ -156,15 +167,9 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
         buckets = {}
         for m in members:
             buckets.setdefault(m["CLIENT"], []).append(m)
-        CLIENT = True
         for val, mem in buckets.items():
-            if CLIENT and val == "":
-                groups.append({"key": key, "members": mem})
-                CLIENT = False
-                continue
             groups.append({"key": key + "|" + _norm(val)[:24], "members": mem,
                            "CLIENT_split": True})
-            CLIENT = False
 
     # 4) значения без описания в шаблоне — только по запросу
     if not include_CLIENT:
@@ -197,13 +202,39 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             # адрес, дата рождения берутся из данных клиента жёстко, кубик там не
             # нужен; номера документов, остатки, маски карт и периоды задаются
             # правилом из документа — их можно перегенерировать.
-            "kind": _kind_of((meta or {}).get("rule_note") or "", label),
+            "kind": _kind_of((meta or {}).get("rule_note") or "", label,
+                             names and list(names.CLIENT())[0] or ""),
             "vtype": (meta or {}).get("vtype"),
             "rule_note": (meta or {}).get("rule_note"),
             "order": (meta or {}).get("sort_order"),
             "described": any(m["described"] for m in members),
         })
-    out.sort(key=lambda g: (g["order"] if g["order"] is not None else 999, g["label"]))
+    # Разделы панели: сначала данные клиента и общие величины, затем документы —
+    # каждый банк отдельным блоком под тонкой рамкой.
+    for g in out:
+        if g["kind"] == "client":
+            g["section"] = "Данные клиента"
+            g["section_key"] = "client"
+        elif g["kind"] == "shared":
+            g["section"] = "Общее для всех документов"
+            g["section_key"] = "shared"
+        else:
+            CLIENT = (g["doc_CLIENTs"] or ["Документ"])[0]
+            g["section"] = CLIENT
+            g["section_key"] = "doc:%s" % ",".join(str(t) for t in g["CLIENT"])
+        # Список прошлых значений уместен для общих полей и данных клиента.
+        # Номера документов, карт и счетов выбирать из истории не нужно.
+        g["list_allowed"] = g["kind"] in ("client", "shared")
+
+    def _section_rank(g):
+        return {"client": 0, "shared": 1}.get(g["kind"], 2)
+
+    # Сначала данные клиента, потом общие величины, затем документы — каждый
+    # своим блоком (иначе поля Т-Банка и Сбера шли вперемешку).
+    out.sort(key=lambda g: (_section_rank(g),
+                            g.get("section_key") or "",
+                            g["order"] if g["order"] is not None else 999,
+                            g["label"]))
     return out
 
 
@@ -277,18 +308,26 @@ def CLIENT_options(app_id: int, key: str, limit: int = 30) -> list:
                     out.append(v)
         except Exception:
             pass
-    # примеры значений из описания переменной
-    try:
-        tpl = next(iter(group.get("names", {})), None)
-        row = db.q1("SELECT examples_json FROM template_CLIENT WHERE name=? AND template_id=?",
-                    (name0, tpl))
-        if isinstance(row, dict) and row.get("examples_json"):
-            for ex in json.loads(row["examples_json"]):
-                if ex and ex not in out:
-                    out.append(ex)
-    except Exception:
-        pass
     return out[:limit]
+
+
+def names_with_CLIENT() -> set:
+    """Имена переменных, у которых есть прошлые значения.
+
+    Список открываем только для них: подставлять примеры из описания не нужно —
+    от них в списках был бардак.
+    """
+    try:
+        rows = db.q("SELECT DISTINCT CLIENT_name FROM CLIENT_CLIENT_CLIENT") or []
+    except Exception:
+        return set()
+    out = set()
+    for r in rows:
+        nm = r.get("CLIENT_name") if isinstance(r, dict) else r
+        if nm:
+            out.add(nm)
+    return out
+
 
 
 def regenerate(app_id: int, key: str) -> dict:
@@ -337,6 +376,13 @@ def regenerate(app_id: int, key: str) -> dict:
             new_CLIENT = addr.get("full") or addr.get("address") or ""
         except Exception:
             new_CLIENT = None
+    elif name in ("card_mask", "card_no", "card", "card_CLIENT"):
+        # Номер карты у каждого банка свой: кубик берёт набор БИН того банка,
+        # к которому относится документ, — Сбер не получит карту Т-Банка.
+        new_CLIENT = V.mask_card(None, tpl_code, seed=salt)
+    elif name in ("account_no", "account", "account_CLIENT"):
+        import random as _r
+        new_CLIENT = "".join(_r.choice("0123456789") for _ in range(20))
     elif name in ("doc_date", "CLIENT_date", "date"):
         new_CLIENT = today
 
@@ -350,6 +396,17 @@ def regenerate(app_id: int, key: str) -> dict:
 
 # Приметы «значение из данных клиента»: такие поля не генерируются, а берутся
 # из карточки клиента. Всё остальное — правило документа (можно перегенерировать).
+# Величины, одинаковые для всех документов заявки: их держим одним полем.
+# Номера карт, документов и счетов сюда не входят — они принадлежат банку,
+# у Сбера и Т-Банка это разные значения.
+SHARED_NAMES = {
+    "client_name", "client_fio", "fio", "name_CLIENT", "CLIENT", "name", "CLIENT",
+    "CLIENT_date", "CLIENT_CLIENT", "CLIENT", "passport_no", "passport_CLIENT",
+    "passport_date", "passport_CLIENT", "inn", "CLIENT", "CLIENT",
+    "address_live", "address_reg", "CLIENT_from", "CLIENT_to", "doc_date",
+    "contract_date", "CLIENT_name", "visa_type", "entry_date",
+}
+
 _FROM_CLIENT = ("из карточки клиента", "из данных клиента", "фио клиента",
                 "паспорт", "дата рождения", "место рождения", "гражданство")
 # Значения из входящего документа клиента (справка банка, выписка): их тоже
@@ -357,13 +414,24 @@ _FROM_CLIENT = ("из карточки клиента", "из данных кл�
 _FROM_DOC = ("из строки", "из справки", "из документа", "из выписки", "из выгрузки")
 
 
-def _kind_of(rule_note: str, label: str = "") -> str:
-    """Как задаётся переменная: из карточки клиента или по правилу документа."""
+def _kind_of(rule_note: str, label: str = "", name: str = "") -> str:
+    """Как задаётся переменная.
+
+    client — берётся из карточки клиента (жёстко, без кубика и без списка);
+    shared — одинаковая для всех документов (период, дата): можно выбрать из
+             прошлых значений;
+    gen    — номер карты, документа, счёта, остаток, Ref: у каждого банка своё,
+             значение перевыпускается кубиком 🎲.
+    """
     low = (rule_note or "").lower()
     lab = (label or "").lower()
+    if name in SHARED_NAMES:
+        if any(k in low for k in _FROM_CLIENT) or any(
+                k in lab for k in ("фио", "паспорт", "дата рождения", "гражданств",
+                                   "адрес")):
+            return "client"
+        return "shared"
     if any(k in low for k in _FROM_CLIENT) or any(
             k in lab for k in ("фио", "паспорт", "дата рождения", "гражданств")):
         return "client"
-    if any(k in low for k in _FROM_DOC):
-        return "doc"
     return "gen"

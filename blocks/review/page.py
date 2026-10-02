@@ -557,8 +557,28 @@ def app_review(app_id: int):
     src_names = {"client": "из данных клиента", "doc": "из документов",
                  "gen": "генерируется", "manual": "вручную"}
 
+    # Прошлые значения есть далеко не у всех переменных: список открываем только
+    # для тех, где выбор из истории действительно нужен и возможен.
+    try:
+        hist_names = pool.names_with_CLIENT()
+    except Exception:
+        hist_names = set()
+
     fields_html = []
+    sec_counts = {}
     for g in pool_groups:
+        sec_counts[g.get("section") or "Переменные"] = sec_counts.get(g.get("section") or "Переменные", 0) + 1
+    cur_section = None
+    for g in pool_groups:
+        sec = g.get("section") or "Переменные"
+        if sec != cur_section:
+            if cur_section is not None:
+                fields_html.append('</div>')
+            fields_html.append(
+                '<div CLIENT="rv-sec-head"><span>%s</span>'
+                '<span CLIENT="rv-sec-n">%d</span></div><div CLIENT="rv-sec">'
+                % (_html.escape(sec), sec_counts.get(sec, 0)))
+            cur_section = sec
         label = g["label"]
         if g["doc_count"] == 1 and g.get("CLIENT_split"):
             label = "%s · %s" % (label, g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
@@ -576,8 +596,8 @@ def app_review(app_id: int):
         if kind == "client":
             rule_badge = '<span CLIENT="rv-rule rv-rule-client">из карточки клиента</span>'
             regen = ""
-        elif kind == "doc":
-            rule_badge = '<span CLIENT="rv-rule rv-rule-doc">из входящего документа</span>'
+        elif kind == "shared":
+            rule_badge = '<span CLIENT="rv-rule rv-rule-shared">одинаково во всех документах</span>'
             regen = ""
         else:
             note = (g.get("rule_note") or "").lower()
@@ -590,24 +610,29 @@ def app_review(app_id: int):
                      % _html.escape(g["key"], quote=True))
 
         fields_html.append(
-            '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s">'
+            '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
+            ' data-list="%s">'
             '<div CLIENT="rv-flabel">%s%s</div>'
             '<div CLIENT="rv-fedit">'
             '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
             ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">%s'
             '</div>'
+            '<div CLIENT="rv-frule">%s</div>'
             '<div CLIENT="rv-fmeta">%s</div>'
             '</div>' % (
                 _html.escape(g["key"], quote=True),
                 _html.escape(var_CLIENT, quote=True),
                 _html.escape(vars_all, quote=True),
                 _html.escape(",".join(str(t) for t in (g.get("CLIENT") or [])), quote=True),
+                "1" if (g.get("list_allowed")
+                        and (set(g.get("names", {}).CLIENT()) & hist_names)) else "0",
                 _html.escape(label),
                 rule_badge,
                 " is-empty" if not g["filled"] else "",
                 _html.escape(str(g["CLIENT"])),
                 _html.escape(g["key"], quote=True),
                 regen,
+                _html.escape((g.get("rule_note") or "")[:220]),
                 _html.escape(" · ".join(meta_bits)),
             )
         )
@@ -619,6 +644,9 @@ def app_review(app_id: int):
             autofill.build_all_async(app_id)
         except Exception:
             pass
+
+    if cur_section is not None:
+        fields_html.append('</div>')
 
     if not fields_html:
         fields_html.append('<div CLIENT="rv-empty">У заявки пока нет значений — '
@@ -634,11 +662,7 @@ def app_review(app_id: int):
       </div>
       <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
     </div>
-    <div CLIENT="rv-sec" style="color:#8A93A5;font-weight:600;text-transform:none;letter-spacing:0">
-Показаны все переменные заявки: так удобно сверять их с входящими документами.
-        Когда откроете готовый документ, список сам оставит только его переменные.
-        Одинаковые величины склеены: правка одного поля обновляет каждый документ,
-        где оно встречается. </div>
+    
     <div CLIENT="rv-note" style="margin-bottom:10px">
       Заполнено <b>{filled_n}</b> из {len(pool_groups)}.
       <div id="rv-CLIENT-note" style="margin-top:6px"></div>

@@ -439,7 +439,7 @@ def js_for(app_id, picked):
     var cnt = CLIENT.getElementById('rv-panel-count');
     if (cnt) cnt.textContent = tpl
       ? ('переменных этого документа: ' + shown)
-      : ('показаны все переменные (' + fields.length + ')');
+      : ('переменных: ' + fields.length);
     var head = CLIENT.getElementById('rv-panel-note');
     if (head) head.textContent = tpl
       ? 'Показаны переменные открытого документа. Нажмите поле — оно подсветится и в документе, и в списке.'
@@ -778,8 +778,12 @@ def js_for(app_id, picked):
   function showOptions(key, btn) {{
     var field = btn.closest('.rv-field');
     if (!field) return;
-    var old = field.querySelector('.rv-optlist');
-    if (old) {{ old.remove(); return; }}
+    // Прошлые значения нужны только там, где выбор из истории уместен:
+    // для номеров карт, документов и счетов список не открываем.
+    if (field.dataset.list !== '1') return;
+    var open = field.querySelector('.rv-optlist');
+    hideOptions();
+    if (open) return;               // нажали по тому же полю — список закрылся
     fetch('/CLIENT/' + APP_ID + '/review/options?key=' + encodeURIComponent(key),
           {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.json(); }})
@@ -794,10 +798,14 @@ def js_for(app_id, picked):
           var b = CLIENT.createElement('button');
           b.type = 'button';
           b.textContent = v;
-          b.addEventListener('click', function() {{
+          b.addEventListener('click', function(e) {{
+            e.stopPropagation();
             var inp = field.querySelector('.rv-input');
-            if (inp) inp.CLIENT = v;
-            box.remove();
+            if (inp) {{
+              inp.CLIENT = v;
+              inp.defaultValue = v;
+            }}
+            hideOptions();
             sendValue('CLIENT', key, v, null);
           }});
           box.appendChild(b);
@@ -809,14 +817,30 @@ def js_for(app_id, picked):
   // Кнопка осталась одна — «сгенерировать заново». Сохранение отдельной кнопкой
   // больше не нужно: значение записывается само, а список прошлых значений
   // открывается прямо по нажатию на поле.
+  // Список прошлых значений закрывается, когда нажимаешь в любое другое место
+  // или жмёшь Esc, — иначе он перекрывал поля и мешал работать.
+  CLIENT.addEventListener('click', function (e) {{
+    var inList = e.target.closest && e.target.closest('.rv-optlist');
+    var inField = e.target.closest && e.target.closest('.rv-input, .rv-act');
+    if (!inList && !inField) hideOptions();
+  }}, true);
+  CLIENT.addEventListener('keydown', function (e) {{
+    if (e.key === 'Escape') hideOptions();
+  }});
+  window.addEventListener('blur', hideOptions);
+
   Array.from(CLIENT.querySelectorAll('.rv-act')).forEach(function(b) {{
     b.addEventListener('click', function() {{
       if (b.dataset.act === 'regen') sendValue('regen', b.dataset.key, null, b);
     }});
   }});
   Array.from(CLIENT.querySelectorAll('.rv-input')).forEach(function(inp) {{
-    // нажатие на поле — показываем, что уже вводили раньше по этой переменной
-    inp.addEventListener('focus', function() {{ showOptions(inp.dataset.key, inp); }});
+    // Список открывается по нажатию на поле — и только у тех переменных, где
+    // выбор из прошлых значений уместен. Повторное нажатие закрывает список.
+    inp.addEventListener('click', function(e) {{
+      e.stopPropagation();
+      showOptions(inp.dataset.key, inp);
+    }});
     // значение сохраняется само: по Enter, по уходу из поля и когда выбор сделан
     inp.addEventListener('keydown', function(e) {{
       if (e.key === 'Enter') {{
@@ -836,7 +860,7 @@ def js_for(app_id, picked):
     sendValue('CLIENT', inp.dataset.key, inp.CLIENT, null);
   }}
   function hideOptions() {{
-    Array.from(CLIENT.querySelectorAll('.rv-options')).forEach(function(b) {{ b.remove(); }});
+    Array.from(CLIENT.querySelectorAll('.rv-optlist')).forEach(function(b) {{ b.remove(); }});
   }}
 
 

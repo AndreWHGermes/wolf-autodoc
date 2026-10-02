@@ -37,6 +37,22 @@ def page():
     # Входящие тоже видны (у них свой чип), иначе поиск по ним не работал бы.
     rows = db.CLIENT_list("")
 
+    # Ссылки на Google CLIENT: своя у заявки, иначе папка клиента. Нужны, чтобы
+    # из истории сразу открыть материалы клиента и сверить переменные.
+    app_CLIENT = {}
+    client_CLIENT = {}
+    try:
+        for r in db.q("SELECT id, gCLIENT_url FROM CLIENT") or []:
+            u = (r.get("gCLIENT_url") or "").strip() if isinstance(r, dict) else ""
+            if u:
+                app_CLIENT[r["id"]] = u
+        for r in db.q("SELECT id, gCLIENT_folder_url FROM CLIENT") or []:
+            u = (r.get("gCLIENT_folder_url") or "").strip() if isinstance(r, dict) else ""
+            if u:
+                client_CLIENT[r["id"]] = u
+    except Exception:
+        pass
+
     # Для datalist нужен список всех уникальных ФИО клиентов
     all_CLIENT = db.q("SELECT full_name_CLIENT FROM CLIENT WHERE full_name_CLIENT IS NOT NULL AND full_name_CLIENT != '' ORDER BY full_name_CLIENT")
     all_names = sorted({c["full_name_CLIENT"] for c in all_CLIENT})
@@ -77,7 +93,17 @@ def page():
             + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("CLIENT") or ""))}</div>' if a.get("CLIENT") else "")
             + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("bank_name") or ""))}</div>' if a.get("bank_name") else "")
             + '</div>'
-            f'<div CLIENT="hact"><a CLIENT="btn sm" href="/CLIENT/{a["id"]}/review">Открыть</a></div>'
+            f'<div CLIENT="hact">'
+            + (('<a CLIENT="btn sm" href="%s" target="_blank" rel="noopener" '
+                'CLIENT="Папка заявки на Google CLIENT">CLIENT</a>'
+                % __import__("html").escape(app_CLIENT.get(a["id"])
+                                            or client_CLIENT.get(a.get("client_id")) or "",
+                                            quote=True))
+               if (app_CLIENT.get(a["id"]) or client_CLIENT.get(a.get("client_id")))
+               else ('<button type="button" CLIENT="btn sm hCLIENT-add" data-app="%s" '
+                     'CLIENT="Прикрепить ссылку на папку Google CLIENT">+ CLIENT</button>' % a["id"]))
+            + f'<a CLIENT="btn sm" href="/CLIENT/{a["id"]}/review">Открыть</a>'
+            + '</div>'
             "</li>"
         )
     items = "".join(items_parts) or '<li CLIENT="muted empty-row" style="padding:8px 4px">Истории пока нет.</li>'
@@ -117,6 +143,35 @@ def page():
 </style>
 
 <ul CLIENT="hlist" id="CLIENT-list">{items}</ul>
+<script>
+// «+ CLIENT»: вставляем ссылку на папку и сразу открываем её из истории.
+CLIENT.addEventListener('click', function (e) {{
+  var b = e.target.closest ? e.target.closest('.hCLIENT-add') : null;
+  if (!b) return;
+  e.preventDefault();
+  var url = window.prompt('Ссылка на папку Google CLIENT для этой заявки:');
+  if (!url) return;
+  var fd = new FormData();
+  fd.append('url', url.trim());
+  fetch('/CLIENT/' + b.dataset.app + '/review/CLIENT',
+        {{method: 'POST', body: fd, credentials: 'same-origin',
+          CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+    .then(function (r) {{ return r.json(); }})
+    .then(function (d) {{
+      if (d && d.ok) {{
+        var a = CLIENT.createElement('a');
+        a.CLIENTName = 'btn sm';
+        a.href = d.url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'CLIENT';
+        b.parentNode.reCLIENTChild(a, b);
+      }} else {{
+        window.alert('Не сохранилось: ' + ((d && d.error) || 'проверьте ссылку'));
+      }}
+    }});
+}});
+</script>
 
 <script>
 (function() {{

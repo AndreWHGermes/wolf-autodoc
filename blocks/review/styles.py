@@ -315,4 +315,19 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-tile-dot.is-failed { border:0; background:#FCA5A5; animation:none; }
 .rv-tile-dot.is-failed::after { content:'!'; position:absolute; left:4.5px; top:-2px;
                color:#fff; font-size:10px; font-weight:700; line-height:13px; }
+
+/* Разделы панели: данные клиента, общее для документов, затем каждый документ.
+   Тонкая рамка показывает, какие переменные относятся к какому банку. */
+.rv-sec-head { display:flex; align-items:center; gap:8px; margin:12px 0 6px;
+               font-size:12px; font-weight:700; color:#14663A; text-transform:uppercase;
+               letter-spacing:.04em; }
+.rv-sec-n { font-size:11px; font-weight:600; color:#6B7C70; background:#EFF5F1;
+            border-radius:999px; padding:1px 7px; text-transform:none; letter-spacing:0; }
+.rv-sec { border:1px solid #E3EFE6; border-radius:12px; padding:8px; background:#FCFEFD; }
+.rv-sec .rv-field { border-color:#EEF3F0; }
+.rv-rule-shared { background:#EEF2F6; color:#38455C; border:1px solid #D8DEE6; }
+
+/* Подпись переменной и её правило: название, бейдж-правило, кнопка кубика */
+.rv-flabel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rv-frule { font-size:11px; color:#7A8A80; line-height:1.35; margin-top:3px; }
 """
