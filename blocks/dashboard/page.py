@@ -587,6 +587,20 @@ def app_view(app_id: int):
             _mark = '<span CLIENT="CLIENT-mark fail" CLIENT="' + (_CLIENT_scan["note"] or "Автоматическое прочтение не выполнено") + '">❗ не разобрано</span>'
     else:
         _mark = '<span CLIENT="CLIENT-mark">ещё не разбиралось</span>'
+    # автопроверка содержимого папки: есть ли паспорт клиента (обязательный документ)
+    try:
+        _pchk = db.q1("""SELECT CLIENT, note FROM CLIENT_CLIENT
+                          WHERE CLIENT_id=? AND CLIENT IN ('checked','warn')
+                          ORDER BY id DESC LIMIT 1""", (app_id,))
+    except Exception:
+        _pchk = None
+    if _pchk:
+        if (_pchk["CLIENT"] or "") == "checked":
+            _mark += ('<span CLIENT="CLIENT-mark ok" CLIENT="В папке Google CLIENT есть паспорт клиента">'
+                      '\U0001f4c1 ' + (_pchk["note"] or "паспорт найден") + '</span>')
+        else:
+            _mark += ('<span CLIENT="CLIENT-mark fail" CLIENT="В папке Google CLIENT не нашлось паспорта клиента">'
+                      '\u26a0\ufe0f ' + (_pchk["note"] or "паспорт не найден") + '</span>')
     CLIENT_btn = (
         '<div CLIENT="CLIENT-actions">'
         '<a href="' + CLIENT_url + '" target="_blank" rel="noopener" CLIENT="CLIENT-btn">'

@@ -135,3 +135,31 @@ def report_html(app_id: int) -> str:
         html.append('<div style="white-space:pre-wrap;font-size:13px;line-height:1.45">' + str(body) + "</div>")
         html.append("</div>")
     return "".join(html)
+
+PASSPORT_HINTS = ("паспорт", "passport", "pasport", "загран", "zagran")
+
+
+def check_folder(app_id: int, client_id: int) -> dict:
+    """Проверяет папку клиента на Google CLIENT: есть ли файлы и есть ли паспорт.
+
+    Вызывается сразу после приёма заявки: если менеджер дал ссылку, мы обязаны
+    убедиться, что оттуда реально можно взять данные клиента.
+    """
+    files = docs_for_client(client_id)
+    names = [f.name.lower() for f in files]
+    passport = [nm for nm in names if any(h in nm for h in PASSPORT_HINTS)]
+    res = {
+        "files": len(files),
+        "passport": len(passport) > 0,
+        "names": [f.name for f in files][:12],
+        "ok": bool(files) and bool(passport),
+    }
+    try:
+        db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, CLIENT, docs_total, docs_done, note)
+                       CLIENT (?,?,?,?,?)""",
+                    (app_id, "checked" if res["ok"] else "warn", res["files"], 0,
+                     ("паспорт найден, файлов " + str(res["files"])) if res["passport"]
+                     else ("паспорт не найден среди " + str(res["files"]) + " файлов")))
+    except Exception:
+        pass
+    return res

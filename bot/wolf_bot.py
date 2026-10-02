@@ -585,6 +585,16 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     # в карточке; теперь данные клиента уже вытащены, когда её открывают.
     if (form.get("gCLIENT_url") or "").strip():
         try:
+            # сразу проверяем содержимое папки: есть ли там паспорт клиента
+            from CLIENT import CLIENT as _CLIENT_svc
+            _chk = _CLIENT_svc.check_folder(app_id, client_id)
+            if not _chk.get("ok"):
+                log.warning("заявка #%s: в папке Google CLIENT %s",
+                            app_id,
+                            "паспорт клиента не найден" if _chk.get("files") else "нет файлов")
+        except Exception as _exc:  # noqa: BLE001
+            log.warning("проверка папки Google CLIENT по заявке #%s: %s", app_id, _exc)
+        try:
             from CLIENT.CLIENT import CLIENT_scan
             res = CLIENT_scan(app_id, client_id)
             log.info("автораэбор Google CLIENT по заявке #%s: %s", app_id, res.get("note"))
@@ -1240,7 +1250,24 @@ def handle_update(upd: dict) -> None:
             return
         try:
             app_id, client_id = create_CLIENT(form, user)
+            # сразу сообщаем менеджеру, если из папки Google CLIENT нечего взять
             try:
+                from CLIENT import CLIENT as _ds
+                _chk_msg = _ds.check_folder(app_id, client_id)
+                if not _chk_msg.get("ok"):
+                    send(chat_id, ("\u26a0\ufe0f Заявка №" + str(app_id) + " принята, но в папке Google CLIENT "
+                                   + ("паспорт клиента не найден" if _chk_msg.get("files")
+                                      else "нет файлов")
+                                   + ".\nДобавьте паспорт (и документы по типу продукта) в папку —"
+                                     " иначе система не сможет заполнить данные клиента."))
+            except Exception as _exc:  # noqa: BLE001
+                log.warning("проверка папки после приёма заявки #%s: %s", app_id, _exc)
+            try:
+                # исходный текст заявки сохраняем — он же попадёт в «Заявка.txt» на Google CLIENT
+                form["_raw_text"] = body
+                db().execute("UPDATE CLIENT SET raw_payload=? WHERE id=?",
+                             (json.dumps({**form}, ensure_ascii=False, default=str), app_id))
+                db().commit()
                 _write_CLIENT_text(app_id, body, form, user)
             except Exception as _exc:  # файл не критичен для создания заявки
                 log.warning("текстовый файл заявки #%s не создан: %s", app_id, _exc)
