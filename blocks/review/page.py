@@ -230,6 +230,15 @@ def app_review_CLIENT(app_id):
         return jsonify({"ok": False, "error": "не указано поле"}), 400
     res = pool.set_CLIENT(app_id, key, CLIENT or "")
     res["docs_updated"] = len(res.get("touched") or [])
+    # Если администратор выбрал значение из документа или из анкеты — запоминаем
+    # выбор, чтобы разбор документов больше не перебивал его своим значением.
+    source = (CLIENT.form.get("source") or "").strip()
+    if source in ("doc", "card"):
+        try:
+            pool.mark_choice(app_id, key, source, CLIENT or "")
+            res["chosen"] = source
+        except Exception:
+            pass
     return jsonify(res)
 
 
@@ -302,9 +311,48 @@ def app_review_scan_status(app_id):
 def app_review_regen(app_id):
     """Сгенерировать значение заново по правилам."""
     key = (CLIENT.form.get("key") or "").strip()
+    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
-    return jsonify(pool.regenerate(app_id, key))
+    return jsonify(pool.regenerate(app_id, key, CLIENT=CLIENT))
+
+
+@bp.route("/CLIENT/<int:app_id>/review/CLIENTs")
+def app_review_CLIENTs(app_id):
+    """Справочник профессий для резюме: из него администратор выбирает профессию."""
+    from CLIENT import cv_gen
+    items = [{"code": p["code"], "ru": p.get("ru", ""), "en": p.get("en", "")}
+             for p in cv_gen.load_positions()]
+    return jsonify({"ok": True, "items": items})
+
+
+@bp.route("/CLIENT/<int:app_id>/review/CLIENTs")
+def app_review_CLIENTs(app_id):
+    """Готовые фразы («кусочки») для поля резюме: администратор отмечает нужные."""
+    key = (CLIENT.args.get("key") or "").strip()
+    CLIENT = (CLIENT.args.get("CLIENT") or "").strip()
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    return jsonify(pool.CLIENTs(app_id, key, CLIENT=CLIENT))
+
+
+@bp.route("/CLIENT/<int:app_id>/review/scratch", methods=["POST"])
+def app_review_scratch(app_id):
+    """Собрать описание резюме «с нуля» по профессии (результат запоминается)."""
+    key = (CLIENT.form.get("key") or "").strip()
+    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    return jsonify(pool.gen_scratch(app_id, key, CLIENT=CLIENT))
+
+
+@bp.route("/CLIENT/<int:app_id>/review/CLIENT_add", methods=["POST"])
+def app_review_CLIENT_add(app_id):
+    """Профессия, которой нет в справочнике: администратор вписал её руками."""
+    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
+    if not CLIENT:
+        return jsonify({"ok": False, "error": "впишите название профессии"}), 400
+    return jsonify(pool.add_CLIENT(CLIENT))
 
 
 @bp.route("/CLIENT/<int:app_id>/review/statuses")
@@ -787,8 +835,50 @@ def app_review(app_id: int):
             info_bits.append("Кнопка 🎲 перевыпускает значение заново.")
         info = "\n\n".join(info_bits)
 
+        # Расхождение документа и анкеты: подсвечиваем поле и даём выбор, что
+        # подставить в бланк. По умолчанию — значение из документа клиента.
+        conflict = g.get("conflict")
+        conflict_html = ""
+        conflict_cls = ""
+        if conflict:
+            conflict_cls = " is-conflict"
+            _dv = _html.escape(str(conflict.get("doc") or ""))
+            _cv = _html.escape(str(conflict.get("card") or ""))
+            _src_name = _html.escape(str(conflict.get("from") or "документ клиента"))
+            conflict_html = (
+                '<div CLIENT="rv-conflict">'
+                '<div CLIENT="rv-conflict-head">⚠ данные в анкете отличаются</div>'
+                '<select CLIENT="rv-conflict-sel" data-key="%s">'
+                '<option CLIENT="doc" data-CLIENT="%s" selected>из документа (файл «%s»): %s</option>'
+                '<option CLIENT="card" data-CLIENT="%s">из анкеты: %s</option>'
+                '</select></div>' % (_html.escape(g["key"], quote=True),
+                                     _dv, _src_name, _dv, _cv, _cv)
+            )
+
+        # Для переменных резюме администратор может выбрать профессию и собрать
+        # описание автоматически — либо оставить и поправить текст вручную.
+        cv_picker = ""
+        # Список профессий нужен только там, где есть текст описания: имя, паспорт
+        # и даты генерировать по профессии не нужно.
+        CV_GEN_VARS = ("cv_CLIENT", "cv_job1_CLIENT", "cv_job2_CLIENT", "cv_job3_CLIENT",
+                       "cv_CLIENT_hard", "cv_CLIENT_soft", "cv_CLIENT_CLIENT",
+                       "cv_CLIENT_CLIENT", "cv_CLIENT_note", "cv_job1_CLIENT")
+        if str(var_CLIENT or "") in CV_GEN_VARS:
+            _ck = _html.escape(g["key"], quote=True)
+            cv_picker = ('<div CLIENT="rv-cvgen">'
+                         '<select CLIENT="rv-cvprof" data-key="%s" CLIENT="Профессия для описания">'
+                         '<option CLIENT="">профессия…</option>'
+                         '<option CLIENT="__custom__">✎ своя профессия…</option></select>'
+                         '<button type="button" CLIENT="rv-cvbtn" data-key="%s"'
+                         ' CLIENT="Собрать описание резюме по профессии">Собрать описание</button>'
+                         '<button type="button" CLIENT="rv-cvpieces" data-key="%s"'
+                         ' CLIENT="Отметить готовые фразы и собрать из них текст">Кусочки</button>'
+                         '<button type="button" CLIENT="rv-cvscratch" data-key="%s"'
+                         ' CLIENT="Собрать описание заново, другими словами">С нуля</button>'
+                         '</div>' % (_ck, _ck, _ck, _ck))
+
         fields_html.append(
-            '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
+            '<div CLIENT="rv-field%s" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
             ' data-list="%s">'
             '<div CLIENT="rv-fname">%s</div>'
             '<div CLIENT="rv-fedit">'
@@ -799,8 +889,9 @@ def app_review(app_id: int):
             ' CLIENT="Инструкция по переменной">i</button>%s'
             '</div></div>'
             '<div CLIENT="rv-fsrc"><span CLIENT="rv-src">%s</span>'
-            '<span CLIENT="rv-docs">%s</span></div>'
+            '<span CLIENT="rv-docs">%s</span></div>%s%s'
             '</div>' % (
+                conflict_cls,
                 _html.escape(g["key"], quote=True),
                 _html.escape(var_CLIENT, quote=True),
                 _html.escape(vars_all, quote=True),
@@ -816,6 +907,8 @@ def app_review(app_id: int):
                 regen,
                 _html.escape(src),
                 _html.escape(docs_note),
+                cv_picker,
+                conflict_html,
             )
         )
     # Архивную заявку показываем в том виде, как она должна выглядеть по системе:

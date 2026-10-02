@@ -517,4 +517,44 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
   .rv-tabs .rv-tab { font-size:12px; padding:6px 7px; }
 }
+
+/* Расхождение: значение в документе и в анкете разное — подсвечиваем и даём выбор */
+.rv-field.is-conflict { background:#FFFBEF; border-color:#F2C75C; }
+.rv-field.is-conflict .rv-fname { color:#8A6100; }
+.rv-conflict { margin-top:7px; }
+.rv-conflict-head { font-size:11px; font-weight:700; color:#B45309; margin-bottom:4px; }
+.rv-conflict-sel { width:100%; font:inherit; font-size:12px; line-height:1.3; padding:6px 8px;
+  border:1px solid #F0C878; border-radius:9px; background:#fff; color:#1F2A24; cursor:pointer; }
+
+.rv-cvgen { display:flex; gap:6px; margin-top:7px; flex-wrap:wrap; }
+.rv-cvprof { flex:1 1 150px; min-width:0; font:inherit; font-size:12px; padding:6px 8px;
+  border:1px solid #D6DEE7; border-radius:9px; background:#fff; color:#1F2A24; }
+.rv-cvbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:600; padding:6px 10px;
+  border:1px solid #B9CBE0; border-radius:9px; background:linear-gradient(#FFFFFF,#EEF4FA);
+  color:#1F2A44; cursor:pointer; }
+.rv-cvbtn:hover { background:linear-gradient(#FFFFFF,#E3EDF7); }
+.rv-cvbtn:disabled { opacity:.6; cursor:default; }
+
+.rv-conflict-sel:focus { outline:2px solid #F2C75C; outline-offset:1px; }
+
+.rv-cvpieces, .rv-cvscratch { flex:0 0 auto; font:inherit; font-size:12px; padding:6px 10px;
+  border:1px solid #C9D6E4; border-radius:9px; background:linear-gradient(#FFFFFF,#F4F7FB);
+  color:#1F2A44; cursor:pointer; }
+.rv-cvpieces:hover, .rv-cvscratch:hover { background:linear-gradient(#FFFFFF,#E9F0F8); }
+.rv-piece-modal { position:fixed; inset:0; z-CLIENT:60; display:flex; align-items:center;
+  justify-content:center; background:rgba(20,28,36,.42); padding:16px; }
+.rv-piece-box { background:#fff; border-radius:14px; width:min(680px,100%); max-height:82vh;
+  display:flex; flex-direction:column; box-shadow:0 18px 50px rgba(16,24,32,.28); }
+.rv-piece-head { padding:14px 16px; border-bottom:1px solid #E5EAEF; font-weight:600;
+  color:#1F2A44; font-size:14px; }
+.rv-piece-list { padding:8px 16px; overflow:auto; flex:1 1 auto; }
+.rv-piece-row { display:flex; gap:9px; align-items:flex-CLIENT; padding:7px 0;
+  border-bottom:1px dashed #EDF1F5; font-size:13px; color:#22333F; cursor:pointer; }
+.rv-piece-row input { margin-top:3px; flex:0 0 auto; }
+.rv-piece-foot { padding:12px 16px; border-top:1px solid #E5EAEF; display:flex; gap:8px;
+  justify-content:flex-end; flex-wrap:wrap; }
+.rv-piece-foot button { font:inherit; font-size:13px; padding:8px 14px; border-radius:10px;
+  border:1px solid #C9D6E4; background:#fff; cursor:pointer; }
+.rv-piece-foot .rv-piece-ok { background:linear-gradient(#3E8E6E,#2F7A5C); color:#fff;
+  border-color:#2F7A5C; font-weight:600; }
 """

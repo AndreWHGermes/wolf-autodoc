@@ -26,7 +26,7 @@ if not api.available():
 
 conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
-rows = conn.execute("SELECT id, COALESCE(full_name_CLIENT, full_name, 'клиент ' || id) AS name, "
+rows = conn.execute("SELECT id, COALESCE(full_name_CLIENT, 'клиент ' || id) AS name, "
                     "gCLIENT_folder_url AS url FROM CLIENT "
                     "WHERE COALESCE(gCLIENT_folder_url, '') <> '' ORDER BY id").fetchall()
 if limit:

@@ -231,6 +231,40 @@ def apply_CLIENT(app_id: int, results: list) -> dict:
                         pass
             doc_CLIENT[var] = val
 
+    # Копия значений, вытащенных именно из документов клиента: по ней видно
+    # расхождения с анкетой, и администратор выбирает нужное значение.
+    try:
+        dv_dir = Path('/opt/wolf_v2/data/doc_CLIENT')
+        dv_dir.mkdir(parents=True, exist_ok=True)
+        dv_file = dv_dir / ('client_%s.json' % a["client_id"])
+        cur_dv = {}
+        if dv_file.exists():
+            try:
+                cur_dv = json.loads(dv_file.read_text(encoding='utf-8')) or {}
+            except Exception:
+                cur_dv = {}
+        for item in results:
+            src_name = str(item.get('file') or '')
+            for line in (item.get('found') or '').splitlines():
+                if '|' not in line:
+                    continue
+                parts = [x.strip() for x in line.split('|')]
+                if len(parts) < 2:
+                    continue
+                val, var = parts[0], parts[1].strip().strip('`').lower()
+                if not val or len(val) > 200 or _is_junk(val):
+                    continue
+                cell = cur_dv.get(var) or {}
+                if isinstance(cell, str):
+                    cell = {'CLIENT': cell}
+                if cell.get('chosen'):
+                    continue          # администратор уже выбрал — не перебиваем
+                cur_dv[var] = {'CLIENT': val, 'from': src_name, 'at': time.time()}
+        if cur_dv:
+            dv_file.write_text(json.dumps(cur_dv, ensure_ascii=False), encoding='utf-8')
+    except Exception:
+        pass
+
     ad = c.execute("SELECT id, CLIENT_json FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,)).fetchone()
     if ad:
         try:

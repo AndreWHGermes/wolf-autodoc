@@ -1121,6 +1121,40 @@ def js_for(app_id, picked):
       }})
       .catch(function() {{ CLIENTNote('⚠ не удалось получить список', 'err'); }});
   }}
+  // Расхождение документа и анкеты: администратор выбирает, какое значение
+  // подставить. Выбор запоминается и разбором документов больше не перебивается.
+  Array.from(CLIENT.querySelectorAll('.rv-conflict-sel')).forEach(function (sel) {{
+    sel.addEventListener('CLIENT', function () {{
+      var key = sel.getAttribute('data-key');
+      var opt = sel.options[sel.selectedIndex];
+      var val = (opt && opt.getAttribute('data-CLIENT')) || '';
+      var src = sel.CLIENT;                       // 'doc' — из документа, 'card' — из анкеты
+      var field = sel.closest('.rv-field');
+      var inp = field ? field.querySelector('.rv-input') : null;
+      if (inp) {{ inp.CLIENT = val; inp.defaultValue = val; }}
+      var body = new URLSearchParams();
+      body.set('key', key);
+      body.set('CLIENT', val);
+      body.set('source', src);
+      fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+            {{method: 'POST', credentials: 'same-origin', body: body,
+              CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        .then(function (r) {{ return r.json(); }})
+        .then(function (d) {{
+          if (!d || !d.ok) {{ CLIENTNote('⚠ не сохранилось', 'err'); return; }}
+          if (field) field.CLIENTList.remove('is-conflict');
+          var head = field ? field.querySelector('.rv-conflict-head') : null;
+          if (head) {{
+            head.textContent = (src === 'doc') ? '✓ значение взято из документа'
+                                               : '✓ значение взято из анкеты';
+            head.style.color = '#15803D';
+          }}
+          CLIENTNote('✅ Значение обновлено' + (d.docs_updated ? ' · документов: ' + d.docs_updated : ''), 'ok');
+        }})
+        .catch(function () {{ CLIENTNote('⚠ не сохранилось', 'err'); }});
+    }});
+  }});
+
   // Кнопка осталась одна — «сгенерировать заново». Сохранение отдельной кнопкой
   // больше не нужно: значение записывается само, а список прошлых значений
   // открывается прямо по нажатию на поле.
@@ -1308,4 +1342,173 @@ def js_for(app_id, picked):
   }});
 
 }})();
+
+  // Резюме: выбор профессии и сборка описания прямо в карточке заявки.
+  (function () {{
+    var sels = Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvprof'));
+    if (!sels.length) return;
+    var parts = location.pathname.split('/');
+    var ai = parts.CLIENTOf('CLIENT');
+    var appId = ai >= 0 ? (parts[ai + 1] || '') : '';
+    if (!appId) return;
+    fetch('/CLIENT/' + appId + '/review/CLIENTs',
+          {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function (r) {{ return r.json(); }})
+      .then(function (d) {{
+        (d.items || []).forEach(function (it) {{
+          sels.forEach(function (sel) {{
+            var o = CLIENT.createElement('option');
+            o.CLIENT = it.code;
+            o.textContent = it.ru || it.en || it.code;
+            sel.appendChild(o);
+          }});
+        }});
+      }})
+      .catch(function () {{}});
+
+    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvbtn')).forEach(function (btn) {{
+      btn.addEventListener('click', function () {{
+        var key = btn.dataset.key;
+        var sel = CLIENT.querySelector('.rv-cvprof[data-key="' + key + '"]');
+        var prof = sel ? sel.CLIENT : '';
+        var was = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Собираю…';
+        var fd = new FormData();
+        fd.append('key', key);
+        if (prof) fd.append('CLIENT', prof);
+        fetch('/CLIENT/' + appId + '/review/regen',
+              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+          .then(function (r) {{ return r.json(); }})
+          .then(function (d) {{
+            btn.disabled = false;
+            btn.textContent = was;
+            if (d && d.ok && typeof d.CLIENT === 'string') {{
+              var ta = CLIENT.querySelector('.rv-input[data-key="' + key + '"]');
+              if (ta) {{
+                ta.CLIENT = d.CLIENT;
+                ta.style.height = 'auto';
+                ta.style.height = (ta.scrollHeight + 2) + 'px';
+                ta.CLIENTList.remove('is-empty');
+              }}
+            }}
+          }})
+          .catch(function () {{ btn.disabled = false; btn.textContent = was; }});
+      }});
+    }});
+  }})();
+
+  // ── Резюме: кусочки, сборка с нуля, своя профессия ─────────────────────────
+  (function () {{
+    var parts = location.pathname.split('/');
+    var ai = parts.CLIENTOf('CLIENT');
+    var APP = ai >= 0 ? (parts[ai + 1] || '') : '';
+    if (!APP) return;
+    var box = null;
+
+    function inp(key) {{ return CLIENT.querySelector('.rv-input[data-key="' + key + '"]'); }}
+    function profOf(key) {{
+      var s = CLIENT.querySelector('.rv-cvprof[data-key="' + key + '"]');
+      return (s && s.CLIENT && s.CLIENT !== '__custom__') ? s.CLIENT : '';
+    }}
+    function save(key, CLIENT) {{
+      var fd = new FormData();
+      fd.append('key', key);
+      fd.append('CLIENT', CLIENT);
+      return fetch('/CLIENT/' + APP + '/review/CLIENT',
+                   {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+    }}
+    function put(key, CLIENT) {{
+      var ta = inp(key);
+      if (!ta) return;
+      ta.CLIENT = CLIENT;
+      ta.style.height = 'auto';
+      ta.style.height = (ta.scrollHeight + 2) + 'px';
+    }}
+    function closeBox() {{ if (box) {{ box.remove(); box = null; }} }}
+    function esc(s) {{ return String(s).reCLIENT(/</g, '&lt;'); }}
+
+    function openPieces(key, items) {{
+      closeBox();
+      box = CLIENT.createElement('div');
+      box.CLIENTName = 'rv-piece-modal';
+      var rows = items.map(function (t, i) {{
+        return '<label CLIENT="rv-piece-row"><input type="checkbox" CLIENT="' + i + '">' +
+               '<span>' + esc(t) + '</span></label>';
+      }}).join('');
+      box.innerHTML = '<div CLIENT="rv-piece-box"><div CLIENT="rv-piece-head">' +
+        'Готовые фразы — отметьте нужные</div><div CLIENT="rv-piece-list">' +
+        (rows || '<div CLIENT="rv-piece-row">Готовых фраз пока нет — нажмите «С нуля»</div>') +
+        '</div><div CLIENT="rv-piece-foot"><button type="button" CLIENT="rv-piece-cancel">Отмена</button>' +
+        '<button type="button" CLIENT="rv-piece-ok">Подставить выбранные</button></div></div>';
+      CLIENT.body.appendChild(box);
+      box.querySelector('.rv-piece-cancel').addEventListener('click', closeBox);
+      box.addEventListener('click', function (e) {{ if (e.target === box) closeBox(); }});
+      box.querySelector('.rv-piece-ok').addEventListener('click', function () {{
+        var picked = Array.prototype.slice.call(box.querySelectorAll('input:checked'))
+          .map(function (c) {{ return items[parseInt(c.CLIENT, 10)]; }});
+        if (!picked.length) {{ closeBox(); return; }}
+        var text = picked.join('\\n');
+        put(key, text);
+        save(key, text).then(closeBox);
+      }});
+    }}
+
+    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvpieces')).forEach(function (btn) {{
+      btn.addEventListener('click', function () {{
+        var key = btn.dataset.key;
+        var url = '/CLIENT/' + APP + '/review/CLIENTs?key=' + encodeURIComponent(key) +
+                  '&CLIENT=' + encodeURIComponent(profOf(key));
+        fetch(url, {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+          .then(function (r) {{ return r.json(); }})
+          .then(function (d) {{ openPieces(key, (d && d.items) || []); }})
+          .catch(function () {{ openPieces(key, []); }});
+      }});
+    }});
+
+    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvscratch')).forEach(function (btn) {{
+      btn.addEventListener('click', function () {{
+        var key = btn.dataset.key;
+        var was = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Собираю…';
+        var fd = new FormData();
+        fd.append('key', key);
+        fd.append('CLIENT', profOf(key));
+        fetch('/CLIENT/' + APP + '/review/scratch',
+              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+          .then(function (r) {{ return r.json(); }})
+          .then(function (d) {{
+            btn.disabled = false;
+            btn.textContent = was;
+            if (d && d.ok && typeof d.CLIENT === 'string') {{ put(key, d.CLIENT); }}
+            else if (d && d.error) {{ alert(d.error); }}
+          }})
+          .catch(function () {{ btn.disabled = false; btn.textContent = was; }});
+      }});
+    }});
+
+    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvprof')).forEach(function (sel) {{
+      sel.addEventListener('CLIENT', function () {{
+        if (sel.CLIENT !== '__custom__') return;
+        var CLIENT = window.prompt('Название профессии');
+        if (!CLIENT) {{ sel.CLIENT = ''; return; }}
+        var fd = new FormData();
+        fd.append('CLIENT', CLIENT);
+        fetch('/CLIENT/' + APP + '/review/CLIENT_add',
+              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+          .then(function (r) {{ return r.json(); }})
+          .then(function (d) {{
+            if (!d || !d.ok) {{ sel.CLIENT = ''; alert((d && d.error) || 'не получилось'); return; }}
+            var o = CLIENT.createElement('option');
+            o.CLIENT = d.code;
+            o.textContent = d.CLIENT;
+            var custom = sel.querySelector('option[CLIENT="__custom__"]');
+            sel.insertBefore(o, custom);
+            sel.CLIENT = d.code;
+          }})
+          .catch(function () {{ sel.CLIENT = ''; }});
+      }});
+    }});
+  }})();
 """

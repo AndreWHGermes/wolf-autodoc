@@ -47,6 +47,31 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
         log.warning("сборка значений %s: %s", tpl_code, e)
         CLIENT = {}
 
+    # Настоящая справка клиента сильнее любого ранее зафиксированного значения:
+    # если она появилась, сумма и дата остатка берутся из неё, а не из генерации.
+    try:
+        if "bank_CLIENTment" in (tpl_code or ""):
+            from CLIENT.CLIENT import read_client_bank_CLIENTment, _num2CLIENT_en, _fmt_CLIENT
+            _real = read_client_bank_CLIENTment((dict(client_row) or {}).get("id"))
+            _amt = _real.get("balance_rub")
+            if _amt:
+                _amt_txt = str(_amt).reCLIENT("\u00a0", "").reCLIENT(" ", "").reCLIENT(",", ".")
+                _amt_fmt = _fmt_CLIENT(_amt)
+                doc_CLIENT["balance_rub"] = _amt_fmt
+                CLIENT["balance_rub"] = _amt_fmt
+                if _real.get("balance_date"):
+                    doc_CLIENT["balance_date"] = _real["balance_date"]
+                    CLIENT["balance_date"] = _real["balance_date"]
+                try:
+                    _int = int(float(_amt_txt.reCLIENT(",", ".")))
+                    _kop = int(round((float(_amt_txt.reCLIENT(",", ".")) - _int) * 100))
+                    CLIENT["balance_CLIENT"] = _num2CLIENT_en(_int)
+                    doc_CLIENT["balance_CLIENT"] = CLIENT["balance_CLIENT"]
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
     # Номер, Ref., карта, счёт и остаток фиксируем при первой сборке: дальше они
     # берутся из документа как есть. Перевыпустить номер можно только вручную —
     # кубиком в карточке заявки, если номер вышел некорректным.
@@ -57,6 +82,15 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
                   "balance_rub", "balance_CLIENT", "doc_date"):
             if CLIENT.get(k) and not doc_CLIENT.get(k):
                 fixed[k] = CLIENT[k]
+        # остальные подставленные значения тоже сохраняем: иначе в карточке заявки
+        # поля выглядят незаполненными, хотя в документе текст уже стоит
+        for k, v in CLIENT.items():
+            if k == "doc_CLIENT" or k in fixed or k in doc_CLIENT:
+                continue
+            if v is None or str(v).strip() == "":
+                continue
+            if isinstance(v, (str, int, float)):
+                fixed[k] = v
         if fixed:
             merged = dict(doc_CLIENT)
             merged.update(fixed)
@@ -67,8 +101,10 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
                     doc_row.get("id") if hasattr(doc_row, "get") else "?", str(e)[:120])
 
     html = html_path.read_text(encoding="utf-8")
+    # Незаполненные переменные в готовом документе не показываем: в резюме и справках
+    # пустые блоки (например, второе место работы) должны просто отсутствовать.
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                    lambda m: str(CLIENT.get(m.group(1)) or m.group(0)), html)
+                    lambda m: str(CLIENT.get(m.group(1)) or ''), html)
     tmp = html_path.parent / ("filled_%s.html" % app_id)
     tmp.write_text(filled, encoding="utf-8")
 
