@@ -306,6 +306,7 @@ input[type="submit"], input[type="button"], input[type="reset"],
 .prod-info-btn, .random-btn, .send-final-btn, .suggest-btn, .tb-btn, .tpl-gen-btn,
 .tpl-save-btn, .vm-btn, .tpl-btn, .btn-primary, .var-dice, .var-today,
 .paper-btn, .paper-ok, .paper-dl, .paper-big, .paper-close, .invite-btn, .copy-btn,
+.app-text-btn, .tpl-pdf-btn, .verdict-btn, .doc-verdict,
 .hamburger, .menu-btn, .stage-toggle {
   box-shadow: var(--btn-shadow);
   transition: box-shadow .12s ease, transform .06s ease, background .12s ease, color .12s ease,
@@ -318,7 +319,8 @@ input[type="submit"]:hover:not(:disabled), input[type="button"]:hover:not(:disab
 .from-write-btn:hover, .ls-btn:hover, .prod-info-btn:hover, .random-btn:hover,
 .send-final-btn:hover:not(:disabled), .suggest-btn:hover, .tb-btn:hover, .tpl-gen-btn:hover,
 .tpl-save-btn:hover, .vm-btn:hover, .tpl-btn:hover, .btn-primary:hover,
-.var-dice:hover, .var-today:hover, .invite-btn:hover, .copy-btn:hover {
+.var-dice:hover, .var-today:hover, .invite-btn:hover, .copy-btn:hover,
+.app-text-btn:hover, .tpl-pdf-btn:hover, .verdict-btn:hover, .doc-verdict:hover {
   box-shadow: var(--btn-shadow-hover);
 }
 
@@ -328,7 +330,8 @@ input[type="submit"]:active, input[type="button"]:active,
 .from-write-btn:active, .ls-btn:active, .prod-info-btn:active, .random-btn:active,
 .send-final-btn:active:not(:disabled), .suggest-btn:active, .tb-btn:active,
 .tpl-gen-btn:active, .tpl-save-btn:active, .vm-btn:active, .tpl-btn:active, .btn-primary:active,
-.var-dice:active, .var-today:active, .invite-btn:active, .copy-btn:active {
+.var-dice:active, .var-today:active, .invite-btn:active, .copy-btn:active,
+.app-text-btn:active, .tpl-pdf-btn:active, .verdict-btn:active, .doc-verdict:active {
   transform: translateY(1px);
   box-shadow: var(--btn-shadow-press);
 }

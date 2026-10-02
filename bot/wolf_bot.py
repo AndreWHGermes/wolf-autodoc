@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import secrets
 import sqlite3
 import sys
@@ -403,7 +404,7 @@ def _write_CLIENT_text(app_id: int, body: str, form: dict, user) -> None:
         "Стоимость: " + (str(form.get("price_idr")) + " IDR" if form.get("price_idr") else "не указана"),
         "Ссылка на Google CLIENT: " + ((form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "—")),
         "Менеджер: " + ((user["full_name"] or user["username"] or str(user["telegram_id"])) if user else "—"),
-        "Дата приёма: " + CLIENT.CLIENT.now().strftime("%d.%m.%Y %H:%M"),
+        "Дата приёма: " + CLIENT.now().strftime("%d.%m.%Y %H:%M"),
         "",
         "КОММЕНТАРИЙ (свободный текст заявки):",
         "-" * 60,
@@ -535,7 +536,7 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     bank = ""
     _gd = form.get("gCLIENT_folder_url") or form.get("gCLIENT_url") or ""
     try:
-        from ai_parser import detect_bank_from_CLIENT, bank_CLIENT_from_CLIENT
+        from bot.ai_parser import detect_bank_from_CLIENT, bank_CLIENT_from_CLIENT
         bank = detect_bank_from_CLIENT(_gd)
         if bank:
             conn.execute("UPDATE CLIENT SET bank_name=? WHERE id=?",
@@ -639,7 +640,7 @@ def _apply_CLIENT(app_id: int, CLIENT_id: int) -> None:
         cl = conn.execute("SELECT gCLIENT_folder_url FROM CLIENT WHERE id=?",
                           (client_id,)).fetchone()
         try:
-            from ai_parser import detect_bank_from_CLIENT
+            from bot.ai_parser import detect_bank_from_CLIENT
             bank = detect_bank_from_CLIENT(cl["gCLIENT_folder_url"] if cl else "")
         except Exception:
             bank = ""
@@ -791,7 +792,7 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
                 else:
                     # 2) иначе — генерируем по должности из карточки клиента
                     try:
-                        from ai_parser import generate_duties, duties_to_plain
+                        from bot.ai_parser import generate_duties, duties_to_plain
                         _pos = (client["position"] if "position" in client.keys() else "") or ""
                         _co = (client["company_name"] if "company_name" in client.keys() else "") or ""
                         CLIENT["CLIENT_list"] = duties_to_plain(
@@ -809,7 +810,7 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
             # банковские справки — строго на английском: кириллицу транслитерируем
             if "bank_CLIENTment" in code or "1year" in code.lower():
                 try:
-                    from ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
+                    from bot.ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
                                            format_CLIENT_en, parse_CLIENT)
                     for _k in list(_html_CLIENT.keys()):
                         _v = _html_CLIENT[_k]
@@ -1087,7 +1088,7 @@ def cmd_help(chat_id: int, from_id: str) -> None:
          "Обязательно:\n"
          "• ФИО клиента ИЛИ ссылка на папку Google CLIENT\n"
          "• продукт (C1, C1-EXT)\n"
-         "• стоимость в IDR\n\n"
+         "• стоимость в IDR (по желанию)\n\n"
          "Остальное — по желанию. Если чего-то не хватит, бот подскажет, что дослать.")
 
 
@@ -1150,7 +1151,12 @@ def handle_update(upd: dict) -> None:
         cmd_invite_manager(chat_id, from_id); return
 
     # заявка
-    if text.CLIENTswith("/new") or "ФИО полностью:" in text or "ФИО:" in text:
+    # Заявку принимаем и БЕЗ служебного /new: если менеджер просто прислал ссылку
+    # на папку Google CLIENT (или продукт отдельной строкой) — это уже заявка.
+    _CLIENT_like = "CLIENT.google.com" in text
+    _CLIENT_like = bool(find_CLIENT_id(text)) if len(text) < 400 else False
+    if (text.CLIENTswith("/new") or "ФИО полностью:" in text or "ФИО:" in text
+            or _CLIENT_like or _CLIENT_like):
         user = find_user(from_id)
         if not user or user["role"] == "CLIENTed":
             send(chat_id, "❌ Вы не в системе.")
@@ -1195,7 +1201,10 @@ def handle_update(upd: dict) -> None:
         # который читает текст и раскладывает данные по полям карточки клиента.
         if len([k for k, v in form.items() if v]) < 4:
             try:
-                from ai_parser import parse_free_form
+                try:
+                    from bot.ai_parser import parse_free_form
+                except ImportError:
+                    from bot.ai_parser import parse_free_form
                 _codes = [r["code"] for r in db().execute(
                     "SELECT code FROM CLIENT ORDER BY id").fetchall()]
                 ai = parse_free_form(body, _codes)
@@ -1229,6 +1238,13 @@ def handle_update(upd: dict) -> None:
         # Обязательны ровно две вещи: валидная ссылка на папку Google CLIENT и тип продукта.
         # Без папки неоткуда взять данные клиента, без продукта непонятно, какие документы делать.
         _CLIENT_in = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
+        # Ссылку на папку менеджер часто присылает отдельной строкой — парсер её не видит,
+        # вытаскиваем прямо из текста.
+        if not _CLIENT_in or "CLIENT.google.com" not in _CLIENT_in:
+            _dm = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", body)
+            if _dm:
+                _CLIENT_in = _dm.group(0).rstrip(".,;)]}")
+                form["gCLIENT_url"] = _CLIENT_in
         _CLIENT_ok = bool(_CLIENT_in) and ("CLIENT.google.com" in _CLIENT_in)
         _prod_code = (form.get("CLIENT_name") or "").strip()
         _problems = []
@@ -1303,8 +1319,7 @@ def handle_update(upd: dict) -> None:
         if not CLIENT_ok:
             prod_label = "⚠️ НЕ РАСПОЗНАН"
             _missing.append(f"продукт (доступные: {', '.join(codes) or '—'})")
-        if not int(form.get("price_idr") or 0):
-            _missing.append("стоимость в IDR")
+        # стоимость — необязательное поле: пишем её, если менеджер указал
         if not _CLIENT_in:
             _missing.append("ссылка на папку Google CLIENT "
                             "(из неё подтянутся ФИО, паспорт, банк)")

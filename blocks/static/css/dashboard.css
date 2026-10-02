@@ -359,3 +359,40 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 
 .badge.rej { background:#FEE2E2; color:#B91C1C; border:1px solid #FCA5A5; font-weight:600; }
 .badge.fill-ok { background:#DCFCE7; color:#15803D; }
+
+/* ── Блок 3 «Входные данные заявки»: компактная табличка ──────────────────
+   Название поля — как мини-заголовок: полужирное, тёмно-зелёное, на ровной
+   светло-зелёной подложке, которая тянется по всей ячейке и не обрывается. */
+#stage-3 .ui-card-body { padding: 2px 12px 10px; }
+#stage-3 .kv-table { width: 100%; border-collapse: separate; border-spacing: 0 3px; }
+#stage-3 .kv-table tr { background: transparent; }
+#stage-3 .kv-table td { vertical-align: middle; padding: 5px 12px; }
+#stage-3 .kv-table td.kv-key {
+  width: 30%; white-space: normal; overflow: visible; text-overflow: clip;
+  background: #E7F6EC; border-radius: 7px 0 0 7px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+  font-size: 11.5px; font-weight: 700; color: #1E3A2A; letter-spacing: .2px;
+}
+#stage-3 .kv-table td.kv-key:last-child { border-radius: 7px; }
+#stage-3 .kv-table td.kv-key + td.kv-val { background: #F7FBF8; border-radius: 0 7px 7px 0; }
+#stage-3 .kv-table td.kv-val { font-size: 12.5px; color: #131C17; }
+
+/* «Текст заявки» — такая же зелёная кнопка, как все остальные */
+.app-text-btn {
+  margin-left: 10px; padding: 6px 14px; border: none; border-radius: 10px;
+  font-size: 12.5px; font-weight: 700; color: #FFFFFF; cursor: pointer;
+  background: linear-gradient(135deg, #0E9F6E, #15B07A);
+}
+.app-text-btn:hover { background: linear-gradient(135deg, #0C8C60, #0E9F6E); }
+
+/* Окно с текстом заявки — «блокнот» */
+.app-text-pre {
+  margin: 0; padding: 14px 16px; max-height: 60vh; overflow: auto;
+  background: #FBFDFC; border: 1px solid #DCE7E0; border-radius: 10px;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word; color: #22322A;
+}
+
+/* Пояснение под кнопкой отправки в блоке 6 */
+.send-hint { margin: 8px 0 6px; font-size: 12.5px; color: #4B5563; }
+.send-hint b { color: #14663A; }

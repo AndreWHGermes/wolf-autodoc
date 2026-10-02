@@ -1973,7 +1973,7 @@ def app_doc_preview_pdf(app_id: int, template_id: int):
     CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=?", (template_id,))
     CLIENT = json.loads(CLIENT.form.get("CLIENT_json") or "{}")
     try:
-        from ai_parser import translit_ru, CLIENT_in_CLIENT_en, format_CLIENT_en, parse_CLIENT
+        from bot.ai_parser import translit_ru, CLIENT_in_CLIENT_en, format_CLIENT_en, parse_CLIENT
         for _k in list(CLIENT.keys()):
             v = CLIENT[_k]
             if isinstance(v, str) and any("а" <= c.lower() <= "я" or c.lower() == "ё" for c in v):
@@ -2120,7 +2120,7 @@ def app_doc_edit(app_id: int, template_id: int):
         # банковские справки — строго английский: кириллицу транслитерируем
         if "bank_CLIENTment" in (tpl.get("code") or ""):
             try:
-                from ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
+                from bot.ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
                                        format_CLIENT_en, parse_CLIENT)
                 for _k in list(_hv.keys()):
                     if isinstance(_hv[_k], str) and any(
