@@ -24,6 +24,12 @@ import re
 from core import db
 
 
+# Зависимые переменные: считаются сами от других значений, в панели не показываются.
+# Начало периода = дата оформления минус 3 или 12 месяцев; сумма прописью = из суммы
+# цифрами; полная дата = из короткой. Руками их править нельзя — разъедутся.
+DEPENDENT = {"CLIENT_from", "balance_CLIENT", "date_full"}
+
+
 # Числовые и кодовые поля: склеиваем по значению только при полном совпадении,
 # случайные совпадения чисел и кодов здесь недопустимы.
 NO_VALUE_MERGE = {
@@ -145,6 +151,9 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     by_label = {}
     for it in items:
         nm = str(it["name"] or "")
+        if nm in DEPENDENT:
+            # зависимая переменная: считается сама, в панели не нужна
+            continue
         if nm in SHARED_NAMES:
             key = "sh:" + (_norm(it["label"]) or nm)
         else:

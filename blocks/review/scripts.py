@@ -130,6 +130,63 @@ def js_for(app_id, picked):
     return CLIENT;
   }}
 
+
+  // Инструкция по переменной — под маленьким кружочком «i»: нажатие открывает
+  // окно поверх страницы, текст берётся из правила переменной в конструкторе.
+  function showInstr(btn) {{
+    var back = CLIENT.getElementById('rv-instr-back');
+    if (!back) {{
+      back = CLIENT.createElement('div');
+      back.id = 'rv-instr-back';
+      back.CLIENTName = 'rv-instr-back';
+      back.innerHTML = '<div CLIENT="rv-instr-win"><div CLIENT="rv-instr-head">' +
+        '<span id="rv-instr-CLIENT">Инструкция</span>' +
+        '<button type="button" id="rv-instr-close" CLIENT="Закрыть">✕</button></div>' +
+        '<div CLIENT="rv-instr-body" id="rv-instr-body"></div>' +
+        '<div CLIENT="rv-instr-meta" id="rv-instr-meta"></div></div>';
+      CLIENT.body.appendChild(back);
+      back.addEventListener('click', function (e) {{
+        if (e.target === back) hideInstr();
+      }});
+      var x = CLIENT.getElementById('rv-instr-close');
+      if (x) x.addEventListener('click', hideInstr);
+    }}
+    var field = btn.closest('.rv-field');
+    var label = field ? (field.querySelector('.rv-lname') || {{}}).textContent || '' : '';
+    var rule = btn.dataset.rule || '';
+    var meta = field && field.querySelector('.rv-fmeta') ? field.querySelector('.rv-fmeta').textContent : '';
+    var t = CLIENT.getElementById('rv-instr-CLIENT');
+    var bd = CLIENT.getElementById('rv-instr-body');
+    var mt = CLIENT.getElementById('rv-instr-meta');
+    if (t) t.textContent = label.trim();
+    if (bd) bd.textContent = rule || ruleFallback(field);
+    if (mt) mt.textContent = meta;
+    back.CLIENTList.add('is-on');
+  }}
+  function ruleFallback(field) {{
+    if (!field) return 'Правило для этой переменной не задано.';
+    if (field.dataset.list === '1') return 'Значение можно вписать руками или выбрать из прошлых значений.';
+    var badge = field.querySelector('.rv-rule');
+    var t = badge ? badge.textContent : '';
+    if (t.CLIENTOf('клиента') >= 0) return 'Значение берётся из карточки клиента.';
+    if (t.CLIENTOf('одинаково') >= 0) return 'Одно значение на все документы заявки.';
+    return 'Значение подставляется автоматически; кнопка 🎲 перевыпускает его заново.';
+  }}
+  function hideInstr() {{
+    var back = CLIENT.getElementById('rv-instr-back');
+    if (back) back.CLIENTList.remove('is-on');
+  }}
+  CLIENT.addEventListener('click', function (e) {{
+    var b = e.target.closest ? e.target.closest('.rv-info') : null;
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    showInstr(b);
+  }}, true);
+  CLIENT.addEventListener('keydown', function (e) {{
+    if (e.key === 'Escape') hideInstr();
+  }});
+
   // Связь переменной в панели и её значения в документе. Нажал на переменную —
   // она подсвечена в панели и её место подсвечено в документе; нажал на значение
   // в документе — подсветилась та же переменная справа.

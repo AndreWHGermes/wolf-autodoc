@@ -615,9 +615,12 @@ def app_review(app_id: int):
             '<div CLIENT="rv-flabel">%s%s</div>'
             '<div CLIENT="rv-fedit">'
             '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
-            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">%s'
+            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">'
+            '<div CLIENT="rv-acts">'
+            '<button type="button" CLIENT="rv-info" data-key="%s" data-rule="%s"'
+            ' CLIENT="Инструкция по переменной">i</button>%s'
             '</div>'
-            '<div CLIENT="rv-frule">%s</div>'
+            '</div>'
             '<div CLIENT="rv-fmeta">%s</div>'
             '</div>' % (
                 _html.escape(g["key"], quote=True),
@@ -631,8 +634,9 @@ def app_review(app_id: int):
                 " is-empty" if not g["filled"] else "",
                 _html.escape(str(g["CLIENT"])),
                 _html.escape(g["key"], quote=True),
+                _html.escape(g["key"], quote=True),
+                _html.escape((g.get("rule_note") or "")[:1200], quote=True),
                 regen,
-                _html.escape((g.get("rule_note") or "")[:220]),
                 _html.escape(" · ".join(meta_bits)),
             )
         )

@@ -330,4 +330,27 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 /* Подпись переменной и её правило: название, бейдж-правило, кнопка кубика */
 .rv-flabel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .rv-frule { font-size:11px; color:#7A8A80; line-height:1.35; margin-top:3px; }
+
+/* Кружочек «i» у переменной: инструкция показывается окном поверх страницы */
+/* Справа от поля — две ячейки по высоте: сверху информация, снизу кубик */
+.rv-fedit { display:flex; align-items:stretch; gap:6px; }
+.rv-fedit .rv-input { flex:1; min-width:0; }
+.rv-acts { display:grid; grid-template-rows:1fr 1fr; gap:3px; flex:0 0 auto; width:30px; }
+.rv-info, .rv-acts .rv-act { width:100%; height:100%; min-height:16px; border-radius:9px;
+           border:1px solid #BFD9C8; background:#EFF7F1; color:#15803D; cursor:pointer;
+           font-size:11px; font-weight:700; line-height:1; padding:0;
+           display:flex; align-items:center; justify-content:center; }
+.rv-info { font-family:Georgia, serif; font-style:italic; }
+.rv-info:hover, .rv-acts .rv-act:hover { background:#DFF0E5; }
+.rv-instr-back { position:fixed; inset:0; background:rgba(17,24,39,.45); z-CLIENT:88;
+                 display:none; align-items:center; justify-content:center; padding:16px; }
+.rv-instr-back.is-on { display:flex; }
+.rv-instr-win { background:#fff; border-radius:14px; max-width:620px; width:100%;
+                max-height:70vh; overflow:auto; box-shadow:0 24px 70px rgba(16,24,32,.35); }
+.rv-instr-head { display:flex; align-items:center; gap:10px; padding:12px 14px;
+                 border-bottom:1px solid #E9F1EC; font-weight:700; color:#14663A; }
+.rv-instr-head button { margin-left:auto; border:0; background:none; font-size:20px; line-height:1;
+                        color:#6B7C70; cursor:pointer; }
+.rv-instr-body { padding:14px; font-size:13px; line-height:1.55; color:#27303F; white-space:pre-wrap; }
+.rv-instr-meta { padding:0 14px 14px; font-size:11.5px; color:#7A8A80; }
 """

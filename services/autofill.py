@@ -31,11 +31,40 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     if not html_path.exists():
         return False
 
+    # Значения, уже сохранённые в документе: номер документа, Ref., маска карты.
+    # Они не должны пересчитываться — номер делается один раз при выпуске.
+    doc_CLIENT = {}
     try:
-        CLIENT = build_template_CLIENT(dict(client_row), tpl_code, dict(app_row)) or {}
+        raw = doc_row.get("CLIENT_json") if hasattr(doc_row, "get") else None
+        if raw:
+            doc_CLIENT = json.loads(raw) or {}
+    except Exception:
+        doc_CLIENT = {}
+
+    try:
+        CLIENT = build_template_CLIENT(dict(client_row), tpl_code, doc_CLIENT) or {}
     except Exception as e:
         log.warning("сборка значений %s: %s", tpl_code, e)
         CLIENT = {}
+
+    # Номер, Ref., карта, счёт и остаток фиксируем при первой сборке: дальше они
+    # берутся из документа как есть. Перевыпустить номер можно только вручную —
+    # кубиком в карточке заявки, если номер вышел некорректным.
+    try:
+        from core import db as _db
+        fixed = {}
+        for k in ("doc_no", "ref_no", "card_mask", "account_no", "contract_no",
+                  "balance_rub", "balance_CLIENT", "doc_date"):
+            if CLIENT.get(k) and not doc_CLIENT.get(k):
+                fixed[k] = CLIENT[k]
+        if fixed:
+            merged = dict(doc_CLIENT)
+            merged.update(fixed)
+            _db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT_json=? WHERE id=?",
+                         (json.dumps(merged, ensure_ascii=False), doc_row["id"]))
+    except Exception as e:
+        log.warning("не удалось зафиксировать номера документа %s: %s",
+                    doc_row.get("id") if hasattr(doc_row, "get") else "?", str(e)[:120])
 
     html = html_path.read_text(encoding="utf-8")
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
