@@ -49,6 +49,14 @@ def create_app() -> Flask:
         module = importlib.import_module(module_path)
         app.register_blueprint(getattr(module, attr))
 
+    # Эндпоинт живости: /health отдаёт состояние сервиса и базы.
+    # Нужен внешнему мониторингу, чтобы падение замечалось сразу.
+    try:
+        from CLIENTs.shared import health as _health
+        _health.register(app)
+    except Exception as _e:  # pragma: no cover
+        print("health не подключён:", _e)
+
     @app.errorhandler(Exception)
     def _log_exception(e):  # noqa: ANN001
         """Ошибку запроса пишем в лог с трассировкой, а не молча отдаём 500."""
