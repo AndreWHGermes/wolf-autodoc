@@ -424,13 +424,13 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
                   background:#fff; border:1px solid #E1EAE4; border-radius:12px;
                   box-shadow:0 16px 40px rgba(16,24,32,.16); padding:6px; }
 .rv-opt { display:flex; align-items:center; gap:9px; width:100%; text-align:left;
-          border:0; background:none; border-radius:9px; padding:8px 10px; cursor:pointer;
-          font:inherit; font-size:12.5px; color:#243027; }
+          border:0; background:none; box-shadow:none; outline:none; border-radius:8px;
+          padding:8px 10px; cursor:pointer; font:inherit; font-size:12.5px; color:#243027; }
 .rv-opt:hover { background:#F2F8F4; }
 .rv-opt-name { flex:1; min-width:0; }
 .rv-opt-docs { font-size:11px; color:#8C9A91; white-space:nowrap; }
-.rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; background:#FFF0BE;
-              border:1px solid #E9C543; border-radius:999px; padding:1px 8px; white-space:nowrap; }
+.rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; white-space:nowrap;
+              background:none; border:0; }
 /* Продукт, который стоит в заявке, подсвечен внутри списка */
 .rv-opt.is-current { background:#FFF6D6; }
 .rv-opt.is-current:hover { background:#FFF0BE; }
@@ -442,4 +442,24 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-CLIENT-btn:hover { background:#F5FAF7; }
 .rv-CLIENT-input { font:inherit; font-size:12px; border:1px solid #DFE8E3; border-radius:9px;
                   padding:6px 9px; min-width:300px; }
+
+/* Жёлтый маркер: чем именно является заявка и что просил менеджер */
+.rv-mark-yellow { background:#FFF3B0; border-radius:4px; padding:1px 6px; color:#5A4A00;
+                  box-shadow:0 0 0 1px #F0DE86 inset; }
+
+/* Ряд шагов: кнопки одного размера, вместе с кнопкой Google Диска */
+.rv-CLIENT { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+/* Три кнопки одного размера в одну строку: ровные колонки одинаковой ширины */
+.rv-head .rv-CLIENT { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:8px; align-items:center; margin-top:10px; margin-left:0; }
+.rv-CLIENT .rv-CLIENT-box { display:flex; width:100%; }
+.rv-CLIENT .rv-CLIENT-box .rv-CLIENT-btn { width:100%; }
+.rv-CLIENT .rv-auto, .rv-CLIENT .rv-CLIENT-btn { width:auto; min-width:0 !important;
+  max-width:none !important; height:42px; justify-content:flex-CLIENT; white-space:nowrap;
+  padding:0 8px; box-sizing:border-box; font-size:11.5px; }
+.rv-CLIENT .rv-auto .rv-nn svg, .rv-CLIENT .rv-CLIENT-btn svg { flex:0 0 auto; }
+.rv-CLIENT .rv-CLIENT-btn { justify-content:center; }
+.rv-CLIENT .rv-auto-t { flex:1; text-align:left; }
+.rv-CLIENT .rv-auto .rv-auto-dot { margin-left:auto; }
+.rv-CLIENT .rv-CLIENT-box { display:CLIENT-flex; align-items:center; }
 """

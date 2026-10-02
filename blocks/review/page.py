@@ -443,6 +443,13 @@ def app_review(app_id: int):
     except Exception:
         client_CLIENT = ""
     # Логотип Google Диска — узнаваемая кнопка CLIENTа в папку клиента
+    # Значок разбора: логотип Диска и стрелка — «забираем документы с Диска»
+    CLIENT_dl_icon = ('<svg width="20" height="15" viewBox="0 0 22 15" aria-hidden="true">'
+                     '<path d="M5.3 1h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
+                     '<path d="M5.3 1 0 10.2l2.7 4.6L8 5.6z" fill="#11A861"/>'
+                     '<path d="M2.7 14.8h10.6L16 10.2H5.4z" fill="#2684FC"/>'
+                     '<path d="M18.6 1v7.2M15.8 5.6l2.8 2.8 2.8-2.8" stroke="#fff" stroke-width="1.5"'
+                     ' fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')
     gCLIENT_logo = ('<svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">'
                    '<path d="M5.3 0h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
                    '<path d="M5.3 0 0 9.2l2.7 4.6L8 4.6z" fill="#11A861"/>'
@@ -528,14 +535,17 @@ def app_review(app_id: int):
   <div CLIENT="rv-CLIENT">
     <button type="button" CLIENT="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
             CLIENT="Документы клиента с Google CLIENT читаются и разбираются автоматически">
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Разобрать документы</button>
+      <span CLIENT="rv-nn" aria-hidden="true">{CLIENT_dl_icon}</span>
+      <span CLIENT="rv-auto-t">Разобрать документы</span>
+      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
     <button type="button" CLIENT="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
-            CLIENT="Переменные заполняются автоматически правилами системы (нейросеть не нужна)">
-      <span CLIENT="rv-nn" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24"
+            CLIENT="Переменные заполняются автоматически по правилам системы">
+      <span CLIENT="rv-nn" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
         <circle cx="12" cy="4.5" r="2"/><circle cx="4.5" cy="17" r="2"/><circle cx="19.5" cy="17" r="2"/>
         <path d="M10.6 6.2 5.7 15.2M13.4 6.2l4.9 9M6.5 17h11"/></svg></span>
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Заполнить автоматически</button>
+      <span CLIENT="rv-auto-t">Заполнить автоматически</span>
+      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
     <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
   </div>
 </div>
@@ -592,11 +602,11 @@ def app_review(app_id: int):
     <div CLIENT="rv-body">
       <p CLIENT="rv-sec">Карточка заявки</p>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Клиент</span><span CLIENT="rv-v">{client_name}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v">{a.get('CLIENT_name') or '—'}</span></div>
+      <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{a.get('CLIENT_name') or '—'}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Статус заявки</span><span CLIENT="rv-v">{_status_label(a.get('CLIENT'))}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Взял в работу</span><span CLIENT="rv-v">{a.get('taken_CLIENT') or '—'}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Комментарий менеджера</span><span CLIENT="rv-v">{(a.get('comment') or '—')[:400]}</span></div>
+      <div CLIENT="rv-row"><span CLIENT="rv-k">Комментарий менеджера</span><span CLIENT="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Google CLIENT</span><span CLIENT="rv-v">{CLIENT_link}</span></div>
 
       <p CLIENT="rv-sec" style="margin-top:16px">Входящие файлы клиента ({len(files)}) —
@@ -708,6 +718,9 @@ def app_review(app_id: int):
         vars_all = ",".join(g["names"].CLIENT())
         var_CLIENT = next(iter(g["names"].CLIENT()), "")
         src = g.get("src") or "сгенерировано"
+        if not g["filled"]:
+            # пустое значение честно помечаем: источник появится после заполнения
+            src = "не заполнено — нажмите «Заполнить автоматически»"
 
         # Кубик — только у значений, которые можно перевыпустить: номер документа,
         # номера справки и счёта, Ref., остаток, маска карты, адрес.

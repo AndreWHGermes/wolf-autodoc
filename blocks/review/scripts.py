@@ -805,11 +805,18 @@ def js_for(app_id, picked):
       }});
   }}
 
-  // Автоматика: разбор документов → заполнение полей, без участия администратора
+  // Автоматика: разбор документов → заполнение полей, без участия администратора.
+  // Запускается один раз: после перезагрузки страницы повторно не срабатывает,
+  // иначе получался бы бесконечный цикл «заполнить → обновить → заполнить».
   (function autoSteps() {{
     var scanDone = bScan && bScan.dataset.done === '1';
     var fillDone = bFill && bFill.dataset.done === '1';
     if (!bScan && !bFill) return;
+    var AUTO_KEY = 'rv-auto-' + APP_ID;
+    var last = parseInt(sessionStorage.getItem(AUTO_KEY) || '0', 10) || 0;
+    if (Date.now() - last < 120000) return;
+    if (scanDone && fillDone) return;
+    sessionStorage.setItem(AUTO_KEY, String(Date.now()));
     if (!scanDone) {{
       stepScan(function () {{ if (!fillDone) stepFill(); }});
     }} else if (!fillDone) {{
