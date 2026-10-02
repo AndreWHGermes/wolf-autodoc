@@ -25,14 +25,10 @@ def docs_for_client(client_id: int) -> list:
     url = (client.get("gCLIENT_folder_url") or "").strip()
     cache = CACHE_DIR / f"client_{client_id}"
     have = [f for f in cache.rglob("*") if f.is_file()] if cache.is_dir() else []
-    if not have and url and "CLIENT.google.com" in url:
-        cache.mkdir(parents=True, exist_ok=True)
-        try:
-            subprocess.run(["/usr/bin/python3", "-m", "gdown", "--folder", url, "-O", str(cache), "--quiet"],
-                           timeout=300, check=False)
-        except Exception:
-            pass
-        have = [f for f in cache.rglob("*") if f.is_file()]
+    # Скачивание при открытии страницы не запускаем: Google режет частые обращения,
+    # и страница ждала бы минутами. Данные клиента подтягивает разбор документов
+    # в фоне (шаг «Разобрать документы»), после него плитки появляются сами.
+    _ = url
     if not have:
         _nm = (client.get("CLIENT") or client.get("full_name_CLIENT") or "").strip()
         CLIENT = _nm.split()[0].lower() if _nm else ""

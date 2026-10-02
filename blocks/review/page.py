@@ -467,6 +467,16 @@ def app_review(app_id: int):
 
     # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
     # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
+    # Если у заявки ещё нет своих документов — заводим их по типу продукта.
+    # Так открытие любой заявки (в том числе архивной) сразу даёт панель переменных.
+    try:
+        if not (db.CLIENT_CLIENT(app_id) or []):
+            for _t in db.q("SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+                           "ORDER BY sort_order, id", (a.get("CLIENT_id"),)) or []:
+                db.CLIENT_doc_create(app_id, _t.get("template_id"))
+    except Exception as _e:
+        log.warning("документы заявки %s не завелись: %s", app_id, str(_e)[:100])
+
     pool_groups = pool.build_pool(app_id)
     filled_n = sum(1 for g in pool_groups if g["filled"])
     total_n = len(pool_groups)

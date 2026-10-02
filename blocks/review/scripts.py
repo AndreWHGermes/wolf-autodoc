@@ -707,6 +707,9 @@ def js_for(app_id, picked):
 
   function stepRun(btn, url, label, then) {{
     if (!btn) {{ if (then) then(); return; }}
+    // кнопка визуально нажимается сама — видно, что этап пошёл автоматически
+    btn.CLIENTList.add('is-press');
+    setTimeout(function () {{ btn.CLIENTList.remove('is-press'); }}, 460);
     btn.CLIENTList.add('is-busy');
     btn.disabled = true;
     fetch(url, {{method: 'POST', credentials: 'same-origin',

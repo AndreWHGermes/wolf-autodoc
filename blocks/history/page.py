@@ -94,14 +94,6 @@ def page():
             + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("bank_name") or ""))}</div>' if a.get("bank_name") else "")
             + '</div>'
             f'<div CLIENT="hact">'
-            + (('<a CLIENT="btn sm" href="%s" target="_blank" rel="noopener" '
-                'CLIENT="Папка заявки на Google CLIENT">CLIENT</a>'
-                % __import__("html").escape(app_CLIENT.get(a["id"])
-                                            or client_CLIENT.get(a.get("client_id")) or "",
-                                            quote=True))
-               if (app_CLIENT.get(a["id"]) or client_CLIENT.get(a.get("client_id")))
-               else ('<button type="button" CLIENT="btn sm hCLIENT-add" data-app="%s" '
-                     'CLIENT="Прикрепить ссылку на папку Google CLIENT">+ CLIENT</button>' % a["id"]))
             + f'<a CLIENT="btn sm" href="/CLIENT/{a["id"]}/review">Открыть</a>'
             + '</div>'
             "</li>"
