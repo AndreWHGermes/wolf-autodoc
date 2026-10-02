@@ -82,7 +82,7 @@
 /* === Документы: 2 колонки === */
 .docs-section { display:grid; grid-template-columns: 320px 1fr;
                 gap: 12px; margin-bottom: 12px; min-height: 280px; }
-@media(max-width:880px){ .docs-section { grid-template-columns: 1fr; } }
+@media(max-width:880px){ .docs-section { grid-template-columns: minmax(0, 1fr); } }
 .docs-list-wrap { background:#fff; border:1px solid #DCEEE2; border-radius:10px;
                   overflow:hidden; }
 .docs-list-head { padding:9px 12px; background:#F4FAF6;
@@ -420,3 +420,62 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 /* Блок 3: значения, вытащенные из документов Google CLIENT */
 .kv-key-CLIENT { background: #E7F6EC !important; color: #1E3A2A !important; }
 .kv-src { font-size: 10.5px; color: #6B7C70; background: #F1F7F3; border-radius: 4px; padding: 1px 6px; margin-left: 4px; }
+
+/* ═══ МОБИЛЬНАЯ ВЕРСИЯ (телефон) ══════════════════════════════════════════
+   Правила только для узких экранов: ничего не сжимаем в колонки по 2-3
+   символа, широкие блоки переводим в вертикальный стек, таблицы — в одну
+   колонку значений, документ можно прокрутить по горизонтали. */
+@media (max-width: 720px) {
+  /* шапка и хлебные крошки */
+  .crumbs, .tpl-crumbs { flex-wrap: wrap; font-size: 12.5px; }
+  .ui-card-head { flex-wrap: wrap; gap: 6px; }
+
+  /* ── блок 6: состояние, подсказка и кнопка — столбиком ── */
+  .send-CLIENT { flex-direction: column; align-items: stretch; gap: 8px; }
+  .send-CLIENT .send-final-btn { width: 100%; flex: 0 0 auto; }
+  .send-CLIENT, .send-hint { width: 100%; flex: 0 0 auto; }
+  .send-hint { font-size: 12px; line-height: 1.45; }
+
+  /* ── блок 3: название поля не сжимается в столбик из букв ── */
+  #stage-3 .kv-table td.kv-key { width: 40%; white-space: normal; word-break: break-word; }
+  #stage-3 .kv-table td, #stage-3 .ui-card-body { padding-left: 6px; padding-right: 6px; }
+  #stage-3 .kv-table td.kv-val { font-size: 12.5px; }
+
+  /* ── блок действий с Google CLIENT ── */
+  .CLIENT-actions { flex-wrap: wrap; }
+  .CLIENT-actions > * { flex: 1 1 100%; }
+
+  /* ── просмотр документа: документ шире экрана — даём горизонтальную прокрутку ── */
+  .docs-viewer .zp-preview, .docs-viewer-empty { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .docs-viewer .paper-toolbar, .zp-toolbar { flex-wrap: wrap; gap: 6px; }
+
+  /* водяной знак на телефоне — компактнее */
+  .paper-watermark-text { font-size: 20px; padding: 10px 16px; border-width: 4px; letter-spacing: 1px; }
+
+  /* карточки и сетки — в один столбец */
+  .ui-card-body { padding-left: 10px; padding-right: 10px; }
+  .stage-CLIENT { padding: 10px 10px 12px; }
+  table { max-width: 100%; }
+  img, iframe { max-width: 100%; }
+}
+
+@media (max-width: 420px) {
+  #stage-3 .kv-table td.kv-key { width: 45%; font-size: 11px; }
+  .ui-card-head, .stage-CLIENT { font-size: 14px; }
+  .app-comment-flash { padding: 8px 10px; }
+  .paper-watermark-text { font-size: 16px; }
+}
+
+/* Мобильная версия: документ A4 (794px) не должен растягивать страницу —
+   прокрутка идёт ВНУТРИ окна просмотра, сама страница остаётся по ширине экрана. */
+@media (max-width: 880px) {
+  .docs-section, .docs-list-wrap, .docs-viewer { min-width: 0; width: auto; max-width: 100%; }
+  .docs-viewer .zp-preview { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .stage-CLIENT, .ui-card, .ui-card-body { min-width: 0; max-width: 100%; }
+  .docs-viewer .zp-CLIENT { flex-wrap: wrap; gap: 6px; }
+}
+@media (max-width: 720px) {
+  html, body { overflow-x: hidden; }             /* никакой горизонтальной прокрутки всей страницы */
+  .docs-viewer .html-stage { box-shadow: none; }
+  .docs-viewer { border-radius: 8px; }
+}
