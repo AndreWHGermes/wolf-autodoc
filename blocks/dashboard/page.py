@@ -341,50 +341,15 @@ def app_view(app_id: int):
 
     # === АВТО-ГЕНЕРАЦИЯ PDF для всех pending-документов этой заявки ===
     # Срабатывает один раз: если у документа CLIENT='pending' и нет PDF — генерируем сразу
-    pending_docs = [d for d in docs if d["CLIENT"] == "pending" and not d.get("pdf_path")]
-    if pending_docs:
-        try:
-            from core import pdf2html as _pdf2html
-            _cli = db.client_get(a["client_id"]) or {}
-            for _pd in pending_docs:
-                _tpl = tpl_repo.get(_pd["template_id"])
-                if not _tpl:
-                    continue
-                _html_path = Path('/opt/wolf_v2/data/CLIENT') / _tpl["code"] / "template.html"
-                if not _html_path.exists():
-                    continue
-                # дефолтные значения шаблона
-                _vals = {}
-                if _tpl.get("default_CLIENT_json"):
-                    try: _vals = json.loads(_tpl["default_CLIENT_json"])
-                    except: pass
-                # подставим из клиента
-                for _k in ("full_name_CLIENT", "client_name", "name", "CLIENT", "CLIENT",
-                           "address_live", "address_CLIENT", "inn", "CLIENT", "CLIENT"):
-                    if not _vals.get(_k):
-                        _vals[_k] = _cli.get(_k) or _cli.get(_k.reCLIENT("_live", "_reg")) or ""
-                # подставим из raw_payload (bank_name)
-                try:
-                    _rp = json.loads(a["raw_payload"]) if a.get("raw_payload") else {}
-                    for _k in ("bank_name", "bank", "CLIENT", "salary_CLIENT"):
-                        if not _vals.get(_k) and _rp.get(_k):
-                            _vals[_k] = str(_rp[_k])
-                except: pass
-                _html = _html_path.read_text(encoding="utf-8")
-                _filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                                 lambda m: str(_vals.get(m.group(1)) or m.group(0)), _html)
-                _tmp = _html_path.parent / "filled.html"
-                _tmp.write_text(_filled, encoding="utf-8")
-                _out = _app_pdf_path(_tpl, _vals, app_id)
-                _pdf2html.render_pdf(_tmp, _out)
-                db.exec_sql(
-                    "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') WHERE id=?",
-                    (str(_out), _pd["id"]))
-            # обновим docs после генерации
-            docs = db.CLIENT_CLIENT(app_id)
-            flash("Документы автоматически сформированы — можно смотреть", "ok")
-        except Exception as _exc:
-            flash(f"Авто-генерация: {_exc}", "warning")
+    # Авто-сборка PDF идёт В ФОНЕ: раньше она выполнялась прямо здесь,
+    # последовательно по каждому документу, и открытие карточки ждало
+    # 9-40 секунд. Теперь страница отвечает сразу, документы доводятся
+    # отдельным потоком теми же значениями, что и в редакторе.
+    try:
+        from CLIENT.autofill import build_pending_async as _build_async
+        _build_async(app_id)
+    except Exception as _exc:
+        current_app.logger.warning("авто-сборка не запущена для заявки %s: %s", app_id, _exc)
 
     status_label = {"new": ("новая", "amber"), "in_progress": ("в работе", "blue"),
                     "ready": ("готова", "ok"), "sent": ("отправлена", "ok"),
