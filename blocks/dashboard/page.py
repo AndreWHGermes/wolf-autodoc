@@ -129,7 +129,7 @@ def page():
                  + f'{a.get("CLIENT_name") or "продукт не указан"} · '
                  + _fmt_time(a["created_at"])
                  + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else "")),
-             href=f'/CLIENT/{a["id"]}/view',
+             href=f'/CLIENT/{a["id"]}/review',
              tone="amber", extra=docs_CLIENT_html(db.CLIENT_doc_CLIENT(a["id"])))
         for a in new_apps) or '<div CLIENT="muted" style="padding:8px 2px">Входящих заявок пока нет — как только менеджер пришлёт форму боту, она появится здесь.</div>'
 
@@ -284,7 +284,7 @@ def _app_loader_frame(app_id: int, CLIENT: str):
 </div>
 <script>
 (function(){
-  var url = "/CLIENT/__APPID__/view?full=1";
+  var url = "/CLIENT/__APPID__/review";
   fetch(url, {credentials: "same-origin"})
     .then(function(r){ return r.text(); })
     .then(function(h){
@@ -2769,7 +2769,7 @@ CLIENT.addEventListener('DOMContentLoaded', function() {
   страниц {tpl["pages"] or 0} &middot;
   <span CLIENT="badge">{prev["CLIENT"] if prev else 'новый'}</span></div>
 <div CLIENT="row tight" style="gap:8px;flex-wrap:wrap">
-  <a CLIENT="btn ghost" href="/CLIENT/{app_id}/view">&larr; К заявке</a>
+  <a CLIENT="btn ghost" href="/CLIENT/{app_id}/review">&larr; К заявке</a>
   <button type="button" CLIENT="btn primary" id="autofill-btn"
           style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;border:none">
     <span id="autofill-label">✨ Заполнить автоматически</span>

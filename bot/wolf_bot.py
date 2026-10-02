@@ -1196,7 +1196,7 @@ def handle_update(upd: dict) -> None:
                              f"📥 Заявка #{_row['id']} дополнена\n"
                              f"Клиент: {_row['CLIENT'] or ''} {_row['name'] or ''}\n"
                              f"Продукт: {_pcode}\n"
-                             f"Открыть: {BASE_URL}/CLIENT/{_row['id']}/view")
+                             f"Открыть: {BASE_URL}/CLIENT/{_row['id']}/review")
                     return
 
         # Свободная форма записи: если жёсткий шаблон распознал мало полей
@@ -1308,7 +1308,7 @@ def handle_update(upd: dict) -> None:
             (client_id,)).fetchone()
         client_label = " ".join(filter(None, [client_row["CLIENT"] if client_row else "",
                                                client_row["name"] if client_row else ""]))
-        link = f"{BASE_URL}/CLIENT/{app_id}/view"
+        link = f"{BASE_URL}/CLIENT/{app_id}/review"
         is_manager_only = user["role"] == "manager"
 
         # Проверяем, распознан ли продукт: без него документы НЕ создаются

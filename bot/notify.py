@@ -73,7 +73,7 @@ def notify_manager_taken(app_id: int) -> None:
     text = (f"✅ Заявка #{a['id']} принята в работу.\n"
             f"Клиент: {client_label}\n"
             f"Продукт: {a['CLIENT_name'] or '—'}\n"
-            f"Карточка: {BASE_URL}/CLIENT/{a['id']}/view")
+            f"Карточка: {BASE_URL}/CLIENT/{a['id']}/review")
     send(a["manager_tg"], text)
 
 
@@ -87,7 +87,7 @@ def notify_admins_new_app(app_id: int, manager_name: str | None = None) -> None:
             f"Клиент: {client_label}\n"
             f"Продукт: {a['CLIENT_name'] or '—'}\n"
             f"Менеджер: {manager_name or '—'}\n"
-            f"Открыть: {BASE_URL}/CLIENT/{a['id']}/view")
+            f"Открыть: {BASE_URL}/CLIENT/{a['id']}/review")
     conn = _conn()
     rows = conn.execute(
         "SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
@@ -96,7 +96,7 @@ def notify_admins_new_app(app_id: int, manager_name: str | None = None) -> None:
         send(r["telegram_id"], text,
              reply_markup={"CLIENT_keyboard": [[
                  {"text": f"📂 Открыть заявку #{a['id']}",
-                  "url": f"{BASE_URL}/CLIENT/{a['id']}/view"}]]})
+                  "url": f"{BASE_URL}/CLIENT/{a['id']}/review"}]]})
 
 
 def notify_manager_done(app_id: int) -> None:
@@ -107,5 +107,5 @@ def notify_manager_done(app_id: int) -> None:
     client_label = " ".join(filter(None, [a["CLIENT"] or "", a["name"] or ""])) or "—"
     text = (f"📦 Документы по заявке #{a['id']} готовы и отправлены.\n"
             f"Клиент: {client_label}\n"
-            f"Карточка: {BASE_URL}/CLIENT/{a['id']}/view")
+            f"Карточка: {BASE_URL}/CLIENT/{a['id']}/review")
     send(a["manager_tg"], text)

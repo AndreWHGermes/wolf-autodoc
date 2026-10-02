@@ -77,7 +77,7 @@ def page():
             + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("CLIENT") or ""))}</div>' if a.get("CLIENT") else "")
             + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("bank_name") or ""))}</div>' if a.get("bank_name") else "")
             + '</div>'
-            f'<div CLIENT="hact"><a CLIENT="btn sm" href="/CLIENT/{a["id"]}/view">Открыть</a></div>'
+            f'<div CLIENT="hact"><a CLIENT="btn sm" href="/CLIENT/{a["id"]}/review">Открыть</a></div>'
             "</li>"
         )
     items = "".join(items_parts) or '<li CLIENT="muted empty-row" style="padding:8px 4px">Истории пока нет.</li>'

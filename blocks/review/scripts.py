@@ -103,6 +103,44 @@ def js_for(app_id, picked):
     openModal();
     window.dispatchEvent(new Event('resize'));
   }}
+  // ── действия по документам: разбор с Google CLIENT и автозаполнение ──
+  function runAction(btn, url, label, question) {{
+    if (!btn) return;
+    if (question && !window.confirm(question)) return;
+    var was = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = label + '…';
+    CLIENTNote(label + '…', 'work');
+    fetch(url, {{method: 'POST', credentials: 'same-origin',
+                 CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function(r) {{ return r.json().catch(function() {{ return {{}}; }}); }})
+      .then(function(d) {{
+        btn.disabled = false;
+        btn.textContent = was;
+        if (d && d.error) {{ CLIENTNote('⚠ ' + d.error, 'err'); return; }}
+        var tail = (d && d.found !== undefined) ? (' · найдено значений: ' + d.found)
+                 : (d && d.done !== undefined) ? (' · документов собрано: ' + d.done) : '';
+        CLIENTNote('✅ ' + label + ': готово' + tail + '. Обновляю экран…', 'ok');
+        // данные изменились — показываем экран заново, уже с новыми значениями
+        setTimeout(function() {{ location.reload(); }}, 1200);
+      }})
+      .catch(function() {{
+        btn.disabled = false;
+        btn.textContent = was;
+        CLIENTNote('⚠ не удалось выполнить: ' + label, 'err');
+      }});
+  }}
+  var bScan = CLIENT.getElementById('rv-scan');
+  if (bScan) bScan.addEventListener('click', function() {{
+    runAction(bScan, '/CLIENT/' + APP_ID + '/CLIENT-scan', 'Разбор документов',
+              'Прочитать документы клиента с Google CLIENT и обновить значения?');
+  }});
+  var bFill = CLIENT.getElementById('rv-autofill');
+  if (bFill) bFill.addEventListener('click', function() {{
+    runAction(bFill, '/CLIENT/' + APP_ID + '/autofill-all', 'Заполнение по правилам',
+              'Заполнить переменные заново по правилам? Значения будут пересобраны.');
+  }});
+
   if (modal) {{
     modal.addEventListener('click', function(e) {{
       // клик по затемнению вне окна закрывает просмотр

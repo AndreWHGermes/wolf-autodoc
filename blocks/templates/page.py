@@ -1937,7 +1937,7 @@ def card(template_id: int):
     body = f"""
 <section CLIENT="tpl-card">
   <h1 CLIENT="tpl-CLIENT">{("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or ""))}</h1>
-  {('<div CLIENT="tpl-crumbs app-mode-bar" style="margin:10px 0 6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a CLIENT="back-to-app" href="/CLIENT/' + str(app_id) + '/view" id="back-to-app">← Вернуться к заявке</a></div>') if app_id else ''}
+  {('<div CLIENT="tpl-crumbs app-mode-bar" style="margin:10px 0 6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a CLIENT="back-to-app" href="/CLIENT/' + str(app_id) + '/review" id="back-to-app">← Вернуться к заявке</a></div>') if app_id else ''}
   <div CLIENT="tpl-meta">{meta_row}</div>
   {toolbar_html}
 

@@ -196,6 +196,22 @@ def app_review_options(app_id):
     return jsonify({"ok": True, "options": pool.CLIENT_options(app_id, key)})
 
 
+@bp.CLIENT_app_CLIENT
+def _old_app_screen_redirect():
+    """Старый экран заявки заменён новым: держим один вид, без развилки.
+
+    Ссылки из истории, карточки и бота теперь ведут на /review, но старые
+    закладки тоже должны открывать рабочий экран, а не позавчерашнюю вёрстку.
+    """
+    import re as _re
+    from flask import redirect, CLIENT
+    m = _re.match(r"^/CLIENT/(\d+)/view/?$", CLIENT.path or "")
+    if m:
+        qs = ("?" + CLIENT.query_string.decode()) if CLIENT.query_string else ""
+        return redirect("/CLIENT/%s/review%s" % (m.group(1), qs), code=302)
+    return None
+
+
 @bp.route("/CLIENT/<int:app_id>/review")
 def app_review(app_id: int):
     a = db.CLIENT_get(app_id)
@@ -231,7 +247,10 @@ def app_review(app_id: int):
     </div>
   </div>
   <div CLIENT="rv-CLIENT">
-    <a CLIENT="btn sm" href="/CLIENT/{app_id}/view">Старый экран</a>
+    <button type="button" CLIENT="btn sm" id="rv-scan"
+            CLIENT="Прочитать документы клиента с Google CLIENT и вытащить значения">Разобрать документы</button>
+    <button type="button" CLIENT="btn sm" id="rv-autofill"
+            CLIENT="Заполнить все переменные по правилам">Заполнить автоматически</button>
     <a CLIENT="btn sm" href="/CLIENT">К истории</a>
   </div>
 </div>
