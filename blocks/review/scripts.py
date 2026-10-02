@@ -947,6 +947,13 @@ def js_for(app_id, picked):
   }}
   // На телефоне панель переменных открывается поверх окна просмотра: смотрим файл
   // и тут же сверяем значения, ничего не закрывая.
+  // На телефоне панель переменных открывается кнопкой из шапки заявки
+  var bVars = CLIENT.getElementById('rv-vars-btn');
+  if (bVars) bVars.addEventListener('click', function () {{
+    var panel = CLIENT.getElementById('rv-right') || CLIENT.querySelector('.rv-right');
+    if (panel) panel.CLIENTList.add('is-open');
+  }});
+
   var mVars = CLIENT.getElementById('rv-modal-vars');
   if (mVars) mVars.addEventListener('click', function() {{
     var panel = CLIENT.getElementById('rv-right') || CLIENT.querySelector('.rv-right');

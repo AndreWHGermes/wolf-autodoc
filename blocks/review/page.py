@@ -587,6 +587,7 @@ def app_review(app_id: int):
       <span CLIENT="rv-auto-t">Заполнить автоматически</span>
       <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
     <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
+    <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
   </div>
   <div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>
 </div>

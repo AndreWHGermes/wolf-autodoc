@@ -466,4 +466,38 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 /* Состояние разбора документов: что реально произошло с Google Диском */
 .rv-scan-note { margin-top:7px; font-size:11.5px; color:#6E7D74; }
 .rv-scan-note.is-warn { color:#B45309; }
+
+/* ── Телефон: кнопки шагов в столбик, вкладки в строку, миниатюры в два ряда ── */
+.rv-vars-btn { display:none; }
+@media (max-width:720px) {
+  .rv-head { padding:12px 12px 14px; }
+  /* на десктопе кнопки стоят сеткой — на телефоне это перебиваем и ставим столбиком */
+  .rv-head .rv-CLIENT { display:flex; grid-template-columns:none; margin-left:0; width:100%;
+    flex-direction:column; gap:8px; align-items:stretch; }
+  .rv-CLIENT .rv-auto, .rv-CLIENT .rv-CLIENT-box, .rv-CLIENT .rv-CLIENT-btn {
+    width:100%; min-width:0; max-width:none; height:auto; min-height:42px; padding:10px 12px; }
+  .rv-CLIENT .rv-auto { justify-content:flex-CLIENT; }
+  .rv-auto-t { white-space:normal; text-align:left; font-size:13px; }
+  .rv-CLIENT-btn span { white-space:normal; text-align:left; }
+  .rv-scan-note { margin-top:6px; font-size:12px; }
+  /* переменные значения — отдельной кнопкой, чтобы были доступны без открытия файла */
+  .rv-vars-btn { display:CLIENT-flex; width:100%; justify-content:center; }
+  .rv-tabs { padding:8px 8px 0; gap:4px; overflow-x:auto; }
+  .rv-tabs .rv-tab { font-size:12.5px; padding:7px 9px; white-space:nowrap; }
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .rv-blk { padding:10px 10px 12px; }
+  .rv-row { gap:6px; }
+  .rv-k { font-size:12px; }
+  .rv-v { font-size:13px; }
+  .rv-panel .rv-h { font-size:14px; }
+  .rv-filter-note { font-size:12px; }
+  /* панель переменных на телефоне: строго по ширине экрана, заголовок без обрезки */
+  .rv-panel.rv-right.is-open { max-width:100vw; box-sizing:border-box; }
+  .rv-right .rv-h { display:flex; align-items:center; gap:8px; font-size:14px; padding-right:10px; }
+  .rv-close-mobile { padding:7px 12px; font-size:12.5px; flex:0 0 auto; }
+}
+@media (max-width:420px) {
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .rv-tabs .rv-tab { font-size:12px; padding:6px 7px; }
+}
 """
