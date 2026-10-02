@@ -97,6 +97,17 @@ def extract(path: Path) -> dict:
         'Формат ответа — строго строки вида: `значение | переменная | пояснение`. Без вступлений.\n\n'
         'ДОКУМЕНТ: ' + path.name + '\n' + text[:6000]
     )
+    # Фотография клиента определяется по имени файла — до любого распознавания:
+    # текста в ней нет и не должно быть, модель тут не нужна.
+    _kind0 = doc_kind_name(path, '')
+    if _kind0 in ('photo', 'foto', 'image'):
+        return {'file': path.name, 'kind': path.suffix.lstrip('.').upper() or 'БЕЗ РАСШИРЕНИЯ',
+                'doc_type': _kind0, 'text_len': 0, 'by': 'rules',
+                'found': ('Фотография клиента. Файл «' + path.name + '» определён как фото клиента '
+                          '(текста в нём нет и не должно быть).\n'
+                          'Используется как переменная client_photo — на тех формах, где нужна '
+                          'фотография клиента, она подставляется в документ.')}
+
     # СНАЧАЛА правила — они не требуют модели и не тратят ключи.
     try:
         from CLIENT.doc_parse import parse_any
@@ -109,11 +120,20 @@ def extract(path: Path) -> dict:
                 'doc_type': doc_kind_name(path, text), 'text_len': len(text),
                 'found': _found, 'by': 'rules'}
 
-    # фотография без текста — модель не нужна, это просто фото клиента
+    # фотография без текста — модель не нужна, это фото клиента
     if len(text.strip()) < 20:
-        return {'file': path.name, 'kind': path.suffix.lstrip('.'),
-                'doc_type': doc_kind_name(path, ''), 'text_len': len(text),
-                'note': 'текста нет (фотография)'}
+        _kind = doc_kind_name(path, '')
+        if _kind in ('photo', 'foto', 'image'):
+            return {'file': path.name, 'kind': path.suffix.lstrip('.').upper() or 'БЕЗ РАСШИРЕНИЯ',
+                    'doc_type': _kind, 'text_len': 0, 'by': 'rules',
+                    'found': ('Фотография клиента. Файл «' + path.name + '» определён как фото клиента '
+                              '(текста в нём нет и не должно быть).\n'
+                              'Используется как переменная client_photo — на тех формах, где нужна '
+                              'фотография клиента, она подставляется в документ.')}
+        return {'file': path.name, 'kind': path.suffix.lstrip('.').upper() or 'БЕЗ РАСШИРЕНИЯ',
+                'doc_type': _kind, 'text_len': len(text), 'by': 'rules',
+                'found': ('Текст в файле не распознан (тип документа: '
+                          + _kind + '). Нужна ручная проверка.')}
     try:
         out = _call_llm([{'role': 'user', 'content': prompt}], timeout=180, json_mode=False) or ''
     except Exception as e:  # noqa: BLE001
@@ -140,6 +160,16 @@ CLIENT_MAP = {
 }
 
 
+_JUNK_VALUES = {"отсутствует", "не указано", "не указан", "не указана", "не найдено",
+                "нет данных", "нет", "неизвестно", "не применимо", "n/a", "na",
+                "none", "null", "значение", "—", "-", ""}
+
+
+def _is_junk(CLIENT) -> bool:
+    """Заглушки распознавания («отсутствует», «Не указано») в карточку не пишем."""
+    return str(CLIENT or "").strip().lower().rstrip(".") in _JUNK_VALUES
+
+
 def apply_CLIENT(app_id: int, results: list) -> dict:
     """Значения из документов -> карточка клиента (пустые поля) и значения документа заявки."""
     c = conn()
@@ -159,7 +189,7 @@ def apply_CLIENT(app_id: int, results: list) -> dict:
             if len(parts) < 2:
                 continue
             val, var = parts[0], parts[1].strip().strip("`").lower()
-            if (not val or len(val) > 200 or val.strip().lower() in ("значение", "нет данных", "n/a", "na", "-", "—", "не указано", "не найдено")):
+            if not val or len(val) > 200 or _is_junk(val):
                 continue
             col = CLIENT_MAP.get(var)
             if col and col in cols and client is not None:

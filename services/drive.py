@@ -132,8 +132,18 @@ def report_html(app_id: int) -> str:
     html = ['<div CLIENT="muted" style="margin-bottom:10px">' + (r.get("note") or "") + "</div>"]
     for it in payload:
         html.append('<div style="border:1px solid #E3EEE7;border-radius:10px;padding:10px 12px;margin-bottom:10px">')
-        html.append('<div style="font-weight:600;margin-bottom:6px">📄 ' + str(it.get("file") or "?") + "</div>")
-        body = it.get("found") or it.get("error") or "—"
+        try:
+            from scripts.CLIENT_scan import doc_kind_name, DOC_KIND_RU
+            _kr = DOC_KIND_RU.get(it.get("doc_type") or doc_kind_name(it.get("file") or ""), "")
+        except Exception:
+            _kr = ""
+        _ext = (it.get("kind") or "").upper()
+        html.append('<div style="font-weight:600;margin-bottom:2px">📄 ' + str(it.get("file") or "?")
+                    + ((" · " + _ext) if _ext else "") + "</div>")
+        if _kr:
+            html.append('<div style="font-size:12px;color:#3A6B4E;margin-bottom:6px">тип: '
+                        + _kr + "</div>")
+        body = it.get("found") or it.get("error") or it.get("note") or "—"
         html.append('<div style="white-space:pre-wrap;font-size:13px;line-height:1.45">' + str(body) + "</div>")
         html.append("</div>")
     return "".join(html)

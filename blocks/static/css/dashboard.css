@@ -479,3 +479,38 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
   .docs-viewer .html-stage { box-shadow: none; }
   .docs-viewer { border-radius: 8px; }
 }
+
+/* ── Блок 3: плашка названия поля должна занимать всю ширину своей колонки ──
+   В grid-контексте старый width:38% схлопывал её до ~42px — отсюда «заливка
+   не до конца поля». Шириной управляет только grid-template-columns. */
+#stage-3 .kv-table td.kv-key {
+  width: auto !important;
+  min-width: 0;
+  box-sizing: border-box;
+}
+#stage-3 .kv-table td.kv-key,
+#stage-3 .kv-table td.kv-val { padding-left: 9px; padding-right: 12px; }
+
+/* Продукт — самый заметный: насыщенный фон + рамка */
+#stage-3 .kv-table tr.kv-CLIENT-row td.kv-key-CLIENT {
+  background: #FDE68A !important; color: #713F12 !important;
+  font-weight: 800 !important; border: 1px solid #F5C84C; border-right: 0;
+  border-radius: 7px 0 0 7px;
+}
+#stage-3 .kv-table tr.kv-CLIENT-row td.kv-val-CLIENT {
+  background: #FEF9DC !important; color: #14682F !important;
+  font-weight: 800 !important; border: 1px solid #F5C84C; border-left: 0;
+  border-radius: 0 7px 7px 0;
+}
+
+/* Комментарий заявки — тоже ярко: администратор сразу видит, что клиент просил */
+#stage-3 .kv-table tr.kv-comment-row td.kv-key-comment {
+  background: #C7EED6 !important; color: #14472E !important;
+  font-weight: 800 !important; border: 1px solid #8FD3AC; border-right: 0;
+  border-radius: 7px 0 0 7px;
+}
+#stage-3 .kv-table tr.kv-comment-row td.kv-val-comment {
+  background: #EDFBF2 !important; color: #14472E !important; font-weight: 600 !important;
+  border: 1px solid #8FD3AC; border-left: 0; border-radius: 0 7px 7px 0;
+  white-space: pre-wrap;
+}

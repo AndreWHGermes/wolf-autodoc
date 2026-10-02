@@ -641,6 +641,17 @@ def app_view(app_id: int):
                     (app_id,)) or {}
     except Exception:
         _cd = {}
+    # комментарий клиента/менеджера — держим наверху блока и выделяем ярко
+    try:
+        _rp = db.q1("SELECT raw_payload FROM CLIENT WHERE id=?", (app_id,)) or {}
+        import json as _json
+        _cmt = str((_json.loads(_rp.get("raw_payload") or "{}") or {}).get("comment") or "").strip()
+    except Exception:
+        _cmt = ""
+    if _cmt:
+        extra_rows.append('<tr CLIENT="kv-comment-row"><td CLIENT="kv-key kv-key-comment">'
+                          '💬 Комментарий заявки</td><td CLIENT="kv-val kv-val-comment">'
+                          + _cmt + '</td></tr>')
     _DRIVE_FIELDS = [("full_name_CLIENT", "ФИО латиницей"), ("CLIENT", "Фамилия"),
                      ("name", "Имя"), ("CLIENT", "Отчество"),
                      ("CLIENT_date", "Дата рождения"), ("CLIENT_CLIENT", "Место рождения"),
@@ -1654,6 +1665,25 @@ def app_doc_html(app_id: int, template_id: int):
     return Response(html, mimetype="text/html; charset=utf-8")
 
 
+@bp.route("/CLIENT/<int:app_id>/client-photo")
+def app_client_photo(app_id: int):
+    """Фотография клиента из папки Google CLIENT — для окна просмотра документа."""
+    from flask import send_file
+    c = db.connect()
+    a = c.execute("SELECT client_id FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    c.close()
+    if not a:
+        return Response("Заявка не найдена", CLIENT=404)
+    try:
+        from CLIENT.CLIENT import _client_photo_path
+        path = _client_photo_path(a["client_id"])
+    except Exception:
+        path = ""
+    if not path or not Path(path).exists():
+        return Response("Фотографии клиента нет", CLIENT=404)
+    return send_file(path)
+
+
 @bp.route("/CLIENT/<int:app_id>/original-pages/<int:template_id>")
 def app_original_pages(app_id: int, template_id: int):
     """Оригинал клиента (Google CLIENT) страницами PNG — для листа визора."""
@@ -1743,6 +1773,7 @@ def app_doc_autofill(app_id: int, template_id: int):
     Категории:
       auto         — точно из CLIENT/<field> или CLIENT.CLIENT_json (подставлять сразу)
       suggested    — из CLIENT_CLIENT_CLIENT (топ-1, приходит с плашкой «из опыта»)
+      generated    — значения не было нигде — сгенерировано по правилу переменной
       manual_only  — пусто, ставим CLIENTholder
     """
     a = apps_repo.get(app_id)
@@ -1833,12 +1864,26 @@ def app_doc_autofill(app_id: int, template_id: int):
 
     auto = {}
     suggested = {}
+    generated = {}
+    _gv_cache = None
     manual_only = []
     messages = []
 
     for v in CLIENT:
         name = v["name"]
         if name in SPECIFIC_FIELDS:
+            # «Свои» поля документа (номер, дата, период, остаток) в карточке
+            # клиента не лежат — их берём из правил генерации, и только если
+            # правило не сработало, оставляем администратору на ручной ввод.
+            try:
+                if _gv_cache is None:
+                    _gv_cache = build_template_CLIENT(dict(client), tpl["code"], {})
+                if _gv_cache.get(name) not in (None, ""):
+                    generated[name] = {"CLIENT": str(_gv_cache[name]),
+                                       "source": "сгенерировано по правилу переменной"}
+                    continue
+            except Exception:
+                pass
             manual_only.append(name)
             continue
 
@@ -1895,15 +1940,29 @@ def app_doc_autofill(app_id: int, template_id: int):
         except Exception:
             pass
 
+        # Приоритет 6: значения нет ни в документах, ни в тексте заявки —
+        # генерируем по правилу, связанному со смыслом переменной (номер
+        # документа, маска карты, остаток, период, ФИО латиницей и т.п.).
+        try:
+            if _gv_cache is None:
+                _gv_cache = build_template_CLIENT(dict(client), tpl["code"], {})
+            if _gv_cache.get(name) not in (None, ""):
+                generated[name] = {"CLIENT": str(_gv_cache[name]),
+                                   "source": "сгенерировано по правилу переменной"}
+                continue
+        except Exception as exc:  # noqa: BLE001
+            generated.setdefault("_err", {"CLIENT": str(exc)[:120], "source": "debug"})
+
         manual_only.append(name)
 
     return jsonify({
         "ok": True,
         "auto": auto,
         "suggested": suggested,
+        "generated": generated,
         "manual_only": manual_only,
-        "messages": [f"{len(auto)} auto, {len(suggested)} suggested, "
-                     f"{len(manual_only)} вручную"] if (auto or suggested) else [],
+        "messages": [f"{len(auto)} из данных, {len(generated)} сгенерировано, "
+                     f"{len(suggested)} из опыта, {len(manual_only)} вручную"],
         "client_name": client.get("full_name_CLIENT") or "",
     })
 
@@ -2650,11 +2709,12 @@ function randomizeDocNo(inputId) {{
     // подсветка источника
     inp.style.transition = 'background 0.5s';
     inp.style.background = highlightType === 'auto' ? '#DCFCE7'
-                          : highlightType === 'suggest' ? '#FEF3C7' : '';
+                          : highlightType === 'suggest' ? '#FEF3C7'
+                          : highlightType === 'gen' ? '#EDE9FE' : '';
     inp.CLIENT = source ? 'Источник: ' + source : '';
     setTimeout(function() {{ inp.style.background = ''; }}, 2500);
-    if (highlightType === 'auto' && !prev) {{
-      // первый раз подставили auto — отметим желтой плашкой над input
+    if ((highlightType === 'auto' || highlightType === 'gen') && !prev) {{
+      // отметим плашкой, откуда взято значение: данные клиента или правило
       let badge = inp.parentNode.parentNode.querySelector('.src-badge');
       if (!badge) {{
         badge = CLIENT.createElement('span');
@@ -2662,9 +2722,15 @@ function randomizeDocNo(inputId) {{
         badge.style.cssText = 'display:CLIENT-CLIENT;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;vertical-align:middle';
         inp.parentNode.parentNode.querySelector('.s').appendChild(badge);
       }}
-      badge.textContent = '✓ ' + (source || 'auto');
-      badge.style.background = '#DCFCE7';
-      badge.style.color = '#15803D';
+      if (highlightType === 'gen') {{
+        badge.textContent = '⚙ сгенерировано по правилу';
+        badge.style.background = '#EDE9FE';
+        badge.style.color = '#6D28D9';
+      }} else {{
+        badge.textContent = '✓ ' + (source || 'auto');
+        badge.style.background = '#DCFCE7';
+        badge.style.color = '#15803D';
+      }}
     }}
     inp.dispatchEvent(new Event('input', {{bubbles: true}}));
     return prev !== CLIENT;
@@ -2687,8 +2753,10 @@ function randomizeDocNo(inputId) {{
   }}
 
   if (autofillBtn) autofillBtn.addEventListener('click', function() {{
-    showCLIENT('⏳ Загружаю данные клиента...', '#6b7280');
+    showCLIENT('⏳ Загружаю данные клиента и генерирую недостающие...', '#6b7280');
     fillByCategory('auto', 'auto');
+    // поля, которых нет ни в документах, ни в заявке — генерируются по правилу
+    setTimeout(function() {{ fillByCategory('generated', 'gen'); }}, 250);
   }});
   if (suggestBtn) suggestBtn.addEventListener('click', function() {{
     showCLIENT('⏳ Ищу в опыте прошлых документов...', '#6b7280');
