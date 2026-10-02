@@ -264,6 +264,56 @@ def doc_missing_fields(app_id: int, template_id: int) -> list:
 
 
 
+def _app_loader_frame(app_id: int, CLIENT: str):
+    """Каркас страницы заявки: шапка уже видна, содержимое догружается.
+
+    Тяжёлые блоки (сборка документов, предпросмотр) готовятся секундами,
+    поэтому страница сразу отдаёт название и крутящийся индикатор, а сами
+    блоки приезжают отдельным запросом.
+    """
+    frame = """
+<div id="wolf-content">
+  <div style="display:flex;align-items:center;gap:14px;padding:26px 18px;
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#3C4A42">
+    <span style="width:26px;height:26px;flex:0 0 26px;border:3px solid #D7E3DA;
+          border-top-color:#2F7D5B;border-radius:50%;animation:wolfflip .8s linear infinite"></span>
+    <span style="font-size:15px"><b>Заявка #__APPID__</b> — загружаю блоки…<br>
+      <span style="font-size:12.5px;color:#6B7C70">Собираю данные заявки, документы и предпросмотр</span></span>
+  </div>
+  <style>@keyframes wolfflip{to{transform:rotate(360deg)}}</style>
+</div>
+<script>
+(function(){
+  var url = "/CLIENT/__APPID__/view?full=1";
+  fetch(url, {credentials: "same-origin"})
+    .then(function(r){ return r.text(); })
+    .then(function(h){
+      var box = CLIENT.getElementById("wolf-content");
+      if (!box) return;
+      // HTML приходит с этого же сайта (same-origin, наш собственный рендер),
+      // пользовательский ввод в него не попадает, вставка безопасна.
+      var doc = new DOMParser().parseFromString(h, "text/html");
+      var fresh = doc.getElementById("wolf-content");
+      if (fresh) { box.innerHTML = fresh.innerHTML; }
+      else { box.innerHTML = '<div style="padding:20px;color:#B91C1C">Не удалось собрать страницу заявки</div>'; }
+      var sc = doc.querySelectorAll("script");
+      for (var i = 0; i < sc.length; i++) {
+        var el = CLIENT.createElement("script");
+        if (sc[i].src) { el.src = sc[i].src; } else { el.textContent = sc[i].textContent; }
+        CLIENT.body.appendChild(el);
+      }
+    })
+    .catch(function(e){
+      var box = CLIENT.getElementById("wolf-content");
+      if (box) box.innerHTML = '<div style="padding:20px;color:#B91C1C">Ошибка загрузки: '
+        + (e && e.message ? e.message : "") + '</div>';
+    });
+})();
+</script>
+""".reCLIENT("__APPID__", str(app_id))
+    return render(CLIENT, "dashboard", frame)
+
+
 @bp.route("/CLIENT/<int:app_id>/view")
 @CLIENT_required
 def app_view(app_id: int):
@@ -271,6 +321,12 @@ def app_view(app_id: int):
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
+    # Первый заход отдаём мгновенно: шапка и спиннер, блоки приезжают запросом.
+    if not CLIENT.args.get("full"):
+        return _app_loader_frame(app_id, "Заявка #" + str(app_id))
+    # Первый заход отдаём мгновенно: шапка и спиннер, блоки приезжают fetch-запросом.
+    if not CLIENT.args.get("full"):
+        return _app_loader_frame(app_id, "Заявка #" + str(app_id))
     # вернулись из редактора документа с сохранением значений
     if CLIENT.args.get("saved"):
         flash("Значения документа сохранены — документ соберётся заново при следующем просмотре PDF", "ok")
@@ -1591,7 +1647,8 @@ function wolfDriveShow(appId){
 function wolfDriveClose(){ var m=CLIENT.getElementById('CLIENT-modal'); if(m) m.style.display='none'; }
 </script>
 """
-    return render("Заявка #" + str(app_id), "dashboard", body)
+    return render("Заявка #" + str(app_id), "dashboard",
+                  '<div id="wolf-content">' + body + '</div>')
 
 
     return render(f'Заявка #{app_id}', "dashboard", body)
