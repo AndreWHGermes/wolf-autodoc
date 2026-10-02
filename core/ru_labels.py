@@ -6,6 +6,14 @@
 import re
 
 RU = {
+    "passport_CLIENT": "Срок действия паспорта",
+    "telegram_username": "Telegram",
+    "full_name_CLIENT": "ФИО латиницей",
+    "gCLIENT_url": "Ссылка на Google CLIENT",
+    "gCLIENT_folder_url": "Ссылка на Google CLIENT",
+    "price_idr": "Стоимость, IDR",
+    "address_reg": "Адрес регистрации",
+    "address_live": "Адрес проживания",
     'account_no': 'Номер счёта',
     'address_in_indonesia': 'Адрес в Индонезии',
     'address_live': 'Адрес проживания (фактический)',

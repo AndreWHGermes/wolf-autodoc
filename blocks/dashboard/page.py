@@ -1105,6 +1105,22 @@ def app_view(app_id: int):
                   + '/doc/' + x.getAttribute('data-reject-tpl') + '/reject', x);
     }
   });
+  /* -- Tekst zayavki: vsplyvayushcheye okno -- */
+  CLIENT.addEventListener('click', function(e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-app-text]') : null;
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var pre = CLIENT.getElementById('app-text-pre');
+    if (pre) {
+      pre.textContent = 'Zagruzka...';
+      fetch('/CLIENT/' + APP_ID + '/text-file', { credentials: 'same-origin' })
+        .then(function(r) { return r.text(); })
+        .then(function(t) { pre.textContent = t; })
+        .catch(function() { pre.textContent = 'Ne udalos zagruzit tekst zayavki'; });
+    }
+    if (typeof openModal === 'function') openModal('app-text-modal');
+  });
   setTimeout(autoOpen, 700);
 })();
 </script>
