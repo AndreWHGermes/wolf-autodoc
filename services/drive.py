@@ -40,23 +40,25 @@ def docs_for_client(client_id: int) -> list:
             for d in sorted(EXAMPLES_DIR.iterdir()):
                 if d.is_dir() and CLIENT[:5] in d.name.lower():
                     have += [f for f in d.rglob("*") if f.is_file()]
-    return [f for f in have if f.suffix.lower() in (".pdf", ".jpg", ".jpeg", ".png")][:24]
+    return [f for f in have if f.suffix.lower() in
+            (".pdf", ".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff")][:24]
 
 
 def extract_one(path: Path) -> dict:
-    """Читает документ и просит модель вытащить значения с привязкой к переменным."""
+    """Читает документ (PDF, скан, фото, HEIC — через OCR) и вытаскивает значения."""
     from bot.ai_parser import _call_llm
-    text = ""
-    if str(path).lower().endswith(".pdf"):
-        try:
-            import pymupdf
+    try:
+        from CLIENT.doc_read import read_text
+        text = read_text(path) or ""
+    except Exception:  # noqa: BLE001
+        import pymupdf
+        text = ""
+        if str(path).lower().endswith(".pdf"):
             d = pymupdf.open(str(path))
             text = "\n".join(d[i].get_text() for i in range(min(3, len(d))))
             d.close()
-        except Exception as e:  # noqa: BLE001
-            text = f"(не удалось прочитать: {e})"
-    else:
-        text = "(изображение — фотография клиента, значения на изображении)"
+    if not text.strip():
+        text = "(текст из документа извлечь не удалось)"
     prompt = (
         "Ты обрабатываешь документы клиента визового агентства. Ниже текст документа.\n"
         "Вытащи ВСЕ значимые данные (ФИО, дата рождения, паспорт, адрес, банк, суммы, номера, даты, компании).\n"

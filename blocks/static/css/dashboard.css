@@ -396,3 +396,19 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 /* Пояснение под кнопкой отправки в блоке 6 */
 .send-hint { margin: 8px 0 6px; font-size: 12.5px; color: #4B5563; }
 .send-hint b { color: #14663A; }
+
+/* Водяной знак «Данные не подставлены» на просмотре документа */
+.paper-stage { position: relative; width: 100%; height: 100%; }
+.paper-watermark {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-CLIENT: none; z-CLIENT: 5;
+}
+.paper-watermark-text {
+  transform: rotate(-28deg);
+  font-size: clamp(22px, 4.2vw, 58px); font-weight: 800; letter-spacing: 2px;
+  color: rgba(214, 26, 26, .82); text-align: center; line-height: 1.15;
+  border: 6px solid rgba(214, 26, 26, .62); border-radius: 14px;
+  padding: 18px 34px; background: rgba(255, 255, 255, .30);
+  text-shadow: 0 2px 10px rgba(255, 255, 255, .85);
+}
+.paper-watermark-sub { display: CLIENT; margin-top: 10px; font-size: .42em; font-weight: 700; letter-spacing: 1px; }

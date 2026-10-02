@@ -6,7 +6,8 @@
 import sys, os, json, sqlite3, subprocess, time
 from pathlib import Path
 
-sys.path.insert(0, '/opt/wolf')
+sys.path.insert(0, '/opt/wolf_v2')
+sys.path.insert(0, '/opt/wolf_v2/bot')
 sys.path.insert(0, '/opt/wolf_v2/CLIENTs')
 
 DB = '/opt/wolf_v2/data/wolf.db'
@@ -27,22 +28,19 @@ def fetch_docs(client_id: int, url: str):
         subprocess.run(['/usr/bin/python3', '-m', 'gdown', '--folder', url, '-O', str(d), '--quiet'],
                        timeout=600, check=False)
         files = [f for f in d.rglob('*') if f.is_file()]
-    return [f for f in files if f.suffix.lower() in ('.pdf', '.jpg', '.jpeg', '.png')][:24]
+    return [f for f in files if f.suffix.lower() in ('.pdf', '.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp', '.tif', '.tiff')][:24]
 
 
 def extract(path: Path) -> dict:
     from bot.ai_parser import _call_llm
-    text = ''
-    if path.suffix.lower() == '.pdf':
-        try:
-            import pymupdf
-            doc = pymupdf.open(str(path))
-            text = '\n'.join(doc[i].get_text() for i in range(min(3, len(doc))))
-            doc.close()
-        except Exception as e:
-            text = f'(ошибка чтения: {e})'
-    else:
-        text = '(изображение: фотография/скан клиента)'
+    from CLIENT.doc_read import read_text
+    # PDF с текстовым слоем читаем напрямую, сканы и фото (PNG/JPG/HEIC) — через OCR
+    try:
+        text = read_text(path) or ''
+    except Exception as e:  # noqa: BLE001
+        text = f'(ошибка чтения: {e})'
+    if not text.strip():
+        text = '(текст из документа извлечь не удалось)' 
     prompt = (
         'Ты обрабатываешь документы клиента визового агентства (виза Индонезии).\n'
         'Ниже текст документа. Вытащи ВСЕ значимые данные: ФИО латиницей ЦЕЛИКОМ — имя, фамилия И ОТЧЕСТВО '
@@ -94,7 +92,7 @@ def apply_CLIENT(app_id: int, results: list) -> dict:
             if len(parts) < 2:
                 continue
             val, var = parts[0], parts[1].strip().strip("`").lower()
-            if not val or len(val) > 200 or val.lower() in ("значение", "нет данных"):
+            if (not val or len(val) > 200 or val.strip().lower() in ("значение", "нет данных", "n/a", "na", "-", "—", "не указано", "не найдено")):
                 continue
             col = CLIENT_MAP.get(var)
             if col and col in cols and client is not None:

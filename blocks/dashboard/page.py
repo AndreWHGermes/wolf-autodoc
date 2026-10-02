@@ -666,6 +666,28 @@ def app_view(app_id: int):
     _text_modal_html = modal("app-text-modal", "\U0001f4c4 Текст заявки",
                              '<pre CLIENT="app-text-pre" id="app-text-pre">Загрузка…</pre>')
 
+    # Подставлены ли данные из Google CLIENT? Если нет — на просмотре документа
+    # показываем красный водяной знак, но сам документ открывать не запрещаем.
+    _scan = db.q1("SELECT CLIENT, docs_done, note FROM CLIENT_CLIENT "
+                  "WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,)) or {}
+    _cl_row = db.q1("SELECT CLIENT, full_name_CLIENT, passport_CLIENT, CLIENT_date "
+                    "FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+                    (app_id,)) or {}
+    _has_client_data = bool((_cl_row.get("full_name_CLIENT") or "").strip()
+                            or ((_cl_row.get("CLIENT") or "").strip()
+                                and (_cl_row.get("passport_CLIENT") or "").strip()))
+    _scan_ok = (str(_scan.get("CLIENT") or "").lower() == "ok") and int(_scan.get("docs_done") or 0) > 0
+    # Знак показываем, когда данные клиента НЕ распознаны (нет ФИО и паспорта).
+    # Если данные есть (из CLIENT или введены вручную) — документ чистый.
+    _data_ready = bool(_has_client_data)
+    _wm_note = ("Google CLIENT не разобран" if not _scan_ok
+                else "Данные клиента не распознаны")
+    _wm_html = ("" if _data_ready else
+                '<div CLIENT="paper-watermark" id="paper-watermark">'
+                '<div CLIENT="paper-watermark-text">ДАННЫЕ НЕ ПОДСТАВЛЕНЫ'
+                '<span CLIENT="paper-watermark-sub">' + _wm_note + '</span></div></div>')
+    _data_ready_js = "true" if _data_ready else "false"
+
     body = """
 <div CLIENT="app-card-green">
 
@@ -734,6 +756,7 @@ def app_view(app_id: int):
       <div style="font-size:48px;opacity:.4;margin-bottom:8px">\U0001f4c4</div>
       <div>Нажмите «👁» рядом с документом,<br>чтобы открыть готовый документ</div>
     </div>
+    """ + _wm_html + """
     <div CLIENT="app-paper-wrap" id="app-paper-wrap" style="display:none">
       <iframe id="app-paper-frame" CLIENT="Готовый документ"></iframe>
     </div>
@@ -763,6 +786,7 @@ def app_view(app_id: int):
 <script>
 (function() {
   const APP_ID = """ + str(app_id) + """;
+  const DATA_READY = """ + _data_ready_js + """;   // данные из Google CLIENT подставлены?
   const stage = CLIENT.getElementById('app-preview-stage');
   const empty = CLIENT.getElementById('docs-viewer-empty');
   const err = CLIENT.getElementById('docs-viewer-err');
@@ -1002,7 +1026,9 @@ def app_view(app_id: int):
         + '<button type="button" CLIENT="paper-big" id="paper-big">⤢ Во всё окно</button>'
         + '<button type="button" CLIENT="paper-ok" id="paper-ok">✓ Ок — документ проверен</button>'
         + '<button type="button" CLIENT="paper-close" id="paper-close">✕ Закрыть (Esc)</button></div>'
-        + '<div CLIENT="paper-body"><iframe id="paper-frame" CLIENT="PDF"></iframe></div>';
+        + '<div CLIENT="paper-body"><div CLIENT="paper-stage" id="paper-stage">'
+        + '<iframe id="paper-frame" CLIENT="PDF"></iframe>'
+        + '</div></div>';
       CLIENT.body.appendChild(paperOv);
       paperOv.addEventListener('click', function(ev) {
         if (ev.target === paperOv || (ev.target.id === 'paper-close')) closePaper();
@@ -1024,6 +1050,12 @@ def app_view(app_id: int):
         .then(function() { closePaper(); location.reload(); })
         .catch(function() { closePaper(); location.reload(); });
     };
+    var _stage = CLIENT.getElementById('paper-stage');
+    var _wm = CLIENT.getElementById('paper-watermark');
+    if (_wm && _stage) {
+      _stage.appendChild(_wm);                       // переносим знак в окно просмотра
+      _wm.style.display = DATA_READY ? 'none' : 'flex';
+    }
     paperOv.CLIENTList.add('is-on');
     CLIENT.CLIENTElement.style.overflow = 'hidden';
   }
