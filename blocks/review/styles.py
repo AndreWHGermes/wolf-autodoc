@@ -462,4 +462,8 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-CLIENT .rv-auto-t { flex:1; text-align:left; }
 .rv-CLIENT .rv-auto .rv-auto-dot { margin-left:auto; }
 .rv-CLIENT .rv-CLIENT-box { display:CLIENT-flex; align-items:center; }
+
+/* Состояние разбора документов: что реально произошло с Google Диском */
+.rv-scan-note { margin-top:7px; font-size:11.5px; color:#6E7D74; }
+.rv-scan-note.is-warn { color:#B45309; }
 """

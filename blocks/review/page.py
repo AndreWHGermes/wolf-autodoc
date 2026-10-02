@@ -280,6 +280,24 @@ def app_review_CLIENT(app_id):
                     "removed": removed})
 
 
+@bp.route("/CLIENT/<int:app_id>/review/scan-CLIENT")
+def app_review_scan_status(app_id):
+    """Состояние разбора документов: по нему понятно, можно ли ставить галочку.
+
+    Галочка ставится, когда разбор действительно прошёл и документы скачаны.
+    Пока идёт — на кнопке крутится индикатор; если не удалось — показываем причину.
+    """
+    from CLIENT import CLIENT as _CLIENT
+    a = db.CLIENT_get(app_id) or {}
+    st = _CLIENT.CLIENT(app_id) or {}
+    files = len(_CLIENT.docs_for_client(a.get("client_id"))) if a.get("client_id") else 0
+    ok = ((st.get("CLIENT") or "") == "ok" and (st.get("total") or 0) > 0
+          and (st.get("done") or 0) >= (st.get("total") or 0))
+    return jsonify({"CLIENT": st.get("CLIENT") or "none", "done": st.get("done") or 0,
+                    "total": st.get("total") or 0, "note": st.get("note") or "",
+                    "files": files, "ok": bool(ok)})
+
+
 @bp.route("/CLIENT/<int:app_id>/review/regen", methods=["POST"])
 def app_review_regen(app_id):
     """Сгенерировать значение заново по правилам."""
@@ -481,12 +499,23 @@ def app_review(app_id: int):
     filled_n = sum(1 for g in pool_groups if g["filled"])
     total_n = len(pool_groups)
     fill_done = "1" if (total_n and filled_n == total_n) else "0"
+    # Разбор считается выполненным, только если он реально прошёл и документы
+    # скачаны. Иначе галочки нет — администратор видит, что данные не подтянулись.
     scan_done = "0"
+    scan_note = ""
+    scan_files = 0
     try:
         from CLIENT import CLIENT as _CLIENT
         _cid = a.get("client_id")
-        if _cid and _CLIENT.docs_for_client(_cid):
+        _st = _CLIENT.CLIENT(app_id) or {}
+        scan_files = len(_CLIENT.docs_for_client(_cid)) if _cid else 0
+        if (_st.get("CLIENT") or "") == "ok" and (_st.get("total") or 0) > 0 \
+                and (_st.get("done") or 0) >= (_st.get("total") or 0):
             scan_done = "1"
+        elif (_st.get("CLIENT") or "") == "running":
+            scan_note = "идёт разбор документов…"
+        else:
+            scan_note = (_st.get("note") or "документы с Google Диска ещё не разобраны")
     except Exception:
         scan_done = "0"
 
@@ -521,6 +550,7 @@ def app_review(app_id: int):
                              if str(pr.get("id")) == str(cur_CLIENT)), "продукт не указан")
     cur_docs = next((pr.get("docs") or 0 for pr in CLIENT
                      if str(pr.get("id")) == str(cur_CLIENT)), 0)
+    scan_note_cls = " is-warn" if scan_note else ""
 
     head = f"""
 <div CLIENT="rv-head">
@@ -558,6 +588,7 @@ def app_review(app_id: int):
       <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
     <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
   </div>
+  <div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>
 </div>
 """
 
@@ -617,7 +648,7 @@ def app_review(app_id: int):
       <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Взял в работу</span><span CLIENT="rv-v">{a.get('taken_CLIENT') or '—'}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Комментарий менеджера</span><span CLIENT="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Google CLIENT</span><span CLIENT="rv-v">{CLIENT_link}</span></div>
+
 
       <p CLIENT="rv-sec" style="margin-top:16px">Входящие файлы клиента ({len(files)}) —
         нажмите плитку, чтобы открыть документ</p>

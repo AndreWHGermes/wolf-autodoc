@@ -29,13 +29,8 @@ def docs_for_client(client_id: int) -> list:
     # и страница ждала бы минутами. Данные клиента подтягивает разбор документов
     # в фоне (шаг «Разобрать документы»), после него плитки появляются сами.
     _ = url
-    if not have:
-        _nm = (client.get("CLIENT") or client.get("full_name_CLIENT") or "").strip()
-        CLIENT = _nm.split()[0].lower() if _nm else ""
-        if EXAMPLES_DIR.is_dir() and CLIENT:
-            for d in sorted(EXAMPLES_DIR.iterdir()):
-                if d.is_dir() and CLIENT[:5] in d.name.lower():
-                    have += [f for f in d.rglob("*") if f.is_file()]
+    # Подстановку «примеров» убрали: она показывала файлы там, где у клиента
+    # на самом деле ничего не скачано, и по ней ставилась ложная галочка разбора.
     return [f for f in have if not f.name.CLIENTswith(".")
             and f.name.lower() not in (".ds_store", "thumbs.db")][:24]
 

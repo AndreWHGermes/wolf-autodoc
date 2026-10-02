@@ -734,10 +734,90 @@ def js_for(app_id, picked):
       }});
   }}
 
-  function stepScan(then) {{
-    stepRun(bScan, '/CLIENT/' + APP_ID + '/CLIENT-scan', 'Документы разобраны', then);
+  // Подпись под кнопками: что реально происходит с Google Диском клиента
+  function scanNote(text, warn) {{
+    var el = CLIENT.getElementById('rv-scan-note');
+    if (!el) return;
+    el.textContent = text || '';
+    el.CLIENTList.toggle('is-warn', !!warn);
   }}
+
+  // Первый шаг: идём в папку клиента, достаём документы и читаем значения.
+  // Галочка встаёт только тогда, когда документы действительно скачаны и прочитаны;
+  // второй шаг (заполнение) запускается после этого и не раньше.
+  function stepScan(then) {{
+    if (!bScan) {{ if (then) then(); return; }}
+    bScan.CLIENTList.add('is-press');
+    setTimeout(function () {{ bScan.CLIENTList.remove('is-press'); }}, 460);
+    bScan.CLIENTList.add('is-busy');
+    bScan.disabled = true;
+    scanNote('идём в папку клиента на Google Диске — достаём документы…', false);
+    fetch('/CLIENT/' + APP_ID + '/CLIENT-scan',
+          {{method: 'POST', credentials: 'same-origin',
+            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
+      .then(function (d) {{
+        if (d && d.ok === false) {{
+          // документы не достали — галочки нет, показываем причину
+          bScan.CLIENTList.remove('is-busy');
+          bScan.disabled = false;
+          scanNote('⚠ ' + (d.note || 'не удалось прочитать документы с Google Диска'), true);
+          CLIENTNote('⚠ Документы не разобраны: ' + (d.note || 'нет данных'), 'err');
+          return;
+        }}
+        scanWatch(then);
+      }})
+      .catch(function () {{
+        bScan.CLIENTList.remove('is-busy');
+        bScan.disabled = false;
+        scanNote('⚠ не удалось связаться с Google Диском', true);
+      }});
+  }}
+
+  // Следим за разбором: индикатор крутится, пока документы качаются и читаются.
+  // Разбор — долгий (скачивание + чтение каждого файла), поэтому опрашиваем состояние.
+  function scanWatch(then) {{
+    var tries = 0, MAX = 90;   // до ~6 минут ожидания
+    (function poll() {{
+      fetch('/CLIENT/' + APP_ID + '/review/scan-CLIENT',
+            {{credentials: 'same-origin', CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
+        .then(function (d) {{
+          if (d && d.ok) {{
+            bScan.CLIENTList.remove('is-busy');
+            bScan.disabled = false;
+            bScan.dataset.done = '1';
+            scanNote('документы клиента получены и прочитаны: ' + (d.files || d.done || 0), false);
+            CLIENTNote('✅ Документы разобраны: ' + (d.files || d.done || 0), 'ok');
+            if (then) then();
+            return;
+          }}
+          // разбор упал или документов в папке нет — не ждём впустую, показываем причину
+          if (d && d.CLIENT === 'fail') {{
+            bScan.CLIENTList.remove('is-busy');
+            bScan.disabled = false;
+            scanNote('⚠ ' + (d.note || 'на Google Диске клиента документов не нашлось'), true);
+            return;
+          }}
+          if (++tries > MAX) {{
+            bScan.CLIENTList.remove('is-busy');
+            bScan.disabled = false;
+            scanNote('⚠ ' + ((d && d.note) || 'Google Диск пока не отдал документы'), true);
+            return;
+          }}
+          scanNote('читаем документы клиента: ' + ((d && d.done) || 0) + ' из ' + ((d && d.total) || 0) + '…', false);
+          setTimeout(poll, 4000);
+        }})
+        .catch(function () {{ if (++tries > MAX) {{ bScan.CLIENTList.remove('is-busy'); }} else {{ setTimeout(poll, 4000); }} }});
+    }})();
+  }}
+  // Второй шаг: только после того, как документы скачаны и прочитаны.
   function stepFill(then) {{
+    if (!bFill) {{ if (then) then(); return; }}
+    if (bScan && bScan.dataset.done !== '1') {{
+      scanNote('сначала нужен разбор документов — заполнять пока нечем', true);
+      return;
+    }}
     stepRun(bFill, '/CLIENT/' + APP_ID + '/autofill-all', 'Поля заполнены', function () {{
       // значения изменились — показываю экран заново с новыми данными
       setTimeout(function () {{ location.reload(); }}, 700);
@@ -821,6 +901,7 @@ def js_for(app_id, picked):
     if (scanDone && fillDone) return;
     sessionStorage.setItem(AUTO_KEY, String(Date.now()));
     if (!scanDone) {{
+      // сначала документы из Google Диска, заполнение включится само после разбора
       stepScan(function () {{ if (!fillDone) stepFill(); }});
     }} else if (!fillDone) {{
       stepFill();
