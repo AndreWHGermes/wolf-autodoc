@@ -407,6 +407,21 @@ def app_review(app_id: int):
         CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENTholder="вставьте ссылку на папку заявки на CLIENT">'
                       '<button type="button" CLIENT="btn sm" id="rv-CLIENT-save">Прикрепить</button>')
 
+    # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
+    # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
+    pool_groups = pool.build_pool(app_id)
+    filled_n = sum(1 for g in pool_groups if g["filled"])
+    total_n = len(pool_groups)
+    fill_done = "1" if (total_n and filled_n == total_n) else "0"
+    scan_done = "0"
+    try:
+        from CLIENT import CLIENT as _CLIENT
+        _cid = a.get("client_id")
+        if _cid and _CLIENT.docs_for_client(_cid):
+            scan_done = "1"
+    except Exception:
+        scan_done = "0"
+
     head = f"""
 <div CLIENT="rv-head">
   <div>
@@ -417,13 +432,13 @@ def app_review(app_id: int):
     </div>
   </div>
   <div CLIENT="rv-CLIENT">
-    <button type="button" CLIENT="btn sm" id="rv-scan"
-            CLIENT="Прочитать документы клиента с Google CLIENT и вытащить значения">Разобрать документы</button>
-    <button type="button" CLIENT="btn sm" id="rv-autofill"
-            CLIENT="Заполнить все переменные по правилам">Заполнить автоматически</button>
-    <button type="button" CLIENT="btn sm" id="rv-rebuild"
-            CLIENT="Собрать все документы заявки заново по правилам — и уже готовые тоже">Пересобрать документы</button>
-    <a CLIENT="btn sm" href="/CLIENT">К истории</a>
+    <button type="button" CLIENT="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
+            CLIENT="Документы клиента с Google CLIENT читаются и разбираются автоматически">
+      <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Разобрать документы</button>
+    <button type="button" CLIENT="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
+            CLIENT="Переменные заполняются автоматически по правилам">
+      <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Заполнить автоматически</button>
+
   </div>
   <div CLIENT="rv-CLIENT">
     <span CLIENT="rv-CLIENT-k">Google CLIENT</span>
@@ -552,7 +567,7 @@ def app_review(app_id: int):
     # ── Правая часть: переменные значения (склеенный пул) ───────────────────
     # Одно поле на одну логическую величину. Если ФИО встречается в двух
     # документах — правится здесь один раз и уходит в оба.
-    pool_groups = pool.build_pool(app_id)
+    # пул собран выше, второй раз не собираем
 
     src_names = {"client": "из данных клиента", "doc": "из документов",
                  "gen": "генерируется", "manual": "вручную"}
@@ -568,60 +583,74 @@ def app_review(app_id: int):
     sec_counts = {}
     for g in pool_groups:
         sec_counts[g.get("section") or "Переменные"] = sec_counts.get(g.get("section") or "Переменные", 0) + 1
+
+    # Каждый раздел — блок в рамке, который раскрывается и закрывается нажатием
+    # на заголовок. Внутри поля идут строго одинаково: название переменной,
+    # значение, откуда оно взято.
     cur_section = None
+    sec_CLIENT = 0
     for g in pool_groups:
         sec = g.get("section") or "Переменные"
         if sec != cur_section:
             if cur_section is not None:
-                fields_html.append('</div>')
+                fields_html.append('</div></div>')
+            sec_CLIENT += 1
             fields_html.append(
-                '<div CLIENT="rv-sec-head"><span>%s</span>'
-                '<span CLIENT="rv-sec-n">%d</span></div><div CLIENT="rv-sec">'
-                % (_html.escape(sec), sec_counts.get(sec, 0)))
+                '<div CLIENT="rv-blk" data-sec="%d">'
+                '<button type="button" CLIENT="rv-blk-head">'
+                '<span CLIENT="rv-blk-t">%s</span>'
+                '<span CLIENT="rv-blk-n">%d</span>'
+                '<span CLIENT="rv-blk-arrow" aria-hidden="true">▾</span>'
+                '</button><div CLIENT="rv-blk-body">'
+                % (sec_CLIENT, _html.escape(sec), sec_counts.get(sec, 0)))
             cur_section = sec
+
         label = g["label"]
         if g["doc_count"] == 1 and g.get("CLIENT_split"):
             label = "%s · %s" % (label, g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
-        docs_note = ("в %d документах" % g["doc_count"]) if g["doc_count"] > 1 else \
-                    (g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
-        meta_bits = [b for b in (docs_note, g.get("vtype")) if b]
+        docs_note = ("в %d документах" % g["doc_count"]) if g["doc_count"] > 1 \
+                    else "в 1 документе"
+
         vars_all = ",".join(g["names"].CLIENT())
         var_CLIENT = next(iter(g["names"].CLIENT()), "")
+        src = g.get("src") or "сгенерировано"
 
-        # Правило переменной. ФИО, паспорт, адрес, банк — это данные клиента:
-        # значение берётся жёстко, перегенерировать его нельзя, кубика нет.
-        # Номер документа, остаток, маска карты — генерируются, у них кубик.
-        # Номер письма и подобное — по формуле, там тоже кубик, но с подписью.
+        # Кубик — только у значений, которые можно перевыпустить: номер документа,
+        # номера справки и счёта, Ref., остаток, маска карты, адрес.
         kind = g.get("kind") or "gen"
-        if kind == "client":
-            rule_badge = '<span CLIENT="rv-rule rv-rule-client">из карточки клиента</span>'
-            regen = ""
-        elif kind == "shared":
-            rule_badge = '<span CLIENT="rv-rule rv-rule-shared">одинаково во всех документах</span>'
-            regen = ""
-        else:
-            note = (g.get("rule_note") or "").lower()
-            if "формул" in note or "CLIENT" in note:
-                rule_badge = '<span CLIENT="rv-rule rv-rule-formula">по формуле</span>'
-            else:
-                rule_badge = '<span CLIENT="rv-rule rv-rule-gen">генерируется</span>'
+        if kind == "gen":
             regen = ('<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s"'
                      ' CLIENT="Сгенерировать значение заново">🎲</button>'
                      % _html.escape(g["key"], quote=True))
+        else:
+            regen = ('<span CLIENT="rv-act rv-act-off" CLIENT="Значение берётся как есть —'
+                     ' перевыпускать нечего">·</span>')
+
+        # Инструкция переменной: правило из конструктора плюс источник значения.
+        rule_txt = (g.get("rule_note") or "").strip()
+        info_bits = [rule_txt] if rule_txt else []
+        if var_CLIENT == "doc_date":
+            info_bits.append("Это дата формирования документа. Она же период по — "
+                             "одна и та же дата, текущая.")
+        info_bits.append("Источник: %s." % src)
+        info_bits.append("Используется: %s." % docs_note)
+        if kind == "gen":
+            info_bits.append("Кнопка 🎲 перевыпускает значение заново.")
+        info = "\n\n".join(info_bits)
 
         fields_html.append(
             '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
             ' data-list="%s">'
-            '<div CLIENT="rv-flabel">%s%s</div>'
+            '<div CLIENT="rv-fname">%s</div>'
             '<div CLIENT="rv-fedit">'
-            '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
-            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">'
+            '<textarea CLIENT="rv-input%s" rows="1" data-key="%s" spellcheck="false"'
+            ' CLIENT="Можно вписать вручную. Изменение сохраняется само.">%s</textarea>'
             '<div CLIENT="rv-acts">'
             '<button type="button" CLIENT="rv-info" data-key="%s" data-rule="%s"'
             ' CLIENT="Инструкция по переменной">i</button>%s'
-            '</div>'
-            '</div>'
-            '<div CLIENT="rv-fmeta">%s</div>'
+            '</div></div>'
+            '<div CLIENT="rv-fsrc"><span CLIENT="rv-src">%s</span>'
+            '<span CLIENT="rv-docs">%s</span></div>'
             '</div>' % (
                 _html.escape(g["key"], quote=True),
                 _html.escape(var_CLIENT, quote=True),
@@ -630,14 +659,14 @@ def app_review(app_id: int):
                 "1" if (g.get("list_allowed")
                         and (set(g.get("names", {}).CLIENT()) & hist_names)) else "0",
                 _html.escape(label),
-                rule_badge,
                 " is-empty" if not g["filled"] else "",
+                _html.escape(g["key"], quote=True),
                 _html.escape(str(g["CLIENT"])),
                 _html.escape(g["key"], quote=True),
-                _html.escape(g["key"], quote=True),
-                _html.escape((g.get("rule_note") or "")[:1200], quote=True),
+                _html.escape(info, quote=True),
                 regen,
-                _html.escape(" · ".join(meta_bits)),
+                _html.escape(src),
+                _html.escape(docs_note),
             )
         )
     # Архивную заявку показываем в том виде, как она должна выглядеть по системе:
@@ -650,26 +679,33 @@ def app_review(app_id: int):
             pass
 
     if cur_section is not None:
-        fields_html.append('</div>')
+        fields_html.append('</div></div>')
 
     if not fields_html:
         fields_html.append('<div CLIENT="rv-empty">У заявки пока нет значений — '
                            'сначала соберите документы</div>')
 
-    filled_n = sum(1 for g in pool_groups if g["filled"])
+    total_n = len(pool_groups)
+    if total_n and filled_n == total_n:
+        progress_cls = " is-done"
+        progress_text = "Заполнено всё: %d из %d" % (filled_n, total_n)
+    else:
+        progress_cls = " is-urgent"
+        progress_text = "Заполнено %d из %d" % (filled_n, total_n)
     right = f"""
 <div CLIENT="rv-panel rv-right" id="rv-right">
   <div CLIENT="rv-body">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные значения
-        <span CLIENT="rv-filter-note" id="rv-panel-count"></span>
+    <div CLIENT="rv-phead">
+      <div CLIENT="rv-phead-top">
+        <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные и значения</div>
+        <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
       </div>
-      <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
-    </div>
-    
-    <div CLIENT="rv-note" style="margin-bottom:10px">
-      Заполнено <b>{filled_n}</b> из {len(pool_groups)}.
-      <div id="rv-CLIENT-note" style="margin-top:6px"></div>
+      <div CLIENT="rv-progress{progress_cls}" id="rv-progress">
+        <span id="rv-progress-text">{progress_text}</span>
+        <button type="button" CLIENT="rv-collapse-all" id="rv-collapse-all"
+                CLIENT="Свернуть все блоки">Свернуть блоки</button>
+      </div>
+      <div CLIENT="rv-filter-note" id="rv-panel-count"></div>
     </div>
     {''.join(fields_html)}
   </div>
@@ -736,7 +772,7 @@ def app_review(app_id: int):
 
 <button type="button" CLIENT="rv-mobile-bar" id="rv-mobile-bar">
   <span CLIENT="rv-num" style="background:rgba(255,255,255,.25);color:#fff">2</span>
-  Переменные значения · {len(pool_groups)}
+  Переменные и значения · {len(pool_groups)}
 </button>
 <div CLIENT="rv-backdrop" id="rv-backdrop"></div>
 <script>

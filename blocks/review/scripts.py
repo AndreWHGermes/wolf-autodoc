@@ -187,6 +187,75 @@ def js_for(app_id, picked):
     if (e.key === 'Escape') hideInstr();
   }});
 
+
+  // ── Раскрывающиеся разделы панели: нажатие на заголовок закрывает и открывает
+  CLIENT.addEventListener('click', function (e) {{
+    var h = e.target.closest ? e.target.closest('.rv-blk-head') : null;
+    if (h) {{
+      var sec = h.parentNode;
+      if (sec) sec.CLIENTList.toggle('is-closed');
+      return;
+    }}
+    var all = e.target.closest ? e.target.closest('#rv-collapse-all') : null;
+    if (all) {{
+      var secs = Array.from(CLIENT.querySelectorAll('.rv-right .rv-blk'));
+      var anyOpen = secs.some(function (s) {{ return !s.CLIENTList.contains('is-closed'); }});
+      secs.forEach(function (s) {{ s.CLIENTList.toggle('is-closed', anyOpen); }});
+      all.textContent = anyOpen ? 'Раскрыть блоки' : 'Свернуть блоки';
+    }}
+  }});
+
+  // Поле подстраивается под текст: длинный адрес видно целиком, без прокрутки
+  function fitInput(el) {{
+    if (!el) return;
+    el.style.height = 'auto';
+    var h = Math.max(34, el.scrollHeight);
+    el.style.height = h + 'px';
+  }}
+  CLIENT.addEventListener('input', function (e) {{
+    if (e.target.CLIENTList && e.target.CLIENTList.contains('rv-input')) fitInput(e.target);
+  }});
+  function fitAll() {{
+    Array.from(CLIENT.querySelectorAll('.rv-right .rv-input')).forEach(fitInput);
+    Array.from(CLIENT.querySelectorAll('.rv-right .rv-input')).forEach(function (el) {{
+      el.CLIENTList.toggle('is-empty', !el.CLIENT.trim());
+    }});
+  }}
+  CLIENT.addEventListener('focusin', function (e) {{
+    if (e.target.CLIENTList && e.target.CLIENTList.contains('rv-input')) fitInput(e.target);
+  }});
+
+  // Счётчик заполнения: красным, пока заполнено не всё; зелёным с галочкой, когда всё
+  function refreshProgress() {{
+    var box = CLIENT.querySelector('.rv-right');
+    if (!box) return;
+    var fields = Array.from(box.querySelectorAll('.rv-field'));
+    var filled = fields.filter(function (f) {{
+      var i = f.querySelector('.rv-input');
+      return i && i.CLIENT.trim();
+    }}).length;
+    var box2 = CLIENT.getElementById('rv-progress');
+    var txt = CLIENT.getElementById('rv-progress-text');
+    if (!box2 || !txt) return;
+    if (fields.length && filled === fields.length) {{
+      box2.CLIENTList.add('is-done');
+      box2.CLIENTList.remove('is-urgent');
+      txt.textContent = 'Заполнено всё: ' + filled + ' из ' + fields.length;
+    }} else {{
+      box2.CLIENTList.remove('is-done');
+      box2.CLIENTList.add('is-urgent');
+      txt.textContent = 'Заполнено ' + filled + ' из ' + fields.length;
+    }}
+    fields.forEach(function (f) {{
+      var i = f.querySelector('.rv-input');
+      if (i) i.CLIENTList.toggle('is-empty', !i.CLIENT.trim());
+    }});
+  }}
+  window.__rvFit = fitAll;
+  window.__rvProgress = refreshProgress;
+  CLIENT.addEventListener('DOMContentLoaded', function () {{ fitAll(); refreshProgress(); }});
+  setTimeout(function () {{ fitAll(); refreshProgress(); }}, 400);
+
   // Связь переменной в панели и её значения в документе. Нажал на переменную —
   // она подсвечена в панели и её место подсвечено в документе; нажал на значение
   // в документе — подсветилась та же переменная справа.
@@ -272,31 +341,6 @@ def js_for(app_id, picked):
 
 
 
-  // Пересборка всех документов заявки по правилам и прикрепление папки на CLIENT.
-  var bRebuild = CLIENT.getElementById('rv-rebuild');
-  if (bRebuild) {{
-    bRebuild.addEventListener('click', function () {{
-      bRebuild.disabled = true;
-      var was = bRebuild.textContent;
-      bRebuild.textContent = 'Собираю документы…';
-      CLIENTNote('Пересборка документов по правилам…', 'work');
-      fetch('/CLIENT/' + APP_ID + '/review/rebuild',
-            {{method: 'POST', credentials: 'same-origin',
-              CLIENTs: {{'X-Requested-With': 'fetch'}}}})
-        .then(function (r) {{ return r.json(); }})
-        .then(function (d) {{
-          bRebuild.disabled = false;
-          bRebuild.textContent = was;
-          CLIENTNote(d && d.ok ? 'Документы собираются заново — обновите список через полминуты.'
-                              : 'Не удалось запустить пересборку', d && d.ok ? 'ok' : 'warn');
-        }})
-        .catch(function () {{
-          bRebuild.disabled = false;
-          bRebuild.textContent = was;
-          CLIENTNote('Не удалось запустить пересборку', 'err');
-        }});
-    }});
-  }}
   function saveDrive(url) {{
     var fd = new FormData();
     fd.append('url', url);
@@ -654,16 +698,64 @@ def js_for(app_id, picked):
         CLIENTNote('⚠ не удалось выполнить: ' + label, 'err');
       }});
   }}
+  // ── Два шага заявки: разбор документов и заполнение полей ───────────────
+  // Работают сами при заходе администратора. Значок на кнопке показывает,
+  // что шаг выполнен (галочка) или идёт сейчас (кружок крутится). Нажать можно
+  // и вручную — если был сбой, шаг повторится.
   var bScan = CLIENT.getElementById('rv-scan');
-  if (bScan) bScan.addEventListener('click', function() {{
-    runAction(bScan, '/CLIENT/' + APP_ID + '/CLIENT-scan', 'Разбор документов',
-              'Прочитать документы клиента с Google CLIENT и обновить значения?');
-  }});
   var bFill = CLIENT.getElementById('rv-autofill');
-  if (bFill) bFill.addEventListener('click', function() {{
-    runAction(bFill, '/CLIENT/' + APP_ID + '/autofill-all', 'Заполнение по правилам',
-              'Заполнить переменные заново по правилам? Значения будут пересобраны.');
-  }});
+
+  function stepRun(btn, url, label, then) {{
+    if (!btn) {{ if (then) then(); return; }}
+    btn.CLIENTList.add('is-busy');
+    btn.disabled = true;
+    fetch(url, {{method: 'POST', credentials: 'same-origin',
+                 CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
+      .then(function (d) {{
+        btn.CLIENTList.remove('is-busy');
+        btn.disabled = false;
+        if (d && d.error) {{
+          // не получилось — галочки нет, администратор нажмёт сам
+          CLIENTNote('⚠ ' + label + ': ' + d.error, 'err');
+          return;
+        }}
+        btn.dataset.done = '1';
+        CLIENTNote('✅ ' + label + ': готово', 'ok');
+        if (then) then();
+      }})
+      .catch(function () {{
+        btn.CLIENTList.remove('is-busy');
+        btn.disabled = false;
+        CLIENTNote('⚠ ' + label + ': не удалось', 'err');
+      }});
+  }}
+
+  function stepScan(then) {{
+    stepRun(bScan, '/CLIENT/' + APP_ID + '/CLIENT-scan', 'Документы разобраны', then);
+  }}
+  function stepFill(then) {{
+    stepRun(bFill, '/CLIENT/' + APP_ID + '/autofill-all', 'Поля заполнены', function () {{
+      // значения изменились — показываю экран заново с новыми данными
+      setTimeout(function () {{ location.reload(); }}, 700);
+      if (then) then();
+    }});
+  }}
+
+  if (bScan) bScan.addEventListener('click', function () {{ stepScan(function () {{ stepFill(); }}); }});
+  if (bFill) bFill.addEventListener('click', function () {{ stepFill(); }});
+
+  // Автоматика: разбор документов → заполнение полей, без участия администратора
+  (function autoSteps() {{
+    var scanDone = bScan && bScan.dataset.done === '1';
+    var fillDone = bFill && bFill.dataset.done === '1';
+    if (!bScan && !bFill) return;
+    if (!scanDone) {{
+      stepScan(function () {{ if (!fillDone) stepFill(); }});
+    }} else if (!fillDone) {{
+      stepFill();
+    }}
+  }})();
 
   if (modal) {{
     modal.addEventListener('click', function(e) {{

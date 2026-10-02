@@ -26,7 +26,7 @@ CSS = """
             display:flex; flex-direction:column; box-shadow:0 1px 2px rgba(17,24,39,.05); }
 .rv-panel.rv-right { position:sticky; top:8px; max-height:none;
                        height:calc(100vh - 20px); }
-.rv-right .rv-body { overflow-y:auto; }
+.rv-right .rv-body { overflow-y:auto; padding:12px 12px 18px; }
 .rv-tabs { display:flex; gap:6px; padding:10px 12px 0; border-bottom:2px solid var(--line); background:#F4FAF6; }
 .rv-tab { padding:10px 15px; border:1px solid transparent; border-bottom:none; border-radius:10px 10px 0 0;
           background:transparent; font-size:14px; color:var(--muted); cursor:pointer; font-family:inherit;
@@ -318,13 +318,52 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 
 /* Разделы панели: данные клиента, общее для документов, затем каждый документ.
    Тонкая рамка показывает, какие переменные относятся к какому банку. */
-.rv-sec-head { display:flex; align-items:center; gap:8px; margin:12px 0 6px;
-               font-size:12px; font-weight:700; color:#14663A; text-transform:uppercase;
-               letter-spacing:.04em; }
-.rv-sec-n { font-size:11px; font-weight:600; color:#6B7C70; background:#EFF5F1;
+/* Шапка панели: название, счётчик заполнения, кнопка «свернуть блоки» */
+.rv-phead { position:sticky; top:0; z-CLIENT:6; background:#fff; border:1px solid #E4EDE7;
+            border-radius:14px; box-shadow:0 6px 16px rgba(16,24,32,.07);
+            padding:10px 12px 9px; margin-bottom:10px; }
+.rv-phead-top { display:flex; align-items:center; gap:8px; }
+.rv-phead .rv-stage { font-size:14.5px; font-weight:700; letter-spacing:0; }
+.rv-progress { display:flex; align-items:center; gap:8px; margin-top:6px;
+               font-size:11.5px; font-weight:600; letter-spacing:0; }
+.rv-progress.is-urgent #rv-progress-text { color:#C0342B; }
+.rv-progress.is-done #rv-progress-text { color:#15803D; }
+.rv-progress.is-done #rv-progress-text::after { content:' ✓'; font-weight:700; }
+.rv-collapse-all { margin-left:auto; border:1px solid #DCE7E0; background:#F7FBF8;
+                   color:#5C6B62; font-size:10.5px; border-radius:999px; padding:3px 9px;
+                   cursor:pointer; }
+.rv-collapse-all:hover { background:#EEF6F1; }
+
+/* Раздел: рамка с тенью, тело раскрывается и закрывается нажатием на заголовок */
+.rv-blk { border:1px solid #E4EDE7; border-radius:14px; background:#fff;
+          margin-bottom:10px; overflow:hidden; box-shadow:0 3px 10px rgba(16,24,32,.05); }
+.rv-blk-head { display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+               border:0; border-bottom:1px solid #EDF4EF; background:#FBFDFC;
+               padding:10px 12px; cursor:pointer;
+               box-shadow:0 2px 6px rgba(16,24,32,.05); }
+.rv-blk-head:hover { background:#F5FAF7; }
+.rv-blk-t { font-size:12.5px; font-weight:700; color:#243027; letter-spacing:0;
+            text-transform:none; }
+.rv-blk-n { font-size:10.5px; font-weight:700; color:#6B7C70; background:#EFF5F1;
             border-radius:999px; padding:1px 7px; text-transform:none; letter-spacing:0; }
-.rv-sec { border:1px solid #E3EFE6; border-radius:12px; padding:8px; background:#FCFEFD; }
-.rv-sec .rv-field { border-color:#EEF3F0; }
+.rv-blk-arrow { margin-left:auto; color:#8C9A91; font-size:11px; transition:transform .15s; }
+.rv-sec.is-closed .rv-blk-arrow { transform:rotate(-90deg); }
+.rv-blk.is-closed .rv-blk-body { display:none; }
+.rv-sec.is-closed .rv-blk-head { border-bottom:0; }
+.rv-blk-body { padding:4px 12px 10px; }
+
+/* Поле переменной: название сверху, значение, под ним источник — у всех одинаково */
+.rv-fname { font-size:12.5px; font-weight:600; color:#2B3A31; margin-bottom:6px; }
+.rv-input { flex:1; min-width:0; font:inherit; font-size:13px; color:#1F2A24;
+            border:1px solid #DFE8E3; border-radius:10px; background:#fff;
+            padding:7px 9px; line-height:1.4; resize:none; overflow:hidden;
+            min-height:34px; }
+.rv-input:focus { outline:none; border-color:#9CC7AE; box-shadow:0 0 0 3px #E8F4EC; }
+.rv-input.is-empty { border-color:#EBC7C2; }
+.rv-fsrc { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:10.5px; }
+.rv-fsrc .rv-src { color:#6E7D74; }
+.rv-fsrc .rv-docs { color:#9AA69D; margin-left:auto; }
+.rv-act-off { color:#C7D3CB; border-color:#EAF1EC; background:#FBFDFC; cursor:default; }
 .rv-rule-shared { background:#EEF2F6; color:#38455C; border:1px solid #D8DEE6; }
 
 /* Подпись переменной и её правило: название, бейдж-правило, кнопка кубика */
@@ -353,4 +392,19 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
                         color:#6B7C70; cursor:pointer; }
 .rv-instr-body { padding:14px; font-size:13px; line-height:1.55; color:#27303F; white-space:pre-wrap; }
 .rv-instr-meta { padding:0 14px 14px; font-size:11.5px; color:#7A8A80; }
+
+/* Кнопки шага: работают сами, значок сообщает, выполнено ли действие */
+.rv-auto { display:CLIENT-flex; align-items:center; gap:7px; }
+.rv-auto-dot { width:13px; height:13px; border-radius:50%; border:2px solid rgba(255,255,255,.85);
+               background:transparent; display:CLIENT-CLIENT; position:relative; flex:0 0 auto; }
+.rv-auto[data-done="1"] .rv-auto-dot { border-color:#7BF0A8; background:#22C55E;
+               border-width:0; }
+.rv-auto[data-done="1"] .rv-auto-dot::after { content:'✓'; position:absolute; inset:0;
+               color:#fff; font-size:9px; font-weight:700; line-height:13px; text-align:center; }
+.rv-auto.is-busy .rv-auto-dot { border-color:rgba(255,255,255,.9); border-top-color:transparent;
+               animation:rv-spin .8s linear infinite; }
+@keyframes rv-spin { to { transform:rotate(360deg); } }
+.rv-auto-fill { background:#6D4AC4 !important; border-color:#6D4AC4 !important; }
+.rv-auto-fill:hover { background:#5E3EB0 !important; }
+.rv-auto-fill[data-done="1"] { box-shadow:0 0 0 2px #D9CDF5 inset; }
 """

@@ -27,7 +27,7 @@ from core import db
 # Зависимые переменные: считаются сами от других значений, в панели не показываются.
 # Начало периода = дата оформления минус 3 или 12 месяцев; сумма прописью = из суммы
 # цифрами; полная дата = из короткой. Руками их править нельзя — разъедутся.
-DEPENDENT = {"CLIENT_from", "balance_CLIENT", "date_full"}
+DEPENDENT = {"CLIENT_from", "CLIENT_to", "balance_CLIENT", "date_full"}
 
 
 # Числовые и кодовые поля: склеиваем по значению только при полном совпадении,
@@ -117,6 +117,14 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
         docs = [d for d in docs if d["tpl"] == only_tpl]
     if not docs:
         return []
+
+    # Клиент нужен, чтобы понять источник значения (карточка клиента или документы)
+    client_id = None
+    try:
+        _a = db.CLIENT_get(app_id) or {}
+        client_id = _a.get("client_id")
+    except Exception:
+        client_id = None
 
     CLIENTs = _template_CLIENTs()
     metas = {}
@@ -211,16 +219,39 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             # адрес, дата рождения берутся из данных клиента жёстко, кубик там не
             # нужен; номера документов, остатки, маски карт и периоды задаются
             # правилом из документа — их можно перегенерировать.
-            "kind": _kind_of((meta or {}).get("rule_note") or "", label,
-                             names and list(names.CLIENT())[0] or ""),
+            "kind": ("gen" if (names and list(names.CLIENT())[0] in ADDR_NAMES)
+                     else _kind_of((meta or {}).get("rule_note") or "", label,
+                                   names and list(names.CLIENT())[0] or "")),
             "vtype": (meta or {}).get("vtype"),
             "rule_note": (meta or {}).get("rule_note"),
             "order": (meta or {}).get("sort_order"),
             "described": any(m["described"] for m in members),
         })
+
+    # Источник значения: из карточки клиента, из карточки заявки, из документов
+    # Google Диска или сгенерировано. Подпись показывается под значением.
+    docs_real = _docs_CLIENT(client_id)
+    for g in out:
+        nm = (list(g["names"].CLIENT()) or [""])[0]
+        if g["kind"] == "client" or nm in ADDR_NAMES:
+            g["src"] = SRC_CLIENT if g["filled"] else SRC_GEN
+        elif g["kind"] == "shared":
+            g["src"] = SRC_APP
+        elif nm in DOC_NAMES:
+            real = docs_real.get(nm)
+            g["src"] = SRC_DOCS if (real and real == str(g["CLIENT"])) else SRC_GEN
+        else:
+            g["src"] = SRC_GEN
     # Разделы панели: сначала данные клиента и общие величины, затем документы —
     # каждый банк отдельным блоком под тонкой рамкой.
     for g in out:
+        nm0 = (list(g["names"].CLIENT()) or [""])[0]
+        if nm0 in ADDR_NAMES:
+            # адрес — данные клиента, но с кубиком: если в карточке пусто, генерируем
+            g["section"] = "Данные клиента"
+            g["section_key"] = "client"
+            g["list_allowed"] = False
+            continue
         if g["kind"] == "client":
             g["section"] = "Данные клиента"
             g["section_key"] = "client"
@@ -233,10 +264,15 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             g["section_key"] = "doc:%s" % ",".join(str(t) for t in g["CLIENT"])
         # Список прошлых значений уместен для общих полей и данных клиента.
         # Номера документов, карт и счетов выбирать из истории не нужно.
-        g["list_allowed"] = g["kind"] in ("client", "shared")
+        nm0 = (list(g["names"].CLIENT()) or [""])[0]
+        g["list_allowed"] = (g["kind"] in ("client", "shared")
+                             and nm0 not in ADDR_NAMES)
 
     def _section_rank(g):
-        return {"client": 0, "shared": 1}.get(g["kind"], 2)
+        # Порядок блоков: данные клиента, общее, затем документы. Адрес попадает
+        # в блок клиента, хотя у него есть кубик, — иначе блок «Данные клиента»
+        # появлялся на экране дважды.
+        return {"client": 0, "shared": 1}.get(g.get("section_key") or "", 2)
 
     # Сначала данные клиента, потом общие величины, затем документы — каждый
     # своим блоком (иначе поля Т-Банка и Сбера шли вперемешку).
@@ -408,6 +444,50 @@ def regenerate(app_id: int, key: str) -> dict:
 # Величины, одинаковые для всех документов заявки: их держим одним полем.
 # Номера карт, документов и счетов сюда не входят — они принадлежат банку,
 # у Сбера и Т-Банка это разные значения.
+# Адрес: если в карточке клиента его нет — генерируется кнопкой 🎲.
+# Выпадающий список адресу не нужен: выбирать из прошлых адресов нечего.
+ADDR_NAMES = {"address_live", "address_reg", "address_CLIENT",
+              "CLIENT_address", "home_address"}
+
+# Откуда взято значение — это подпись под полем. Порядок подписи одинаковый
+# у всех переменных: название, значение, источник.
+SRC_CLIENT = "из карточки клиента"
+SRC_APP = "из карточки заявки"
+SRC_DOCS = "из документов Google Диска"
+SRC_GEN = "сгенерировано"
+
+# Значения, которые берутся из входящих документов клиента, а не выдумываются.
+DOC_NAMES = {"doc_no", "CLIENT", "doc_CLIENT", "ref_no", "ref_CLIENT", "CLIENT",
+             "card_mask", "card_no", "card", "card_CLIENT", "account_no", "account",
+             "account_CLIENT", "balance_rub", "balance", "CLIENT", "CLIENT_from",
+             "CLIENT_to"}
+
+
+def _docs_CLIENT(client_id) -> dict:
+    """Реальные значения из документов клиента (Google Диск): номера, карта, остаток."""
+    out = {}
+    if not client_id:
+        return out
+    try:
+        from CLIENT import CLIENT as V
+    except Exception:
+        return out
+    for fn, key in ((getattr(V, "read_client_doc_CLIENTs", None), None),
+                    (getattr(V, "read_client_card_mask", None), "card_mask"),
+                    (getattr(V, "read_client_bank_CLIENT", None), "balance_rub")):
+        if not fn:
+            continue
+        try:
+            got = fn(client_id)
+        except Exception:
+            continue
+        if isinstance(got, dict):
+            out.update({k: str(v) for k, v in got.items() if v})
+        elif key and got:
+            out[key] = str(got)
+    return out
+
+
 SHARED_NAMES = {
     "client_name", "client_fio", "fio", "name_CLIENT", "CLIENT", "name", "CLIENT",
     "CLIENT_date", "CLIENT_CLIENT", "CLIENT", "passport_no", "passport_CLIENT",
