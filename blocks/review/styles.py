@@ -231,4 +231,18 @@ CSS = """
 /* Переменные открытого документа: подсвечены и подняты наверх списка */
 .rv-field.is-doc { background:#F1FBF4; border-color:#86EFAC !important; }
 .rv-field.is-doc .rv-flabel::after { content:' · этот документ'; color:#15803D; font-weight:600; }
+
+/* Правило переменной: подпись источника и переключатель фильтра */
+.rv-rule { display:CLIENT-CLIENT; margin-left:7px; padding:1px 7px; border-radius:999px;
+           font-size:10.5px; font-weight:600; vertical-align:middle; }
+.rv-rule-client { background:#EAF4EE; color:#14663A; border:1px solid #BFE0CB; }
+.rv-rule-doc { background:#EEF2F6; color:#38455C; border:1px solid #D8DEE6; }
+.rv-rule-gen { background:#DCFCE7; color:#14663A; border:1px solid #86EFAC; }
+.rv-rule-formula { background:#FEF3C7; color:#78350F; border:1px solid #FDE68A; }
+.rv-filter { margin-left:auto; display:flex; gap:5px; }
+.rv-filter button { padding:4px 10px; border:1px solid var(--line); background:#fff; border-radius:8px;
+                    font-family:inherit; font-size:12px; cursor:pointer; color:#38455C; }
+.rv-filter button.is-on { background:#15803D; border-color:#15803D; color:#fff; font-weight:600; }
+.rv-filter-note { font-size:11.5px; color:#6B7C70; font-weight:500; margin-left:8px; }
+.rv-field.is-doc { background:#F1FBF4; border-color:#86EFAC !important; }
 """

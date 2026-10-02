@@ -193,6 +193,11 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             "disagree": len({v for v in CLIENT.CLIENT() if v}) > 1,
             "CLIENT_split": bool(g.get("CLIENT_split")),
             "source_kind": (meta or {}).get("source_kind"),
+            # Правило переменной — по описанию из конструктора: ФИО, паспорт,
+            # адрес, дата рождения берутся из данных клиента жёстко, кубик там не
+            # нужен; номера документов, остатки, маски карт и периоды задаются
+            # правилом из документа — их можно перегенерировать.
+            "kind": _kind_of((meta or {}).get("rule_note") or "", label),
             "vtype": (meta or {}).get("vtype"),
             "rule_note": (meta or {}).get("rule_note"),
             "order": (meta or {}).get("sort_order"),
@@ -342,3 +347,23 @@ def regenerate(app_id: int, key: str) -> dict:
     res["regenerated"] = True
     res["name"] = name
     return res
+
+# Приметы «значение из данных клиента»: такие поля не генерируются, а берутся
+# из карточки клиента. Всё остальное — правило документа (можно перегенерировать).
+_FROM_CLIENT = ("из карточки клиента", "из данных клиента", "фио клиента",
+                "паспорт", "дата рождения", "место рождения", "гражданство")
+# Значения из входящего документа клиента (справка банка, выписка): их тоже
+# не генерируют, а читают из документа — кубик здесь не нужен.
+_FROM_DOC = ("из строки", "из справки", "из документа", "из выписки", "из выгрузки")
+
+
+def _kind_of(rule_note: str, label: str = "") -> str:
+    """Как задаётся переменная: из карточки клиента или по правилу документа."""
+    low = (rule_note or "").lower()
+    lab = (label or "").lower()
+    if any(k in low for k in _FROM_CLIENT) or any(
+            k in lab for k in ("фио", "паспорт", "дата рождения", "гражданств")):
+        return "client"
+    if any(k in low for k in _FROM_DOC):
+        return "doc"
+    return "gen"

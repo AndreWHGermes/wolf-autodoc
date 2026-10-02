@@ -383,18 +383,37 @@ def app_review(app_id: int):
             label = "%s · %s" % (label, g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
         docs_note = ("в %d документах" % g["doc_count"]) if g["doc_count"] > 1 else \
                     (g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
-        src = src_names.get(g.get("source_kind") or "", g.get("source_kind") or "")
-        meta_bits = [b for b in (src, docs_note, g.get("vtype")) if b]
+        meta_bits = [b for b in (docs_note, g.get("vtype")) if b]
         vars_all = ",".join(g["names"].CLIENT())
         var_CLIENT = next(iter(g["names"].CLIENT()), "")
+
+        # Правило переменной. ФИО, паспорт, адрес, банк — это данные клиента:
+        # значение берётся жёстко, перегенерировать его нельзя, кубика нет.
+        # Номер документа, остаток, маска карты — генерируются, у них кубик.
+        # Номер письма и подобное — по формуле, там тоже кубик, но с подписью.
+        kind = g.get("kind") or "gen"
+        if kind == "client":
+            rule_badge = '<span CLIENT="rv-rule rv-rule-client">из карточки клиента</span>'
+            regen = ""
+        elif kind == "doc":
+            rule_badge = '<span CLIENT="rv-rule rv-rule-doc">из входящего документа</span>'
+            regen = ""
+        else:
+            note = (g.get("rule_note") or "").lower()
+            if "формул" in note or "CLIENT" in note:
+                rule_badge = '<span CLIENT="rv-rule rv-rule-formula">по формуле</span>'
+            else:
+                rule_badge = '<span CLIENT="rv-rule rv-rule-gen">генерируется</span>'
+            regen = ('<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s"'
+                     ' CLIENT="Сгенерировать значение заново">🎲</button>'
+                     % _html.escape(g["key"], quote=True))
+
         fields_html.append(
             '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s">'
-            '<div CLIENT="rv-flabel">%s</div>'
+            '<div CLIENT="rv-flabel">%s%s</div>'
             '<div CLIENT="rv-fedit">'
             '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
-            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">'
-            '<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s"'
-            ' CLIENT="Сгенерировать значение заново">🎲</button>'
+            ' CLIENT="Нажмите, чтобы выбрать из прошлых значений. Изменение сохраняется само.">%s'
             '</div>'
             '<div CLIENT="rv-fmeta">%s</div>'
             '</div>' % (
@@ -403,10 +422,11 @@ def app_review(app_id: int):
                 _html.escape(vars_all, quote=True),
                 _html.escape(",".join(str(t) for t in (g.get("CLIENT") or [])), quote=True),
                 _html.escape(label),
+                rule_badge,
                 " is-empty" if not g["filled"] else "",
                 _html.escape(str(g["CLIENT"])),
                 _html.escape(g["key"], quote=True),
-                _html.escape(g["key"], quote=True),
+                regen,
                 _html.escape(" · ".join(meta_bits)),
             )
         )
@@ -419,7 +439,13 @@ def app_review(app_id: int):
 <div CLIENT="rv-panel rv-right" id="rv-right">
   <div CLIENT="rv-body">
     <div style="display:flex;align-items:center;gap:8px">
-      <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные значения</div>
+      <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные значения
+        <span CLIENT="rv-filter">
+          <button type="button" id="rv-flt-doc" CLIENT="is-on">этот документ</button>
+          <button type="button" id="rv-flt-all">все</button>
+        </span>
+        <span CLIENT="rv-filter-note" id="rv-panel-count"></span>
+      </div>
       <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
     </div>
     <div CLIENT="rv-sec" style="color:#8A93A5;font-weight:600;text-transform:none;letter-spacing:0">

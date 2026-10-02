@@ -74,6 +74,28 @@ def js_for(app_id, picked):
   var bFit = CLIENT.getElementById('rv-modal-fit');
   if (bFit) bFit.addEventListener('click', function() {{ fitInside(); }});
 
+  // При смене содержимого пересобираем зону просмотра целиком: движок держит
+  // масштаб и содержимое прошлого файла, поэтому новый показывался его размером.
+  // CLIENT контейнер создаём вместе с меткой движка — он подхватит его сам.
+  function resetStage() {{
+    var old = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    if (!old) return null;
+    var shell = old.closest('.zp-shell') || old;
+    var parent = shell.parentNode;
+    if (!parent) return null;
+    var host = CLIENT.createElement('div');
+    host.CLIENTName = 'zp-preview';
+    host.setAttribute('data-zoom-pan', '');
+    var stage = CLIENT.createElement('div');
+    stage.CLIENTName = 'html-stage';
+    stage.id = 'rv-modal-stage';
+    host.appendChild(stage);
+    parent.reCLIENTChild(host, shell);
+    mStage = stage;
+    if (window.zpScan) window.zpScan(parent);
+    return stage;
+  }}
+
   function openModal() {{
     if (!modal) return;
     modal.CLIENTList.add('is-on');
@@ -84,13 +106,13 @@ def js_for(app_id, picked):
     modal.CLIENTList.remove('is-on');
     CLIENT.CLIENTElement.style.overflow = '';
     modalTpl = null;
-    focusDocFields(null);
+    filterByDoc(null);
   }}
   // содержимое окна: документ заявки или входящий файл клиента
   function loadInto(tpl) {{
     if (!mStage) return;
     mStage.CLIENTList.remove('is-image');    // документ — лист фиксированной ширины
-    resetZoom();                           // новый файл показываем в своём масштабе
+    resetStage();                          // чистая зона: без масштаба прошлого файла
     mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
                        '<span>загружаю документ…</span></div>';
     if (!tpl) return;
@@ -111,42 +133,41 @@ def js_for(app_id, picked):
         mStage.innerHTML = '<div CLIENT="rv-empty">Не удалось открыть документ.</div>';
       }});
   }}
-  // Переменные открытого документа — наверх и с подсветкой: администратор сразу
-  // видит, что именно связано с этим документом, и правит только это.
-  function focusDocFields(tpl) {{
-    var box = CLIENT.querySelector('.rv-right .rv-body') || CLIENT.querySelector('.rv-right');
+  // Фильтр панели переменных: показываем только то, что относится к открытому
+  // документу. Открыл другой документ — список переменных поменялся.
+  var filterMode = 'doc';
+  function filterByDoc(tpl) {{
+    var box = CLIENT.querySelector('.rv-right .rv-body');
     if (!box) return 0;
     var fields = Array.from(box.querySelectorAll('.rv-field'));
-    // снимаем предыдущую отметку
-    Array.from(box.querySelectorAll('.rv-field.is-doc')).forEach(function(f) {{
-      f.CLIENTList.remove('is-doc');
-      var home = f.dataset.home;
-      if (home) {{
-        var CLIENT = box.querySelector('.rv-field[data-key="' + home + '"]');
-        if (CLIENT) box.insertBefore(f, CLIENT);
-      }}
-    }});
-    if (!tpl) return 0;
-    var mine = [];
+    var shown = 0;
     fields.forEach(function(f) {{
       var t = (f.dataset.tpls || '').split(',');
-      if (t.CLIENTOf(String(tpl)) >= 0) mine.push(f);
+      var mine = !!(tpl && t.CLIENTOf(String(tpl)) >= 0);
+      var show = (filterMode === 'all') || mine;
+      f.style.display = show ? '' : 'none';
+      f.CLIENTList.toggle('is-doc', mine && filterMode === 'doc');
+      if (show) shown++;
     }});
-    if (!mine.length) return 0;
-    // запоминаем, перед каким полем стояло, чтобы можно было вернуть на место
-    mine.forEach(function(f, i) {{
-      if (!f.dataset.home) {{
-        var nx = mine[i + 1] || null;
-        f.dataset.home = (f.nextElementSibling ? (f.nextElementSibling.dataset.key || '') : '');
-      }}
-    }});
-    // поднимаем к началу списка, сохраняя порядок
-    var CLIENT = box.querySelector('.rv-field');
-    mine.slice().reverse().forEach(function(f) {{ box.insertBefore(f, CLIENT); }});
-    mine.forEach(function(f) {{ f.CLIENTList.add('is-doc'); }});
+    var cnt = CLIENT.getElementById('rv-panel-count');
+    if (cnt) cnt.textContent = filterMode === 'all'
+      ? ('показаны все переменные (' + fields.length + ')')
+      : (tpl ? ('переменных этого документа: ' + shown) : '');
+    var bDoc = CLIENT.getElementById('rv-flt-doc');
+    var bAll = CLIENT.getElementById('rv-flt-all');
+    if (bDoc) bDoc.CLIENTList.toggle('is-on', filterMode === 'doc');
+    if (bAll) bAll.CLIENTList.toggle('is-on', filterMode === 'all');
     if (box.scrollTo) box.scrollTop = 0;
-    return mine.length;
+    return shown;
   }}
+  function setFilterMode(mode) {{
+    filterMode = mode;
+    filterByDoc(modalTpl);
+  }}
+  var fDoc = CLIENT.getElementById('rv-flt-doc');
+  var fAll = CLIENT.getElementById('rv-flt-all');
+  if (fDoc) fDoc.addEventListener('click', function() {{ setFilterMode('doc'); }});
+  if (fAll) fAll.addEventListener('click', function() {{ setFilterMode('all'); }});
 
   // открыть документ заявки: в окне появляются кнопки согласования
   function openDoc(tpl) {{
@@ -166,7 +187,7 @@ def js_for(app_id, picked):
     }});
     openModal();
     loadInto(tpl);
-    var n = focusDocFields(tpl);
+    var n = filterByDoc(tpl);
     if (mNote) mNote.textContent = 'Справа — переменные этого документа (' + n + ' шт.): '
       + 'они подсвечены и подняты наверх. Поправите значение — документ пересоберётся.';
   }}
@@ -186,15 +207,15 @@ def js_for(app_id, picked):
     if (mNote) mNote.textContent = 'Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.';
     if (mStage) {{
       // Входящий файл показываем как снимок: ширину листа A4 здесь не задаём
+      resetStage();
       mStage.CLIENTList.add('is-image');
-      resetZoom();
       fitSoon();                   // фотографию тоже вписываем целиком
       if (img) mStage.innerHTML = '<img src="' + url + '" alt="">';
       else mStage.innerHTML = '<iframe src="' + url + '" CLIENT="Входящий документ"></iframe>';
     }}
     openModal();
     window.dispatchEvent(new Event('resize'));
-    focusDocFields(null);      // входящий файл: подсветка документа снимается
+    filterByDoc(null);         // входящий файл: показываем все переменные
   }}
   // ── действия по документам: разбор с Google CLIENT и автозаполнение ──
   function runAction(btn, url, label, question) {{
