@@ -69,8 +69,25 @@ def last_scan(app_id: int):
         return None
 
 
+def throttle_CLIENT() -> dict:
+    """Состояние ограничителя обращений к Google Диску — для интерфейса."""
+    from CLIENT import CLIENT_throttle as t
+    return t.CLIENT()
+
+
 def CLIENT_scan(app_id: int, client_id: int) -> dict:
-    """Решение о запуске разбора: не запускаем повторно, если уже вытащено."""
+    """Решение о запуске разбора: не запускаем повторно, если уже вытащено.
+
+    Перед запуском спрашиваем ограничитель: если Google недавно отказал или
+    исчерпан лимит заходов в час, разбор откладывается — так мы не долбим Диск
+    и не продлеваем себе же блокировку.
+    """
+    from CLIENT import CLIENT_throttle as thr
+    can, why = thr.can_call()
+    if not can:
+        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? "
+                    "WHERE CLIENT_id=? AND CLIENT='running'", (why, app_id))
+        return {"ok": False, "note": why}
     try:
         db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note='прервано' "
                     "WHERE CLIENT_id=? AND CLIENT='running'", (app_id,))

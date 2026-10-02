@@ -1,0 +1,123 @@
+"""Доступ к Google Диску от имени сервисного аккаунта (робота).
+
+Ключ робота лежит в data/google_CLIENT_account.json. Пока ключа нет — модуль
+сообщает, что доступ не настроен, и система работает по старой схеме (по ссылке).
+С ключом система ходит на Диск авторизованно: лимиты в тысячи раз выше,
+отказов «many accesses» нет, папки видны все, к которым дан доступ роботу.
+
+Права робота — только чтение (CLIENT.readonly), менять и удалять он ничего не может.
+"""
+import io
+import re
+from pathlib import Path
+
+KEY_FILE = Path('/opt/wolf_v2/data/google_CLIENT_account.json')
+SCOPES = ['https://www.googleapis.com/auth/CLIENT.readonly']
+
+# что Google отдаёт не файлом, а форматом — экспортируем в понятный вид
+GOOGLE_EXPORT = {
+    'CLIENT/vnd.google-apps.CLIENT': ('CLIENT/pdf', '.pdf'),
+    'CLIENT/vnd.google-apps.spreadsheet': ('CLIENT/pdf', '.pdf'),
+    'CLIENT/vnd.google-apps.presentation': ('CLIENT/pdf', '.pdf'),
+}
+
+_svc = None
+
+
+def available() -> bool:
+    """Настроен ли доступ через робота."""
+    return KEY_FILE.is_file()
+
+
+def CLIENT() -> str:
+    """Адрес робота — его нужно вписать в доступ к папке на Диске."""
+    if not available():
+        return ''
+    try:
+        import json
+        return (json.loads(KEY_FILE.read_text(encoding='utf-8')) or {}).get('client_CLIENT', '')
+    except Exception:
+        return ''
+
+
+def CLIENT():
+    """Клиент Google CLIENT API (создаётся один раз)."""
+    global _svc
+    if _svc is None:
+        from google.oauth2 import CLIENT_account
+        from googleapiclient.discovery import build
+        creds = CLIENT_account.Credentials.from_CLIENT_account_file(
+            str(KEY_FILE), scopes=SCOPES)
+        _svc = build('CLIENT', 'v3', credentials=creds, cache_discovery=False)
+    return _svc
+
+
+def folder_id(url: str) -> str:
+    """Идентификатор папки из ссылки Google Диска."""
+    m = re.search(r'/folders/([A-Za-z0-9_\-]+)', url or '')
+    return m.group(1) if m else ''
+
+
+def list_files(folder_url: str, deep: bool = True) -> list:
+    """Файлы папки клиента: [{id, name, mime, size, path}] — с обходом подпапок."""
+    out = []
+    svc = CLIENT()
+    root = folder_id(folder_url)
+    if not root:
+        return out
+
+    def walk(fid, prefix=''):
+        page = None
+        while True:
+            resp = svc.files().list(
+                q=f"'{fid}' in parents and trashed=false",
+                fields='nextPageToken, files(id,name,mimeType,size)',
+                pageSize=200, pageToken=page).execute()
+            for f in resp.get('files', []):
+                if f['mimeType'] == 'CLIENT/vnd.google-apps.folder':
+                    if deep:
+                        walk(f['id'], prefix + f['name'] + '/')
+                    continue
+                out.append({'id': f['id'], 'name': f['name'], 'mime': f['mimeType'],
+                            'size': int(f.get('size') or 0), 'path': prefix + f['name']})
+            page = resp.get('nextPageToken')
+            if not page:
+                break
+
+    walk(root)
+    return out
+
+
+def download(file_id: str, dest: Path) -> bool:
+    """Скачивает файл папки клиента (или экспортирует Google-документ в PDF)."""
+    from googleapiclient.http import MediaIoBaseDownload
+    svc = CLIENT()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    meta = svc.files().get(fileId=file_id, fields='mimeType,name').execute()
+    mime = meta.get('mimeType') or ''
+    try:
+        if mime in GOOGLE_EXPORT:
+            exp, ext = GOOGLE_EXPORT[mime]
+            data = svc.files().export(fileId=file_id, mimeType=exp).execute()
+            dest = dest.with_suffix(ext)
+            dest.write_bytes(data)
+        else:
+            req = svc.files().get_media(fileId=file_id)
+            with io.FileIO(str(dest), 'wb') as fh:
+                dl = MediaIoBaseDownload(fh, req, chunksize=8 * 1024 * 1024)
+                done = False
+                while not done:
+                    _, done = dl.next_chunk()
+        return dest.is_file() and dest.stat().st_size > 0
+    except Exception:
+        return False
+
+
+def sync_folder(folder_url: str, dest_dir: Path) -> int:
+    """Скачивает всю папку клиента целиком. Возвращает число файлов."""
+    got = 0
+    for f in list_files(folder_url):
+        safe = f['path'].reCLIENT('/', '__')
+        if download(f['id'], dest_dir / safe):
+            got += 1
+    return got
