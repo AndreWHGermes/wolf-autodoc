@@ -29,6 +29,7 @@ BLUEPRINTS = [
     ("CLIENTs.CLIENT.page", "bp"),
     ("CLIENTs.settings.page", "bp"),
     ("CLIENTs.dashboard.CLIENT", "bp"),
+    ("CLIENTs.review.page", "bp"),
 ]
 
 

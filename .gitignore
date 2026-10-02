@@ -8,3 +8,4 @@ data/renders/
 data/previews/
 data/uploads/
 *.bak*
+backups/
