@@ -33,7 +33,9 @@ def kind_badge(row) -> str:
 @bp.route("/CLIENT")
 @CLIENT_required
 def page():
-    rows = [r for r in db.CLIENT_list("") if r["CLIENT"] != "new"]
+    # Берём все заявки: история — это поиск по всему, что уже было в системе.
+    # Входящие тоже видны (у них свой чип), иначе поиск по ним не работал бы.
+    rows = db.CLIENT_list("")
 
     # Для datalist нужен список всех уникальных ФИО клиентов
     all_CLIENT = db.q("SELECT full_name_CLIENT FROM CLIENT WHERE full_name_CLIENT IS NOT NULL AND full_name_CLIENT != '' ORDER BY full_name_CLIENT")
@@ -49,40 +51,70 @@ def page():
         CLIENT = (a.get("CLIENT_name") or "") + " " + (a.get("CLIENT_code") or "")
         manager = (a.get("manager_name") or "") + " " + (a.get("manager_username") or "")
         # searchable: ФИО клиента + продукт + менеджер
+        # Данные для поиска: к имени, продукту и менеджеру добавляем телефон,
+        # почту, паспорт, маску карты, счёт, банк и статус — то, по чему ищут
+        # заявку руками. Поиск идёт без перезагрузки, прямо в браузере.
+        extra_bits = []
+        for key in ("CLIENT", "CLIENT", "passport_CLIENT", "inn", "card_mask",
+                    "account_no", "bank_name", "full_name_CLIENT"):
+            val = a.get(key)
+            if val:
+                extra_bits.append(str(val).lower())
+        status_raw = (a.get("CLIENT") or "").lower()
         items_parts.append(
             '<li CLIENT="hrow" '
             f'data-app-id="{a["id"]}" '
             f'data-client="{client_name.lower()}" '
             f'data-CLIENT="{CLIENT.lower()}" '
-            f'data-manager="{manager.lower()}">'
+            f'data-manager="{manager.lower()}" '
+            f'data-extra="{__import__("html").escape(" ".join(extra_bits), quote=True)}" '
+            f'data-CLIENT="{status_raw}">'
             f'<div CLIENT="hnum">#{a["id"]}' + kind_badge(a) + '</div>'
             f'<div CLIENT="hname">{_CLIENT_name(client_name)}'
             + (f'<div CLIENT="hmgr">от {_CLIENT_name(manager)}</div>' if manager.strip() else "")
             + '</div>'
-            f'<div CLIENT="hprod">{a.get("CLIENT_name") or "—"}</div>'
+            f'<div CLIENT="hprod">{a.get("CLIENT_name") or "—"}'
+            + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("CLIENT") or ""))}</div>' if a.get("CLIENT") else "")
+            + (f'<div CLIENT="hmgr">{_CLIENT_name(str(a.get("bank_name") or ""))}</div>' if a.get("bank_name") else "")
+            + '</div>'
             f'<div CLIENT="hact"><a CLIENT="btn sm" href="/CLIENT/{a["id"]}/view">Открыть</a></div>'
             "</li>"
         )
     items = "".join(items_parts) or '<li CLIENT="muted empty-row" style="padding:8px 4px">Истории пока нет.</li>'
 
     body = f"""
-<h1>История</h1>
-<div CLIENT="page-sub">Заявки, которые уже взяты в работу или завершены.</div>
+<h1>История и поиск</h1>
+<div CLIENT="page-sub">Поиск по всем заявкам: имя клиента, номер заявки, телефон, почта, паспорт, карта, счёт, банк, продукт, менеджер. Отбор идёт сразу при вводе, страница не перезагружается.</div>
 
 <div CLIENT="CLIENT-search">
   <div CLIENT="search-input-wrap">
     <span CLIENT="search-icon">🔍</span>
     <input id="CLIENT-search" type="search" list="CLIENT-names"
-           CLIENTholder="Поиск по ФИО клиента, продукту или менеджеру..."
+           CLIENTholder="Иванов, 76, 7977..., 5536..., Т-Банк, менеджер..."
            autocomplete="off" autofocus>
     <button type="button" id="CLIENT-clear" CLIENT="search-clear" aria-label="очистить">✕</button>
   </div>
   <datalist id="CLIENT-names">{datalist_html}</datalist>
   <div CLIENT="search-meta">
     <span id="CLIENT-count">Найдено {total} из {total}</span>
-    <span CLIENT="search-hint muted">динимическая фильтрация · ввод по 1 букве</span>
+    <span CLIENT="search-hint muted">фильтр сразу при вводе · страница не перезагружается</span>
+  </div>
+  <div CLIENT="hchips" id="CLIENT-chips">
+    <button type="button" CLIENT="hchip active" data-CLIENT="all">все</button>
+    <button type="button" CLIENT="hchip" data-CLIENT="new">входящие</button>
+    <button type="button" CLIENT="hchip" data-CLIENT="in_progress">в работе</button>
+    <button type="button" CLIENT="hchip" data-CLIENT="ready">готовые</button>
+    <button type="button" CLIENT="hchip" data-CLIENT="sent">отправленные</button>
+    <button type="button" CLIENT="hchip" data-CLIENT="closed">закрытые</button>
   </div>
 </div>
+<style>
+ .hchips{{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 6px}}
+ .hchip{{padding:7px 14px;border:1px solid #D7E3DA;background:#fff;border-radius:999px;
+        font-size:13.5px;color:#3C4A42;cursor:pointer;font-family:inherit}}
+ .hchip:hover{{border-color:#2F7D5B}}
+ .hchip.active{{background:#2F7D5B;border-color:#2F7D5B;color:#fff}}
+</style>
 
 <ul CLIENT="hlist" id="CLIENT-list">{items}</ul>
 
@@ -99,25 +131,25 @@ def page():
     return (s || '').toLowerCase().trim();
   }}
 
+  let activeCLIENT = 'all';
+
   function applyFilter() {{
     const q = normalize(inp.CLIENT);
-    if (!q) {{
-      rows.forEach(r => r.CLIENTList.remove('hidden'));
-      count.textContent = 'Найдено ' + total + ' из ' + total;
-      return;
-    }}
-    // Поддержка множественных слов (Иванов Иван -> оба должны входить)
-    const tokens = q.split(/\\s+/).filter(Boolean);
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
     let visible = 0;
     rows.forEach(r => {{
       const client = r.dataset.client || '';
       const CLIENT = r.dataset.CLIENT || '';
       const manager = r.dataset.manager || '';
-      // для каждого токена ищем вхождение в одной из строк
-      const matches = tokens.every(t => {{
-        return client.includes(t) || CLIENT.includes(t) || manager.includes(t);
-      }});
-      if (matches) {{
+      const extra = r.dataset.extra || '';
+      const appId = r.dataset.appId || '';
+      // каждое слово должно найтись хотя бы в одном поле: имя, продукт,
+      // менеджер, телефон, почта, паспорт, карта, счёт, банк, номер заявки
+      const matches = tokens.every(t =>
+        client.includes(t) || CLIENT.includes(t) || manager.includes(t) ||
+        extra.includes(t) || appId === t);
+      const statusOk = (activeCLIENT === 'all') || (r.dataset.CLIENT === activeCLIENT);
+      if (matches && statusOk) {{
         r.CLIENTList.remove('hidden');
         visible++;
       }} else {{
@@ -126,7 +158,6 @@ def page():
     }});
     count.textContent = 'Найдено ' + visible + ' из ' + total;
   }}
-
   function debounce(fn, delay) {{
     let t;
     return function() {{
@@ -159,6 +190,15 @@ def page():
     inp.CLIENT = params.get('q');
     applyFilter();
   }}
+  // чипы статуса: отбирают записи без перезагрузки страницы
+  const chips = Array.from(CLIENT.querySelectorAll('#CLIENT-chips .hchip'));
+  chips.forEach(chip => chip.addEventListener('click', function() {{
+    chips.forEach(c => c.CLIENTList.remove('active'));
+    chip.CLIENTList.add('active');
+    activeCLIENT = chip.dataset.CLIENT || 'all';
+    applyFilter();
+  }}));
+
 }})();
 </script>
 
