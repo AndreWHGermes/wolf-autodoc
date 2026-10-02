@@ -261,6 +261,7 @@ def app_review(app_id: int):
     # просмотра слева — на компьютере рядом с переменными справа.
     # Сконвертированная копия HEIC-снимка отдельной плиткой не нужна: пара
     # «.HEIC + .photo.png» — это один и тот же кадр, иначе фото видно дважды.
+    all_files = list(files)          # до фильтрации: в нём есть сконвертированные копии
     derived = {f["name"].rsplit(".", 1)[0] + ".photo.png" for f in files
                if f["ext"] in (".heic", ".heif")}
     files = [f for f in files if f["name"] not in derived]
@@ -274,7 +275,9 @@ def app_review(app_id: int):
                     'CLIENT="%s"></iframe>' % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".heic", ".heif"):
             twin = name.rsplit(".", 1)[0] + ".photo.png"
-            if any(f["name"] == twin for f in files):
+            # Браузер не показывает HEIC — для плитки берём сконвертированную копию.
+            # Копии нет в отфильтрованном списке, поэтому ищем по исходному.
+            if any(f["name"] == twin for f in all_files):
                 return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
                         % (app_id, url_quote(twin), _html.escape(twin, quote=True)))
             return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">🖼️</div>'
@@ -385,7 +388,7 @@ def app_review(app_id: int):
         vars_all = ",".join(g["names"].CLIENT())
         var_CLIENT = next(iter(g["names"].CLIENT()), "")
         fields_html.append(
-            '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s">'
+            '<div CLIENT="rv-field" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s">'
             '<div CLIENT="rv-flabel">%s</div>'
             '<div CLIENT="rv-fedit">'
             '<input CLIENT="rv-input%s" type="text" CLIENT="%s" data-key="%s" spellcheck="false"'
@@ -398,6 +401,7 @@ def app_review(app_id: int):
                 _html.escape(g["key"], quote=True),
                 _html.escape(var_CLIENT, quote=True),
                 _html.escape(vars_all, quote=True),
+                _html.escape(",".join(str(t) for t in (g.get("CLIENT") or [])), quote=True),
                 _html.escape(label),
                 " is-empty" if not g["filled"] else "",
                 _html.escape(str(g["CLIENT"])),
@@ -415,7 +419,7 @@ def app_review(app_id: int):
 <div CLIENT="rv-panel rv-right" id="rv-right">
   <div CLIENT="rv-body">
     <div style="display:flex;align-items:center;gap:8px">
-      <p CLIENT="rv-sec" style="margin:0">2. Переменные значения</p>
+      <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные значения</div>
       <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
     </div>
     <div CLIENT="rv-sec" style="color:#8A93A5;font-weight:600;text-transform:none;letter-spacing:0">
@@ -471,6 +475,7 @@ def app_review(app_id: int):
       <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">Документ</span>
       <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">
         <button type="button" CLIENT="rv-modal-vars" id="rv-modal-vars">2 Переменные</button>
+        <button type="button" id="rv-modal-fit" CLIENT="Показать файл целиком в окне">⤢ Вписать целиком</button>
         <button type="button" CLIENT="rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
         <button type="button" CLIENT="rv-no" id="rv-modal-no">✕ Не нужен</button>
         <button type="button" id="rv-modal-close">Закрыть ✕</button>

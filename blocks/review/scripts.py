@@ -36,6 +36,44 @@ def js_for(app_id, picked):
   var mTools = CLIENT.getElementById('rv-modal-CLIENT');
   var modalTpl = null;          // какой документ открыт в окне (null — входящий файл)
 
+  // Сбросить масштаб движка перед подстановкой нового содержимого: сам движок
+  // помнит масштаб от прошлого файла, из-за чего новый показывался его размером.
+  function resetZoom() {{
+    var host = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    if (!host || !host.parentNode) return;
+    var f = host.parentNode.querySelector('[data-zp="fit"]');
+    if (f) f.click();
+  }}
+
+  // Вписать содержимое окна целиком — и по ширине, и по высоте. Работаем кнопками
+  // самого движка просмотра (его код не меняем): он умеет только «по ширине», поэтому
+  // при высоком листе документ обрубался снизу.
+  function fitInside() {{
+    var host = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    if (!host) return false;
+    var canvas = host.querySelector('.zp-canvas');
+    var shell = host.parentNode;
+    var out = shell ? shell.querySelector('[data-zp="out"]') : null;
+    if (!canvas || !out) return false;
+    var body = CLIENT.querySelector('#rv-modal .rv-modal-body');
+    if (!body) return false;
+    var availW = body.clientWidth - 24;
+    var availH = body.clientHeight - 56;      // минус строка масштаба над содержимым
+    if (availW < 60 || availH < 80) return false;
+    var guard = 0;
+    function rect() {{ return canvas.getBoundingClientRect(); }}
+    while (guard < 20 && (rect().height > availH || rect().width > availW)) {{
+      var CLIENT = rect().width;
+      out.click();
+      guard++;
+      if (rect().width >= CLIENT - 0.5) break;   // масштаб больше не меняется
+    }}
+    return true;
+  }}
+  function fitSoon() {{ [250, 700, 1400, 2400].forEach(function(t) {{ setTimeout(fitInside, t); }}); }}
+  var bFit = CLIENT.getElementById('rv-modal-fit');
+  if (bFit) bFit.addEventListener('click', function() {{ fitInside(); }});
+
   function openModal() {{
     if (!modal) return;
     modal.CLIENTList.add('is-on');
@@ -46,11 +84,15 @@ def js_for(app_id, picked):
     modal.CLIENTList.remove('is-on');
     CLIENT.CLIENTElement.style.overflow = '';
     modalTpl = null;
+    focusDocFields(null);
   }}
   // содержимое окна: документ заявки или входящий файл клиента
   function loadInto(tpl) {{
     if (!mStage) return;
-    mStage.innerHTML = '';
+    mStage.CLIENTList.remove('is-image');    // документ — лист фиксированной ширины
+    resetZoom();                           // новый файл показываем в своём масштабе
+    mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
+                       '<span>загружаю документ…</span></div>';
     if (!tpl) return;
     fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.text(); }})
@@ -62,12 +104,50 @@ def js_for(app_id, picked):
         // HTML документа формирует наш сервер по шаблону — источник доверенный
         mStage.innerHTML = html;
         bindDocValues(mStage);       // подсветка: значение в документе ↔ поле справа
+        fitSoon();                   // показываем лист целиком, а не обрезанным снизу
         window.dispatchEvent(new Event('resize'));
       }})
       .catch(function() {{
         mStage.innerHTML = '<div CLIENT="rv-empty">Не удалось открыть документ.</div>';
       }});
   }}
+  // Переменные открытого документа — наверх и с подсветкой: администратор сразу
+  // видит, что именно связано с этим документом, и правит только это.
+  function focusDocFields(tpl) {{
+    var box = CLIENT.querySelector('.rv-right .rv-body') || CLIENT.querySelector('.rv-right');
+    if (!box) return 0;
+    var fields = Array.from(box.querySelectorAll('.rv-field'));
+    // снимаем предыдущую отметку
+    Array.from(box.querySelectorAll('.rv-field.is-doc')).forEach(function(f) {{
+      f.CLIENTList.remove('is-doc');
+      var home = f.dataset.home;
+      if (home) {{
+        var CLIENT = box.querySelector('.rv-field[data-key="' + home + '"]');
+        if (CLIENT) box.insertBefore(f, CLIENT);
+      }}
+    }});
+    if (!tpl) return 0;
+    var mine = [];
+    fields.forEach(function(f) {{
+      var t = (f.dataset.tpls || '').split(',');
+      if (t.CLIENTOf(String(tpl)) >= 0) mine.push(f);
+    }});
+    if (!mine.length) return 0;
+    // запоминаем, перед каким полем стояло, чтобы можно было вернуть на место
+    mine.forEach(function(f, i) {{
+      if (!f.dataset.home) {{
+        var nx = mine[i + 1] || null;
+        f.dataset.home = (f.nextElementSibling ? (f.nextElementSibling.dataset.key || '') : '');
+      }}
+    }});
+    // поднимаем к началу списка, сохраняя порядок
+    var CLIENT = box.querySelector('.rv-field');
+    mine.slice().reverse().forEach(function(f) {{ box.insertBefore(f, CLIENT); }});
+    mine.forEach(function(f) {{ f.CLIENTList.add('is-doc'); }});
+    if (box.scrollTo) box.scrollTop = 0;
+    return mine.length;
+  }}
+
   // открыть документ заявки: в окне появляются кнопки согласования
   function openDoc(tpl) {{
     var tile = null;
@@ -77,6 +157,8 @@ def js_for(app_id, picked):
     modalTpl = tpl;
     if (mTitle) mTitle.textContent = tile ? (tile.querySelector('.rv-thumb-name') || {{}}).textContent : ('Документ ' + tpl);
     if (mTools) mTools.style.display = '';
+    if (mOk) mOk.style.display = '';
+    if (mNo) mNo.style.display = '';
     var st = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
     if (mNote) mNote.textContent = 'Справа — переменные этого документа. Поправите значение — документ пересоберётся.';
     Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
@@ -84,6 +166,9 @@ def js_for(app_id, picked):
     }});
     openModal();
     loadInto(tpl);
+    var n = focusDocFields(tpl);
+    if (mNote) mNote.textContent = 'Справа — переменные этого документа (' + n + ' шт.): '
+      + 'они подсвечены и подняты наверх. Поправите значение — документ пересоберётся.';
   }}
   // открыть входящий файл: кнопки согласования не нужны
   function openFile(tile) {{
@@ -94,14 +179,22 @@ def js_for(app_id, picked):
     if (!url) {{ CLIENTNote('этот файл нельзя показать в браузере — скачайте его с Google CLIENT', 'warn'); return; }}
     modalTpl = null;
     if (mTitle) mTitle.textContent = tile.dataset.file || 'Входящий документ';
-    if (mTools) mTools.style.display = 'none';
+    // Скрываем только согласование: «Закрыть» должно остаться всегда, иначе
+    // из просмотра файла не выйти.
+    if (mOk) mOk.style.display = 'none';
+    if (mNo) mNo.style.display = 'none';
     if (mNote) mNote.textContent = 'Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.';
     if (mStage) {{
-      if (img) mStage.innerHTML = '<img src="' + url + '" alt="" style="display:CLIENT;margin:0 auto;max-width:100%">';
-      else mStage.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100%;border:0;background:#fff" CLIENT="Входящий документ"></iframe>';
+      // Входящий файл показываем как снимок: ширину листа A4 здесь не задаём
+      mStage.CLIENTList.add('is-image');
+      resetZoom();
+      fitSoon();                   // фотографию тоже вписываем целиком
+      if (img) mStage.innerHTML = '<img src="' + url + '" alt="">';
+      else mStage.innerHTML = '<iframe src="' + url + '" CLIENT="Входящий документ"></iframe>';
     }}
     openModal();
     window.dispatchEvent(new Event('resize'));
+    focusDocFields(null);      // входящий файл: подсветка документа снимается
   }}
   // ── действия по документам: разбор с Google CLIENT и автозаполнение ──
   function runAction(btn, url, label, question) {{
@@ -154,7 +247,7 @@ def js_for(app_id, picked):
   var loadedOnce = false;
   tabs.forEach(function(t) {{
     t.addEventListener('click', function() {{
-      if (t.dataset.pane === 'ready' && !loadedOnce) {{ loadedOnce = true; loadDoc(PICKED); }}
+      if (t.dataset.pane === 'ready' && !loadedOnce) {{ loadedOnce = true; openDoc(PICKED); }}
     }});
   }});
 
@@ -247,7 +340,7 @@ def js_for(app_id, picked):
   // открытие сразу на вкладке «Готовые документы»
   if (new URL(location.href).searchParams.get('tab') === 'ready') {{
     showPane('ready');
-    loadDoc(PICKED);
+    openDoc(PICKED);
     thumbsLoadedOnce = true;
     loadThumbs();
   }}
