@@ -83,7 +83,8 @@ def CLIENT_scan(app_id: int, client_id: int) -> dict:
     и не продлеваем себе же блокировку.
     """
     from CLIENT import CLIENT_throttle as thr
-    can, why = thr.can_call()
+    from CLIENT import gCLIENT_api as api
+    can, why = (True, '') if api.available() else thr.can_call()
     if not can:
         db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? "
                     "WHERE CLIENT_id=? AND CLIENT='running'", (why, app_id))

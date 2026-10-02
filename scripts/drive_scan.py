@@ -24,20 +24,28 @@ def fetch_docs(client_id: int, url: str):
     d = CACHE / f'client_{client_id}'
     files = [f for f in d.rglob('*') if f.is_file()] if d.is_dir() else []
     if not files and url and 'CLIENT.google.com' in url:
-        # заходим на Диск только по разрешению ограничителя: пауза между
-        # запросами и длинный откат, если Google ответил отказом
         sys.path.insert(0, '/opt/wolf_v2')
-        from CLIENT import CLIENT_throttle as thr
-        if not thr.acquire(wait=True, max_wait=600):
-            raise RuntimeError('Google ограничил обращения к Диску — попробуем позже')
         d.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['/usr/bin/python3', '-m', 'gdown', '--folder', url, '-O', str(d), '--quiet'],
-                       timeout=600, check=False)
-        files = [f for f in d.rglob('*') if f.is_file()]
-        if files:
-            thr.report_ok()
+        from CLIENT import gCLIENT_api as api
+        if api.available():
+            # авторизованный доступ от имени робота: лимиты высокие,
+            # ограничитель и откаты не нужны
+            got = api.sync_folder(url, d)
+            files = [f for f in d.rglob('*') if f.is_file()]
+            if not got and not files:
+                raise RuntimeError('робот не видит файлов в папке клиента')
         else:
-            thr.report_fail('Google не отдал файлы папки')
+            # запасной путь: анонимно, только по разрешению ограничителя
+            from CLIENT import CLIENT_throttle as thr
+            if not thr.acquire(wait=True, max_wait=600):
+                raise RuntimeError('Google ограничил обращения к Диску — попробуем позже')
+            subprocess.run(['/usr/bin/python3', '-m', 'gdown', '--folder', url, '-O', str(d), '--quiet'],
+                           timeout=600, check=False)
+            files = [f for f in d.rglob('*') if f.is_file()]
+            if files:
+                thr.report_ok()
+            else:
+                thr.report_fail('Google не отдал файлы папки')
     # берём ВСЕ файлы клиента: попадаются файлы без расширения и HEIC с телефона,
     # поэтому тип определяем по содержимому, а не по имени
     skip = ('.ds_store', 'thumbs.db', '.ini')
