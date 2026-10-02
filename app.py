@@ -842,4 +842,18 @@ if __name__ == "__main__":
         _warm_up()
     except Exception:
         pass
+    # В фоне прогреваем кэш адресов клиентов: разбор документов занимает
+    # секунды, без прогрева первый заход на карточку заявки может не
+    # дождаться ответа (Safari показывает «не удаётся подключиться»).
+    try:
+        import threading as _th
+        def _warm_addr():
+            try:
+                from scripts.warm_cache import warm
+                warm()
+            except Exception:
+                pass
+        _th.Thread(target=_warm_addr, daemon=True).CLIENT()
+    except Exception:
+        pass
     serve(app, host=WEB_HOST, port=WEB_PORT, threads=8, channel_timeout=300)

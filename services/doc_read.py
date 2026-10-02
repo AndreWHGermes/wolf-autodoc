@@ -80,7 +80,7 @@ def sniff_ext(path) -> str:
     return ext
 
 
-def read_text(path) -> str:
+def _read_text_uncached(path) -> str:
     """Текст документа. Пусто — если прочитать не удалось."""
     p = Path(path)
     if not p.exists():
@@ -195,3 +195,29 @@ def passport_like(path) -> bool:
         return True
     t = (read_text(path)[:600] or "").lower()
     return ("паспорт" in t or "passport" in t or "российская федерация" in t)
+
+# Кэш текста документов: разбор PDF/OCR стоит секунды, одни и те же файлы
+# читаются многократно при сборке значений и предпросмотре.
+_READ_TEXT_CACHE = {}
+
+
+def read_text(path) -> str:
+    """Текст документа с кэшем по подписи файла (путь, размер, mtime)."""
+    try:
+        p = Path(path)
+        if not p.exists():
+            return ""
+        st = p.stat()
+        key = (str(p), st.st_size, int(st.st_mtime))
+        if key in _READ_TEXT_CACHE:
+            return _READ_TEXT_CACHE[key]
+        val = _read_text_uncached(path)
+        if len(_READ_TEXT_CACHE) > 400:
+            _READ_TEXT_CACHE.clear()
+        _READ_TEXT_CACHE[key] = val
+        return val
+    except Exception:
+        try:
+            return _read_text_uncached(path)
+        except Exception:
+            return ""
