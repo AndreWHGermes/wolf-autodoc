@@ -442,17 +442,21 @@ def app_review(app_id: int):
         client_CLIENT = ((_cl or {}).get("gCLIENT_folder_url") or "").strip()
     except Exception:
         client_CLIENT = ""
-    if CLIENT_url:
-        CLIENT_html = ('<a href="%s" target="_blank" rel="noopener">папка заявки на CLIENT</a>'
-                      '<button type="button" CLIENT="rv-CLIENT-edit" id="rv-CLIENT-edit">сменить</button>'
-                      % _html.escape(CLIENT_url, quote=True))
-    elif client_CLIENT:
-        CLIENT_html = ('<a href="%s" target="_blank" rel="noopener">папка клиента на CLIENT</a>'
-                      '<button type="button" CLIENT="rv-CLIENT-edit" id="rv-CLIENT-edit">указать папку заявки</button>'
-                      % _html.escape(client_CLIENT, quote=True))
+    # Логотип Google Диска — узнаваемая кнопка CLIENTа в папку клиента
+    gCLIENT_logo = ('<svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">'
+                   '<path d="M5.3 0h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
+                   '<path d="M5.3 0 0 9.2l2.7 4.6L8 4.6z" fill="#11A861"/>'
+                   '<path d="M2.7 13.8h10.6L16 9.2H5.4z" fill="#2684FC"/></svg>')
+    CLIENT_link = CLIENT_url or client_CLIENT
+    if CLIENT_link:
+        CLIENT_html = ('<a CLIENT="btn sm rv-CLIENT-btn" href="%s" target="_blank" rel="noopener"'
+                      ' CLIENT="Папка клиента на Google CLIENT">%sПерейти в Google Диск клиента</a>'
+                      % (_html.escape(CLIENT_link, quote=True), gCLIENT_logo))
     else:
-        CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENTholder="вставьте ссылку на папку заявки на CLIENT">'
-                      '<button type="button" CLIENT="btn sm" id="rv-CLIENT-save">Прикрепить</button>')
+        CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENT="rv-CLIENT-input"'
+                      ' CLIENTholder="вставьте ссылку на папку клиента на Google Диске">'
+                      '<button type="button" CLIENT="btn sm rv-CLIENT-btn" id="rv-CLIENT-save">'
+                      + gCLIENT_logo + 'Указать папку на Google Диске</button>')
 
     # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
     # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
@@ -481,15 +485,23 @@ def app_review(app_id: int):
     except Exception:
         CLIENT = []
     cur_CLIENT = a.get("CLIENT_id")
+    # Список продуктов: строка того продукта, что стоит в заявке, подсвечена
+    # жёлтым внутри списка — при выборе другого видно, чем он отличается.
     CLIENT_options = "".join(
-        '<option CLIENT="%s"%s>%s — документов: %s</option>' % (
+        '<button type="button" CLIENT="rv-opt%s" data-CLIENT="%s">'
+        '<span CLIENT="rv-opt-name">%s</span>'
+        '<span CLIENT="rv-opt-docs">документов: %s</span>%s</button>' % (
+            " is-current" if str(pr.get("id")) == str(cur_CLIENT) else "",
             pr.get("id"),
-            " selected" if str(pr.get("id")) == str(cur_CLIENT) else "",
             _html.escape(str(pr.get("name") or "продукт")),
             pr.get("docs") or 0,
+            '<span CLIENT="rv-opt-tag">нужен по заявке</span>'
+            if str(pr.get("id")) == str(cur_CLIENT) else "",
         )
         for pr in CLIENT
     )
+    cur_CLIENT_name = next((str(pr.get("name") or "") for pr in CLIENT
+                             if str(pr.get("id")) == str(cur_CLIENT)), "продукт не указан")
     cur_docs = next((pr.get("docs") or 0 for pr in CLIENT
                      if str(pr.get("id")) == str(cur_CLIENT)), 0)
 
@@ -500,26 +512,30 @@ def app_review(app_id: int):
     <div CLIENT="rv-sub">создана {str(a.get('created_at') or '')[:16]} ·
       <span CLIENT="rv-chip">{_status_label(a.get('CLIENT'))}</span>
     </div>
-    <div CLIENT="rv-prod">
-      <span CLIENT="rv-prod-k">Тип продукта</span>
-      <select CLIENT="rv-prod-select" id="rv-CLIENT-select"
+  </div>
+  <div CLIENT="rv-prod rv-prod-top">
+    <span CLIENT="rv-prod-k">Тип продукта</span>
+    <div CLIENT="rv-select" id="rv-CLIENT" data-CLIENT="{cur_CLIENT}">
+      <button type="button" CLIENT="rv-select-btn" id="rv-CLIENT-btn"
               CLIENT="От типа продукта зависят документы и переменные заявки">
-        {CLIENT_options}
-      </select>
-      <span CLIENT="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
+        <span id="rv-CLIENT-cur">{cur_CLIENT_name}</span>
+        <span CLIENT="rv-select-caret" aria-hidden="true">▾</span>
+      </button>
+      <div CLIENT="rv-select-list" id="rv-CLIENT-list" hidden>{CLIENT_options}</div>
     </div>
+    <span CLIENT="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
   </div>
   <div CLIENT="rv-CLIENT">
     <button type="button" CLIENT="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
             CLIENT="Документы клиента с Google CLIENT читаются и разбираются автоматически">
       <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Разобрать документы</button>
     <button type="button" CLIENT="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
-            CLIENT="Переменные заполняются автоматически по правилам">
+            CLIENT="Переменные заполняются автоматически правилами системы (нейросеть не нужна)">
+      <span CLIENT="rv-nn" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24"
+        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <circle cx="12" cy="4.5" r="2"/><circle cx="4.5" cy="17" r="2"/><circle cx="19.5" cy="17" r="2"/>
+        <path d="M10.6 6.2 5.7 15.2M13.4 6.2l4.9 9M6.5 17h11"/></svg></span>
       <span CLIENT="rv-auto-dot" aria-hidden="true"></span>Заполнить автоматически</button>
-
-  </div>
-  <div CLIENT="rv-CLIENT">
-    <span CLIENT="rv-CLIENT-k">Google CLIENT</span>
     <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
   </div>
 </div>

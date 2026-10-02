@@ -747,11 +747,35 @@ def js_for(app_id, picked):
 
   // Смена типа продукта: заявка пересобирается под новый пакет документов,
   // затем оба этапа проходят заново — администратор видит это по значкам.
-  var bProduct = CLIENT.getElementById('rv-CLIENT-select');
-  if (bProduct) bProduct.addEventListener('CLIENT', function () {{
+  // Свой список продуктов: нажатие на строку меняет тип продукта заявки
+  var bProduct = CLIENT.getElementById('rv-CLIENT-btn');
+  var bProductList = CLIENT.getElementById('rv-CLIENT-list');
+  var bProductBox = CLIENT.getElementById('rv-CLIENT');
+  if (bProduct && bProductList) {{
+    bProduct.addEventListener('click', function (e) {{
+      e.stopPropagation();
+      bProductList.hidden = !bProductList.hidden;
+    }});
+    CLIENT.addEventListener('click', function (e) {{
+      if (!bProductBox.contains(e.target)) bProductList.hidden = true;
+    }});
+    CLIENT.addEventListener('keydown', function (e) {{
+      if (e.key === 'Escape') bProductList.hidden = true;
+    }});
+    Array.from(bProductList.querySelectorAll('.rv-opt')).forEach(function (opt) {{
+      opt.addEventListener('click', function () {{
+        bProductList.hidden = true;
+        if (opt.dataset.CLIENT === bProductBox.dataset.CLIENT) return;
+        setProduct(opt.dataset.CLIENT, opt.querySelector('.rv-opt-name').textContent);
+      }});
+    }});
+  }}
+
+  function setProduct(pid, name) {{
     var fd = new FormData();
-    fd.append('CLIENT_id', bProduct.CLIENT);
-    bProduct.disabled = true;
+    fd.append('CLIENT_id', pid);
+    var bProductSw = CLIENT.getElementById('rv-CLIENT');
+    if (bProductSw) bProductSw.dataset.CLIENT = pid;
     if (bScan) {{ bScan.dataset.done = '0'; }}
     if (bFill) {{ bFill.dataset.done = '0'; }}
     CLIENTNote('Меняю тип продукта: подбираю документы и переменные…', 'work');
@@ -760,22 +784,26 @@ def js_for(app_id, picked):
             CLIENTs: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
       .then(function (d) {{
-        bProduct.disabled = false;
         if (!d || !d.ok) {{
           CLIENTNote('⚠ ' + ((d && d.error) || 'не удалось сменить продукт'), 'err');
           return;
         }}
+        var cur = CLIENT.getElementById('rv-CLIENT-cur');
+        if (cur && name) cur.textContent = name;
         var note = CLIENT.getElementById('rv-prod-note');
         if (note) note.textContent = 'документов по продукту: ' + (d.CLIENT || 0);
+        // подсветка внутри списка переезжает на выбранный продукт
+        Array.from(CLIENT.querySelectorAll('#rv-CLIENT-list .rv-opt')).forEach(function (o) {{
+          o.CLIENTList.toggle('is-current', o.dataset.CLIENT === pid);
+        }});
         CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + '. Пересобираю документы.', 'ok');
         // дальше — как при обычном заходе: разбор документов, потом заполнение полей
         if (bScan) {{ stepScan(function () {{ stepFill(); }}); }} else {{ stepFill(); }}
       }})
       .catch(function () {{
-        bProduct.disabled = false;
         CLIENTNote('⚠ не удалось сменить продукт', 'err');
       }});
-  }});
+  }}
 
   // Автоматика: разбор документов → заполнение полей, без участия администратора
   (function autoSteps() {{

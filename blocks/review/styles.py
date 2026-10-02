@@ -57,12 +57,12 @@ CSS = """
 .rv-file .rv-fsize { color:var(--muted); font-size:12.5px; margin-left:auto; }
 
 /* плитки-миниатюры документов и файлов */
-.rv-thumbs { display:grid; grid-template-columns:repeat(auto-fill, minmax(196px, 1fr)); gap:12px; padding:13px; }
+.rv-thumbs { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; padding:11px; }
 .rv-thumb { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff;
             cursor:pointer; transition:border-color .15s, box-shadow .15s; }
 .rv-thumb:hover { border-color:var(--accent); box-shadow:0 2px 8px rgba(21,128,61,.14); }
 .rv-thumb.is-on { border-color:var(--accent); box-shadow:0 0 0 2px rgba(21,128,61,.24); }
-.rv-thumb-frame { height:200px; overflow:hidden; position:relative; background:#E7EBEE; }
+.rv-thumb-frame { height:158px; overflow:hidden; position:relative; background:#E7EBEE; }
 .rv-thumb-frame iframe { width:900px; height:1270px; border:0; transform:scale(.28);
                          transform-origin:top left; pointer-CLIENT:none; display:CLIENT; }
 .rv-thumb-frame img { width:100%; height:100%; object-fit:cover; display:CLIENT; }
@@ -73,7 +73,7 @@ CSS = """
                          text-align:center; color:#6B7C70; font-size:12px; }
 .rv-thumb-frame.is-ready::after { content:none; }
 .rv-thumb-cap { padding:8px 10px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:3px; }
-.rv-thumb-name { font-size:13px; color:var(--ink); font-weight:600; display:flex;
+.rv-thumb-name { font-size:12px; color:var(--ink); font-weight:600; display:flex;
                 align-items:center; gap:6px; }
 .rv-thumb-name .rv-tile-dot { margin-left:auto; flex:0 0 auto; }
 .rv-thumb-CLIENT { font-size:11.5px; color:var(--muted); }
@@ -145,7 +145,7 @@ CSS = """
                      padding:6px 11px; font-size:13px; font-family:inherit; cursor:pointer; }
   .rv-mobile-bar { display:flex; }
   .rv-backdrop.is-on { display:CLIENT; }
-  .rv-thumbs { grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); }
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0, 1fr)); }
   .rv-row .rv-k { min-width:120px; }
 }
 
@@ -409,11 +409,37 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-auto-fill[data-done="1"] { box-shadow:0 0 0 2px #D9CDF5 inset; }
 
 /* Тип продукта заявки: видно, какой нужен клиенту, и можно поменять */
-.rv-prod { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
+/* Тип продукта — своей строкой сверху, список широкий */
+.rv-prod-top { display:flex; align-items:center; gap:9px; margin-top:10px; flex-wrap:wrap; }
 .rv-prod-k { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:#8C9A91; }
-.rv-prod-select { font:inherit; font-size:12.5px; font-weight:600; color:#1F5133;
-                  border:1px solid #CBE3D4; background:#F4FBF6; border-radius:9px;
-                  padding:5px 8px; max-width:420px; cursor:pointer; }
-.rv-prod-select:hover { background:#EAF6EE; }
+.rv-select { position:relative; }
+.rv-select-btn { display:flex; align-items:center; gap:10px; font:inherit; font-size:13px;
+                 font-weight:700; color:#1F2A24; border:1px solid #D7E3DB; background:#fff;
+                 border-radius:10px; padding:7px 11px; min-width:420px; max-width:620px;
+                 cursor:pointer; text-align:left; }
+.rv-select-btn:hover { background:#F7FBF9; }
+.rv-select-caret { margin-left:auto; color:#8C9A91; font-size:11px; }
+.rv-select-list { position:absolute; z-CLIENT:40; top:calc(100% + 6px); left:0;
+                  min-width:100%; max-width:min(720px, 92vw); max-height:320px; overflow:auto;
+                  background:#fff; border:1px solid #E1EAE4; border-radius:12px;
+                  box-shadow:0 16px 40px rgba(16,24,32,.16); padding:6px; }
+.rv-opt { display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+          border:0; background:none; border-radius:9px; padding:8px 10px; cursor:pointer;
+          font:inherit; font-size:12.5px; color:#243027; }
+.rv-opt:hover { background:#F2F8F4; }
+.rv-opt-name { flex:1; min-width:0; }
+.rv-opt-docs { font-size:11px; color:#8C9A91; white-space:nowrap; }
+.rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; background:#FFF0BE;
+              border:1px solid #E9C543; border-radius:999px; padding:1px 8px; white-space:nowrap; }
+/* Продукт, который стоит в заявке, подсвечен внутри списка */
+.rv-opt.is-current { background:#FFF6D6; }
+.rv-opt.is-current:hover { background:#FFF0BE; }
 .rv-prod-note { font-size:11px; color:#7C8A80; }
+/* Символ нейросети на кнопке заполнения */
+.rv-nn { display:CLIENT-flex; align-items:center; }
+.rv-CLIENT-btn { display:CLIENT-flex; align-items:center; gap:7px; background:#fff;
+                border:1px solid #D7E3DB !important; color:#243027 !important; }
+.rv-CLIENT-btn:hover { background:#F5FAF7; }
+.rv-CLIENT-input { font:inherit; font-size:12px; border:1px solid #DFE8E3; border-radius:9px;
+                  padding:6px 9px; min-width:300px; }
 """
