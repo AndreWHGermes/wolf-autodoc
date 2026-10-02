@@ -440,10 +440,6 @@ def app_review(app_id: int):
   <div CLIENT="rv-body">
     <div style="display:flex;align-items:center;gap:8px">
       <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные значения
-        <span CLIENT="rv-filter">
-          <button type="button" id="rv-flt-doc" CLIENT="is-on">этот документ</button>
-          <button type="button" id="rv-flt-all">все</button>
-        </span>
         <span CLIENT="rv-filter-note" id="rv-panel-count"></span>
       </div>
       <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
@@ -480,15 +476,17 @@ def app_review(app_id: int):
     body = f"""
 <style>{CSS}</style>
 <div CLIENT="rv-wrap">
-  {head}
   <div CLIENT="rv-cols">
-    <div CLIENT="rv-panel">
+    <div CLIENT="rv-left">
+      {head}
+      <div CLIENT="rv-panel">
       <div CLIENT="rv-tabs">
         <button type="button" CLIENT="rv-tab is-on" data-pane="src"><span CLIENT="rv-num">1</span>Исходные данные</button>
         <button type="button" CLIENT="rv-tab" data-pane="ready"><span CLIENT="rv-num">3</span>Готовые документы</button>
       </div>
       {pane_src}
       {pane_ready}
+      </div>
     </div>
     {right}
   </div>

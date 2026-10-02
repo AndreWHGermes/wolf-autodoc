@@ -19,10 +19,13 @@ CSS = """
 .rv-head .rv-CLIENT { margin-left:auto; display:flex; gap:8px; align-items:center; }
 .rv-chip { display:CLIENT-CLIENT; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;
            background:#DCFCE7; color:#15803D; border:1px solid #BFE0CB; }
-.rv-cols { display:grid; grid-template-columns:minmax(0,2fr) minmax(320px,1fr); gap:14px; align-items:CLIENT; }
+.rv-cols { display:grid; grid-template-columns:minmax(0,2fr) minmax(320px,1fr); gap:14px;
+            align-items:stretch; }
+.rv-left { display:flex; flex-direction:column; gap:14px; min-width:0; }
 .rv-panel { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden;
             display:flex; flex-direction:column; box-shadow:0 1px 2px rgba(17,24,39,.05); }
-.rv-panel.rv-right { position:sticky; top:10px; max-height:88vh; }
+.rv-panel.rv-right { position:sticky; top:8px; max-height:none;
+                       height:calc(100vh - 20px); }
 .rv-right .rv-body { overflow-y:auto; }
 .rv-tabs { display:flex; gap:6px; padding:10px 12px 0; border-bottom:2px solid var(--line); background:#F4FAF6; }
 .rv-tab { padding:10px 15px; border:1px solid transparent; border-bottom:none; border-radius:10px 10px 0 0;
@@ -149,9 +152,9 @@ CSS = """
 .rv-modal { display:none; position:fixed; left:0; top:0; bottom:0; width:calc(66.667% - 18px);
             z-CLIENT:60; background:rgba(17,24,39,.28); }
 .rv-modal.is-on { display:flex; flex-direction:column; padding:14px; }
-.rv-modal-win { background:var(--card); border:1px solid var(--line); border-radius:14px;
+.rv-modal-win { background:var(--card); border:0; border-radius:16px;
                 display:flex; flex-direction:column; overflow:hidden; flex:1;
-                box-shadow:0 12px 40px rgba(17,24,39,.26); }
+                box-shadow:0 24px 70px rgba(16,24,32,.34), 0 6px 20px rgba(16,24,32,.18); }
 .rv-modal-head { display:flex; align-items:center; gap:9px; padding:11px 13px;
                  border-bottom:1px solid var(--line); background:#F4FAF6; flex-wrap:wrap; }
 .rv-modal-CLIENT { font-size:14.5px; font-weight:700; color:var(--ink); }
@@ -245,4 +248,25 @@ CSS = """
 .rv-filter button.is-on { background:#15803D; border-color:#15803D; color:#fff; font-weight:600; }
 .rv-filter-note { font-size:11.5px; color:#6B7C70; font-weight:500; margin-left:8px; }
 .rv-field.is-doc { background:#F1FBF4; border-color:#86EFAC !important; }
+
+/* Внутри окна никаких обводок: объём даёт тень самого окна */
+.rv-modal-body .zp-host,
+.rv-modal-body .zp-preview,
+.rv-modal-body .zp-canvas > * { border:0 !important; outline:0 !important; }
+
+/* Жёлтый маркер подставленных значений прямо в документе: видно, что заполнено машиной */
+.rv-modal-body .html-stage [data-var] { background:rgba(254,243,199,.92); border-radius:2px;
+                                        box-shadow:0 0 0 1px rgba(234,179,8,.35); }
+.rv-modal-body .html-stage [data-var=""] { background:none; box-shadow:none; }
+
+/* Связь переменная ↔ документ. Выбранная переменная остаётся подсвеченной,
+   пока работаешь с ней: и в панели, и на своём месте в документе. */
+.rv-field.is-active { border-color:#F59E0B !important; background:#FFFCF2 !important;
+                      box-shadow:0 0 0 3px rgba(245,158,11,.18); }
+.rv-field.is-active .rv-flabel { color:#92400E; }
+.rv-field.is-linked .rv-flabel::after { content:' ← в документе'; font-size:10.5px;
+                                        font-weight:600; color:#B45309; }
+.rv-modal-body .html-stage [data-var].is-picked { background:#FDE68A !important;
+      box-shadow:0 0 0 2px #F59E0B, 0 0 12px rgba(245,158,11,.45) !important; border-radius:3px; }
+.rv-modal-body .html-stage [data-var] { cursor:pointer; }
 """

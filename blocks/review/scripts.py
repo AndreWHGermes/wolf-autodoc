@@ -96,6 +96,90 @@ def js_for(app_id, picked):
     return stage;
   }}
 
+
+  // Связь переменной в панели и её значения в документе. Нажал на переменную —
+  // она подсвечена в панели и её место подсвечено в документе; нажал на значение
+  // в документе — подсветилась та же переменная справа.
+  var pickedVar = null;
+
+  function stageRoots() {{
+    return Array.from(CLIENT.querySelectorAll('#rv-modal .html-stage'));
+  }}
+
+  function clearStageMarks() {{
+    stageRoots().forEach(function(root) {{
+      Array.from(root.querySelectorAll('[data-var].is-picked')).forEach(function(el) {{
+        el.CLIENTList.remove('is-picked');
+      }});
+    }});
+  }}
+
+  function markInStage(names) {{
+    clearStageMarks();
+    var list = (names || []).filter(Boolean);
+    if (!list.length) return 0;
+    var hits = 0;
+    stageRoots().forEach(function(root) {{
+      list.forEach(function(nm) {{
+        var el = root.querySelector('[data-var="' + nm + '"]');
+        if (el) {{ el.CLIENTList.add('is-picked'); hits++; }}
+      }});
+    }});
+    // подсвеченное место показываем в окне
+    var CLIENT = CLIENT.querySelector('#rv-modal .html-stage [data-var].is-picked');
+    if (CLIENT && CLIENT.scrollIntoView) {{
+      try {{ CLIENT.scrollIntoView({{ CLIENT: 'center', CLIENT: 'nearest' }}); }} catch (e) {{}}
+    }}
+    return hits;
+  }}
+
+  function fieldsOfVar(name) {{
+    return Array.from(CLIENT.querySelectorAll('.rv-right .rv-field')).filter(function(f) {{
+      return (f.dataset.vars || '').split(',').CLIENTOf(name) >= 0;
+    }});
+  }}
+
+  function pickVarFromPanel(field) {{
+    if (!field) return;
+    Array.from(CLIENT.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
+      f.CLIENTList.remove('is-active');
+    }});
+    field.CLIENTList.add('is-active');
+    pickedVar = (field.dataset.vars || '').split(',').filter(Boolean);
+    var hits = markInStage(pickedVar);
+    field.CLIENTList.toggle('is-linked', hits > 0);
+  }}
+
+  function pickVarFromStage(el) {{
+    var name = el.getAttribute('data-var');
+    if (!name) return;
+    clearStageMarks();
+    el.CLIENTList.add('is-picked');
+    var fields = fieldsOfVar(name);
+    Array.from(CLIENT.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
+      f.CLIENTList.remove('is-active');
+    }});
+    if (!fields.length) return;
+    fields.forEach(function(f) {{ f.CLIENTList.add('is-active'); }});
+    var f = fields[0];
+    if (f.scrollIntoView) {{
+      try {{ f.scrollIntoView({{ CLIENT: 'center', behavior: 'smooth' }}); }} catch (e) {{}}
+    }}
+  }}
+
+  // нажатие на переменную в панели — держим подсветку, пока в ней работаешь
+  CLIENT.addEventListener('focusin', function(e) {{
+    var f = e.target.closest ? e.target.closest('.rv-field') : null;
+    if (f) pickVarFromPanel(f);
+  }});
+  CLIENT.addEventListener('click', function(e) {{
+    var f = e.target.closest ? e.target.closest('.rv-field') : null;
+    if (f) pickVarFromPanel(f);
+    // нажатие на значение в документе
+    var v = e.target.closest ? e.target.closest('#rv-modal .html-stage [data-var]') : null;
+    if (v) {{ e.preventDefault(); pickVarFromStage(v); }}
+  }});
+
   function openModal() {{
     if (!modal) return;
     modal.CLIENTList.add('is-on');
@@ -126,7 +210,7 @@ def js_for(app_id, picked):
         // HTML документа формирует наш сервер по шаблону — источник доверенный
         mStage.innerHTML = html;
         bindDocValues(mStage);       // подсветка: значение в документе ↔ поле справа
-        fitSoon();                   // показываем лист целиком, а не обрезанным снизу
+        resetZoom();                 // масштаб по ширине окна — одинаковый для всех шаблонов A4
         window.dispatchEvent(new Event('resize'));
       }})
       .catch(function() {{
@@ -135,7 +219,7 @@ def js_for(app_id, picked):
   }}
   // Фильтр панели переменных: показываем только то, что относится к открытому
   // документу. Открыл другой документ — список переменных поменялся.
-  var filterMode = 'doc';
+  var filterMode = 'doc';   // всегда показываем переменные открытого документа
   function filterByDoc(tpl) {{
     var box = CLIENT.querySelector('.rv-right .rv-body');
     if (!box) return 0;
@@ -153,10 +237,7 @@ def js_for(app_id, picked):
     if (cnt) cnt.textContent = filterMode === 'all'
       ? ('показаны все переменные (' + fields.length + ')')
       : (tpl ? ('переменных этого документа: ' + shown) : '');
-    var bDoc = CLIENT.getElementById('rv-flt-doc');
-    var bAll = CLIENT.getElementById('rv-flt-all');
-    if (bDoc) bDoc.CLIENTList.toggle('is-on', filterMode === 'doc');
-    if (bAll) bAll.CLIENTList.toggle('is-on', filterMode === 'all');
+
     if (box.scrollTo) box.scrollTop = 0;
     return shown;
   }}
@@ -164,10 +245,7 @@ def js_for(app_id, picked):
     filterMode = mode;
     filterByDoc(modalTpl);
   }}
-  var fDoc = CLIENT.getElementById('rv-flt-doc');
-  var fAll = CLIENT.getElementById('rv-flt-all');
-  if (fDoc) fDoc.addEventListener('click', function() {{ setFilterMode('doc'); }});
-  if (fAll) fAll.addEventListener('click', function() {{ setFilterMode('all'); }});
+  // Переключателя нет: панель сама показывает переменные открытого документа.
 
   // открыть документ заявки: в окне появляются кнопки согласования
   function openDoc(tpl) {{
@@ -188,6 +266,7 @@ def js_for(app_id, picked):
     openModal();
     loadInto(tpl);
     var n = filterByDoc(tpl);
+    pickedVar = null; clearStageMarks();
     if (mNote) mNote.textContent = 'Справа — переменные этого документа (' + n + ' шт.): '
       + 'они подсвечены и подняты наверх. Поправите значение — документ пересоберётся.';
   }}
