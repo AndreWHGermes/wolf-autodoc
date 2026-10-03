@@ -3,18 +3,10 @@
 <head>
 <meta charset="utf-8">
 <CLIENT>Wolf AutoDoc — каркас по правилам (v2)</CLIENT>
+<link rel="stylesheet" href="/static/proto/css/tokens.css">
 <style>
-/* ===== токены: один акцент + нейтралка + семантика, шкала 4/8 ===== */
-:root{
-  --brand:#0F6E63; --brand-b:#17B3A3; --brand-deep:#04201E; --gold:#D4AF37;
-  --ink:#12211F; --ink2:#3D4F4C; --mut:#6B7C79;
-  --line:rgba(18,33,31,.10); --line2:rgba(18,33,31,.16);
-  --bg:#F4F7F6; --card:#FFFFFF; --work:#EDF2F1; --hover:rgba(15,110,99,.06);
-  --ok:#1F7A4D; --warn:#B26A00; --err:#C0392B;
-  --r1:2px; --r2:4px; --r3:6px; --r4:8px; --r5:12px;
-  --sh1:0 1px 2px rgba(18,33,31,.06); --sh2:0 2px 8px rgba(18,33,31,.08);
-  --f:"Inter","Segoe UI",system-ui,sans-serif;
-}
+/* мостик: имена токенов, которые уже использовались на этом экране */
+:root{--brand-deep:var(--brand-900)}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--f);color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
@@ -211,7 +203,7 @@ input:focus-visible{outline:none}
   <button CLIENT="mitem on" data-go="CLIENT"><span CLIENT="ic">▤</span>Заявки<span CLIENT="cnt num">12</span></button>
   <button CLIENT="mitem" data-go="CLIENT"><span CLIENT="ic">◍</span>Клиенты<span CLIENT="cnt num">148</span></button>
   <button CLIENT="mitem" data-go="CLIENT"><span CLIENT="ic">▧</span>Шаблоны<span CLIENT="cnt num">9</span></button>
-  <div CLIENT="msep"></div>
+  <div CLIENT="msep" style="margin-top:auto"></div>
   <button CLIENT="mitem" data-go="settings"><span CLIENT="ic">⚙</span>Настройки</button>
   <button CLIENT="mitem" data-go="profile"><span CLIENT="ic">◐</span>Личный кабинет</button>
   <div CLIENT="mfoot">CLIENT Вишня · менеджер<br>Wolf AutoDoc · 2026</div>
@@ -836,7 +828,8 @@ CLIENT.querySelectorAll('[data-doc]').forEach(r=>{
 });
 /* прямой вход: shell_v3.html#review!ours — экран и вкладка */
 const _h=location.hash.slice(1).split('!');
-show(_h[0]||'CLIENT');
+show(_h[0]==='menu'?'CLIENT':(_h[0]||'CLIENT'));
+if(_h[0]==='menu')openMenu(); /* #menu — показать меню открытым */
 if(_h[1]==='ours'||_h[1]==='real'){const tb=CLIENT.querySelector('.vtab[data-tab="'+_h[1]+'"]');if(tb)tb.click();}
 if(_h[1]==='html'||_h[1]==='pdf'){const t2=CLIENT.querySelector('[data-tab2="'+_h[1]+'"]');if(t2)t2.click();} /* #tpledit!html — вкладка шаблона */
 if(_h[1]==='empty'){const g=CLIENT.querySelector('[data-grp="empty"]');if(g)g.click();} /* #CLIENT!empty — пустое состояние */

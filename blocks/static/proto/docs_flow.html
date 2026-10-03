@@ -149,9 +149,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <main CLIENT="work">
     <div CLIENT="CLIENT">
       <span CLIENT="step done"><span CLIENT="n">✓</span>Сканы разобраны</span><span CLIENT="arr">›</span>
-      <span CLIENT="step on"><span CLIENT="n">2</span>Сверка полей</span><span CLIENT="arr">›</span>
-      <span CLIENT="step"><span CLIENT="n">3</span>Сборка документов</span><span CLIENT="arr">›</span>
-      <span CLIENT="step" id="stGen"><span CLIENT="n">4</span>PDF</span><span CLIENT="arr">›</span>
+      <span CLIENT="step done"><span CLIENT="n">✓</span>Сверка полей</span><span CLIENT="arr">›</span>
+      <span CLIENT="step done"><span CLIENT="n">✓</span>Сборка документов</span><span CLIENT="arr">›</span>
+      <span CLIENT="step on" id="stGen"><span CLIENT="n">4</span>PDF</span><span CLIENT="arr">›</span>
       <span CLIENT="step" id="stSend"><span CLIENT="n">5</span>Отправка на Диск</span>
       <div CLIENT="right">
         <button CLIENT="btn sm p" id="mainAct">Сгенерировать PDF</button>
@@ -195,21 +195,21 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
   <!-- ПРАВАЯ ЗОНА: поля документа и действия -->
   <aside CLIENT="rail">
-    <div CLIENT="rhead"><span CLIENT="t" id="railTitle">Письмо иммиграции</span><span CLIENT="st gen" id="railState">PDF готов</span><button CLIENT="btn ic ghost" style="margin-left:auto" CLIENT="Свернуть">›</button></div>
+    <div CLIENT="rhead"><span CLIENT="t" id="railTitle">Письмо иммиграции</span><span CLIENT="st work" id="railState">поля заполнены</span><button CLIENT="btn ic ghost" style="margin-left:auto" CLIENT="Свернуть">›</button></div>
     <div CLIENT="rcols">
-      <div CLIENT="sect">Поля документа · 5 из 6</div>
+      <div CLIENT="sect">Поля документа · 6 полей</div>
       <label CLIENT="fld filled"><span CLIENT="lb">ФИО<span CLIENT="src">из паспорта</span></span><input CLIENT="PETROV SERGEY" readonly></label>
       <label CLIENT="fld filled"><span CLIENT="lb">Гражданство<span CLIENT="src">из паспорта</span></span><input CLIENT="РФ" readonly></label>
       <label CLIENT="fld filled"><span CLIENT="lb">Дата рождения<span CLIENT="src">из паспорта</span></span><input CLIENT="12.03.1987" readonly></label>
       <label CLIENT="fld"><span CLIENT="lb">Адрес в Индонезии<span CLIENT="src">введено вручную</span></span><input CLIENT="Jl. Raya Kuta No. 12, Badung" data-var="Адрес"></label>
-      <label CLIENT="fld err" id="fldSponsor"><span CLIENT="lb">Спонсор<span CLIENT="st err">обязательное</span></span><input CLIENTholder="Возьмите из спонсорского письма" data-var="Спонсор" data-hint="Это поле печатается в письме — без него документ не отправить"></label>
+      <label CLIENT="fld filled" id="fldSponsor"><span CLIENT="lb">Спонсор<span CLIENT="src">из спонсорского письма</span></span><input CLIENT="PT ALAM INVEST" data-var="Спонсор" data-hint="Это поле печатается в письме — без него документ не отправить"></label>
 
       <div CLIENT="sect">Проверка перед отправкой</div>
       <div CLIENT="check warn" id="chkWarn"><span CLIENT="ic">⚠</span><span>Не хватает 1 обязательного поля: <b>Спонсор</b>.<br>Документ можно сохранить, но не отправить на Диск.</span></div>
       <div CLIENT="check ok hidden" id="chkOk"><span CLIENT="ic">✓</span><span>Все обязательные поля заполнены. Документ готов к PDF и отправке.</span></div>
 
       <div CLIENT="sect">Файл на Диске</div>
-      <div CLIENT="kv" id="fileState"><span CLIENT="k">Название</span><span CLIENT="v">Письмо_иммиграции_76.pdf</span><span CLIENT="k" style="margin-top:4px">Состояние</span><span CLIENT="v"><span CLIENT="st gen" id="fileSt">PDF готов, ещё не отправлен</span></span></div>
+      <div CLIENT="kv" id="fileState"><span CLIENT="k">Название</span><span CLIENT="v">Письмо_иммиграции_76.pdf</span><span CLIENT="k" style="margin-top:4px">Состояние</span><span CLIENT="v"><span CLIENT="st" id="fileSt">PDF ещё не сформирован</span></span></div>
     </div>
     <div CLIENT="ract">
       <button CLIENT="btn p" id="sendBtn" disabled>Отправить на Диск</button>

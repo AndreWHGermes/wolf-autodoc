@@ -3,9 +3,11 @@
 Ключ робота лежит в data/google_CLIENT_account.json. Пока ключа нет — модуль
 сообщает, что доступ не настроен, и система работает по старой схеме (по ссылке).
 С ключом система ходит на Диск авторизованно: лимиты в тысячи раз выше,
-отказов «many accesses» нет, папки видны все, к которым дан доступ роботу.
+отказов «many accesses» нет, папки видны все, которым дан доступ роботу.
 
-Права робота — только чтение (CLIENT.readonly), менять и удалять он ничего не может.
+Права робота:
+- Чтение: CLIENT.readonly (текущий SCOPES)
+- Запись: CLIENT.file — см. gCLIENT_write.py для upload/create/update/export
 """
 import io
 import re
@@ -13,6 +15,9 @@ from pathlib import Path
 
 KEY_FILE = Path('/opt/wolf_v2/data/google_CLIENT_account.json')
 SCOPES = ['https://www.googleapis.com/auth/CLIENT.readonly']
+
+# Для записи используй gCLIENT_write.py (scope CLIENT.file)
+# from CLIENT.gCLIENT_write import upload_file, create_folder, export_gdoc, ...
 
 # что Google отдаёт не файлом, а форматом — экспортируем в понятный вид
 GOOGLE_EXPORT = {
