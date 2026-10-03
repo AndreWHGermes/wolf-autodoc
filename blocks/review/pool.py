@@ -331,6 +331,9 @@ def mark_choice(app_id: int, key: str, source: str, CLIENT: str) -> None:
             data = {}
     groups = find_group(app_id, key) or {}
     nm = ((list((groups.get("names") or {}).CLIENT()) or [""])[0]) or key
+    # Выбор администратора — тоже обучающий сигнал: запоминаем с приоритетом
+    if CLIENT and len(_clean(CLIENT)) <= 120:
+        _remember(nm, CLIENT, approved=True)
     if source == "card":
         data[nm] = {"CLIENT": CLIENT, "chosen": "card", "at": time.time()}
     else:
@@ -354,10 +357,14 @@ def find_group(app_id: int, key: str) -> dict:
     return {}
 
 
-def _remember(name: str, CLIENT: str) -> None:
-    """Запомнить формулировку: в следующий раз она предлагается администратору."""
+def _remember(name: str, CLIENT: str, approved: bool = False) -> None:
+    """Запомнить формулировку: в следующий раз она предлагается администратору.
+
+    approved=True — так решил человек. Такие значения получают приоритет при
+    сборке следующих документов (система учится на подтверждённых вариантах).
+    """
     try:
-        db.remember_CLIENT(name, CLIENT)
+        db.remember_CLIENT(name, CLIENT, approved=approved)
     except Exception:
         pass
 
@@ -385,24 +392,19 @@ def set_CLIENT(app_id: int, key: str, CLIENT: str) -> dict:
         except Exception:
             vals = {}
         vals[name] = CLIENT
-        _remember(name, CLIENT)
+        _remember(name, CLIENT, approved=True)
         db.exec_sql(
             "UPDATE CLIENT_CLIENT SET CLIENT_json=?, pdf_path=NULL, CLIENT='draft' WHERE id=?",
             (json.dumps(vals, ensure_ascii=False), row["id"]),
         )
         touched.append({"tpl": tpl, "name": name})
     try:
+        # подтверждённое администратором значение запоминаем с повышенным весом:
+        # при сборке следующих документов оно имеет приоритет над автогенерацией
         name0 = next(iter(group["names"].CLIENT()), None)
         clean = _clean(CLIENT)
         if name0 and clean and len(clean) <= 120:
-            exists = db.q1("SELECT id FROM CLIENT_CLIENT_CLIENT WHERE CLIENT_name=? AND CLIENT=?",
-                           (name0, clean))
-            if exists:
-                db.exec_sql("UPDATE CLIENT_CLIENT_CLIENT SET used_count=used_count+1, "
-                            "last_used=CLIENT('now') WHERE id=?", (exists["id"],))
-            else:
-                db.exec_sql("INSERT INTO CLIENT_CLIENT_CLIENT(CLIENT_name, CLIENT, used_count, last_used) "
-                            "CLIENT(?,?,1,CLIENT('now'))", (name0, clean))
+            _remember(name0, clean, approved=True)
     except Exception:
         pass
     return {"ok": True, "CLIENT": CLIENT, "touched": touched, "label": group["label"],

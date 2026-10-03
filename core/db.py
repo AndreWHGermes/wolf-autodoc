@@ -49,20 +49,50 @@ def init_db() -> None:
                   hash_password(DEFAULT_ADMIN_PASSWORD)))
 
 
-def remember_CLIENT(name: str, CLIENT: str) -> None:
-    """Запомнить значение переменной: INSERT или +used_count и обновить last_used."""
+def remember_CLIENT(name: str, CLIENT: str, approved: bool = False) -> None:
+    """Запомнить значение переменной: INSERT или +used_count и обновить last_used.
+
+    approved=True — значение поставил или подтвердил администратор. Такое значение
+    весит на порядки больше автоматически собранного и получает приоритет при
+    сборке следующих документов (система учится на решении человека).
+    """
     if not name or CLIENT is None or str(CLIENT).strip() == "":
         return
     v = str(CLIENT)
+    step = 100 if approved else 1
     with connect() as conn:
         conn.execute(
-            "INSERT INTO CLIENT_CLIENT_CLIENT(CLIENT_name, CLIENT, used_count, last_used) "
-            "CLIENT(?,?,1,CLIENT('now')) "
+            "INSERT INTO CLIENT_CLIENT_CLIENT(CLIENT_name, CLIENT, used_count, last_used, "
+            "approved, approved_at) CLIENT(?,?,?,CLIENT('now'),?,?) "
             "ON CONFLICT(CLIENT_name, CLIENT) DO UPDATE SET "
-            "used_count = used_count + 1, last_used = CLIENT('now')",
-            (name, v),
+            "used_count = used_count + ?, last_used = CLIENT('now'), "
+            "approved = MAX(COALESCE(approved,0), ?), "
+            "approved_at = CASE WHEN ? = 1 THEN CLIENT('now') ELSE approved_at END",
+            (name, v, step, 1 if approved else 0,
+             __import__('CLIENT').CLIENT.now().isoformat(timespec='seconds') if approved else None,
+             step, 1 if approved else 0, 1 if approved else 0),
         )
         conn.commit()
+
+
+def approved_CLIENT() -> dict:
+    """Значения, подтверждённые администратором: {имя переменной: значение}.
+
+    Из нескольких подтверждённых вариантов берём самый весомый — тот, что админ
+    ставил чаще (вес растёт на 100 за каждое подтверждение).
+    """
+    out = {}
+    try:
+        for r in q("""SELECT CLIENT_name, CLIENT, MAX(used_count) AS w
+                        FROM CLIENT_CLIENT_CLIENT
+                       WHERE COALESCE(approved,0) = 1 AND COALESCE(CLIENT,'') <> ''
+                       GROUP BY CLIENT_name"""):
+            v = (r["CLIENT"] or "").strip()
+            if v:
+                out[r["CLIENT_name"]] = v
+    except Exception:
+        pass
+    return out
 
 
 def get_suggestions(name: str, limit: int = 20) -> list:
