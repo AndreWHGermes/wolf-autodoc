@@ -20,7 +20,7 @@ BAD_REPLY = ("нет читаемых строк", "предоставленн",
 
 def is_translatable(k: str) -> bool:
     """Чанк — текст документа, а не CSS/разметка и не одно число/символ."""
-    if not k or "{{" in k or len(k) > 400:
+    if not k or "{{" in k or len(k) > 1500:
         return False
     if CODISH.search(k):
         return False
