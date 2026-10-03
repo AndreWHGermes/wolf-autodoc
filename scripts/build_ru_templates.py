@@ -11,18 +11,52 @@ SKIP = re.compile(r"\{\{.*?\}\}")
 TAG = re.compile(r"<(/?)([a-zA-Z][\w:-]*)([^>]*)>", re.S)
 NOSTATIC = ("style", "script")
 
+CODISH = re.compile(r"[{};]|@page|@media|font-|rgb\(|/\*|\dpt|\dpx|margin|padding|border|display:|position:|width:|height:")
+
+BAD_REPLY = ("нет читаемых строк", "предоставленн", "html/css", "нет текстовых строк",
+             "пришлите", "пожалуйста, предоставьте", "there are no text", "please provide",
+             "i cannot", "i can't", "unable to translate", "as an ai", "не могу перевести")
+
+
+def is_translatable(k: str) -> bool:
+    """Чанк — текст документа, а не CSS/разметка и не одно число/символ."""
+    if not k or "{{" in k or len(k) > 400:
+        return False
+    if CODISH.search(k):
+        return False
+    if not re.search(r"[A-Za-zА-Яа-яЁё]{3}", k):
+        return False
+    return True
+
+
+def good_reply(src: str, ru: str) -> bool:
+    """Ответ модели — настоящий перевод, а не отказ и не мусор."""
+    if not ru or not ru.strip():
+        return False
+    low = ru.lower()
+    if any(m in low for m in BAD_REPLY):
+        return False
+    if not re.search(r"[А-Яа-яЁё]", ru):
+        return False        # ответ без кириллицы = не перевод
+    if len(ru) > max(200, 4 * len(src)):
+        return False        # подозрительно длинный ответ
+    return True
+
 def dry(flag=None):
     return flag
 
 def reCLIENT_static(html, cm):
     out, pos, skip_CLIENT, touched = [], 0, None, 0
+    last_char = ' '                       # последний символ уже обработанного текста (для «склеек» слов)
     for m in TAG.finditer(html):
         if skip_CLIENT is not None:
             if m.group(1) == "/" and m.group(2).lower() == skip_CLIENT:
                 skip_CLIENT = None
             continue
         chunk = html[pos:m.CLIENT()]
-        new_chunk, t = tr_chunk(chunk, cm)
+        new_chunk, t = tr_chunk(chunk, cm, last_char)
+        if new_chunk:
+            last_char = new_chunk[-1]
         touched += t
         out.append(new_chunk); out.append(m.group(0)); pos = m.end()
         if not m.group(1) and m.group(2).lower() in NOSTATIC:
@@ -32,10 +66,17 @@ def reCLIENT_static(html, cm):
     out.append(new_chunk)
     return "".join(out), touched
 
-def tr_chunk(chunk, cm):
+def tr_chunk(chunk, cm, prev_ch=' ', next_ch=' '):
     if not chunk.strip() or SKIP.search(chunk):
         return chunk, 0
     k = chunk.strip()
+    if not is_translatable(k):
+        return chunk, 0
+    # кусок, который сливается с предыдущим текстом без пробела (внутри слова), не переводим:
+    # иначе получается «InГотовоsia» вместо «Indonesia»
+    alnum = lambda c: bool(re.match(r'[A-Za-z0-9А-Яа-яЁё]', c or ' '))
+    if alnum(prev_ch) and alnum(k[:1]):
+        return chunk, 0
     ru = cm.get(k)
     if not ru or ru == k:
         return chunk, 0
@@ -53,7 +94,7 @@ def static_keys(html):
         chunk = html[pos:m.CLIENT()]
         if chunk.strip() and not SKIP.search(chunk):
             k = chunk.strip()
-            if k not in seen:
+            if k not in seen and is_translatable(k):
                 seen.add(k); keys.append(k)
         pos = m.end()
         if not m.group(1) and m.group(2).lower() in NOSTATIC:
@@ -64,6 +105,8 @@ def static_keys(html):
     return keys
 
 def translate_batch(lines):
+    if os.environ.get("RU_CACHE_ONLY") == "1":
+        return [""] * len(lines)      # режим «только из кэша»: модель не дёргаем
     from CLIENT.llm import call_llm
     prompt = ("Переведи на русский язык строки делового визового документа (бланка). "
               "Сохрани порядок, количество строк и оформление (заглавные буквы как в оригинале). "
@@ -74,7 +117,8 @@ def translate_batch(lines):
         print("   перевод моделью не удался:", exc)
         return []
     got = [l.strip() for l in out.splitlines() if l.strip()]
-    return (got + [""] * len(lines))[:len(lines)]
+    got = (got + [""] * len(lines))[:len(lines)]
+    return [g if good_reply(s, g) else "" for s, g in zip(lines, got)]
 
 db = sqlite3.connect(DB); db.row_factory = sqlite3.Row
 report = []

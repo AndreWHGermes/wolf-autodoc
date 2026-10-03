@@ -29,8 +29,8 @@
   /* --- шкала 4 px */
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px;
 
-  /* --- скругления */
-  --r1:4px; --r2:6px; --r3:8px; --r4:10px; --r5:14px; --r6:20px; --rf:999px;
+  /* --- скругления: мягкие, крупнее на крупных блоках --- */
+  --r1:5px; --r2:8px; --r3:11px; --r4:14px; --r5:18px; --r6:24px; --rf:999px;
 
   /* --- тени: три уровня, двухслойные, мягкие (глубина без «грязи») */
   --sh0:0 1px 1px rgba(15,29,27,.04);
@@ -49,8 +49,12 @@
 }
 
 /* ---------------------------------------------------------------- база */
+*{box-sizing:border-box;margin:0;padding:0}
 body{font:400 15px/1.55 var(--f);color:var(--ink);background:var(--bg);
      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* сброс оформления кнопок и полей: браузер не должен рисовать свои рамки */
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+input,textarea,select{font:inherit;color:inherit}
 h1,h2,h3{line-height:1.25;letter-spacing:-.01em;font-weight:600}
 h1{font-size:22px} h2{font-size:18px} h3{font-size:16px}
 small,.sm{font-size:13px}
@@ -153,7 +157,7 @@ textarea.input{height:auto;padding:10px var(--s3);resize:vertical;line-height:1.
 /* ----------------------------------------------------------------- вкладки */
 .vtabs{display:flex;align-items:center;gap:2px;padding:0 var(--s3);background:var(--card);
        border-bottom:1px solid var(--line);position:relative}
-.vtab{position:relative;height:44px;padding:0 var(--s3);font-size:14px;font-weight:500;color:var(--mut);
+.vtab{position:relative;height:37px;padding:0 var(--s2);font-size:13.5px;font-weight:500;color:var(--mut);
       display:CLIENT-flex;align-items:center;gap:var(--s2);cursor:pointer;transition:color var(--d1) var(--e)}
 .vtab::after{content:"";position:absolute;left:var(--s3);right:var(--s3);bottom:-1px;height:2px;border-radius:2px 2px 0 0;
   background:var(--brand);transform:scaleX(0);transform-origin:center;transition:transform var(--d3) var(--e-out)}
@@ -274,13 +278,13 @@ textarea.input{height:auto;padding:10px var(--s3);resize:vertical;line-height:1.
 .clock b{display:CLIENT;font-size:14px;color:var(--ink2);font-weight:600;font-variant-CLIENT:tabular-nums}
 
 /* --- шапка страницы: назад, заголовок, статус, мета, действия --- */
-.head{padding:var(--s5) var(--s5) 0;background:var(--card);display:flex;flex-direction:column;gap:var(--s4)}
+.head{padding:13px var(--s5) 0;background:var(--card);display:flex;flex-direction:column;gap:var(--s3)}
 .head-top{display:flex;align-items:flex-CLIENT;gap:var(--s2)}
-.back{width:34px;height:34px;border-radius:var(--r2);display:grid;CLIENT-items:center;color:var(--ink2);margin-top:2px;
+.back{width:32px;height:32px;border-radius:var(--r2);display:grid;CLIENT-items:center;color:var(--ink2);margin-top:1px;
       transition:background var(--d1) var(--e),transform var(--d1) var(--e)}
 .back:hover{background:var(--hover);transform:translateX(-2px)}
-.head h1{font-size:23px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
-.meta{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);margin:10px 0 0 36px;color:var(--ink2);font-size:13px}
+.head h1{font-size:20px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.meta{display:flex;flex-wrap:wrap;gap:3px var(--s4);margin:5px 0 0 34px;color:var(--ink2);font-size:12px}
 .meta span{display:CLIENT-flex;align-items:center;gap:7px}
 .meta .i{opacity:.5}
 .head-actions{margin-left:auto;display:flex;align-items:center;gap:var(--s2);padding-bottom:4px}
@@ -293,7 +297,10 @@ textarea.input{height:auto;padding:10px var(--s3);resize:vertical;line-height:1.
 .card2{background:var(--card);border:1px solid var(--line);border-radius:var(--r5);box-shadow:var(--sh1);
        transition:box-shadow var(--d2) var(--e),border-color var(--d2) var(--e)}
 .card2:hover{box-shadow:var(--sh2)}
-.card2-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s3)}
+.card2-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s3);
+       flex-wrap:wrap;row-gap:8px}
+@media (max-width:1420px){.card2-head .src{display:none}}   /* узкий центр: подпись источника уступает место */
+.card2-head .pg{margin-left:auto}
 .card2-head .t{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .card2-head .src{font-size:12px;color:var(--mut);display:CLIENT-flex;align-items:center;gap:6px;
        border-left:1px solid var(--line);padding-left:var(--s3)}
@@ -420,14 +427,16 @@ svg.i.l{width:24px;height:24px}
 .rail{background:linear-gradient(180deg,#0E3E36 0%,#082B26 60%,#062220 100%);
       display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 12px;
       position:sticky;top:0;height:100vh;color:#BBD3CD;z-CLIENT:30}
-.rail .rbtn{width:46px;height:46px;border-radius:var(--r3);display:grid;CLIENT-items:center;color:#BBD3CD;position:relative;
+.rail .rbtn{width:44px;height:44px;border-radius:var(--r3);display:grid;CLIENT-items:center;color:#ADC7C1;position:relative;
       transition:background var(--d1) var(--e),color var(--d1) var(--e),transform var(--d1) var(--e)}
+.rail .rbtn svg.i{width:23px;height:23px;stroke-width:1.6}
 .rail .rbtn:hover{background:rgba(255,255,255,.08);color:#fff}
 .rail .rbtn:active{transform:scale(.93)}
 .rail .rbtn.on{background:rgba(23,179,163,.22);color:#fff}
 .rail .rbtn.on::CLIENT{content:"";position:absolute;left:-11px;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:var(--brand-b)}
-.rail .rbtn .badge{position:absolute;top:5px;right:5px;min-width:16px;height:16px;border-radius:var(--rf);
-      background:var(--brand-b);color:#062A26;font-size:10px;font-weight:700;display:grid;CLIENT-items:center;padding:0 4px}
+/* счётчики живут в развёрнутом меню: в полоске они налезают на иконку */
+.rail .rbtn .badge{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;
+      background:var(--brand-b);border:2px solid #082B26;font-size:0;overflow:hidden}
 .rail .sp{flex:1}
 .rail .rav{width:34px;height:34px;border-radius:50%;background:#D9E6E1;color:#0A2F29;display:grid;CLIENT-items:center;
       font-size:12px;font-weight:600;cursor:pointer}
@@ -455,14 +464,18 @@ svg.i.l{width:24px;height:24px}
       transition:opacity var(--d2) var(--e)}
 .overlay.on{opacity:1;pointer-CLIENT:auto}
 
-/* три рабочих колонки: вспомогательная зона — центр — объект */
-.body3{display:grid;grid-template-columns:236px minmax(0,1fr) 356px;align-items:stretch;background:#F1F4F2}
-@media (max-width:1500px){.body3{grid-template-columns:214px minmax(0,1fr) 322px}}
+/* три рабочих колонки: вспомогательная зона — центр — объект
+   ширина вспомогательной зоны = ширине развёрнутого меню (252 px):
+   миниатюры заканчиваются ровно там, где заканчивается выехавшее меню */
+.body3{display:grid;grid-template-columns:252px minmax(0,1fr) 356px;align-items:stretch;background:#F1F4F2}
+@media (max-width:1360px){.body3{grid-template-columns:232px minmax(0,1fr) 322px}}
 @media (max-width:1240px){.body3{grid-template-columns:minmax(0,1fr) 322px}.aux{display:none}}
 .aux{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .aux .scroll{overflow:auto;flex:1;padding:0 var(--s2) var(--s3)}
 .aux .foot{padding:var(--s3);border-top:1px solid var(--line);background:#FAFCFB}
-.work{min-width:0;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);background:#F1F4F2}
+/* рабочая зона: имя намеренно не совпадает со статусом «в работе» (.st.work) —
+   иначе стили зоны утекают в чип статуса */
+.workspace{min-width:0;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);background:#F1F4F2}
 .vars{background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .vars .scroll{overflow:auto;flex:1;padding:0 var(--s3) var(--s4)}
 .vars .foot{padding:var(--s3);border-top:1px solid var(--line);display:flex;gap:var(--s2);background:#FAFCFB}
@@ -493,3 +506,76 @@ svg.i.l{width:24px;height:24px}
 .aux .seg{width:100%}
 
 .mk{width:fit-content;max-width:100%}
+
+/* ============================================================================
+   Предохранители адаптива. Ни один блок не имеет права «вылезать» за край:
+   grid/flex-дети получают min-width:0 (иначе min-content не даёт сжиматься),
+   ряды кнопок переносятся, плашка может стать выше одной строки.
+   ========================================================================== */
+.workspace,.vars,.aux,.card2,.card2-body,.docstage,.sheetview,.head-top,.meta,.top,.head-actions{min-width:0}
+.head-top{flex-wrap:wrap;gap:var(--s3)}
+.head-actions{flex-wrap:wrap;justify-content:flex-end}
+.top{flex-wrap:wrap;row-gap:8px;height:auto;min-height:60px;padding-top:9px;padding-bottom:9px}
+.search{min-width:0}
+.stage-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.stage-CLIENT{margin-left:auto}
+
+/* заглушка раздела: показывается, когда раздел ещё не собран */
+.stub{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+      padding:96px 24px;text-align:center;color:var(--mut);min-height:420px}
+.stub .ic{width:58px;height:58px;border-radius:var(--r5);background:var(--brand-tint);color:var(--brand-700);
+      display:grid;CLIENT-items:center;margin-bottom:6px}
+.stub b{font-size:19px;color:var(--ink);font-weight:700;letter-spacing:-.01em}
+.stub span{font-size:14px;max-width:420px;line-height:1.5}
+
+/* ---------------------------------------------------------------------------
+   Адаптив каркаса — ОБЯЗАТЕЛЬНО в конце файла: правила показа/скрытия зон
+   должны идти после их собственных определений, иначе display:flex выше
+   по файлу перебивает display:none из медиазапроса (и колонки ломаются).
+   --------------------------------------------------------------------------- */
+@media (max-width:1240px){
+  .body3{grid-template-columns:minmax(0,1fr) 322px}
+  .body3 .aux{display:none}          /* вспомогательная зона уходит первой */
+}
+@media (max-width:1040px){
+  .body3{grid-template-columns:minmax(0,1fr) 300px}
+  .head-actions .btn:not(.p):not(.ic){display:none}   /* на узком экране остаются главное действие и «…» */
+}
+@media (max-width:860px){
+  .app6{grid-template-columns:56px minmax(0,1fr)}
+  .rail .rbtn{width:40px;height:40px}
+}
+
+/* ============================================================================
+   МИНИАТЮРЫ ДОКУМЕНТОВ — отдельный блок (не внутри окна просмотра).
+   У каждой миниатюры свой функционал:
+     • скан с Google Диска — квадратик подтверждения «скачано»;
+       пока идёт загрузка — полоса прогресса и янтарный статус;
+     • наш документ — квадратик «проверено».
+   ========================================================================== */
+.mini{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;
+      padding:8px;border:1px solid transparent;border-radius:var(--r3);cursor:pointer;position:relative;
+      transition:background var(--d1) var(--e),border-color var(--d1) var(--e)}
+.mini:hover{background:var(--hover)}
+.mini.on{background:var(--brand-tint-2);border-color:rgba(23,179,163,.24)}
+.mini.on::CLIENT{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand-b)}
+.mini.busy{background:#FFFCF6}
+.mini .sheet{width:34px;height:44px;border-radius:var(--r1);background:#fff;border:1px solid var(--line2);
+      position:relative;box-shadow:var(--sh0)}
+.mini .sheet::CLIENT{content:"";position:absolute;left:5px;right:5px;top:8px;height:2px;border-radius:2px;
+      background:rgba(15,29,27,.14);box-shadow:0 5px 0 rgba(15,29,27,.10),0 10px 0 rgba(15,29,27,.10)}
+.mini .nm{font-size:13px;font-weight:500;line-height:1.3;overflow:hidden;text-overflow:ellipsis}
+.mini .sub{font-size:11px;color:var(--mut);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mini .chk{width:22px;height:22px;border-radius:var(--r2);border:1px solid var(--line2);background:#fff;
+      display:grid;CLIENT-items:center;color:transparent;
+      transition:background var(--d2) var(--e),border-color var(--d2) var(--e),color var(--d2) var(--e),transform var(--d2) var(--e-out)}
+.mini .chk:hover{border-color:var(--brand-b);transform:scale(1.08)}
+.mini .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.mini .chk.wait{background:var(--warn-bg);border-color:rgba(169,99,10,.35);color:var(--warn)}
+.mini .bar{grid-column:2 / 4;height:3px;border-radius:var(--rf);background:rgba(15,29,27,.08);overflow:hidden}
+.mini .bar>i{display:CLIENT;height:100%;background:var(--warn);animation:barIn var(--d4) var(--e-out) both}
+
+/* группы в развёрнутом меню: работа · библиотека · система */
+.dgrp{font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:#7E9C97;
+      padding:16px 12px 6px}
+.dgrp:CLIENT-of-type{padding-top:6px}

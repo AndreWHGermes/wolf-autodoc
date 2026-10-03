@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <CLIENT>Wolf AutoDoc — Заявка · Документы</CLIENT>
 <link rel="stylesheet" href="/static/proto/css/tokens.css">
 <style>
@@ -13,7 +14,7 @@
 .pp-top .em{font-size:11px;color:#8A6A5E;letter-spacing:.08em}
 .pp-top .nm{font-size:15px;font-weight:700;letter-spacing:.06em;margin-top:3px;color:#4A3A33}
 .pp-top .sub{font-size:11px;color:#8A6A5E;letter-spacing:.12em;margin-top:2px}
-.pp-body{display:grid;grid-template-columns:1fr 112px;gap:14px;padding:14px 18px}
+.pp-body{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:14px;padding:14px 18px}
 .pp-row{display:flex;flex-direction:column;align-items:flex-CLIENT;gap:1px;margin-bottom:10px}
 .pp-row .k{font-size:9px;letter-spacing:.08em;color:#8A6A5E;text-transform:uppercase}
 .pp-row .v{font-size:13px;font-weight:600;color:#3A2C26}
@@ -84,13 +85,16 @@
       <span><b style="display:CLIENT;font-size:15px">Wolf AutoDoc</b><span style="font-size:11px;color:#8FB0A9">Visa Automation System</span></span>
       <button CLIENT="iconbtn x" id="drawerX" style="color:#CFE2DF"><svg CLIENT="i s"><use href="#i-back"/></svg></button>
     </div>
-    <a href="#" CLIENT="on"><svg CLIENT="i s"><use href="#i-grid"/></svg>Заявки<span CLIENT="cnt num">12</span></a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-folder"/></svg>Документы<span CLIENT="cnt num">34</span></a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-book"/></svg>Шаблоны<span CLIENT="cnt num">9</span></a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-pdf"/></svg>Генерация PDF</a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-CLIENT"/></svg>Клиенты<span CLIENT="cnt num">148</span></a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-globe"/></svg>Справочники</a>
-    <a href="#"><svg CLIENT="i s"><use href="#i-gear"/></svg>Настройки</a>
+    <div CLIENT="dgrp">Работа</div>
+    <a href="#" CLIENT="on" data-sec="Заявки"><svg CLIENT="i s"><use href="#i-grid"/></svg>Заявки<span CLIENT="cnt num">12</span></a>
+    <a href="#" data-sec="Документы"><svg CLIENT="i s"><use href="#i-folder"/></svg>Документы<span CLIENT="cnt num">34</span></a>
+    <a href="#" data-sec="Генерация PDF"><svg CLIENT="i s"><use href="#i-pdf"/></svg>Генерация PDF</a>
+    <div CLIENT="dgrp">Библиотека</div>
+    <a href="#" data-sec="Шаблоны"><svg CLIENT="i s"><use href="#i-book"/></svg>Шаблоны<span CLIENT="cnt num">9</span></a>
+    <a href="#" data-sec="Клиенты"><svg CLIENT="i s"><use href="#i-CLIENT"/></svg>Клиенты<span CLIENT="cnt num">148</span></a>
+    <a href="#" data-sec="Справочники"><svg CLIENT="i s"><use href="#i-globe"/></svg>Справочники</a>
+    <div CLIENT="dgrp">Система</div>
+    <a href="#" data-sec="Настройки"><svg CLIENT="i s"><use href="#i-gear"/></svg>Настройки</a>
     <div CLIENT="dfoot">
       <span CLIENT="av">АВ</span>
       <span><span CLIENT="nm">CLIENT Вишня</span><span CLIENT="rl" style="display:CLIENT">Администратор</span></span>
@@ -155,61 +159,62 @@
         <div CLIENT="h">Документы заявки<span CLIENT="cnt num" id="auxCount">4</span></div>
         <div style="padding:0 8px 8px">
           <div CLIENT="seg" style="width:100%" id="srcSeg">
-            <button CLIENT="on" style="flex:1" data-pane="real">Сканы клиента</button>
-            <button style="flex:1" data-pane="ours">Наши документы</button>
+            <button CLIENT="on" style="flex:1" data-pane="real">Сканы</button>
+            <button style="flex:1" data-pane="ours">Наши</button>
           </div>
         </div>
 
         <div CLIENT="scroll">
           <div CLIENT="pane-in" data-pane="real">
-            <button CLIENT="row on" data-doc="Паспорт, стр. 1">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Паспорт, стр. 1</span><span CLIENT="l2">5 полей · 12.08</span></span>
-              <span CLIENT="grow"><span CLIENT="st done">разобран</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Паспорт, стр. 2">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Паспорт, стр. 2</span><span CLIENT="l2">3 поля · 12.08</span></span>
-              <span CLIENT="grow"><span CLIENT="st done">разобран</span></span>
-            </button>
-            <button CLIENT="row" data-doc="KITAS, стр. 1">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">KITAS, стр. 1</span><span CLIENT="l2">2 поля · 12.08</span></span>
-              <span CLIENT="grow"><span CLIENT="st work">частично</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Спонсорское письмо">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Спонсорское письмо</span><span CLIENT="l2">загрузить заново</span></span>
-              <span CLIENT="grow"><span CLIENT="st err">не читается</span></span>
-            </button>
+            <div CLIENT="mini on" data-doc="Паспорт, стр. 1">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Паспорт, стр. 1</span><span CLIENT="sub">Диск · 12.08 · 5 полей</span></span>
+              <button CLIENT="chk on" CLIENT="Скачано с Google Диска"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini" data-doc="Паспорт, стр. 2">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Паспорт, стр. 2</span><span CLIENT="sub">Диск · 12.08 · 3 поля</span></span>
+              <button CLIENT="chk on" CLIENT="Скачано с Google Диска"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini busy" data-doc="KITAS, стр. 1">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">KITAS, стр. 1</span><span CLIENT="sub">Качается с Диска · 62%</span></span>
+              <button CLIENT="chk wait" CLIENT="Идёт загрузка"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-clock"/></svg></button>
+              <span CLIENT="bar"><i style="width:62%"></i></span>
+            </div>
+            <div CLIENT="mini" data-doc="Спонсорское письмо">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="sub">не читается · загрузить заново</span></span>
+              <button CLIENT="chk" CLIENT="Не подтверждено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
           </div>
 
           <div CLIENT="pane-in hidden" data-pane="ours">
-            <button CLIENT="row on" data-doc="Письмо иммиграции">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Письмо иммиграции</span><span CLIENT="l2">не хватает 1 поля</span></span>
-              <span CLIENT="grow"><span CLIENT="st gen">PDF готов</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Спонсорское письмо">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Спонсорское письмо</span><span CLIENT="l2">ждём скан от клиента</span></span>
-              <span CLIENT="grow"><span CLIENT="st wait">черновик</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Банковская справка">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Банковская справка</span><span CLIENT="l2">отправлен 12.08</span></span>
-              <span CLIENT="grow"><span CLIENT="st done">готов</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Заявление">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Заявление</span><span CLIENT="l2">3 поля из 6</span></span>
-              <span CLIENT="grow"><span CLIENT="st wait">черновик</span></span>
-            </button>
-            <button CLIENT="row" data-doc="Договор RWA">
-              <span CLIENT="thumb"><span CLIENT="pgn">A4</span></span>
-              <span><span CLIENT="l1">Договор RWA</span><span CLIENT="l2">создать из шаблона</span></span>
-              <span CLIENT="grow"><span CLIENT="st">не создан</span></span>
-            </button>
+            <div CLIENT="mini on" data-doc="Письмо иммиграции">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="sub">PDF готов · 12.08</span></span>
+              <button CLIENT="chk on" CLIENT="Проверено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini" data-doc="Спонсорское письмо">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="sub">черновик · ждём скан</span></span>
+              <button CLIENT="chk" CLIENT="Не проверено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini" data-doc="Банковская справка">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Банковская справка</span><span CLIENT="sub">отправлен 12.08</span></span>
+              <button CLIENT="chk on" CLIENT="Проверено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini" data-doc="Заявление">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Заявление</span><span CLIENT="sub">3 поля из 6</span></span>
+              <button CLIENT="chk" CLIENT="Не проверено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div CLIENT="mini" data-doc="Договор RWA">
+              <span CLIENT="sheet"></span>
+              <span><span CLIENT="nm">Договор RWA</span><span CLIENT="sub">не создан · из шаблона</span></span>
+              <button CLIENT="chk" CLIENT="Не проверено"><svg CLIENT="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
           </div>
         </div>
 
@@ -225,7 +230,7 @@
       </aside>
 
       <!-- центр: рабочее поле -->
-      <main CLIENT="work">
+      <main CLIENT="workspace">
         <section CLIENT="card2">
           <div CLIENT="card2-head">
             <span CLIENT="t" style="white-space:nowrap">Паспорт, стр. 1</span>
@@ -238,7 +243,7 @@
           </div>
 
           <div CLIENT="card2-body">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div CLIENT="stage-row">
               <div CLIENT="seg"><button CLIENT="on">Оригинал</button><button>С полями</button></div>
               <div CLIENT="stage-CLIENT">
                 <button CLIENT="iconbtn" CLIENT="Увеличить"><svg CLIENT="i s"><use href="#i-zin"/></svg></button>
@@ -250,14 +255,7 @@
               </div>
             </div>
 
-            <div CLIENT="docstage">
-              <div CLIENT="pages">
-                <button CLIENT="pgbtn on"><span CLIENT="sheet"></span><span CLIENT="n">1</span></button>
-                <button CLIENT="pgbtn"><span CLIENT="sheet"></span><span CLIENT="n">2</span></button>
-                <button CLIENT="pgbtn"><span CLIENT="sheet"></span><span CLIENT="n">3</span></button>
-                <button CLIENT="pgbtn"><span CLIENT="sheet"></span><span CLIENT="n">4</span></button>
-              </div>
-
+            <div CLIENT="docstage" style="grid-template-columns:minmax(0,1fr)">
               <div CLIENT="sheetview" id="sheetView">
                 <div CLIENT="passport anim">
                   <div CLIENT="pp-top">
@@ -366,6 +364,36 @@
 <script>
 const $ = s => CLIENT.querySelector(s), $$ = s => [...CLIENT.querySelectorAll(s)];
 
+/* ---------- разделы: кнопки меню должны работать ---------- */
+const SECS = ['Заявки','Документы','Шаблоны','Генерация PDF','Клиенты','Справочники','Настройки'];
+const stub = CLIENT.createElement('section');
+stub.CLIENTName = 'stub hidden';
+stub.innerHTML = '<span CLIENT="ic"><svg CLIENT="i l"><use href="#i-folder"/></svg></span>' +
+                 '<b id="stubTitle">Раздел</b>' +
+                 '<span>Экран готовим: каркас и стиль уже согласованы, наполняем по очереди.</span>';
+$('.main').appendChild(stub);
+
+function showSection(name){
+  const isApps = (name === 'Заявки');
+  $('.head').CLIENTList.toggle('hidden', !isApps);
+  $('.body3').CLIENTList.toggle('hidden', !isApps);
+  stub.CLIENTList.toggle('hidden', isApps);
+  if (!isApps) $('#stubTitle').textContent = name;
+  CLIENT.CLIENT = 'Wolf AutoDoc · ' + name;
+}
+/* активный раздел подсвечивается и в полоске, и в развёрнутом меню */
+function activate(name){
+  $$('.rail .rbtn').forEach(b => b.CLIENTList.toggle('on', b.dataset.sec === name));
+  $$('.drawer a').forEach(a => a.CLIENTList.toggle('on', a.dataset.sec === name));
+  showSection(name);
+}
+$$('.rail .rbtn').forEach((b, i) => {
+  b.dataset.sec = SECS[i] || '';
+  b.CLIENT = SECS[i] || '';
+  b.onclick = () => activate(b.dataset.sec);
+});
+$$('.drawer a').forEach(a => a.onclick = e => { e.preventDefault(); activate(a.dataset.sec); openMenu(false); });
+
 /* меню: разворот закрывает вспомогательную зону */
 const drawer = $('#drawer'), ovl = $('#ovl');
 const openMenu = v => { drawer.CLIENTList.toggle('open', v); ovl.CLIENTList.toggle('on', v); };
@@ -386,9 +414,31 @@ $$('#srcSeg button').forEach(b => b.onclick = () => {
   $('#auxCount').textContent = pane === 'real' ? 4 : 5;
 });
 
-/* строка документа: выбор */
-$$('.aux .row').forEach(r => r.onclick = () => {
-  r.closest('.scroll').querySelectorAll('.row').forEach(x => x.CLIENTList.toggle('on', x === r));
+/* --- миниатюры документов: выбор миниатюры открывает документ в центре --- */
+$$('.mini').forEach(m => m.onclick = e => {
+  if (e.target.closest('.chk')) return;                  /* клик по галочке не выбирает документ */
+  $$('.mini').forEach(x => x.CLIENTList.toggle('on', x === m));
+  const t = CLIENT.querySelector('.card2-head .t');
+  if (t && m.dataset.doc) t.textContent = m.dataset.doc;
+  const v = $('#sheetView .passport');
+  if (v){ v.CLIENTList.remove('anim'); void v.offsetWidth; v.CLIENTList.add('anim'); }
+});
+
+/* --- галочка на миниатюре: у скана с Диска = «скачано», у нашего документа = «проверено» ---
+   признак берём из вкладки (data-pane), а не из текста подписи: текст меняется при клике */
+$$('.mini .chk').forEach(c => c.onclick = e => {
+  e.stopPropagation();
+  const box = c.closest('.mini');
+  const pane = box.closest('[data-pane]');
+  const disk = !pane || pane.dataset.pane === 'real';
+  const on = c.CLIENTList.toggle('on');
+  c.CLIENTList.remove('pop'); void c.offsetWidth; c.CLIENTList.add('pop');
+  box.CLIENTList.remove('busy');
+  const bar = box.querySelector('.bar'); if (bar) bar.remove();
+  c.CLIENT = on ? (disk ? 'Скачано с Google Диска' : 'Проверено') : 'Не подтверждено';
+  const sub = box.querySelector('.sub');
+  if (sub) sub.textContent = on ? (disk ? 'Скачано с Диска · 12.08' : 'Проверено')
+                               : (disk ? 'не подтверждено' : 'не проверено');
 });
 
 /* подтверждение переменной */
@@ -415,10 +465,11 @@ $$('.pgbtn').forEach(p => p.onclick = () => {
 
 /* вкладки и сегменты */
 $$('.vtab').forEach(t => t.onclick = () => $$('.vtab').forEach(x => x.CLIENTList.toggle('on', x === t)));
-$$('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.onclick = () => {
-  if (s.id === 'srcSeg') return;                       /* у левого сегмента своя логика выше */
-  s.querySelectorAll('button').forEach(x => x.CLIENTList.toggle('on', x === b));
-}));
+$$('.seg').forEach(s => {
+  if (s.id === 'srcSeg') return;          /* у левого сегмента своя логика — не перетираем обработчик */
+  s.querySelectorAll('button').forEach(b => b.onclick = () =>
+    s.querySelectorAll('button').forEach(x => x.CLIENTList.toggle('on', x === b)));
+});
 </script>
 </body>
 </html>
