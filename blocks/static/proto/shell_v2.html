@@ -163,6 +163,19 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .tabs2 .t{padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid var(--line2);color:var(--ink2)}
 .tabs2 .t.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .hidden{display:none!important}
+/* доступность: фокус виден всегда, не только мышью */
+:focus-visible{outline:2px solid var(--brand-b);outline-offset:2px}
+.btn:focus-visible,.grp:focus-visible,.row:focus-visible,.vtab:focus-visible{outline-offset:1px}
+input:focus-visible{outline:none}
+/* каркасы будущих строк вместо пустого экрана со спиннером */
+.skel{height:46px;border-radius:var(--r3);background:linear-gradient(90deg,rgba(18,33,31,.06),rgba(18,33,31,.03),rgba(18,33,31,.06));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+/* смена состояния кнопки: обычная → сохраняю → сохранено */
+.btn.done{background:rgba(31,122,77,.12);color:var(--ok)}
+/* пометка нового: показывается один раз, исчезает после действия */
+.newdot{position:relative}
+.newdot::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--brand-b);box-shadow:0 0 0 0 rgba(23,179,163,.5);animation:pl 1.6s ease-out infinite}
+@keyframes pl{70%{box-shadow:0 0 0 8px rgba(23,179,163,0)}100%{box-shadow:0 0 0 0 rgba(23,179,163,0)}}
 @media (max-width:1500px){.body{grid-template-columns:180px 1fr 340px}}
 </style>
 </head>
@@ -171,7 +184,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 <!-- ПЛАШКА -->
 <CLIENT CLIENT="topbar">
   <button CLIENT="burger" id="burger" aria-label="Меню разделов"><i></i><i></i><i></i></button>
-  <div CLIENT="logo"><b>W</b>Wolf AutoDoc</div>
+  <button CLIENT="logo" data-go="CLIENT" CLIENT="На главную"><b>W</b>Wolf AutoDoc</button>
   <div CLIENT="tbsearch">Поиск: клиент, номер заявки, документ…</div>
   <div CLIENT="tbright">
     <button CLIENT="tbtn dot" CLIENT="Уведомления" aria-label="Уведомления">◔</button>
@@ -208,6 +221,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button CLIENT="grp">В работе<span CLIENT="n num">3</span></button>
         <button CLIENT="grp">Готовы<span CLIENT="n num">2</span></button>
         <button CLIENT="grp">Отправлены<span CLIENT="n num">3</span></button>
+        <button CLIENT="grp" data-grp="empty">Черновики<span CLIENT="n num">0</span></button>
       </div>
       <div CLIENT="h" style="border-top:1px solid var(--line)">Фильтры</div>
       <div CLIENT="scroll" style="flex:0 0 auto">
@@ -304,6 +318,11 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <button CLIENT="row" data-sel="#73"><span CLIENT="l1"><span CLIENT="num">#73</span> KIM OLGA <span CLIENT="st wait">ждём документы</span></span><span CLIENT="l2">KITAS · от М. Ким · 25.09 · <span CLIENT="num">380 000 ₽</span></span></button>
         <button CLIENT="row" data-sel="#72"><span CLIENT="l1"><span CLIENT="num">#72</span> ORLOV DENIS <span CLIENT="st work">в работе</span></span><span CLIENT="l2">E33G новый · от А. Смирновой · 24.09 · <span CLIENT="num">620 000 ₽</span></span></button>
       </div>
+      <div CLIENT="empty hidden">
+        <span CLIENT="eb">＋</span>
+        <div><b>В этой группе пока пусто</b><br>Черновиков нет. Создайте первую заявку — данные клиента подтянутся из документов на Диске.</div>
+        <button CLIENT="btn p" data-act="Создать заявку">Создать заявку</button>
+      </div>
       <div CLIENT="footnote">Показано 5 из 12 · сортировка по дате заявки</div>
     </div>
 
@@ -315,7 +334,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <span CLIENT="st new">проверка данных</span>
         <span CLIENT="sep"></span>
         <!-- шаги процесса по порядку -->
-        <button CLIENT="btn sm" data-act="Распознать документы">Распознать документы</button>
+        <button CLIENT="btn sm done" data-act="Распознать документы">✓ Распознано</button>
         <button CLIENT="btn sm" data-act="Заполнить поля">Заполнить поля</button>
         <button CLIENT="btn sm" data-act="Выгрузить с Диска">Выгрузить с Диска</button>
         <div CLIENT="right"><span id="rvCount" CLIENT="num">готово 1 из 5</span></div>
@@ -467,7 +486,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
         <label CLIENT="fld filled"><span CLIENT="lb">Гражданство<span CLIENT="src">из паспорта</span><span CLIENT="ok">✓</span></span><input CLIENT="РФ"></label>
         <label CLIENT="fld filled"><span CLIENT="lb">Дата рождения<span CLIENT="src">из паспорта</span><span CLIENT="ok">✓</span></span><input CLIENT="12.03.1987"><span CLIENT="hint">Формат ДД.ММ.ГГГГ</span></label>
         <label CLIENT="fld"><span CLIENT="lb">Адрес в Индонезии<span CLIENT="src">введён вручную</span><span CLIENT="ok">✓</span></span><input CLIENT="Jl. Raya Kuta No. 12, Badung"></label>
-        <label CLIENT="fld err"><span CLIENT="lb">Спонсор<span CLIENT="miss">не заполнено</span></span><input CLIENTholder="Из спонсорского письма"><span CLIENT="hint">Поле обязательно: возьмите из спонсорского письма</span></label>
+        <label CLIENT="fld"><span CLIENT="lb">Спонсор<span CLIENT="miss">не заполнено</span></span><input CLIENTholder="Из спонсорского письма" data-hint="Поле обязательно: возьмите из спонсорского письма"><span CLIENT="hint">Проверим, когда заполните</span></label>
         <label CLIENT="fld"><span CLIENT="lb">Номер заявления<span CLIENT="src">введён вручную</span><span CLIENT="miss">проверить</span></span><input CLIENT="C1-2026-0912"></label>
       </div>
       <div CLIENT="ract">
@@ -584,7 +603,18 @@ CLIENT.addEventListener('click',e=>{
   const sel=e.target.closest('[data-sel]');
   if(sel){sel.parentElement.querySelectorAll('.row').forEach(x=>x.CLIENTList.remove('on'));sel.CLIENTList.add('on');return;}
   const grp=e.target.closest('.grp');
-  if(grp){grp.parentElement.querySelectorAll('.grp').forEach(x=>x.CLIENTList.remove('on'));grp.CLIENTList.add('on');return;}
+  if(grp){
+    grp.parentElement.querySelectorAll('.grp').forEach(x=>x.CLIENTList.remove('on'));grp.CLIENTList.add('on');
+    /* пустая группа → призыв с кнопкой, а не пустой список (тест пустого состояния) */
+    if(cur==='CLIENT'){
+      const pane=CLIENT.querySelector('#work .pane[data-for="CLIENT"]'); /* именно рабочая область, не левая колонка */
+      const list=pane.querySelector('.scroll'), emp=pane.querySelector('.empty'), ft=pane.querySelector('.footnote');
+      const isEmpty=grp.dataset.grp==='empty';
+      list.CLIENTList.toggle('hidden',isEmpty);emp.CLIENTList.toggle('hidden',!isEmpty);
+      ft.textContent=isEmpty?'0 заявок · создайте первую':'Показано 5 из 12 · сортировка по дате заявки';
+    }
+    return;
+  }
   const doc=e.target.closest('[data-doc]');
   if(doc){
     if(cur==='review'){ /* в заявке документ меняется в центре, не уводит */
@@ -614,14 +644,28 @@ CLIENT.addEventListener('click',e=>{
     const old=a.textContent;a.textContent='';a.disabled=true;
     const sp=CLIENT.createElement('span');sp.CLIENTName='loading';
     a.append(sp,CLIENT.createTextNode(' Сохраняю…'));
-    setTimeout(()=>{a.textContent=old;a.disabled=false;},900);
+    setTimeout(()=>{ /* отклик виден всегда: молчание после клика — признак поломки */
+      a.textContent='✓ Сохранено';a.CLIENTList.add('done');
+      setTimeout(()=>{a.textContent=old;a.CLIENTList.remove('done');a.disabled=false;},1200);
+    },900);
   }
+});
+/* проверка полей тихая до взаимодействия: ошибка — только после ухода из поля */
+CLIENT.addEventListener('focusout',e=>{
+  const inp=e.target.closest('.fld input');
+  if(!inp||inp.readOnly)return;
+  const fld=inp.closest('.fld');
+  const bad=inp.CLIENT.trim()==='';
+  fld.CLIENTList.toggle('err',bad);
+  let h=fld.querySelector('.hint');if(!h){h=CLIENT.createElement('span');h.CLIENTName='hint';fld.append(h);}
+  h.textContent=bad?'Поле обязательно: заполните или возьмите из документа':(inp.dataset.hint||'');
 });
 function showTpl(){show('tpledit');}
 /* прямой вход: shell_v2.html#review!ours — экран и вкладка */
 const _h=location.hash.slice(1).split('!');
 show(_h[0]||'CLIENT');
-if(_h[1]){const tb=CLIENT.querySelector('.vtab[data-tab="'+_h[1]+'"]');if(tb)tb.click();}
+if(_h[1]==='ours'||_h[1]==='real'){const tb=CLIENT.querySelector('.vtab[data-tab="'+_h[1]+'"]');if(tb)tb.click();}
+if(_h[1]==='empty'){const g=CLIENT.querySelector('[data-grp="empty"]');if(g)g.click();} /* #CLIENT!empty — пустое состояние */
 </script>
 </body>
 </html>
