@@ -87,10 +87,10 @@ def tr_chunk(chunk, cm, prev_ch=' '):
     k = chunk.strip()
     if not is_translatable(k):
         return chunk, 0
-    # кусок, который сливается с предыдущим текстом без пробела (внутри слова), не переводим:
+    # обрывок слова (без пробелов, короткий, слипшийся с предыдущим текстом) не переводим:
     # иначе получается «InГотовоsia» вместо «Indonesia»
     alnum = lambda c: bool(re.match(r'[A-Za-z0-9А-Яа-яЁё]', c or ' '))
-    if alnum(prev_ch) and alnum(k[:1]):
+    if alnum(prev_ch) and alnum(k[:1]) and ' ' not in k and len(k) <= 14:
         return chunk, 0
     ru = cm.get(k)
     if not ru or ru == k:
