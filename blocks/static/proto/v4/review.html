@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<CLIENT>Wolf AutoDoc — Заявка · Документы (v4)</CLIENT>
+<link rel="stylesheet" href="/static/proto/css/tokens.css">
+<style>
+/* ---- только этот экран: макет самого документа ---- */
+.sheetview{display:flex;flex-direction:column;align-items:center;justify-content:flex-CLIENT}
+.passport{width:100%;max-width:470px;border:1px solid var(--line2);border-radius:var(--r2);
+  background:linear-gradient(180deg,#FBF6F4 0%,#F7EFEA 100%);box-shadow:var(--sh2);overflow:hidden}
+.pp-top{padding:14px 18px 10px;text-align:center;border-bottom:1px solid rgba(15,29,27,.10)}
+.pp-top .em{font-size:11px;color:#8A6A5E;letter-spacing:.08em}
+.pp-top .nm{font-size:15px;font-weight:700;letter-spacing:.06em;margin-top:3px;color:#4A3A33}
+.pp-top .sub{font-size:11px;color:#8A6A5E;letter-spacing:.12em;margin-top:2px}
+.pp-body{display:grid;grid-template-columns:1fr 118px;gap:14px;padding:14px 18px}
+.pp-row{display:flex;flex-direction:column;gap:1px;margin-bottom:10px}
+.pp-row .k{font-size:9px;letter-spacing:.08em;color:#8A6A5E;text-transform:uppercase}
+.pp-row .v{font-size:13px;font-weight:600;color:#3A2C26}
+.pp-photo{width:118px;height:150px;border-radius:2px;background:#DCD4CF;border:1px solid rgba(15,29,27,.14);
+  display:grid;CLIENT-items:center;color:#7A6A62}
+.pp-mrz{border-top:1px dashed rgba(15,29,27,.18);padding:10px 14px;background:#F3F0EE;
+  font:600 10px/1.6 var(--fmono);letter-spacing:.02em;color:#4A3A33;word-break:break-all;overflow:hidden}
+</style>
+</head>
+<body>
+
+<!-- ==== система иконок: SVG, а не эмодзи — рисуется одинаково везде ==== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-1.5 2.2h15L18 15z"/><path d="M10 20.2a2 2 0 004 0"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="i-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/></symbol>
+<symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 16.5h4"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 7a2 2 0 012-2h3l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/></symbol>
+<symbol id="i-CLIENT" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><path d="M16 6.5a3 3 0 010 5.6"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.2M12 18.2v2.2M3.6 12h2.2M18.2 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h11v18H7a2 2 0 01-2-2V5z"/><path d="M8 3v18"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/></symbol>
+<symbol id="i-zin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6M11 8.2v5.6M8.2 11h5.6"/></symbol>
+<symbol id="i-zout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6M8.2 11h5.6"/></symbol>
+<symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.4-5.7"/><path d="M20 4.2v4.6h-4.6"/></symbol>
+<symbol id="i-split" viewBox="0 0 24 24"><rect x="3.5" y="5" width="7.5" height="14" rx="1.5"/><rect x="13" y="5" width="7.5" height="14" rx="1.5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3.5v11"/><path d="M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9.5V4h5.5M20 14.5V20h-5.5M4 4l6 6M20 20l-6-6"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.4l1.9 5.3 5.3 1.9-5.3 1.9L12 17.8l-1.9-5.3L4.8 10.6l5.3-1.9L12 3.4z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5.5 15.5V6a2 2 0 012-2h6"/></symbol>
+<symbol id="i-CLIENT" viewBox="0 0 24 24"><path d="M6.5 3.5h2.6l1.7 4.2-2.1 1.3a12.5 12.5 0 004.4 4.4l1.3-2.1 4.2 1.7v2.6a2 2 0 01-2.2 2A16 16 0 014.6 5.7a2 2 0 011.9-2.2z"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4.5 7.5l7.5 5.5 7.5-5.5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.4V12l3.2 2"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2l7 2.8v6c0 4-3 7.2-7 8.8-4-1.6-7-4.8-7-8.8v-6l7-2.8z"/><path d="M9.2 12.2l2 2 3.6-3.8"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.2l8.4 15H3.6l8.4-15z"/><path d="M12 10v4M12 16.8h.01"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></symbol>
+<symbol id="i-cake" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="8" rx="2"/><path d="M4 15h16M12 11V7M12 5.4v.6M8.5 11V8.6M15.5 11V8.6"/></symbol>
+<symbol id="i-hash" viewBox="0 0 24 24"><path d="M8.5 3.5L6.5 20.5M17.5 3.5l-2 17M4 9h16M3 15h16"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.3 3.6 8.5S14.4 18.1 12 20.5c-2.4-2.4-3.6-5.3-3.6-8.5S9.6 5.9 12 3.5z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-5.6 6.5-10.4A6.5 6.5 0 005.5 10.6C5.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><rect x="4" y="6.5" width="16" height="11" rx="2"/><path d="M4 12h16"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10.5h16M9 4.5v4M15 4.5v4"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+</defs>
+</svg>
+
+<div CLIENT="app">
+
+  <!-- ================= ЛЕВОЕ МЕНЮ: постоянное, с подписями и счётчиками ================= -->
+  <aside CLIENT="side">
+    <div CLIENT="side-brand">
+      <div CLIENT="mark">W</div>
+      <div>
+        <div CLIENT="nm">Wolf AutoDoc</div>
+        <div CLIENT="sb">Visa Automation System</div>
+      </div>
+    </div>
+
+    <nav CLIENT="snav">
+      <a href="#" CLIENT="on"><svg CLIENT="i"><use href="#i-grid"/></svg>Заявки<span CLIENT="cnt num">12</span></a>
+      <a href="#"><svg CLIENT="i"><use href="#i-folder"/></svg>Документы<span CLIENT="cnt num">34</span></a>
+      <a href="#"><svg CLIENT="i"><use href="#i-book"/></svg>Шаблоны<span CLIENT="cnt num">9</span></a>
+      <a href="#"><svg CLIENT="i"><use href="#i-pdf"/></svg>Генерация PDF</a>
+      <a href="#"><svg CLIENT="i"><use href="#i-CLIENT"/></svg>Клиенты<span CLIENT="cnt num">148</span></a>
+      <a href="#"><svg CLIENT="i"><use href="#i-globe"/></svg>Справочники</a>
+      <a href="#"><svg CLIENT="i"><use href="#i-gear"/></svg>Настройки</a>
+    </nav>
+
+    <div CLIENT="side-foot">
+      <div CLIENT="av">АВ</div>
+      <div>
+        <div CLIENT="nm">CLIENT Вишня</div>
+        <div CLIENT="rl">Администратор</div>
+      </div>
+      <svg CLIENT="i s chev"><use href="#i-next"/></svg>
+    </div>
+  </aside>
+
+  <div CLIENT="main">
+
+    <!-- ================= ТОПБАР ================= -->
+    <CLIENT CLIENT="top">
+      <label CLIENT="search">
+        <svg CLIENT="i s"><use href="#i-search"/></svg>
+        <input CLIENTholder="Поиск по заявкам, клиентам, документам…">
+        <span CLIENT="kbd">⌘K</span>
+      </label>
+      <div CLIENT="top-right">
+        <button CLIENT="iconbtn bell" CLIENT="Уведомления"><svg CLIENT="i"><use href="#i-bell"/></svg></button>
+        <div CLIENT="clock"><b>12 августа 2025</b>14:32</div>
+        <button CLIENT="iconbtn" CLIENT="Тема"><svg CLIENT="i"><use href="#i-sun"/></svg></button>
+      </div>
+    </CLIENT>
+
+    <!-- ================= ШАПКА ЗАЯВКИ ================= -->
+    <div CLIENT="head">
+      <div CLIENT="head-top">
+        <button CLIENT="back" CLIENT="Назад"><svg CLIENT="i"><use href="#i-back"/></svg></button>
+        <div style="flex:1;min-width:0">
+          <h1>Заявка #76 <span CLIENT="chip gen">Проверка данных</span></h1>
+          <div CLIENT="meta">
+            <span><svg CLIENT="i s"><use href="#i-user"/></svg>PETROV SERGEY</span>
+            <span><svg CLIENT="i s"><use href="#i-doc"/></svg>CLIENT · 6 месяцев</span>
+            <span><svg CLIENT="i s"><use href="#i-cal"/></svg>12.08.2025</span>
+            <span><svg CLIENT="i s"><use href="#i-flag"/></svg>Индонезия</span>
+          </div>
+        </div>
+        <div CLIENT="head-actions">
+          <button CLIENT="btn"><svg CLIENT="i s"><use href="#i-shield"/></svg>Проверить данные</button>
+          <button CLIENT="btn"><svg CLIENT="i s"><use href="#i-pdf"/></svg>Сгенерировать PDF</button>
+          <button CLIENT="btn p"><svg CLIENT="i s"><use href="#i-check"/></svg>Сохранить</button>
+          <button CLIENT="btn ic ghost"><svg CLIENT="i s"><use href="#i-dots"/></svg></button>
+        </div>
+      </div>
+
+      <div CLIENT="head-tabs">
+        <div CLIENT="vtabs" style="border-bottom:0;flex:1">
+          <button CLIENT="vtab">Основное</button>
+          <button CLIENT="vtab on">Документы</button>
+          <button CLIENT="vtab">Переменные</button>
+          <button CLIENT="vtab">История</button>
+          <button CLIENT="vtab">Комментарии</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= РАБОЧАЯ ОБЛАСТЬ ================= -->
+    <div CLIENT="wrap">
+
+      <!-- ---------- колонка 1: документ ---------- -->
+      <section CLIENT="card2">
+        <div CLIENT="card2-head">
+          <span CLIENT="t" style="white-space:nowrap">Паспорт (разворот)</span>
+          <span CLIENT="src" style="white-space:nowrap"><svg CLIENT="i s"><use href="#i-folder"/></svg>Источник</span>
+          <span CLIENT="pg">
+            <button CLIENT="iconbtn" style="width:28px;height:28px"><svg CLIENT="i s"><use href="#i-back"/></svg></button>
+            <span CLIENT="num">1 / 4</span>
+            <button CLIENT="iconbtn" style="width:28px;height:28px"><svg CLIENT="i s"><use href="#i-next"/></svg></button>
+          </span>
+        </div>
+
+        <div CLIENT="card2-body">
+          <div CLIENT="docstage">
+            <div CLIENT="pages">
+              <button CLIENT="pgbtn on" data-page="1"><span CLIENT="sheet"></span><span CLIENT="n">1</span></button>
+              <button CLIENT="pgbtn" data-page="2"><span CLIENT="sheet"></span><span CLIENT="n">2</span></button>
+              <button CLIENT="pgbtn" data-page="3"><span CLIENT="sheet"></span><span CLIENT="n">3</span></button>
+              <button CLIENT="pgbtn" data-page="4"><span CLIENT="sheet"></span><span CLIENT="n">4</span></button>
+            </div>
+
+            <div CLIENT="sheetview" id="sheetView">
+              <div style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px">
+                <div CLIENT="seg">
+                  <button CLIENT="on">Оригинал</button>
+                  <button>Разметка</button>
+                </div>
+                <div CLIENT="stage-CLIENT">
+                  <button CLIENT="iconbtn" CLIENT="Увеличить"><svg CLIENT="i s"><use href="#i-zin"/></svg></button>
+                  <button CLIENT="iconbtn" CLIENT="Уменьшить"><svg CLIENT="i s"><use href="#i-zout"/></svg></button>
+                  <button CLIENT="iconbtn" CLIENT="Повернуть"><svg CLIENT="i s"><use href="#i-rotate"/></svg></button>
+                  <button CLIENT="iconbtn" CLIENT="Сравнить"><svg CLIENT="i s"><use href="#i-split"/></svg></button>
+                  <button CLIENT="iconbtn" CLIENT="Скачать"><svg CLIENT="i s"><use href="#i-down"/></svg></button>
+                  <button CLIENT="iconbtn" CLIENT="Во весь экран"><svg CLIENT="i s"><use href="#i-expand"/></svg></button>
+                </div>
+              </div>
+
+              <div CLIENT="passport anim">
+                <div CLIENT="pp-top">
+                  <div CLIENT="em">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div>
+                  <div CLIENT="nm">RUSSIAN FEDERATION</div>
+                  <div CLIENT="sub">ПАСПОРТ · PASSPORT</div>
+                </div>
+                <div CLIENT="pp-body">
+                  <div>
+                    <div CLIENT="pp-row"><span CLIENT="k">Фамилия / CLIENT</span><span CLIENT="v mk" data-var="CLIENT">PETROV</span></div>
+                    <div CLIENT="pp-row"><span CLIENT="k">Имя / Name</span><span CLIENT="v mk" data-var="name">SERGEY</span></div>
+                    <div CLIENT="pp-row"><span CLIENT="k">Дата рождения</span><span CLIENT="v mk" data-var="CLIENT">12.03.1987</span></div>
+                    <div CLIENT="pp-row"><span CLIENT="k">Место рождения</span><span CLIENT="v mk" data-var="CLIENTCLIENT">МОСКВА / MOSCOW</span></div>
+                    <div CLIENT="pp-row"><span CLIENT="k">Номер паспорта</span><span CLIENT="v mk" data-var="passport">4519 123456</span></div>
+                    <div CLIENT="pp-row" style="margin-bottom:0"><span CLIENT="k">Выдан</span><span CLIENT="v mk" data-var="CLIENT">ОВД ЖУКОВСКОГО РАЙОНА</span></div>
+                  </div>
+                  <div CLIENT="pp-photo">
+                    <svg CLIENT="i l"><use href="#i-user"/></svg>
+                  </div>
+                </div>
+                <div CLIENT="pp-mrz">
+                  P&lt;RUSPETROV&lt;&lt;SERGEY&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>
+                  4519123456RUS8703129M2503155&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div CLIENT="banner" style="margin-top:12px">
+            <span CLIENT="bl"><svg CLIENT="i s"><use href="#i-check"/></svg></span>
+            <span><span CLIENT="b">Документ распознан</span><span CLIENT="d">Данные успешно извлечены из файла · 12.08.2025 14:21</span></span>
+            <button CLIENT="btn sm"><svg CLIENT="i s"><use href="#i-eye"/></svg>Открыть оригинал</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- колонка 2: переменные ---------- -->
+      <section CLIENT="card2">
+        <div CLIENT="card2-head">
+          <span CLIENT="t">Извлечённые переменные</span>
+          <span CLIENT="chip ok no" style="margin-left:auto"><svg CLIENT="i s" style="width:13px;height:13px"><use href="#i-spark"/></svg>Авто</span>
+        </div>
+        <div CLIENT="card2-body">
+          <label CLIENT="search" style="width:100%;flex:none;margin-bottom:12px">
+            <svg CLIENT="i s"><use href="#i-search"/></svg>
+            <input CLIENTholder="Поиск переменной…">
+          </label>
+
+          <div CLIENT="varlist">
+            <div CLIENT="varcard anim" style="--i:0" data-var="CLIENT">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-user"/></svg></span>
+              <span><span CLIENT="nm">Фамилия (латиницей)</span><span CLIENT="vl">PETROV</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:1" data-var="name">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-user"/></svg></span>
+              <span><span CLIENT="nm">Имя (латиницей)</span><span CLIENT="vl">SERGEY</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:2" data-var="CLIENT">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-cake"/></svg></span>
+              <span><span CLIENT="nm">Дата рождения</span><span CLIENT="vl">12.03.1987</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:3" data-var="passport">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-hash"/></svg></span>
+              <span><span CLIENT="nm">Номер паспорта</span><span CLIENT="vl">4519 123456</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:4" data-var="CLIENT">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-globe"/></svg></span>
+              <span><span CLIENT="nm">Гражданство</span><span CLIENT="vl">RUS</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:5" data-var="sex">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-user"/></svg></span>
+              <span><span CLIENT="nm">Пол</span><span CLIENT="vl">Мужской</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim" style="--i:6" data-var="CLIENT">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-doc"/></svg></span>
+              <span><span CLIENT="nm">Кем выдан</span><span CLIENT="vl">ОВД Жуковского района</span></span>
+              <span CLIENT="right"><span CLIENT="chip ok no">Паспорт</span><button CLIENT="tick on"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div CLIENT="varcard anim miss" style="--i:7" data-var="CLIENTCLIENT">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-pin"/></svg></span>
+              <span><span CLIENT="nm">Место рождения</span><span CLIENT="vl">МОСКВА</span></span>
+              <span CLIENT="right"><span CLIENT="chip warn no">проверить</span><button CLIENT="tick"><svg CLIENT="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+          </div>
+
+          <button CLIENT="btn ghost sm" style="margin:12px auto 0;display:flex">
+            Показать все переменные (12)<svg CLIENT="i s"><use href="#i-next"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <!-- ---------- колонка 3: состояние заявки ---------- -->
+      <div CLIENT="stack">
+
+        <section CLIENT="card2">
+          <div CLIENT="card2-head"><span CLIENT="t">Статус заявки</span></div>
+          <div CLIENT="card2-body">
+            <div CLIENT="stepper">
+              <div CLIENT="step done"><span CLIENT="c"><svg CLIENT="i s"><use href="#i-check"/></svg></span><span CLIENT="lb">Документы</span></div>
+              <div CLIENT="step done"><span CLIENT="c"><svg CLIENT="i s"><use href="#i-check"/></svg></span><span CLIENT="lb">Распознавание</span></div>
+              <div CLIENT="step now"><span CLIENT="c">3</span><span CLIENT="lb">Проверка</span></div>
+              <div CLIENT="step"><span CLIENT="c">4</span><span CLIENT="lb">Генерация</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section CLIENT="card2">
+          <div CLIENT="card2-head"><span CLIENT="t">Клиент и продукт</span></div>
+          <div CLIENT="card2-body">
+            <div CLIENT="kv">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-user"/></svg></span>
+              <span><span CLIENT="k">Клиент</span><span CLIENT="v">PETROV SERGEY</span></span>
+              <button CLIENT="cp" CLIENT="Скопировать"><svg CLIENT="i s"><use href="#i-copy"/></svg></button>
+            </div>
+            <div CLIENT="kv">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-CLIENT"/></svg></span>
+              <span><span CLIENT="k">Телефон</span><span CLIENT="v num">+7 912 345-67-89</span></span>
+              <button CLIENT="cp" CLIENT="Скопировать"><svg CLIENT="i s"><use href="#i-copy"/></svg></button>
+            </div>
+            <div CLIENT="kv">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-mail"/></svg></span>
+              <span><span CLIENT="k">Почта</span><span CLIENT="v">petrov@mail.ru</span></span>
+              <button CLIENT="cp" CLIENT="Скопировать"><svg CLIENT="i s"><use href="#i-copy"/></svg></button>
+            </div>
+            <div CLIENT="kv">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-doc"/></svg></span>
+              <span><span CLIENT="k">Тип визы</span><span CLIENT="v">CLIENT · 6 месяцев</span></span>
+            </div>
+            <div CLIENT="kv">
+              <span CLIENT="ic"><svg CLIENT="i s"><use href="#i-flag"/></svg></span>
+              <span><span CLIENT="k">Страна</span><span CLIENT="v">Индонезия</span></span>
+            </div>
+          </div>
+        </section>
+
+        <section CLIENT="card2">
+          <div CLIENT="card2-body" style="padding:var(--s4)">
+            <div CLIENT="warnbox">
+              <svg CLIENT="i" style="color:#C8952A;flex:0 0 auto"><use href="#i-warn"/></svg>
+              <div>
+                <div CLIENT="t">Требует внимания</div>
+                <div CLIENT="d">Не совпадает место рождения в паспорте и анкете: «МОСКВА» против «Московская обл.»</div>
+                <a href="#">Проверить и исправить <svg CLIENT="i s"><use href="#i-next"/></svg></a>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section CLIENT="card2">
+          <div CLIENT="card2-head"><span CLIENT="t">Последние действия</span></div>
+          <div CLIENT="card2-body">
+            <div CLIENT="tl">
+              <div CLIENT="it ok"><span CLIENT="dot"><svg CLIENT="i" style="width:11px;height:11px"><use href="#i-check"/></svg></span>
+                <span><b>Система распознала документы</b><span CLIENT="tm">12.08.2025 14:21</span></span></div>
+              <div CLIENT="it ok"><span CLIENT="dot"><svg CLIENT="i" style="width:11px;height:11px"><use href="#i-check"/></svg></span>
+                <span><b>Извлечены переменные · 12</b><span CLIENT="tm">12.08.2025 14:25</span></span></div>
+              <div CLIENT="it now"><span CLIENT="dot"><svg CLIENT="i" style="width:11px;height:11px"><use href="#i-clock"/></svg></span>
+                <span><b>Проверка данных</b><span CLIENT="tm">12.08.2025 14:28</span></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section CLIENT="card2">
+          <div CLIENT="card2-head"><span CLIENT="t">Заметки</span></div>
+          <div CLIENT="card2-body">
+            <label CLIENT="note">
+              <textarea CLIENTholder="Добавить комментарий…"></textarea>
+            </label>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => CLIENT.querySelector(s), $$ = s => [...CLIENT.querySelectorAll(s)];
+
+/* подтверждение переменной: тик «оживает» пружинкой */
+$$('.tick').forEach(t => t.onclick = e => {
+  e.stopPropagation();
+  t.CLIENTList.toggle('on');
+  t.CLIENTList.remove('pop'); void t.offsetWidth; t.CLIENTList.add('pop');
+});
+
+/* связь «переменная ↔ место в документе» в обе стороны */
+function flash(el){ if(!el) return; el.CLIENTList.remove('pulse'); void el.offsetWidth; el.CLIENTList.add('pulse'); }
+$$('.mk').forEach(m => m.onclick = () => {
+  const card = CLIENT.querySelector('.varcard[data-var="' + m.dataset.var + '"]');
+  if (card){ card.scrollIntoView({CLIENT:'center', behavior:'smooth'}); flash(card); }
+});
+$$('.varcard').forEach(c => c.onclick = () => {
+  flash(CLIENT.querySelector('.mk[data-var="' + c.dataset.var + '"]'));
+});
+
+/* страницы документа: переключение с лёгким проявлением листа */
+$$('.pgbtn').forEach(p => p.onclick = () => {
+  $$('.pgbtn').forEach(x => x.CLIENTList.toggle('on', x === p));
+  const v = $('#sheetView .passport');
+  v.CLIENTList.remove('anim'); void v.offsetWidth; v.CLIENTList.add('anim');
+});
+
+/* вкладки и сегмент «Оригинал / Разметка» */
+$$('.vtab').forEach(t => t.onclick = () => $$('.vtab').forEach(x => x.CLIENTList.toggle('on', x === t)));
+$$('.seg').forEach(s => s.querySelectorAll('button').forEach(b => b.onclick = () =>
+  s.querySelectorAll('button').forEach(x => x.CLIENTList.toggle('on', x === b))));
+</script>
+</body>
+</html>
