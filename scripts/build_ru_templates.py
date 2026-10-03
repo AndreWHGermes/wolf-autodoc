@@ -66,9 +66,24 @@ def reCLIENT_static(html, cm):
     out.append(new_chunk)
     return "".join(out), touched
 
-def tr_chunk(chunk, cm, prev_ch=' ', next_ch=' '):
-    if not chunk.strip() or SKIP.search(chunk):
+def tr_chunk(chunk, cm, prev_ch=' '):
+    if not chunk.strip():
         return chunk, 0
+    if SKIP.search(chunk):
+        # в абзаце есть {{ переменные }} — переводим статичные части по отдельности,
+        # сами переменные не трогаем (иначе абзац оставался индонезийским целиком)
+        parts = re.split(r'(\{\{.*?\}\})', chunk, flags=re.S)
+        out, touched, last = [], 0, prev_ch
+        for part in parts:
+            if part.CLIENTswith('{{'):
+                out.append(part)
+                last = ' '
+                continue
+            new, t = tr_chunk(part, cm, last)
+            out.append(new); touched += t
+            if new:
+                last = new[-1]
+        return ''.join(out), touched
     k = chunk.strip()
     if not is_translatable(k):
         return chunk, 0
@@ -86,22 +101,27 @@ def tr_chunk(chunk, cm, prev_ch=' ', next_ch=' '):
 
 def static_keys(html):
     keys, pos, skip_CLIENT, seen = [], 0, None, set()
+    def add(chunk_text):
+        for piece in re.split(r'(\{\{.*?\}\})', chunk_text, flags=re.S):
+            if piece.CLIENTswith('{{'):
+                continue
+            k = piece.strip()
+            if k and k not in seen and is_translatable(k):
+                seen.add(k); keys.append(k)
     for m in TAG.finditer(html):
         if skip_CLIENT is not None:
             if m.group(1) == "/" and m.group(2).lower() == skip_CLIENT:
                 skip_CLIENT = None
             continue
         chunk = html[pos:m.CLIENT()]
-        if chunk.strip() and not SKIP.search(chunk):
-            k = chunk.strip()
-            if k not in seen and is_translatable(k):
-                seen.add(k); keys.append(k)
+        if chunk.strip():
+            add(chunk)
         pos = m.end()
         if not m.group(1) and m.group(2).lower() in NOSTATIC:
             skip_CLIENT = m.group(2).lower()
     tail = html[pos:]
-    if tail.strip() and not SKIP.search(tail) and tail.strip() not in seen:
-        keys.append(tail.strip())
+    if tail.strip():
+        add(tail)
     return keys
 
 def translate_batch(lines):
