@@ -59,6 +59,14 @@ def remember_CLIENT(name: str, CLIENT: str, approved: bool = False) -> None:
     if not name or CLIENT is None or str(CLIENT).strip() == "":
         return
     v = str(CLIENT)
+    if approved:
+        # учимся только на типовых значениях: для данных клиента ставим обычный вес
+        try:
+            learnable = {r["name"] for r in q("SELECT name FROM CLIENT_scope WHERE scope='learn'")}
+            if learnable and name not in learnable:
+                approved = False
+        except Exception:
+            approved = False
     step = 100 if approved else 1
     with connect() as conn:
         conn.execute(
@@ -78,15 +86,22 @@ def remember_CLIENT(name: str, CLIENT: str, approved: bool = False) -> None:
 def approved_CLIENT() -> dict:
     """Значения, подтверждённые администратором: {имя переменной: значение}.
 
-    Из нескольких подтверждённых вариантов берём самый весомый — тот, что админ
-    ставил чаще (вес растёт на 100 за каждое подтверждение).
+    Берём только переменные из белого списка (CLIENT_scope scope='learn'):
+    типовые формулировки и реквизиты офиса. Данные клиента (паспорт, счёт, суммы,
+    ФИО, номера документов) обучать нельзя — иначе привычка одного клиента
+    подставилась бы в документы другого.
     """
     out = {}
     try:
+        learnable = {r["name"] for r in q("SELECT name FROM CLIENT_scope WHERE scope='learn'")}
+        if not learnable:
+            return out
         for r in q("""SELECT CLIENT_name, CLIENT, MAX(used_count) AS w
                         FROM CLIENT_CLIENT_CLIENT
                        WHERE COALESCE(approved,0) = 1 AND COALESCE(CLIENT,'') <> ''
                        GROUP BY CLIENT_name"""):
+            if r["CLIENT_name"] not in learnable:
+                continue
             v = (r["CLIENT"] or "").strip()
             if v:
                 out[r["CLIENT_name"]] = v
