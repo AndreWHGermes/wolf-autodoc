@@ -9,3 +9,5 @@ data/previews/
 data/uploads/
 *.bak*
 backups/
+data/prep/
+data/CLIENT_cache.json
