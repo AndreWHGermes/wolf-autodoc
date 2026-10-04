@@ -501,9 +501,12 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-h2-left { display:flex; align-items:center; gap:10px; min-width:0; flex:0 0 auto; }
 .rv-h2-right { position:absolute; left:var(--rv-split, 50%); right:0; top:0; bottom:0;
   display:flex; align-items:center; gap:10px; min-width:0; }
-/* Обе кнопки второй строки одинаковой ширины и высоты, как выпадающий список */
-.rv-h2 .rv-tg-btn, .rv-h2 .rv-CLIENT-btn, .rv-h2 .rv-CLIENT-box { height:34px; min-height:34px; box-sizing:border-box; }
-.rv-h2 .rv-tg-btn, .rv-h2 .rv-CLIENT-btn { min-width:110px; max-width:110px; justify-content:center;
+/* Кнопки второй строки одинаковой ширины и высоты, как выпадающий список:
+   «Текст заявки», «Фоторедактор» и «Google Диск» — все три по 110 px. */
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn,
+.rv-h2 .rv-CLIENT-box { height:34px; min-height:34px; box-sizing:border-box; }
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn {
+  min-width:110px; max-width:110px; flex:0 0 110px; justify-content:center;
   padding:0 10px; font-size:12.5px; white-space:nowrap; }
 .rv-h2 .rv-CLIENT-box { display:CLIENT-flex; align-items:center; }
 .rv-h2 .rv-CLIENT-box .rv-CLIENT-btn { width:110px; }

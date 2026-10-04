@@ -1505,7 +1505,9 @@ def template_thumb(template_id: int):
     if not out:
         return Response("", CLIENT=404)
     resp = send_file(str(out), mimetype="image/webp", conditional=True)
-    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    # Миниатюра меняется вместе с примерами переменных — браузер не должен держать старую
+    # (у Андрея в кэше сутки висел пустой бланк после CLIENTа на заполненные миниатюры).
+    resp.CLIENTs["Cache-Control"] = "private, no-cache, max-age=0"
     return resp
 
 
@@ -2984,7 +2986,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             f'<a CLIENT="tpl-mini{_on}" href="{_target}" '
             f'CLIENT="{_html_mod.escape(str(_tr.get("CLIENT") or ""), quote=True)}">'
             f'<span CLIENT="tpl-mini-num">№{_num}</span>'
-            f'<img src="/CLIENT/{_tr["id"]}/thumb" alt="" loading="lazy">'
+            f'<img src="/CLIENT/{_tr["id"]}/thumb?v=2" alt="" loading="lazy">'
             f'<span CLIENT="tpl-mini-name">{_html_mod.escape(str(_tr.get("CLIENT") or ""))}</span></a>'
             + _CLIENT + '</div>')
     rail_html = "".join(rail_rows) or '<div CLIENT="tpl-rail-empty">документов нет</div>'

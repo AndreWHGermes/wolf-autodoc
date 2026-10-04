@@ -774,7 +774,7 @@ def app_review(app_id: int):
     </span>
     <span CLIENT="rv-h2-right">
       <button type="button" CLIENT="btn sm rv-photo-btn" id="rv-photo-btn"
-              CLIENT="Кадрирование фото клиента для документов с фотографией">📷 Фото</button>
+              CLIENT="Фоторедактор: кадрирование фото клиента для документов с фотографией">Фоторедактор</button>
       <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
       <span CLIENT="rv-who">{('от ' + _html.escape(_who)) if _who else _status_label(a.get('CLIENT'))}</span>
       <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>

@@ -247,36 +247,124 @@ def doc_thumb(app_id: int, template_id: int, width: int = 220):
 TPL_THUMB_DIR = CACHE / "tpl_thumbs"
 
 
-def tpl_thumb(template_id: int, code: str, width: int = 170):
-    """Миниатюра документа-шаблона: первый лист картинкой.
+def _example_CLIENT(template_id: int) -> dict:
+    """Значения примера документа: пример переменной → значение по умолчанию → автозначение.
 
-    Нужна для вертикальной полоски в конструкторе PDF: по ней видно все
-    документы и можно переключаться, не открывая каждый. Значения переменных
-    не подставляем: превью показывает сам бланк и не тянет данные клиентов.
+    Порядок ровно как в конструкторе (`CLIENTs/CLIENT/page.py`, `_hl`), иначе миниатюра
+    и окно визора разойдутся: в миниатюре будет одно, в документе другое.
+    """
+    import json as _json
+    vals: dict = {}
+    try:
+        from core import db as _db
+        rows = _db.q("SELECT name, default_CLIENT, examples_json FROM template_CLIENT "
+                     "WHERE template_id=?", (template_id,)) or []
+    except Exception:
+        return vals
+    for r in rows:
+        val = ""
+        try:
+            ex = _json.loads((r.get("examples_json") or "").strip() or "[]")
+            if ex:
+                val = str(ex[0])
+        except Exception:
+            val = ""
+        if not val.strip():
+            val = str(r.get("default_CLIENT") or "")
+        if val.strip():
+            vals[str(r.get("name"))] = val
+    return vals
+
+
+def _fill_example(html: str, template_id: int, code: str) -> str:
+    """Подставляет значения примера прямо в HTML-шаблон (для миниатюры)."""
+    import re as _re
+    vals = _example_CLIENT(template_id)
+    # Автозначения (сумма прописью, копейки и т. п.) — только как запасной вариант,
+    # там где у переменной нет ни примера, ни значения по умолчанию.
+    try:
+        from CLIENT.CLIENT import build_template_CLIENT
+        auto = build_template_CLIENT(dict(vals), code, dict(vals)) or {}
+        vals = {**auto, **vals}
+    except Exception:
+        pass
+
+    def _esc(txt) -> str:
+        return str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
+
+    return _re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
+                   lambda m: _esc((vals.get(m.group(1)) or "").strip()), html)
+
+
+def _pdf_has_CLIENTholders(pdf) -> bool:
+    """В примере остались незаполненные `{{ переменные }}`?
+
+    Часть «заполненных» примеров на самом деле выгружена из шаблона с пустыми датами —
+    для миниатюры такой файл не годится: на нём видны скобки вместо значений.
+    """
+    try:
+        import subprocess as _sp
+        txt = _sp.run(["pdftotext", str(pdf), "-"], capture_output=True, timeout=60)
+        return "{{" in (txt.stdout or b"").decode("utf-8", "ignore")
+    except Exception:
+        return False
+
+
+def tpl_thumb(template_id: int, code: str, width: int = 170):
+    """Миниатюра документа-шаблона: первый лист ЗАПОЛНЕННОГО примера.
+
+    Нужна для вертикальной полоски в конструкторе PDF: по ней видно все документы и можно
+    переключаться, не открывая каждый. Значения переменных подставляем те же, что конструктор
+    кладёт в документ (примеры переменных → значения по умолчанию), поэтому миниатюра выглядит
+    как тот документ, который откроется в окне визора, а не как пустой бланк.
     """
     import hashlib as _hl
     import re as _re
     from core.config import HTML_DIR
     from pathlib import Path as _P
-    path = _P(HTML_DIR) / str(code) / "template.html"
-    if not path.is_file():
-        return None
+
+    tdir = _P(HTML_DIR) / str(code)
+    src_pdf, html_src = None, None
+    # 1) Оригинальный заполненный пример — тот же файл, что открывает вкладка
+    #    «🏷 Оригинальный пример». Миниатюра выглядит как настоящий документ.
+    _p = tdir / "example_filled.pdf"
     try:
-        html = path.read_text(encoding="utf-8")
+        if (_p.is_file() and _p.stat().st_size > 8192
+                and not _pdf_has_CLIENTholders(_p)):
+            src_pdf = _p
     except Exception:
-        return None
-    html = _re.sub(r"\{\{\s*[a-zA-Z0-9_]+\s*\}\}", "", html)
-    html = _re.sub(r"<script\b.*?</script>", "", html, flags=_re.S | _re.I)
+        src_pdf = None
+    if src_pdf is None:
+        # 2) Оригинала нет (например, резюме) — рисуем HTML-шаблон с теми же значениями
+        #    примера, что подставляет конструктор, чтобы миниатюра не была пустым бланком.
+        path = tdir / "template.html"
+        if not path.is_file():
+            return None
+        try:
+            html_src = path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+        html_src = _fill_example(html_src, template_id, code)
+        html_src = _re.sub(r"<script\b.*?</script>", "", html_src, flags=_re.S | _re.I)
+
     TPL_THUMB_DIR.mkdir(parents=True, exist_ok=True)
-    digest = _hl.sha1((html + str(width)).encode("utf-8")).hexdigest()[:12]
+    if src_pdf is not None:
+        _st = src_pdf.stat()
+        key = "%s|%s|%s|%s" % (src_pdf.name, _st.st_size, int(_st.st_mtime), width)
+    else:
+        key = html_src + str(width)
+    digest = _hl.sha1(key.encode("utf-8")).hexdigest()[:12]
     out = TPL_THUMB_DIR / ("tpl%s_%s_%d.webp" % (template_id, digest, width))
     if out.exists() and out.stat().st_size > 0:
         return out
+    tmp_pdf = None
     try:
         import subprocess as _sp
         import tempfile as _tf
-        from CLIENT import render as _render
-        pdf = _render.render_pdf(html)
+        pdf = src_pdf
+        if pdf is None:
+            from CLIENT import render as _render
+            pdf = tmp_pdf = _render.render_pdf(html_src)
         prefix = _tf.mktemp(suffix="-tplthumb")
         _sp.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to", str(width * 3), "-png",
                  str(pdf), prefix], check=True, timeout=180)
@@ -294,12 +382,15 @@ def tpl_thumb(template_id: int, code: str, width: int = 170):
                 p.unlink()
             except Exception:
                 pass
-        try:
-            _P(pdf).unlink()
-        except Exception:
-            pass
     except Exception:
         return None
+    finally:
+        # удаляем только свой временный PDF: оригинальный пример — рабочий файл
+        if tmp_pdf is not None:
+            try:
+                _P(tmp_pdf).unlink()
+            except Exception:
+                pass
     return out if out.exists() and out.stat().st_size > 0 else None
 
 
