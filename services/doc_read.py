@@ -18,6 +18,16 @@ IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff")
 HEIC_EXT = (".heic", ".heif")
 OCR_LANGS = "rus+eng"
 
+# Распознавание не должно тормозить интерфейс: tesseract запускается через
+# обёртку с пониженным приоритетом (nice 15) и одним потоком. Настройка живёт
+# в самом модуле pytesseract, поэтому действует для всех вызовов ниже.
+try:
+    import pytesseract as _pt
+    if Path("/opt/wolf_v2/scripts/tesseract_nice.sh").is_file():
+        _pt.pytesseract.tesseract_cmd = "/opt/wolf_v2/scripts/tesseract_nice.sh"
+except Exception:
+    pass
+
 
 def _ocr_image(path: Path) -> str:
     import pytesseract

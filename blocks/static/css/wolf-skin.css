@@ -1,0 +1,572 @@
+/* ============================================================================
+   Wolf AutoDoc — новый внешний вид (наш дизайн) поверх прод-стилей.
+   Подключается последним: base.css → {active}.css → wolf-tokens.css → этот файл.
+   Логику не трогает, разметку не переименовывает. Значения — из --wf-*.
+   ========================================================================== */
+
+/* ------------------------------------------------------------ 1. ПАЛИТРА
+   Перекрашиваем систему прода на наш дизайн: один акцент (бирюза),
+   нейтраль с зелёным подтоном, спокойные статусы. Все правила прода
+   (base/dashboard/CLIENT/CLIENT) держатся на этих переменных. */
+:root{
+  --bg:var(--wf-bg);
+  --card:#FFFFFF;
+  --ink:var(--wf-ink);
+  --muted:var(--wf-mut);
+  --line:var(--wf-line);
+  --accent:var(--wf-brand);
+  --accent2:var(--wf-brand-b);
+  --danger:var(--wf-err);
+  --ok:var(--wf-ok);
+  --warn:var(--wf-warn);
+  --r:var(--wf-r4);
+  --shadow:var(--wf-sh1);
+}
+
+/* --------------------------------------------------------- 2. ОБОЛОЧКА */
+.topbar{background:#fff;border-bottom:1px solid var(--wf-line);box-shadow:none}
+.topbar-row{gap:var(--wf-s3)}
+.brand-pill{background:linear-gradient(135deg,var(--wf-brand),var(--wf-brand-b));
+  border-radius:var(--wf-r3);box-shadow:0 2px 8px rgba(15,110,99,.22)}
+.brand-pill b{font-weight:700;letter-spacing:-.01em}
+.burger{border:1px solid var(--wf-line);border-radius:var(--wf-r3);color:var(--wf-ink2);background:#fff}
+.burger:hover{background:var(--wf-hover);border-color:var(--wf-line2)}
+.topbar-user{background:var(--wf-hover);color:var(--wf-ink2);font-weight:600;font-size:12.5px;border-radius:var(--wf-r2)}
+.wrap{max-width:1180px;padding:6px 14px 16px}
+.crumb-bar{background:#fff !important;border-top:1px solid #F1F5F3 !important;color:var(--wf-mut) !important}
+.crumb-bar a{color:var(--wf-ink2)}
+.crumb-bar a:hover{color:var(--wf-brand-b)}
+h1{font-size:23px;font-weight:700;letter-spacing:-.02em;color:var(--wf-ink)}
+h2{font-size:15.5px;font-weight:700;color:var(--wf-ink)}
+.page-sub{color:var(--wf-mut);font-size:13px}
+
+/* меню (выезжающее): тёмная бирюзовая панель */
+.drawer{background:rgba(4,32,30,.42)}
+.drawer .panel{background:var(--wf-brand-900);color:#CFE2DF;box-shadow:8px 0 32px rgba(4,32,30,.28)}
+.drawer .head{color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
+.drawer .head b{color:#fff;font-weight:700}
+.drawer nav a{color:#B9CFCA;font-weight:600;border-radius:var(--wf-r3);
+  line-height:1.25;
+  transition:background var(--wf-d1) var(--wf-e),color var(--wf-d1) var(--wf-e)}
+.drawer nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.drawer nav a.active{background:linear-gradient(135deg,var(--wf-brand-b),var(--wf-brand));color:#fff;
+  box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.drawer .close{color:#8FB0A9}
+.drawer .user{color:#8FB0A9;border-top:1px solid rgba(255,255,255,.08)}
+.drawer .user a{color:#CFE2DF}
+
+/* ------------------------------------------------- 3. КАРТОЧКИ И СТРОКИ */
+.card{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r4);box-shadow:var(--wf-sh1);
+  margin-bottom:var(--wf-s3)}
+.card>CLIENT{font-weight:600;font-size:15px;color:var(--wf-ink);padding:14px}
+.card>CLIENT .chev{color:var(--wf-mut2)}
+.card .body{padding:0 14px 14px}
+.item{gap:var(--wf-s3);padding:11px 4px;border-top:1px solid #F1F5F3;transition:background var(--wf-d1) var(--wf-e)}
+.item .ico{width:40px;height:40px;border-radius:var(--wf-r3);font-size:18px;background:var(--wf-hover)}
+.item .t{font-weight:600;font-size:14.5px;color:var(--wf-ink)}
+.item .s{color:var(--wf-mut);font-size:12.5px}
+.item .go{color:var(--wf-mut2)}
+a.item:hover{background:var(--wf-brand-tint-2)}
+a.item:active{background:var(--wf-hover)}
+/* подложки эмодзи-иконок — в наших тонах вместо синих/фиолетовых */
+.ico.blue,.ico.violet,.ico.cyan{background:var(--wf-brand-tint)}
+.ico.green{background:var(--wf-ok-bg)}
+.ico.red{background:var(--wf-err-bg)}
+.ico.amber{background:var(--wf-gold-tint)}
+.ico.grey{background:var(--wf-hover)}
+
+/* ------------------------------------------------ 4. СТАТУСЫ И МЕТКИ */
+.badge{font-weight:600;font-size:11.5px;padding:3px 9px;border-radius:var(--wf-rf);
+  background:var(--wf-brand-tint);color:var(--wf-brand-700)}
+.badge.ok{background:var(--wf-ok-bg);color:var(--wf-ok)}
+.badge.warn,.badge.amber{background:var(--wf-warn-bg);color:var(--wf-warn)}
+.badge.bad,.badge.rej{background:var(--wf-err-bg);color:var(--wf-err)}
+.badge.muted,.badge.grey{background:var(--wf-hover);color:var(--wf-mut)}
+.badge.blue{background:var(--wf-brand-tint);color:var(--wf-brand-700)}
+.badge.violet{background:var(--wf-gold-tint);color:#8A6D1F}
+.badge.fill-ok{background:var(--wf-ok-bg);color:var(--wf-ok)}
+.kind-badge{font-size:10.5px;font-weight:600;padding:1px 7px;letter-spacing:0}
+.kind-test{background:var(--wf-gold-tint);color:#8A6D1F}
+.kind-archive{background:var(--wf-hover);color:var(--wf-mut)}
+.docs-CLIENT{font-weight:600;font-size:12.5px;color:var(--wf-mut)}
+.docs-CLIENT.ok{color:var(--wf-ok)}.docs-CLIENT.warn{color:var(--wf-warn)}.docs-CLIENT.bad{color:var(--wf-err)}
+.docs-CLIENT.idle .dot{background:var(--wf-mut2)}
+.muted{color:var(--wf-mut);font-size:13px}
+.hint{background:var(--wf-brand-tint-2);color:var(--wf-ink2);border:1px solid var(--wf-line);
+  border-radius:var(--wf-r3);font-size:13px}
+.flash{border-radius:var(--wf-r3);font-weight:600;font-size:13.5px}
+.flash.ok{background:var(--wf-ok-bg);color:var(--wf-ok)}
+.flash.bad{background:var(--wf-err-bg);color:var(--wf-err)}
+
+/* ------------------------------------------------- 5. КНОПКИ И ПОЛЯ
+   Плоские, аккуратные: без «объёмных» теней и подпрыгивания. */
+.btn{min-height:36px;padding:7px 13px;font-size:13.5px;font-weight:600;border-radius:var(--wf-r3);
+  background:linear-gradient(135deg,var(--wf-brand),var(--wf-brand-b));color:#fff;border:none;
+  box-shadow:0 1px 2px rgba(15,29,27,.10);transition:filter var(--wf-d1) var(--wf-e),box-shadow var(--wf-d1) var(--wf-e)}
+.btn:hover{filter:brightness(1.06);box-shadow:var(--wf-sh2)}
+.btn:active,.btn.is-press{transform:none;filter:brightness(.95);box-shadow:var(--wf-sh-in)}
+.btn:disabled,.btn[disabled]{opacity:.55;box-shadow:none}
+.btn.ghost{background:#fff;color:var(--wf-ink2);border:1px solid var(--wf-line2);box-shadow:var(--wf-sh0)}
+.btn.ghost:hover{background:var(--wf-hover);border-color:var(--wf-line3);color:var(--wf-ink);box-shadow:var(--wf-sh0)}
+.btn.ghost:active{background:var(--wf-hover);border-color:var(--wf-brand-b);transform:none}
+.btn.sm{min-height:32px;padding:5px 11px;font-size:12.5px;border-radius:var(--wf-r2)}
+.btn.sm.ghost{box-shadow:var(--wf-sh0)}
+.btn.ok{background:linear-gradient(135deg,var(--wf-ok),#1E9A5F);box-shadow:var(--wf-sh0)}
+.btn.danger{background:linear-gradient(135deg,var(--wf-err),#CF4437);box-shadow:var(--wf-sh0)}
+.btn.is-on,.btn-ok-active,.check-ok{background:var(--wf-ok-bg);border:1px solid rgba(23,114,69,.28);color:var(--wf-ok)}
+input[type=text],input[type=password],input[type=file],textarea,select{
+  border:1px solid var(--wf-line2);border-radius:var(--wf-r3);font-size:14.5px;background:#fff;color:var(--wf-ink)}
+input:focus,textarea:focus,select:focus{border-color:var(--wf-brand-b);box-shadow:var(--wf-ring)}
+label{font-size:12.5px;color:var(--wf-mut);font-weight:600}
+th{color:var(--wf-mut);font-size:11.5px;font-weight:700;letter-spacing:.03em;border-bottom:1px solid var(--wf-line)}
+td{border-bottom:1px solid #F1F5F3}
+.mono{font-size:12.5px;color:var(--wf-ink2)}
+
+/* ------------------------------------------------------ 6. ПЛАШКИ */
+.stats-bar{background:linear-gradient(135deg,var(--wf-brand-900),var(--wf-brand));color:#fff;
+  border-radius:0 0 var(--wf-r4) var(--wf-r4);padding:12px 18px 14px}
+.stats-bar .lbl{font-size:11px;letter-spacing:.05em;opacity:.72;text-transform:uppercase;font-weight:600}
+.stats-bar .val{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.stats-bar .sub{font-size:12px;opacity:.72}
+.stats-bar .sep{background:rgba(255,255,255,.18)}
+.client-head{background:linear-gradient(135deg,var(--wf-brand),var(--wf-brand-b));color:#fff;
+  border-radius:var(--wf-r4);box-shadow:var(--wf-sh2)}
+.client-head .clh-chip{background:rgba(255,255,255,.16);font-weight:600}
+
+/* выравнивание по ширине рабочей зоны */
+.topbar-row{max-width:1180px}
+
+/* -------------------------------------------------- 7. ОКНО И МОДАЛКА */
+.modal{background:rgba(4,32,30,.44)}
+.modal .sheet{background:#fff;border-radius:var(--wf-r6) var(--wf-r6) 0 0;box-shadow:var(--wf-sh3)}
+.modal .sheet h3{font-weight:700;font-size:16.5px;color:var(--wf-ink)}
+.modal .grab{background:var(--wf-line2)}
+.modal .close-x{color:var(--wf-mut2)}
+@media(min-width:721px){.modal .sheet{border-radius:var(--wf-r5)}}
+
+/* нижняя навигация */
+.tabbar{background:#fff;border-top:1px solid var(--wf-line);box-shadow:0 -1px 0 rgba(15,29,27,.02)}
+.tabbar a{color:var(--wf-mut2);font-weight:600}
+.tabbar a.active{color:var(--wf-brand);background:var(--wf-brand-tint-2)}
+
+/* ============================== 8. ЭКРАН ПРОВЕРКИ ЗАЯВКИ
+   У этого экрана своя зелёная тема (встроенный стиль в теле страницы),
+   поэтому правила идут с префиксом body — так они перекрывают встроенные. */
+body .rv-wrap{--accent:var(--wf-brand);--accent-dark:var(--wf-brand-700);--line:var(--wf-line)}
+body .rv-head,body .rv-panel{border-radius:var(--wf-r4);border-color:var(--wf-line);box-shadow:var(--wf-sh1)}
+
+/* ============================== 12. ШАПКА ЗАЯВКИ И ВКЛАДКИ СТРАНИЦЫ (по рендеру)
+   Заголовок «‹ Заявка #N» с чипом состояния, мета-строка с иконками,
+   тип продукта справа, ниже — вкладки «Заявка | Документы | Журнал системы». */
+body .rv-head{display:flex;flex-direction:column;align-items:stretch;gap:6px;
+  padding:8px 12px 7px;background:#fff;
+  border-radius:var(--wf-r4) var(--wf-r4) 0 0}
+body .rv-back{grid-area:back;width:30px;height:30px;border-radius:var(--wf-r2);display:grid;
+  CLIENT-items:center;font-size:19px;line-height:1;color:var(--wf-ink2);text-decoration:none;
+  background:var(--wf-hover);transition:background var(--wf-d1) var(--wf-e),color var(--wf-d1) var(--wf-e)}
+body .rv-back:hover{background:var(--wf-brand-tint-2);color:var(--wf-brand)}
+body .rv-head-main{grid-area:main;min-width:0}
+body .rv-CLIENT{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;
+  letter-spacing:-.2px;color:var(--wf-ink);line-height:1.2;white-space:nowrap}
+body .rv-chip-CLIENT{background:var(--wf-brand-tint-2);color:var(--wf-brand);
+  border:1px solid rgba(15,110,99,.22);font-size:11.5px;padding:3px 9px;border-radius:999px;
+  font-weight:600;white-space:nowrap}
+body .rv-chip-CLIENT::CLIENT{content:'';display:CLIENT-CLIENT;width:6px;height:6px;border-radius:50%;
+  background:var(--wf-brand-b);margin-right:6px;vertical-align:1px}
+body .rv-meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
+body .rv-m{display:CLIENT-flex;align-items:center;gap:5px;font-size:12px;color:var(--wf-mut);
+  min-width:0;white-space:nowrap;max-width:100%}
+body .rv-m svg{flex:none;color:var(--wf-line3)}
+body .rv-prod{grid-area:prod;min-width:0}
+body .rv-prod .rv-select-btn{width:100%;overflow:hidden}
+body .rv-prod .rv-select-btn > span:CLIENT-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .rv-CLIENT{grid-area:CLIENT;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+body .rv-scan-note{grid-area:note;margin:0}
+body .rv-page-tabs{display:flex;gap:22px;padding:10px 16px 0;background:#fff;
+  border-bottom:1px solid var(--wf-line);border-radius:0 0 var(--wf-r4) var(--wf-r4)}
+body .rv-page-tabs a{position:relative;padding:0 0 10px;font-size:13.5px;font-weight:600;
+  color:var(--wf-mut);text-decoration:none;transition:color var(--wf-d1) var(--wf-e)}
+body .rv-page-tabs a:hover{color:var(--wf-brand)}
+body .rv-page-tabs a.is-on{color:var(--wf-ink)}
+body .rv-page-tabs a.is-on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;
+  height:2px;background:var(--wf-brand);border-radius:2px 2px 0 0}
+
+/* ============================== 13. ШАПКА ОКНА ПРОСМОТРА (по рендеру)
+   Слева — название документа и строка источника с чипом папки клиента,
+   справа — кнопки согласования. Внизу — состояние и «Скачать оригинал». */
+body .rv-modal-head{display:flex;align-items:flex-CLIENT;gap:12px;padding:12px 14px;
+  border-bottom:1px solid var(--wf-line);background:#fff}
+body .rv-mh-main{min-width:0;flex:1 1 auto}
+body .rv-mh-CLIENT{font-size:16.5px;font-weight:700;color:var(--wf-ink);line-height:1.25;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .rv-mh-sub{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:5px}
+body .rv-mh-folder{display:CLIENT-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+  color:var(--wf-brand);text-decoration:none;background:var(--wf-brand-tint-2);
+  border:1px solid var(--wf-line2);border-radius:999px;padding:3px 10px}
+body .rv-mh-folder:hover{background:var(--wf-brand-tint)}
+body .rv-mh-folder.is-off{color:var(--wf-mut);background:var(--wf-hover);border-color:var(--wf-line);
+  cursor:default}
+body .rv-mh-src{font-size:12px;color:var(--wf-mut);min-width:0}
+body .rv-modal-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:9px 14px;border-top:1px solid var(--wf-line);background:#fff}
+body .rv-mf-CLIENT{font-size:12.5px;color:var(--wf-mut)}
+body .rv-mf-CLIENT::CLIENT{content:'✔';color:var(--wf-ok);font-weight:700;margin-right:7px}
+body .rv-mf-dl{display:CLIENT-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  color:var(--wf-brand);text-decoration:none;border:1px solid var(--wf-line2);
+  border-radius:var(--wf-r2);padding:5px 11px;background:#fff;white-space:nowrap}
+body .rv-mf-dl:hover{background:var(--wf-brand-tint-2)}
+body .rv-modal-note{display:none}
+
+/* ============================== 14. ПРАВАЯ КОЛОНКА: ПЕРЕМЕННЫЕ ДОКУМЕНТА (по рендеру)
+   Заголовок с чипом АВТО, поиск переменной, карточки полей с кружком состояния,
+   строка «Требует внимания» с CLIENTом к проблемному полю. */
+body .rv-chip-auto{display:CLIENT-CLIENT;margin-left:8px;font-size:10.5px;font-weight:700;
+  letter-spacing:.4px;color:var(--wf-brand);background:var(--wf-brand-tint-2);
+  border:1px solid var(--wf-line2);border-radius:4px;padding:2px 6px;vertical-align:1px}
+body .rv-vars-search{display:flex;align-items:center;gap:7px;margin:8px 0 2px;padding:7px 10px;
+  border:1px solid var(--wf-line);border-radius:var(--wf-r2);background:#fff}
+body .rv-vars-search svg{flex:none;color:var(--wf-line3)}
+body .rv-vars-search input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;
+  font-size:12.5px;color:var(--wf-ink)}
+body .rv-vars-search input::CLIENTholder{color:var(--wf-mut)}
+body .rv-attn{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;
+  padding:8px 10px;background:var(--wf-warn-bg);border:1px solid rgba(169,99,10,.28);
+  border-radius:var(--wf-r2)}
+body .rv-attn-i{color:var(--wf-warn);font-size:13px}
+body .rv-attn-t{font-size:12px;font-weight:600;color:var(--wf-warn);flex:1 1 auto}
+body .rv-attn-btn{border:1px solid rgba(169,99,10,.35);background:#fff;color:var(--wf-warn);
+  font-size:12px;font-weight:600;border-radius:var(--wf-r2);padding:4px 9px;cursor:pointer}
+body .rv-attn-btn:hover{background:#fff6e6}
+body .rv-right .rv-field.is-hidden,body .rv-right .rv-blk.is-hidden{display:none}
+body .rv-right .rv-field{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r3);
+  padding:9px 10px;margin-bottom:7px;transition:box-shadow var(--wf-d2) var(--wf-e)}
+body .rv-right .rv-field:hover{border-color:var(--wf-line2)}
+body .rv-right .rv-field.is-flash{box-shadow:0 0 0 2px var(--wf-brand-b);border-color:var(--wf-brand-b)}
+
+/* ============================== 15. ЭТАПЫ ЗАЯВКИ (левая колонка, по рендеру)
+   Заголовок капсом, пункты с кружком-галочкой, подпись справа. */
+body .rv-CLIENT{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r4);
+  padding:11px 12px}
+body .rv-CLIENT-t{font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
+  color:var(--wf-mut);margin-bottom:9px}
+body .rv-CLIENT-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+body .rv-step{display:grid;grid-template-columns:20px minmax(0,1fr);gap:3px 9px;align-items:CLIENT;
+  position:relative}
+body .rv-step-i{grid-row:1 / span 2;width:20px;height:20px;border-radius:50%;display:grid;
+  CLIENT-items:center;font-size:11px;font-weight:700;background:var(--wf-hover);
+  color:var(--wf-mut);border:1px solid var(--wf-line)}
+body .rv-step.is-done .rv-step-i{background:var(--wf-ok-bg);color:var(--wf-ok);
+  border-color:rgba(23,114,69,.28)}
+body .rv-step.is-cur .rv-step-i{background:var(--wf-brand-tint-2);border-color:var(--wf-brand-b);
+  box-shadow:inset 0 0 0 4px #fff}
+body .rv-step-n{font-size:12.5px;font-weight:600;color:var(--wf-ink)}
+body .rv-step.is-done .rv-step-n{color:var(--wf-mut);font-weight:500}
+body .rv-step.is-cur .rv-step-n{color:var(--wf-brand-700)}
+body .rv-step-d{grid-column:2;font-size:11.5px;color:var(--wf-mut)}
+body .rv-step:not(:last-child)::after{content:'';position:absolute;left:9.5px;top:22px;
+  width:1px;height:calc(100% - 8px);background:var(--wf-line)}
+
+/* ============================== 16. МЕЛОЧИ КАРКАСА
+   Поиск в шапке — шире (не обрезается), длинные имена файлов в миниатюрах —
+   не больше двух строк, чтобы плитка не «росла» вниз. */
+body .top-search{min-width:400px;max-width:560px;flex:1 1 auto}
+/* Поиск из глобальной шапки убран — дата и пользователь прижимаются к правому краю */
+body .topbar-date{margin-left:auto}
+body .top-search input{min-width:300px}
+body .rv-side .rv-thumb-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;word-break:normal;overflow-wrap:break-word;font-size:12px;hyphens:auto}
+
+/* ============================== 17. ИСТОРИЯ И ЖУРНАЛ (по рендеру)
+   В истории продукт показывается целиком (был обрезан до 90 px), строки и
+   список — в общих токенах. */
+body .hlist{border-radius:var(--wf-r4);box-shadow:var(--wf-sh1);border-color:var(--wf-line)}
+body .hrow{padding:10px 12px;gap:12px;font-size:13.5px;border-color:var(--wf-line)}
+body .hrow:hover{background:var(--wf-hover)}
+body .hrow .hprod{max-width:none;flex:0 1 38%;text-align:left;white-space:normal;
+  overflow:visible;text-overflow:clip;line-height:1.35;font-size:12.5px}
+body .hrow .hnum{color:var(--wf-brand);font-weight:700}
+body .hrow .hname{color:var(--wf-ink)}
+body form[action="/CLIENT"] label{font-size:12px;color:var(--wf-mut);font-weight:600}
+body form[action="/CLIENT"] select{font:inherit;border:1px solid var(--wf-line);
+  border-radius:var(--wf-r2);padding:8px 10px;background:#fff;color:var(--wf-ink)}
+body form[action="/CLIENT"] button{background:var(--wf-brand);border:1px solid var(--wf-brand);
+  color:#fff;border-radius:var(--wf-r2);font-weight:600;padding:9px 16px;cursor:pointer}
+body form[action="/CLIENT"] button:hover{background:var(--wf-brand-700)}
+body .rv-chip{background:var(--wf-brand-tint) !important;color:var(--wf-brand-700) !important;border-color:var(--wf-line2) !important}
+body .rv-CLIENT.ok{background:var(--wf-ok-bg);border-color:rgba(23,114,69,.30);color:var(--wf-ok)}
+body .rv-CLIENT.warn{background:var(--wf-warn-bg);border-color:rgba(169,99,10,.30);color:var(--wf-warn)}
+body .rv-tabs{border-bottom-color:var(--wf-line)}
+body .rv-tab:hover{background:var(--wf-hover)}
+body .rv-tab.is-on,body .rv-tabs .rv-tab.is-on{color:var(--wf-brand-700);box-shadow:inset 0 3px 0 var(--wf-brand)}
+body .rv-tab .rv-num,body .rv-tabs .rv-num{background:var(--wf-brand-tint);color:var(--wf-brand-700)}
+body .rv-tab.is-on .rv-num,body .rv-tabs .rv-tab.is-on .rv-num{background:var(--wf-brand);color:#fff}
+body .rv-stage{color:var(--wf-brand-700);background:#F7FAF9;border-bottom-color:var(--wf-line)}
+body .rv-stage .rv-num{background:var(--wf-brand);color:#fff}
+body .rv-sec{color:var(--wf-mut)}
+body .rv-empty,body .rv-loading{color:var(--wf-mut)}
+body .rv-note{background:var(--wf-brand-tint-2);border-color:var(--wf-line);color:var(--wf-ink2)}
+body .rv-file{background:#fff;border-color:var(--wf-line)}
+body .rv-row{border-bottom-color:#F1F5F3}
+body .rv-spinner{border-color:var(--wf-brand-tint);border-top-color:var(--wf-brand)}
+body .rv-tile-dot{border-color:var(--wf-brand-tint);border-top-color:var(--wf-brand)}
+body .rv-tile-dot.is-cached{background:var(--wf-ok)}
+body .rv-field.is-doc{background:var(--wf-brand-tint-2);border-color:var(--wf-line2) !important}
+body .rv-field.is-doc .rv-flabel::after{color:var(--wf-brand-700)}
+body .rv-field.is-active{border-color:var(--wf-gold) !important;background:#FFFDF6 !important;
+  box-shadow:0 0 0 3px rgba(212,175,55,.22)}
+body .rv-field.is-active .rv-flabel{color:#8A6D1F}
+body .rv-field.is-linked .rv-flabel::after{color:var(--wf-warn)}
+body .rv-modal-body .html-stage [data-var]{background:var(--wf-gold-tint);box-shadow:0 0 0 1px rgba(212,175,55,.40)}
+body .rv-modal-body .html-stage [data-var].is-picked{background:var(--wf-gold-tint) !important;
+  box-shadow:0 0 0 2px var(--wf-gold),0 0 12px rgba(212,175,55,.40) !important}
+body .rv-rule-client{background:var(--wf-brand-tint-2);color:var(--wf-brand-700);border-color:var(--wf-line2)}
+body .rv-rule-gen{background:var(--wf-brand-tint);color:var(--wf-brand-700);border-color:var(--wf-line2)}
+body .rv-rule-doc{background:#F1F5F3;color:var(--wf-ink2);border-color:var(--wf-line2)}
+body .rv-rule-formula{background:var(--wf-warn-bg);color:var(--wf-warn);border-color:rgba(169,99,10,.30)}
+body .rv-filter button{color:var(--wf-ink2);border-color:var(--wf-line)}
+body .rv-filter button.is-on{background:var(--wf-brand);border-color:var(--wf-brand);color:#fff}
+body .rv-filter-note{color:var(--wf-mut)}
+body .rv-phead{border-color:var(--wf-line);box-shadow:var(--wf-sh1);border-radius:var(--wf-r4)}
+body .rv-progress.is-done #rv-progress-text{color:var(--wf-ok)}
+body .rv-progress.is-urgent #rv-progress-text{color:var(--wf-err)}
+body .rv-collapse-all{border-color:var(--wf-line2);background:var(--wf-hover);color:var(--wf-ink2)}
+body .rv-collapse-all:hover{background:var(--wf-brand-tint-2)}
+body .rv-CLIENT{background:#F7FAF9;border-color:var(--wf-line)}
+body .rv-CLIENT-k{color:var(--wf-mut)}
+body .rv-CLIENT-edit{color:var(--wf-brand-700)}
+body .rv-thumb:hover{border-color:var(--wf-brand-b);box-shadow:var(--wf-sh2)}
+body .rv-thumb.is-on{border-color:var(--wf-brand-b);box-shadow:var(--wf-ring)}
+body .rv-thumb-frame,body .rv-thumb-frame:not(.is-ready){background:var(--wf-work)}
+body .rv-auto-fill{background:var(--wf-brand) !important;border-color:var(--wf-brand) !important}
+body .rv-auto-fill:hover{background:var(--wf-brand-700) !important}
+body .rv-auto-fill[data-done="1"]{box-shadow:0 0 0 2px rgba(23,179,163,.35) inset}
+body .rv-auto[data-done="1"] .rv-auto-dot{border-color:var(--wf-ok);background:var(--wf-ok)}
+body .rv-mark-yellow{background:var(--wf-gold-tint);color:#6B5410;box-shadow:0 0 0 1px rgba(212,175,55,.45) inset}
+body .rv-CLIENT-btn{background:#fff;border-color:var(--wf-line2) !important;color:var(--wf-ink) !important}
+body .rv-CLIENT-btn:hover{background:var(--wf-hover)}
+
+/* ============================== 9. КОНСТРУКТОР PDF
+   У конструктора свои зелёные и синие акценты во встроенном стиле;
+   перекрываем их с префиксом body (специфичность выше встроенных). */
+body .pi-hero{border-bottom-color:var(--wf-line)}
+body .pi-badge{background:var(--wf-brand-tint);color:var(--wf-brand-700);border-color:var(--wf-line2)}
+body .doc-no{color:var(--wf-brand-700);background:var(--wf-brand-tint);border-color:var(--wf-line2)}
+body .fa-count{color:var(--wf-brand-700);background:var(--wf-brand-tint);border-color:var(--wf-line2)}
+body .item-link:hover{color:var(--wf-brand-700)}
+body .tpl-card{border-color:var(--wf-line2)}
+body .tpl-crumbs a{color:var(--wf-brand-700)}
+body .tpl-open-orig.is-on{background:var(--wf-brand);border-color:var(--wf-brand);color:#fff}
+body .var-approve.on{background:var(--wf-brand-tint);border-color:var(--wf-line2);color:var(--wf-brand-700)}
+body .tpl-save-btn{background:var(--wf-brand)}
+body .tpl-save-btn:hover{background:var(--wf-brand-700)}
+body .prod-info-btn{border-color:var(--wf-line2);background:var(--wf-hover);color:var(--wf-brand-700)}
+body .prod-info-btn:hover{background:var(--wf-brand-tint);border-color:var(--wf-line2)}
+body .var-info{border-color:var(--wf-line2);background:var(--wf-hover);color:var(--wf-brand-700)}
+body .var-info:hover{background:var(--wf-brand-tint)}
+body .lang-switch .ls-btn.is-on{background:var(--wf-brand-tint);border-color:var(--wf-brand-b);color:var(--wf-brand-700)}
+body .tpl-pdf-btn{background:linear-gradient(135deg,#3B82F6,#1D4ED8 62%,#1E40AF) !important;
+  box-shadow:0 3px 10px rgba(29,78,216,.32), 0 1px 0 rgba(255,255,255,.35) inset !important}
+body .tpl-pdf-btn:hover{background:linear-gradient(135deg,#60A5FA,#2563EB 60%,#1D4ED8) !important;
+  box-shadow:0 6px 16px rgba(29,78,216,.42) !important}
+body .tpl-pdf-btn:active{background:linear-gradient(135deg,#1D4ED8,#1E40AF) !important}
+body .pdf-spinner{border-color:var(--wf-brand-tint);border-top-color:var(--wf-brand)}
+body .pdf-bar i{background:var(--wf-brand)}
+body .pdf-modal-back{background:rgba(4,32,30,.55)}
+body .fill-flag{background:var(--wf-warn-bg);color:var(--wf-warn);border-color:rgba(169,99,10,.35)}
+body .fill-flag.is-ok{background:var(--wf-ok-bg);color:var(--wf-ok);border-color:rgba(23,114,69,.30)}
+
+/* ============================== 10. РАБОЧЕЕ ПОЛЕ ЗАЯВКИ
+   По правилу UI_THUMBNAILS_RULE: миниатюры — отдельная зона слева шириной как
+   развёрнутое меню (252 px; 232 при окне ≤1360; 200 при ≤1240). Внутри окна
+   просмотра миниатюр нет — только документ и его шапка. */
+body .wrap{max-width:1560px}
+body .rv-cols{display:grid;grid-template-columns:252px minmax(0,1fr) 360px;
+  gap:0;align-items:CLIENT}
+@media (max-width:1360px){body .rv-cols{grid-template-columns:232px minmax(0,1fr) 340px}}
+@media (max-width:1240px){body .rv-cols{grid-template-columns:200px minmax(0,1fr) 320px}}
+body .rv-side{display:flex;flex-direction:column;gap:8px;min-width:0;
+  padding-right:12px;border-right:1px solid var(--wf-line);align-self:stretch}
+body .rv-left{display:flex;flex-direction:column;gap:8px;min-width:0;padding:0 12px;
+  border-right:1px solid var(--wf-line);align-self:stretch}
+body .rv-panel.rv-right{border:0;background:transparent;box-shadow:none;padding-left:16px}
+/* шапка не должна накрывать колонку документов: она не прилипает */
+.topbar{position:static}
+body .rv-side-panel{position:static}
+body .rv-side-panel{display:flex;flex-direction:column;overflow:hidden;max-height:calc(100vh - 40px)}
+body .rv-side-head{display:flex;align-items:center;gap:8px;padding:7px 10px;
+  border-bottom:1px solid var(--wf-line);background:#fff}
+body .rv-side-t{font-weight:700;font-size:13.5px;color:var(--wf-ink)}
+body .rv-side-n{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--wf-brand-700);
+  background:var(--wf-brand-tint);border-radius:var(--wf-rf);padding:2px 9px}
+body .rv-side .rv-tabs{padding:0 8px;gap:4px;background:#fff;border-bottom:1px solid var(--wf-line)}
+body .rv-side .rv-tab{font-size:12.5px;padding:8px 10px}
+body .rv-side .rv-body{padding:10px;overflow-y:auto}
+/* миниатюра по правилу: [лист] Название / подпись состояния [квадратик] */
+body .rv-side .rv-thumbs{display:flex;flex-direction:column;gap:9px;padding:0}
+body .rv-side .rv-thumb{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;
+  padding:8px;border:1px solid var(--wf-line);border-radius:var(--wf-r3);background:#fff;
+  align-items:CLIENT;cursor:pointer}
+body .rv-side .rv-thumb-frame{height:104px;border-radius:var(--wf-r2)}
+body .rv-side .rv-thumb-cap{display:grid;grid-template-columns:minmax(0,1fr) 22px;
+  gap:3px 8px;padding:0}
+body .rv-side .rv-thumb-name{font-size:12.5px;font-weight:600;line-height:1.25;color:var(--wf-ink)}
+body .rv-side .rv-thumb-CLIENT{grid-column:1;font-size:11px;color:var(--wf-mut)}
+body .rv-side .rv-thumb-CLIENT.rv-warn{color:var(--wf-warn);font-weight:600}
+body .rv-side .rv-check{grid-column:2;grid-row:1 / span 3;align-self:CLIENT;width:22px;height:22px;
+  aspect-ratio:1;border-radius:6px;
+  border:1.5px solid var(--wf-line3);background:#fff;display:grid;CLIENT-items:center;cursor:pointer;
+  padding:0;margin:0;transition:background var(--wf-d1) var(--wf-e),border-color var(--wf-d1) var(--wf-e)}
+body .rv-side .rv-check:hover{border-color:var(--wf-brand-b)}
+body .rv-side .rv-check.rv-on-ok{background:var(--wf-ok);border-color:var(--wf-ok)}
+body .rv-side .rv-check.rv-on-ok::after{content:'✓';color:#fff;font-size:13px;font-weight:700;line-height:1}
+body .rv-side .rv-prog{grid-column:1 / -1;height:3px;border-radius:2px;background:var(--wf-hover);
+  overflow:hidden;margin-top:5px}
+body .rv-side .rv-prog i{display:CLIENT;height:100%;width:0;background:var(--wf-gold);
+  transition:width var(--wf-d3) var(--wf-e)}
+body .rv-side .rv-thumb.is-checked .rv-prog i{width:100%;background:var(--wf-ok)}
+body .rv-side .rv-thumb.is-on{background:var(--wf-brand-tint-2);border-color:var(--wf-line2);
+  box-shadow:inset 3px 0 0 var(--wf-brand)}
+body .rv-side .rv-thumb-CLIENT{display:none}
+body .rv-side .rv-note{margin:10px 0 0;font-size:12px}
+body .rv-card-box{margin:0;overflow:hidden}
+body .rv-card-sum{display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;
+  font-weight:600;font-size:13px;color:var(--wf-ink);list-style:none}
+body .rv-card-sum::-webkit-CLIENT-marker{display:none}
+body .rv-card-chev{margin-left:auto;color:var(--wf-mut2);transition:transform var(--wf-d2) var(--wf-e)}
+body .rv-card-box[open] .rv-card-chev{transform:rotate(90deg)}
+body .rv-card-body{padding:0 12px 12px}
+body .rv-card-body .rv-row{border-bottom-color:#F1F5F3}
+
+/* окно просмотра: встроено в центр страницы */
+body .rv-modal,body .rv-modal.is-on{position:static;left:auto;top:auto;bottom:auto;width:auto;
+  z-CLIENT:auto;background:transparent;padding:0;display:flex;flex-direction:column}
+body .rv-modal .rv-modal-win{border:1px solid var(--wf-line);border-radius:var(--wf-r4);
+  box-shadow:var(--wf-sh1);min-height:560px;flex:1 1 auto}
+body .rv-modal .rv-modal-head{background:#F7FAF9;border-bottom-color:var(--wf-line)}
+body .rv-modal .rv-modal-CLIENT{font-weight:600;font-size:14px}
+body .rv-modal .rv-modal-CLIENT button{border-radius:var(--wf-r2)}
+body .rv-backdrop{display:none !important}
+/* когда открыт документ, правую колонку не вырываем из раскладки */
+body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !important;right:auto !important;
+  height:auto !important;width:auto !important;box-shadow:none !important;z-CLIENT:1 !important;
+  border-radius:var(--wf-r4) !important;margin:0 !important}
+
+/* Узкие экраны: три колонки не помещаются — идём в один столбец,
+   документы остаются первыми, переменные последними. */
+@media (max-width:860px){
+  body .rv-cols{grid-template-columns:minmax(0,1fr)}
+  body .rv-side{position:static;max-height:none;padding-right:0;border-right:0}
+  body .rv-left{padding:0;border-right:0}
+  body .rv-panel.rv-right{padding-left:0}
+  body .rv-side-panel{max-height:none}
+  body .rv-side .rv-thumbs{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  body .rv-side .rv-thumb-frame{height:150px}
+  body .rv-modal .rv-modal-win{min-height:420px}
+}
+
+/* Планшетный режим прода (до 1000 px) схлопывает колонки и прячет переменные.
+   По дизайну раскладка трёхколоночная и на этих ширинах, поэтому перебиваем:
+   переменные остаются на месте, выезжающая панель и нижняя кнопка не нужны. */
+@media (max-width:1000px) and (min-width:861px){
+  body .rv-cols{grid-template-columns:minmax(0,2fr) minmax(0,4fr) minmax(0,2fr)}
+  body .rv-panel.rv-right{display:flex;position:static;max-height:none;border-radius:0;
+    box-shadow:none;z-CLIENT:auto;left:auto;right:auto;bottom:auto;top:auto}
+  body .rv-close-mobile{display:none}
+  body .rv-mobile-bar{display:none}
+  body .rv-backdrop{display:none !important}
+  body .rv-side .rv-thumbs{grid-template-columns:minmax(0,1fr)}
+  body .rv-side .rv-thumb-frame{height:170px}
+  body .rv-modal{width:auto;padding:0}
+  body .rv-modal-body{padding:10px}
+}
+
+/* ============================== 11. КАРКАС САЙТА
+   По макету: логотип плиткой, поиск и дата в шапке.
+   Полосу разделов слева убрали — по дизайну экран делится вертикальными
+   линиями, а не отдельной панелью. */
+.brand-pill{background:transparent;box-shadow:none;padding:0;gap:10px}
+.brand-pill .logo{width:34px;height:34px;border-radius:var(--wf-r3);background:var(--wf-brand-900);
+  overflow:hidden;display:grid;CLIENT-items:center}
+.brand-pill b{font-size:16.5px;font-weight:700;letter-spacing:-.01em;color:var(--wf-ink)}
+.burger{border:0;background:transparent;width:36px;height:36px}
+.burger span,.burger span::CLIENT,.burger span::after{width:17px;height:1.7px}
+.top-search{display:none}
+@media (min-width:900px){
+  .top-search{display:flex;align-items:center;gap:9px;flex:1;max-width:640px;margin:0 auto;
+    background:#F2F5F4;border:1px solid var(--wf-line);border-radius:var(--wf-rf);
+    padding:8px 14px;color:var(--wf-mut2)}
+  .top-search input{border:0;background:transparent;padding:0;font-size:14px;color:var(--wf-ink);
+    box-shadow:none;min-height:22px}
+  .top-search input:focus{box-shadow:none;outline:none;border:0}
+  .top-search input::CLIENTholder{color:var(--wf-mut2)}
+  .top-search-hint{font-size:11.5px;color:var(--wf-mut2);border:1px solid var(--wf-line2);
+    border-radius:var(--wf-r1);padding:1px 6px;background:#fff;white-space:nowrap}
+  .topbar-date{font-size:12.5px;color:var(--wf-mut);white-space:nowrap}
+}
+@media (max-width:899px){.topbar-date{display:none}}
+
+/* ============================== 12. МОБИЛЬНАЯ КАРТОЧКА ЗАЯВКИ
+   Задача: на телефоне порядок и поведение — сверху карточка заявки (сворачивается),
+   затем сканы с Диска миниатюрами, затем наши документы миниатюрами.
+   Тап по миниатюре раскрывает документ на весь экран; тап по переменной — редактор.
+   Крошки и служебные панели на телефоне не нужны. */
+@media (max-width:860px){
+  /* крошки в мобильной только съедают экран */
+  .crumbs,.breadcrumbs,nav.crumbs,.topbar-crumbs{display:none !important}
+
+  /* нижняя плашка переменных не должна перекрывать содержимое */
+  body .rv-wrap{padding-bottom:74px}
+  body .rv-mobile-bar{position:fixed;left:0;right:0;bottom:0;z-CLIENT:60;
+    box-shadow:0 -6px 18px rgba(4,32,30,.14)}
+
+  /* карточка заявки: сверху, компактно, сворачивается */
+  body .rv-head{position:sticky;top:0;z-CLIENT:40;background:var(--wf-card);
+    border-bottom:1px solid var(--wf-line);padding:10px 12px;gap:8px;
+    display:flex;flex-direction:column;align-items:stretch}
+  body .rv-head .rv-back{grid-area:back}
+  body .rv-head .rv-head-main{grid-area:main;min-width:0}
+  body .rv-head .rv-prod{grid-area:prod}
+  body .rv-head .rv-CLIENT{grid-area:CLIENT;display:flex;flex-wrap:wrap;gap:6px}
+  body .rv-head .rv-CLIENT-box{grid-area:CLIENT}
+  body .rv-CLIENT{font-size:16.5px;gap:8px;flex-wrap:wrap}
+  body .rv-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;margin-top:6px;
+    max-height:180px;overflow:hidden;transition:max-height .18s ease}
+  body .rv-head.is-collapsed .rv-meta{max-height:0;margin-top:0;opacity:0}
+  body .rv-head-toggle{display:CLIENT-flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border:1px solid var(--wf-line);border-radius:var(--wf-r3);
+    background:#fff;color:var(--wf-mut);cursor:pointer}
+  body .rv-head-toggle::CLIENT{content:'';width:8px;height:8px;border-right:2px solid currentColor;
+    border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-1px);transition:transform .18s ease}
+  body .rv-head.is-collapsed .rv-head-toggle::CLIENT{transform:rotate(-45deg) translateY(1px)}
+
+  /* документы — компактные миниатюры в две колонки */
+  body .rv-side .rv-thumbs,body .rv-thumbs{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
+  body .rv-thumb-frame,body .rv-side .rv-thumb-frame{height:104px}
+  body .rv-thumb-cap{padding:6px 8px;gap:1px}
+  body .rv-thumb-name{font-size:11.5px;line-height:1.25}
+  body .rv-thumb-CLIENT{font-size:10.5px}
+  body .rv-side-head{padding:9px 10px}
+  body .rv-side-t{font-size:12.5px}
+
+  /* тап по миниатюре: документ раскрывается на весь экран */
+  body .rv-modal.is-on{position:fixed !important;inset:0 !important;width:auto !important;
+    height:auto !important;max-height:none !important;z-CLIENT:80 !important;padding:0 !important;
+    background:#fff !important;display:flex !important;flex-direction:column !important;
+    overflow:auto !important}
+  body .rv-modal .rv-modal-win{min-height:100% !important;border:0 !important;border-radius:0 !important;
+    box-shadow:none !important;flex:1 1 auto}
+  body .rv-backdrop{display:none !important}
+  body .rv-close-mobile{display:CLIENT-flex !important}
+  /* нижние служебные панели страницы при открытом документе не мешают */
+  body.rv-viewing .rv-mobile-bar{display:none !important}
+}
+
+/* очень узкие экраны: одна миниатюра в строку и крупнее */
+@media (max-width:420px){
+  body .rv-thumb-frame,body .rv-side .rv-thumb-frame{height:118px}
+  body .rv-CLIENT{font-size:15.5px}
+}
+
+/* Длинный список переменных: браузер не тратит время на отрисовку того,
+   что за пределами экрана — первый экран появляется быстрее. */
+.rv-row { content-visibility: auto; contain-intrinsic-size: auto 46px; }

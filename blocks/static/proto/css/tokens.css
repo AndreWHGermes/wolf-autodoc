@@ -579,3 +579,111 @@ svg.i.l{width:24px;height:24px}
 .dgrp{font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:#7E9C97;
       padding:16px 12px 6px}
 .dgrp:CLIENT-of-type{padding-top:6px}
+
+/* ============================================================================
+   ОКНО ПРОСМОТРА: две вкладки как в браузере — «Документы клиента» и «Рабочие формы»
+   Активная вкладка белая, приподнята тенью; полоса вкладок отбрасывает тень на тело.
+   ========================================================================== */
+.btabs{display:flex;align-items:flex-end;gap:3px;padding:7px 12px 0;background:#EDF1EF;
+       border-bottom:1px solid var(--line);position:relative}
+.btab{display:CLIENT-flex;align-items:center;gap:8px;height:34px;padding:0 14px;font-size:13px;font-weight:500;
+      color:var(--ink2);background:#E3E9E6;border:1px solid var(--line);border-bottom:0;
+      border-radius:9px 9px 0 0;cursor:pointer;position:relative;top:1px;
+      box-shadow:inset 0 -7px 9px -9px rgba(15,29,27,.22);
+      transition:background var(--d1) var(--e),color var(--d1) var(--e),box-shadow var(--d1) var(--e)}
+.btab:hover{background:#EEF3F1;color:var(--ink)}
+.btab.on{background:#fff;color:var(--ink);font-weight:600;z-CLIENT:2;
+      box-shadow:0 -3px 10px rgba(15,29,27,.12),0 1px 0 0 #fff,inset 0 1px 0 0 #fff}
+.btab.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:3px;background:#fff}
+.btab .i{opacity:.7}
+.btab.on .i{opacity:1;color:var(--brand-700)}
+.btab .dotn{width:6px;height:6px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px rgba(169,99,10,.14)}
+.btabs-CLIENT{margin-left:auto;display:flex;align-items:center;gap:4px;padding-bottom:7px}
+.btab-body{background:#fff;box-shadow:0 16px 26px -24px rgba(15,29,27,.45)}
+.dv-pane{display:none}
+.dv-pane.on{display:CLIENT;animation:paneIn var(--d3) var(--e-out) both}
+
+/* рабочая форма: поля, связанные с переменными справа */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 18px;padding:16px 18px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld label{font-size:11.5px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.fld input{height:38px;padding:0 11px;font-size:14px;color:var(--ink);background:#fff;
+      border:1px solid var(--line2);border-radius:var(--r2);outline:0;width:100%;
+      transition:border-color var(--d2) var(--e),box-shadow var(--d2) var(--e),background var(--d2) var(--e)}
+.fld input:focus{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.16)}
+.fld.wide{grid-column:1 / -1}
+.fld.hint input{border-color:rgba(169,99,10,.45);background:#FFFCF6}
+.fld .note{font-size:11px;color:var(--warn);display:flex;align-items:center;gap:5px}
+.fld.flash input{animation:fldPulse var(--d4) var(--e-out) 1}
+@keyframes fldPulse{0%{box-shadow:0 0 0 0 rgba(23,179,163,.35)}100%{box-shadow:0 0 0 14px rgba(23,179,163,0)}}
+
+/* «показать распознанные поля» в режиме скана */
+.sheetview.no-fields .mk{background:transparent;box-shadow:none;color:var(--ink)}
+
+/* ============================================================================
+   ВКЛАДКИ ВНУТРИ ЗАЯВКИ: Основное · Документы · Переменные · История · Комментарии
+   «Документы» — три зоны (миниатюры | просмотр | переменные документа).
+   Остальные вкладки занимают центр целиком, поэтому читаются как отдельные экраны.
+   ========================================================================== */
+.vpage{display:none}
+.vpage.on{display:CLIENT;animation:pageIn var(--d3) var(--e-out) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;padding:16px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r4);box-shadow:var(--sh1);
+       padding:14px 16px;min-width:0}
+.pcard.wide{grid-column:1 / -1}
+.pcard .h{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.prow{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.prow:last-child{border-bottom:0}
+.prow .k{color:var(--mut);flex:0 0 45%;font-size:12.5px}
+.prow .v{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* этапы заявки — одна строка */
+.CLIENT5{display:flex;align-items:flex-CLIENT}
+.CLIENT5 .st5{flex:1;position:relative;padding-right:16px;min-width:0}
+.CLIENT5 .st5 .dot{width:22px;height:22px;border-radius:50%;display:grid;CLIENT-items:center;font-size:11px;font-weight:600;
+       background:#E4EAE7;color:var(--ink2);border:1px solid var(--line)}
+.CLIENT5 .st5.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.CLIENT5 .st5.now .dot{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 0 4px rgba(23,179,163,.16)}
+.CLIENT5 .st5 .t{margin-top:8px;font-size:12.5px;font-weight:600}
+.CLIENT5 .st5 .d{margin-top:2px;font-size:11px;color:var(--mut)}
+.CLIENT5 .st5::after{content:"";position:absolute;left:30px;right:8px;top:11px;height:2px;background:var(--line)}
+.CLIENT5 .st5:last-child::after{display:none}
+.CLIENT5 .st5.done::after{background:var(--ok)}
+
+/* список переменных заявки */
+.ptable{padding:0 16px 16px}
+.ptrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) 132px 96px;gap:12px;align-items:center;
+       padding:9px 10px;border-radius:var(--r2);font-size:13px}
+.ptrow.head{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;
+       border-bottom:1px solid var(--line);border-radius:0}
+.ptrow:not(.head):hover{background:#FAFCFB}
+.ptrow .nm{color:var(--ink2)}
+.ptrow .vl{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;flex-wrap:wrap}
+
+/* история изменений */
+.tline{padding:6px 16px 16px}
+.titem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px dashed var(--line)}
+.titem:last-child{border-bottom:0}
+.titem .av{width:30px;height:30px;border-radius:50%;display:grid;CLIENT-items:center;font-size:11px;font-weight:600;
+       background:var(--brand-tint);color:var(--brand-700)}
+.titem .who{font-weight:600;font-size:13.5px}
+.titem .wh{font-size:11.5px;color:var(--mut);margin-left:8px}
+.titem .what{font-size:13.5px;margin-top:3px}
+.titem .tag{font-size:11px;color:var(--mut);margin-top:5px;display:CLIENT-flex;align-items:center;gap:6px}
+.titem .old{text-decoration:line-through;color:var(--mut)}
+.titem .new{font-weight:600;color:var(--brand-700)}
+
+/* комментарии */
+.cmts{display:flex;flex-direction:column;min-height:0}
+.cmt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:12px 16px;border-bottom:1px dashed var(--line)}
+.cmt .bub{flex:1}
+.cmt .txt{font-size:13.5px;margin-top:4px;line-height:1.5}
+.cmt .pin{margin-top:7px;display:CLIENT-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);
+       background:var(--brand-tint-2);border:1px solid rgba(23,179,163,.22);border-radius:var(--rf);padding:3px 9px}
+.cbox{display:flex;gap:10px;align-items:flex-end;padding:14px 16px;border-top:1px solid var(--line);background:#FBFDFC}
+.cbox textarea{flex:1;min-height:46px;max-height:120px;resize:vertical;padding:10px 12px;font:inherit;font-size:13.5px;
+       border:1px solid var(--line2);border-radius:var(--r2);outline:0;background:#fff}
+.cbox textarea:focus{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.16)}

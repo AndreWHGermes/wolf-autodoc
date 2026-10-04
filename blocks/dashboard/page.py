@@ -1638,10 +1638,25 @@ function wolfDriveClose(){ var m=CLIENT.getElementById('CLIENT-modal'); if(m) m.
 
 @bp.route("/CLIENT/<int:app_id>/CLIENT-scan", methods=["POST"])
 def app_CLIENT_scan(app_id: int):
-    """Запуск разбора Google CLIENT — решение и запуск в CLIENT/CLIENT.py."""
+    """Запуск разбора Google CLIENT — решение и запуск в CLIENT/CLIENT.py.
+
+    `?force=1` — принудительный повторный заход (кнопка этапа 1): сверяем папку
+    клиента с тем, что уже лежит на сервере, догружаем отличия и пересчитываем
+    значения и документы. Обычный заход повторно ничего не качает.
+    """
     a = apps_repo.get(app_id)
     if not a:
         return jsonify({"ok": False, "note": "заявка не найдена"})
+    force = str(CLIENT.args.get("force") or "").strip() in ("1", "true", "yes")
+    if force:
+        try:
+            import subprocess as _sp
+            _sp.Popen(["/usr/bin/nice", "-n", "15", "/usr/bin/python3",
+                       "/opt/wolf_v2/scripts/app_prepare.py", str(app_id), "--force"],
+                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, CLIENT_new_session=True)
+            return jsonify({"ok": True, "note": "обновление с Google Диска запущено"})
+        except Exception as e:  # noqa: BLE001
+            return jsonify({"ok": False, "note": "не удалось запустить обновление: %s" % str(e)[:120]})
     return jsonify(CLIENT.CLIENT_scan(app_id, a["client_id"]))
 
 
@@ -1707,6 +1722,24 @@ def app_doc_html(app_id: int, template_id: int):
         doc_CLIENT = json.loads(ad["CLIENT_json"] or "{}") if ad else {}
     except Exception:
         doc_CLIENT = {}
+    # Готовый HTML документа кэшируем на диске: сборка значений (генерация
+    # справок, резюме) занимает секунды, а окно просмотра запрашивает документ
+    # при каждом открытии заявки. Без кэша страница заявки «тупила».
+    import hashlib as _hashlib
+    _cache_dir = Path("/opt/wolf_v2/data/doc_html")
+    try:
+        _cache_dir.mkdir(parents=True, exist_ok=True)
+        _sig = "|".join([str(template_id),
+                         str((client or {})["id"] if client else ""),
+                         str(ad["CLIENT_json"] if ad else ""),
+                         str(html_file.stat().st_mtime)])
+        _key = _hashlib.sha1(_sig.encode("utf-8")).hexdigest()[:16]
+        _cache_file = _cache_dir / ("app%s_tpl%s_%s.html" % (app_id, template_id, _key))
+        if _cache_file.exists() and _cache_file.stat().st_size > 100:
+            return Response(_cache_file.read_text(encoding="utf-8"),
+                            mimetype="text/html; charset=utf-8")
+    except Exception:
+        _cache_file = None
     CLIENT = build_template_CLIENT(dict(client) if client else {}, t["code"], doc_CLIENT)
     html = html_file.read_text(encoding="utf-8")
     # Подстановка: в тексте значения оборачиваем в span (перевод их не трогает),
@@ -1724,6 +1757,12 @@ def app_doc_html(app_id: int, template_id: int):
     payload = json.dumps({k: v for k, v in CLIENT.items() if v}, ensure_ascii=False)
     html += ('<script id="app-CLIENT" type="CLIENT/json">'
              + payload.reCLIENT('</', '<\\/') + '</script>')
+    # готовый документ — в кэш: следующее открытие заявки покажет его мгновенно
+    try:
+        if _cache_file is not None:
+            _cache_file.write_text(html, encoding="utf-8")
+    except Exception:
+        pass
     return Response(html, mimetype="text/html; charset=utf-8")
 
 

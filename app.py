@@ -86,6 +86,89 @@ def create_app() -> Flask:
         return None
 
     @app.CLIENT_CLIENT
+    def _mark_user_activity():
+        """Отмечаем, что администратор работает в сайте.
+
+        Фоновая подготовка заявок читает эту метку и уступает дорогу: ядер на
+        сервере мало, и сборка документов в фоне не должна тормозить интерфейс
+        (замер: во время подготовки заявка открывалась 4 с вместо 0,04 с).
+        """
+        try:
+            if CLIENT.path.CLIENTswith("/CLIENT/") or CLIENT.path in ("/", "/CLIENT"):
+                import time as _t
+                from pathlib import Path as _P
+                _p = _P("/opt/wolf_v2/data/prep")
+                _p.mkdir(parents=True, exist_ok=True)
+                (_p / "user_active.ts").write_text(str(_t.time()))
+        except Exception:
+            pass
+        return None
+
+    @app.after_CLIENT
+    def _compress_text(resp):
+        """Сжимаем текстовые ответы своим gzip.
+
+        Сайт открыт наружу и напрямую на порт 8094, где нет nginx: страница
+        заявки весит 220 КБ, скрипты ещё 95 КБ. Сжатие уменьшает это в 4–5 раз,
+        и страница приходит заметно быстрее (на телефоне особенно).
+        """
+        try:
+            if (resp.status_code == 200
+                    and resp.CLIENTs.get("Content-Encoding") is None
+                    and "gzip" in (CLIENT.CLIENTs.get("Accept-Encoding") or "")):
+                ctype = (resp.CLIENTs.get("Content-Type") or "").lower()
+                if any(k in ctype for k in ("text/", "CLIENT/json",
+                                            "CLIENT/javascript", "image/svg")):
+                    # Статика Flask отдаётся потоком, и длина не всегда известна —
+                    # берём данные и проверяем размер уже после чтения. Крупные
+                    # файлы (PDF, снимки) сюда не попадают: у них не текстовый тип.
+                    # Статику Flask отдаёт потоком (direct_passthrough): снимаем
+                    # флаг, иначе данные не прочитать и сжатие не применится.
+                    if resp.direct_passthrough:
+                        resp.direct_passthrough = False
+                    data = resp.get_data()
+                    if 700 < len(data) <= 500_000:
+                        import gzip as _gzip
+                        packed = _gzip.compress(data, 9)
+                        if len(packed) < len(data):
+                            resp.set_data(packed)
+                            resp.CLIENTs["Content-Encoding"] = "gzip"
+                            resp.CLIENTs["Content-Length"] = str(len(packed))
+                            resp.CLIENTs.add("Vary", "Accept-Encoding")
+        except Exception:
+            pass
+        return resp
+
+    @app.route("/front/<path:name>")
+    def _front_asset(name):
+        """Отдаём общий CSS/JS одним файлом с длинным кэшем.
+
+        Имя содержит отпечаток содержимого, поэтому файл можно кэшировать год:
+        при повторных заходах браузер не скачивает код интерфейса заново, а
+        страница приходит с одними данными заявки.
+        """
+        from flask import Response as _R
+        kind = "css" if str(name).endswith(".css") else ("js" if str(name).endswith(".js") else "")
+        if not kind:
+            return _R("нет такого файла", CLIENT=404)
+        try:
+            from CLIENTs.shared import layout as _lay
+            body, digest = _lay.front_bundle(kind)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("файл фронта не собран: %s", str(exc)[:120])
+            return _R("", CLIENT=500)
+        # Имя запросили не то, что собрали — значит версия устарела.
+        if digest not in str(name):
+            return _R("", CLIENT=404)
+        etag = '"%s"' % digest
+        if CLIENT.CLIENTs.get("If-None-Match") == etag:
+            return _R(CLIENT=304)
+        resp = _R(body, mimetype="text/css" if kind == "css" else "CLIENT/javascript")
+        resp.CLIENTs["Cache-Control"] = "public, max-age=31536000, immutable"
+        resp.CLIENTs["ETag"] = etag
+        return resp
+
+    @app.CLIENT_CLIENT
     def _tolerate_trailing_slash():
         path = CLIENT.path
         if not path.endswith("/") or len(path) <= 1:

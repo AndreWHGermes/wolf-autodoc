@@ -1,0 +1,70 @@
+/* Wolf AutoDoc — дизайн-токены для прода (подготовка, в прод не внесены).
+   Все имена с префиксом --wf-*, чтобы НЕ переопределять существующие
+   переменные прода: --bg, --card, --ink, --line, --ok, --warn.
+   Подключать ПОСЛЕ base.css и {active}.css. */
+:root{
+  /* --- палитра: один акцент (бирюза) + нейтраль + тёмная оболочка + золото как маркер */
+  --wf-brand:#0F6E63;
+  --wf-brand-b:#17B3A3;
+  --wf-brand-700:#0B554C;
+  --wf-brand-900:#04201E;
+  --wf-brand-tint:rgba(23,179,163,.10);
+  --wf-brand-tint-2:rgba(15,110,99,.06);
+  --wf-gold:#D4AF37;
+  --wf-gold-tint:rgba(212,175,55,.14);
+  --wf-ink:#0F1D1B;
+  --wf-ink2:#3A4B48;
+  --wf-mut:#6E807C;
+  --wf-mut2:#96A7A3;
+  --wf-line:rgba(15,29,27,.09);
+  --wf-line2:rgba(15,29,27,.15);
+  --wf-line3:rgba(15,29,27,.24);
+  --wf-bg:#F5F8F7;
+  --wf-card:#FFFFFF;
+  --wf-work:#EEF3F2;
+  --wf-hover:rgba(15,110,99,.055);
+  /* --- статусы: цвет текста + мягкая подложка (никогда не «чистый» красный/зелёный) */
+  --wf-ok:#177245;
+  --wf-ok-bg:rgba(23,114,69,.10);
+  --wf-warn:#A9630A;
+  --wf-warn-bg:rgba(169,99,10,.11);
+  --wf-err:#B5322A;
+  --wf-err-bg:rgba(181,50,42,.10);
+  --wf-info:#1D6FA5;
+  --wf-info-bg:rgba(29,111,165,.10);
+  /* --- типографика */
+  --wf-f:"Inter","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --wf-fmono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  /* --- шкала 4 px */
+  --wf-s1:4px;
+  --wf-s2:8px;
+  --wf-s3:12px;
+  --wf-s4:16px;
+  --wf-s5:20px;
+  --wf-s6:24px;
+  --wf-s8:32px;
+  --wf-s10:40px;
+  /* --- скругления: мягкие, крупнее на крупных блоках --- */
+  --wf-r1:5px;
+  --wf-r2:8px;
+  --wf-r3:11px;
+  --wf-r4:14px;
+  --wf-r5:18px;
+  --wf-r6:24px;
+  --wf-rf:999px;
+  /* --- тени: три уровня, двухслойные, мягкие (глубина без «грязи») */
+  --wf-sh0:0 1px 1px rgba(15,29,27,.04);
+  --wf-sh1:0 1px 2px rgba(15,29,27,.06),0 1px 1px rgba(15,29,27,.03);
+  --wf-sh2:0 4px 12px rgba(15,29,27,.08),0 1px 3px rgba(15,29,27,.05);
+  --wf-sh3:0 16px 40px rgba(15,29,27,.16),0 4px 10px rgba(15,29,27,.06);
+  --wf-sh-in:inset 0 1px 2px rgba(15,29,27,.05);
+  /* --- движение: единые кривые и длительности, ничего «на глаз» */
+  --wf-e:cubic-bezier(.2,.7,.3,1);
+  --wf-e-out:cubic-bezier(.16,1,.3,1);
+  --wf-d1:120ms;
+  --wf-d2:200ms;
+  --wf-d3:320ms;
+  --wf-d4:520ms;
+  --wf-ring:0 0 0 3px rgba(23,179,163,.30);
+  --wf-ring-err:0 0 0 3px rgba(181,50,42,.22);
+}

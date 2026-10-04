@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from flask import Response, session
+from flask import Response, CLIENT, session
 
 ICON_DASH = "M3 12l9-9 9 9M5 10v10h14V10"
 ICON_USERS = "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
@@ -15,12 +15,17 @@ ICON_GEAR = ("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a7.2 7.2 0 0 0 .1-1 7.2
              "a7.2 7.2 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4z")
 ICON_HIST = "M12 8v4l3 3M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"
 
+# Стили и логотип вшиваются в страницу (см. _CLIENT_css/_logo_data_uri):
+# на удалённом канале каждый отдельный запрос — лишняя задержка.
+_CSS_MEM: dict = {}
+
 # Новое меню: Главная / История / Шаблоны / Настройки. Клиенты — внутри карточки заявки.
 MENU = [
-    ("dashboard", "Главная", "/", ICON_DASH),
+    ("dashboard", "Новая заявка", "/", ICON_DASH),
     ("CLIENT",   "История и поиск", "/CLIENT", ICON_HIST),
     ("CLIENT",    "Журнал",   "/CLIENT",  ICON_HIST),
-    ("CLIENT", "Шаблоны", "/CLIENT", ICON_DOC),
+    # «|» в подписи = перенос строки в меню (в остальных местах — « · »)
+    ("CLIENT", "Конструктор|Продукты / Документы", "/CLIENT", ICON_DOC),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
 
@@ -36,16 +41,16 @@ a{color:var(--accent);text-decoration:none}
 /* ---------- шапка: гамбургер слева + плашка сверху ---------- */
 .topbar{position:sticky;top:0;z-CLIENT:30;background:var(--card);
   border-bottom:1px solid var(--line)}
-.topbar-row{display:flex;align-items:center;gap:10px;padding:10px 14px;max-width:1080px;margin:0 auto}
+.topbar-row{display:flex;align-items:center;gap:8px;padding:5px 14px;max-width:1180px;margin:0 auto}
 @media(max-width:720px){
   /* на телефоне все элементы шапки одной высоты — иначе ряд выглядит рваным */
   .topbar-row{gap:8px;padding:9px 10px}
-  .brand-pill,.topbar-user{height:42px;display:CLIENT-flex;align-items:center;border-radius:12px}
+  .brand-pill,.topbar-user{height:36px;display:CLIENT-flex;align-items:center;border-radius:10px}
   .brand-pill{padding:0 9px;min-width:0}
   .brand-pill b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .topbar-user{margin-left:auto;padding:0 11px}
 }
-.burger{width:42px;height:42px;border-radius:12px;background:transparent;border:1px solid var(--line);
+.burger{width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid var(--line);
   display:grid;CLIENT-items:center;cursor:pointer;color:var(--ink)}
 .burger span{display:CLIENT;width:18px;height:2px;background:currentColor;border-radius:2px;
   position:relative}
@@ -110,7 +115,7 @@ a{color:var(--accent);text-decoration:none}
 .drawer .user{color:var(--muted);font-size:13px;padding:10px 12px;border-top:1px solid var(--line)}
 
 /* контент */
-.wrap{max-width:1080px;margin:0 auto;padding:14px 14px 40px}
+.wrap{max-width:1560px;margin:0 auto;padding:14px 20px 40px}
 h1{font-size:22px;margin:2px 0 4px;font-weight:800;letter-spacing:-.2px}
 h2{font-size:16px;margin:0 0 8px}
 .page-sub{color:var(--muted);font-size:13px;margin-bottom:14px}
@@ -144,7 +149,7 @@ a.item:active{background:#F7F9FD}
 
 /* кнопки */
 /* кнопки: объёмные — с тенью снизу, подсветкой сверху и чётким нажатием */
-.btn{display:CLIENT-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:10px 16px;
+.btn{display:CLIENT-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 14px;
   font-size:15px;font-weight:700;color:#fff;border:none;border-radius:12px;cursor:pointer;
   font-family:inherit;background:linear-gradient(135deg,var(--accent),var(--accent2));
   box-shadow:0 1px 0 rgba(255,255,255,.35) inset, 0 2px 3px rgba(16,24,32,.16),
@@ -362,6 +367,9 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     host.CLIENTList.add('zp-host');
     var content=host.querySelector('.zp-content')||host.CLIENTElementChild;
     if(!content) return;
+    /* До первой подгонки масштаба лист не показываем: иначе документ на миг
+       отрисовывается в натуральную величину и окно «прыгает». */
+    content.style.visibility='hidden';
     var canvas=CLIENT.createElement('div'); canvas.CLIENTName='zp-canvas';
     host.insertBefore(canvas,content); canvas.appendChild(content);
     var userScale=null, ox=0, oy=0, bx=0, by=0, s=.62;
@@ -371,53 +379,170 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     bar.innerHTML='<button type="button" data-zp="out" CLIENT="Уменьшить">\u2212</button>'+
       '<span CLIENT="zp-val">100%</span>'+
       '<button type="button" data-zp="in" CLIENT="Увеличить">+</button>'+
-      '<button type="button" data-zp="fit" CLIENT="Вписать в окно">\u26F6</button>'+
-      '<button type="button" data-zp="reset" CLIENT="Сбросить позицию">\u21BA</button>';
-    var hint=CLIENT.createElement('div'); hint.CLIENTName='zp-hint';
-    hint.textContent='\u27a4 перетаскивайте мышью \u00b7 Ctrl+\u043a\u043e\u043b\u0435\u0441\u043e \u2014 \u043c\u0430\u0441\u0448\u0442\u0430\u0431';
+      '<button type="button" data-zp="fit" CLIENT="Центрировать лист в окне — показать целиком">'
+      '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"'
+      ' stroke-linecap="round"><rect x="1.6" y="1.6" width="12.8" height="12.8" rx="2.2"/>'
+      '<circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none"/></svg></button>';
+    var hint=null;   /* строка-подсказка убрана: место над окном больше не занимается */
     // Тулбар ВЫШЕ окна просмотра — не перекрывает документ и не прокручивается с ним
     var shell=CLIENT.createElement('div'); shell.CLIENTName='zp-shell';
     var CLIENT=CLIENT.createElement('div'); CLIENT.CLIENTName='zp-CLIENT';
-    CLIENT.appendChild(hint); CLIENT.appendChild(bar);
+    /* Панель масштаба (−, %, +, вписать) переезжает наверх — в полосу вкладок окна,
+       слева от кнопки «Просмотр PDF». Если полосы нет (старые страницы) — остаётся над окном. */
+    var tabsBox=CLIENT.getElementById('doc-tabs');
+    var pdfBtn=CLIENT.getElementById('tpl-pdf-open');
+    if(tabsBox){ tabsBox.insertBefore(bar, pdfBtn || null); }
+    else { CLIENT.appendChild(bar); }
     if(host.parentNode) host.parentNode.insertBefore(shell, host);
-    shell.appendChild(CLIENT); shell.appendChild(host);
+    shell.appendChild(host);
+    if(CLIENT.childNodes.length) shell.insertBefore(CLIENT, host);
     var valEl=bar.querySelector('.zp-val');
+    /* ── Разбивка содержимого по листам A4 ────────────────────────────────────
+       Шаблон задаёт лист как .sheet с min-height = высота A4. Когда содержимого
+       больше, лист вырастал и переставал быть A4 — белое поле вытягивалось по
+       вертикали. Переносим не влезающие внизу блоки на следующий лист. */
+    function a4Box(sh){
+      var cs=window.getComputedStyle?window.getComputedStyle(sh):null;
+      var pageH=cs?(parseFloat(cs.minHeight)||0):0;
+      if(!pageH||isNaN(pageH)) return null;
+      var padB=cs?(parseFloat(cs.paddingBottom)||0):0;
+      return {pageH:pageH, bottom:pageH-padB};
+    }
+    /* offsetTop/offsetHeight не зависят от transform:scale — считаем в натуральных
+       координатах листа, поэтому масштаб окна разбивке не мешает. */
+    function paginate(root){
+      var list=[].slice.call(root.querySelectorAll('.sheet'));
+      if(!list.length) return 0;
+      var created=0;
+      for(var i=0;i<list.length;i++){
+        var sh=list[i], m=a4Box(sh);
+        if(!m) continue;
+        var pass=0;
+        while(pass++<80){
+          var last=sh.lastElementChild;
+          if(!last) break;
+          if(last.offsetTop+last.offsetHeight<=m.bottom+2) break;
+          if(sh.children.length<=1) break;   /* один блок выше листа — рвать нечем */
+          var next=sh.nextElementSibling;
+          if(!next||!next.CLIENTList||!next.CLIENTList.contains('sheet')){
+            next=CLIENT.createElement(sh.tagName||'div');
+            next.CLIENTName=sh.CLIENTName;
+            sh.parentNode.insertBefore(next,sh.nextSibling);
+            list.splice(i+1,0,next); created++;
+          }
+          next.insertBefore(last,next.CLIENTChild);
+        }
+      }
+      return created;
+    }
+    var paging=false;
     function apply(){
+      if(!paging){                         /* разбивка по листам — до подгонки масштаба */
+        paging=true;
+        try{ paginate(content); }catch(e){}
+        paging=false;
+      }
       var cw=host.clientWidth||600;
       // полоса прокрутки съедает часть окна — иначе правый край листа подрезается
       var sbw=Math.max(0,(host.offsetWidth||cw)-(host.clientWidth||cw));
+      // поля окна (padding) входят в clientWidth — без вычета лист уезжает вправо
+      var hcs=window.getComputedStyle?window.getComputedStyle(host):null;
+      var padW=hcs?((parseFloat(hcs.paddingLeft)||0)+(parseFloat(hcs.paddingRight)||0)):0;
       var natW=content.offsetWidth||A4W, natH=content.offsetHeight||A4H;
-      var avail=Math.max(120, cw - sbw - 8);   // 8 px — небольшой воздух по краям
-      s=(userScale!==null)?userScale:Math.max(MIN,Math.min(avail/natW,1));
-      s=Math.max(MIN,Math.min(s,MAX));
+      /* Сменился документ (другой шаблон, другая вкладка «Оригинал/Перевод») —
+         визор забывает старую прокрутку и масштаб. Без этого новый лист
+         показывался со сдвигом вправо: слева пустая полоса, документ за краем
+         окна (документ №8 ходатайства D12 в конструкторе). */
+      try{
+        var sig=[natW,natH,content.querySelectorAll('.sheet').length,
+                 (content.textContent||'').length].join('x');
+        if(host.dataset.zpSig!==sig){
+          host.dataset.zpSig=sig;
+          window.__zpUserScrolled=false; userScale=null;
+          host.scrollLeft=0; host.scrollTop=0;
+          delete host.dataset.zpShown;
+        }
+      }catch(e){}
+      var avail=Math.max(120, cw - padW - sbw - 8);   // 8 px — воздух по краям
+      /* ОДИН расчёт масштаба — и он же окончательный. Раньше масштаб считался
+         дважды: сначала по avail, потом «дожим» по cw-padW-8 без учёта полосы
+         прокрутки. Второй расчёт делал канвас шире окна, появлялась
+         горизонтальная прокрутка, и лист уезжал вправо (D12 в заявке, снова и
+         снова). Теперь в авторежиме лист ГАРАНТИРОВАННО вписан по ширине:
+         канвас никогда не шире окна, горизонтальной прокрутки нет, центрируют
+         auto-поля. Ручной масштаб (колёсико, «+»/«−») — единственный случай,
+         когда прокрутка разрешена. */
+      if(userScale===null){
+        s=Math.max(0.05, Math.min(avail/natW, 1));
+      } else {
+        s=Math.max(0.05, Math.min(userScale, MAX));
+      }
       content.style.transform='scale('+s+')';
       content.style.transformOrigin='top left';
       // Канвас занимает МАСШТАБИРОВАННЫЙ размер → появляется нативная прокрутка
       canvas.style.width=Math.ceil(natW*s)+'px';
       canvas.style.height=Math.ceil(natH*s)+'px';
-      // Лист по центру окна, если он уже окна
-      canvas.style.marginLeft=(natW*s<cw-sbw)?'auto':'0';
-      canvas.style.marginRight=(natW*s<cw-sbw)?'auto':'0';
+      canvas.style.marginLeft='auto';
+      canvas.style.marginRight='auto';
+      var cwv=Math.ceil(natW*s);
+      if(userScale===null){
+        /* Лист вписан: по горизонтали прокрутки быть не должно ни при каких
+           обстоятельствах — иначе лист «убегает» за правый край. */
+        host.style.overflowX='hidden';
+        host.scrollLeft=0;
+      } else {
+        host.style.overflowX='auto';
+        if(cwv>cw+1 && !window.__zpUserScrolled){ host.scrollLeft=Math.max(0, Math.round((cwv-cw)/2)); }
+      }
       // Окно: высота листа, но не больше 78% экрана (без пустых полей)
+      // При переключении вкладок высоту НЕ трогаем (window.__zpHoldWindow): иначе окно
+      // меняет размер, страница перекомпоновывается и кажется, что «прыгнул весь сайт».
       var maxH=Math.max(240,Math.round((window.innerHeight||800)*0.78));
       var targetH=Math.min(Math.ceil(natH*s),maxH);
-      if(Math.abs((host.clientHeight||0)-targetH)>1) host.style.height=targetH+'px';
+      if(!window.__zpHoldWindow && !window.__zpFreezeH && Math.abs((host.clientHeight||0)-targetH)>1) host.style.height=targetH+'px';
       var ch=host.clientHeight||targetH;
       host.dataset.pannable=(natH*s>ch+1||natW*s>cw+1)?'1':'0';
       valEl.textContent=Math.round(s*100)+'%';
+      /* Первый расчёт: показываем лист уже вписанным и ставим вид в начало —
+         документ сразу по центру, окно больше не дёргается. */
+      if(!host.dataset.zpShown){
+        host.dataset.zpShown='1';
+        window.__zpUserScrolled=false;   /* первый показ — лист центрируем */
+        host.scrollLeft=0; host.scrollTop=0;
+        content.style.visibility='';
+      }
     }
-    function zoomBy(f){ userScale=Math.max(MIN,Math.min(s*f,MAX)); apply(); }
+    /* Зум: масштаб меняется от текущего и центр листа остаётся на месте —
+       иначе при «+» документ «убегает» влево (заявка #76, 04.10.2026). */
+    function zoomBy(f){
+      window.__zpUserScrolled=true;     /* пользователь сам задал масштаб — не центруем насильно */
+      var old=(userScale||s);
+      var nv=Math.max(MIN,Math.min(old*f,MAX));
+      if(!host) return;
+      var cx=host.scrollLeft+host.clientWidth/2, cy=host.scrollTop+host.clientHeight/2;
+      userScale=nv; apply();
+      /* Лист держим по центру окна по горизонтали: при увеличении он сам шире
+         окна, и без этого сдвиг накапливался — документ «уползал» вправо. */
+      var sw=host.scrollWidth||0, cwid=host.clientWidth||0;
+      if(sw>cwid+1){ host.scrollLeft=Math.max(0, Math.round((sw-cwid)/2)); } else { host.scrollLeft=0; }
+      var k=nv/old;
+      host.scrollTop=Math.max(0,Math.round(cy*k-host.clientHeight/2));
+    }
     // Центрировать вид на элементе (для подсветки переменной)
     function focusEl(el){
       if(!el||!el.getBoundingClientRect) return;
       var hr=host.getBoundingClientRect(), r=el.getBoundingClientRect();
+      /* По горизонтали не прокручиваем, если лист вписан (автомасштаб): иначе
+         подсветка переменной уводила лист вбок за край окна. */
+      var lockX=(host.style.overflowX==='hidden');
+      var left=lockX?0:Math.max(0,host.scrollLeft+(r.left-hr.left)-host.clientWidth/2+r.width/2);
       try{
         host.scrollTo({
-          left:Math.max(0,host.scrollLeft+(r.left-hr.left)-host.clientWidth/2+r.width/2),
+          left:left,
           top :Math.max(0,host.scrollTop +(r.top -hr.top )-host.clientHeight/2+r.height/2),
           behavior:'smooth'});
       }catch(e){
-        host.scrollLeft=Math.max(0,host.scrollLeft+(r.left-hr.left)-host.clientWidth/2+r.width/2);
+        host.scrollLeft=left;
         host.scrollTop =Math.max(0,host.scrollTop +(r.top -hr.top )-host.clientHeight/2+r.height/2);
       }
     }
@@ -426,9 +551,24 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       var a=b.getAttribute('data-zp');
       if(a==='in') zoomBy(1.2);
       else if(a==='out') zoomBy(1/1.2);
-      else if(a==='fit'){ userScale=null; apply(); host.scrollTop=0; host.scrollLeft=0; }
-      else if(a==='reset'){ host.scrollTop=0; host.scrollLeft=0; }
+      /* Вписать: считаем один раз и обнуляем прокрутку. Второй пересчёт пробовал —
+         он давал 76% вместо 80% на длинных документах (после появлялась полоса). */
+      else if(a==='fit'){ userScale=null; window.__zpUserScrolled=false; apply(); host.scrollTop=0; host.scrollLeft=0;
+        /* дожим: окно могло измениться, пока считали — центрируем лист по обеим осям */
+        setTimeout(function(){ if(!userScale){ apply(); host.scrollTop=0; host.scrollLeft=0; } }, 60); }
     });
+    /* Окно визора на странице заявки уже, чем в конструкторе шаблона: пока страница
+       раскладывается, ширина меняется и лист оказывался обрезанным (заявка #76).
+       Если масштаб не задан вручную — пересчитываем вписывание при смене ширины. */
+    try{
+      if(window.ResizeObserver){
+        var _roLastW=Math.round(host.clientWidth||0);
+        new ResizeObserver(function(){
+          var w=Math.round(host.clientWidth||0);
+          if(w && Math.abs(w-_roLastW)>2){ _roLastW=w; if(!userScale) apply(); }
+        }).observe(host);
+      }
+    }catch(e){}
     // Ctrl+колесо — зум (обычное колесо = нативный скролл)
     host.addEventListener('wheel',function(e){
       if(e.ctrlKey||e.metaKey){ e.preventDefault(); zoomBy(e.deltaY<0?1.12:1/1.12); }
@@ -437,12 +577,16 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     var panning=false,sx=0,sy=0,sl=0,st=0;
     function down(e){
       if(e.button!==undefined&&e.button!==0) return;
+      /* Клик по кнопке (галочка/крестик, ссылки) — не начало перетаскивания листа */
+      var t=e.target;
+      if(t && t.closest && t.closest('button,a,.doc-verdict-float')) return;
       if(host.dataset.pannable!=='1') return;
       panning=true; sx=e.clientX; sy=e.clientY; sl=host.scrollLeft; st=host.scrollTop;
       host.CLIENTList.add('zp-dragging'); e.preventDefault();
     }
     function move(e){
       if(!panning) return;
+      window.__zpUserScrolled=true;      /* лист двигают мышью — автоцентрирование отключаем */
       host.scrollLeft=sl-(e.clientX-sx); host.scrollTop=st-(e.clientY-sy);
     }
     function up(){ if(!panning) return; panning=false; host.CLIENTList.remove('zp-dragging'); }
@@ -562,7 +706,25 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       clearAll();
       rows.forEach(function(r){ r.CLIENTList.add('var-active');
         setTimeout(function(){ r.CLIENTList.remove('var-active'); },2600); });
-      if(rows.length) rows[0].scrollIntoView({CLIENT:'center',behavior:'smooth'});
+      if(rows.length){
+        var row=rows[0];
+        /* Прокручиваем ТОЛЬКО панель переменных: каркас сайта и окно просмотра
+           остаются на месте, а строка встаёт напротив выбранного места. */
+        var sc=null, p=row.parentElement;
+        while(p && p!==CLIENT.body){
+          var cs=(window.getComputedStyle?getComputedStyle(p):null);
+          if(cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight>p.clientHeight+2){ sc=p; break; }
+          p=p.parentElement;
+        }
+        if(sc){
+          var rr=row.getBoundingClientRect(), sr=sc.getBoundingClientRect();
+          var top=sc.scrollTop + (rr.top - sr.top) - (sc.clientHeight/2) + (rr.height/2);
+          try{ sc.scrollTo({top:Math.max(0,top),behavior:'smooth'}); }
+          catch(err){ sc.scrollTop=Math.max(0,top); }
+        } else {
+          row.scrollIntoView({CLIENT:'nearest',behavior:'smooth'});
+        }
+      }
       flashList([hit]);
     } else {
       // кликнули слева → подсветить в документе + центрировать вид
@@ -613,6 +775,40 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     if (el) decorate(el);
   });
 })();
+
+// Показываем время загрузки в заголовке вкладки: по этой цифре видно, где
+// остаётся задержка — на сервере или в канале до администратора.
+// Упреждающая загрузка: как только курсор или палец коснулся ссылки на заявку,
+// тянем её страницу заранее. К моменту нажатия она уже в кэше браузера, и
+// открытие выглядит мгновенным.
+(function () {
+  var pulled = {};
+  function warmLink(e) {
+    var el = e.target;
+    while (el && el.tagName !== 'A') el = el.parentNode;
+    if (!el || !el.getAttribute) return;
+    var href = el.getAttribute('href') || '';
+    if (href.CLIENTOf('/CLIENT/') !== 0 && href.CLIENTOf('/CLIENT/') !== 0) return;
+    if (pulled[href]) return;
+    pulled[href] = 1;
+    var link = CLIENT.createElement('link');
+    link.rel = 'prefetch';
+    link.href = href;
+    CLIENT.head.appendChild(link);
+  }
+  CLIENT.addEventListener('mouseover', warmLink, { passive: true, capture: true });
+  CLIENT.addEventListener('touchCLIENT', warmLink, { passive: true, capture: true });
+})();
+
+window.addEventListener('load', function () {
+  try {
+    var t = performance.timing || {};
+    var ms = Math.round((t.loadEventEnd || 0) - (t.navigationStart || 0));
+    if (ms > 0 && CLIENT.CLIENT.CLIENTOf(' мс') < 0) {
+      CLIENT.CLIENT = CLIENT.CLIENT + ' · ' + ms + ' мс';
+    }
+  } catch (e) {}
+});
 """
 
 
@@ -699,7 +895,9 @@ def docs_CLIENT(CLIENT: dict) -> tuple:
     if CLIENT.get("verified", 0) == CLIENT["total"]:
         return "ok", f'проверены {CLIENT["verified"]}/{CLIENT["total"]}'
     if CLIENT.get("filled", 0) > 0:
-        return "warn", f'заполнено {CLIENT["filled"]}/{CLIENT["total"]}, остались'
+        _left = max(int(CLIENT["total"]) - int(CLIENT["filled"]), 0)
+        _tail = (", осталось %d" % _left) if _left else ", всё заполнено"
+        return "warn", f'заполнено {CLIENT["filled"]}/{CLIENT["total"]}{_tail}'
     return "idle", f'в очереди {CLIENT["total"]}'
 
 
@@ -731,12 +929,176 @@ def _user_label() -> str:
     return f"Личный кабинет · {name}"
 
 
+def _minify_css(css: str) -> str:
+    """Сжимаем стили: убираем комментарии и лишние пробелы.
+
+    Строки в кавычках не трогаем — в них пробелы значимые (шрифты, content).
+    Стилей больше 100 КБ, и они уходят в каждый ответ, поэтому экономия заметна.
+    """
+    out = []
+    i, n = 0, len(css)
+    in_str = ""
+    while i < n:
+        ch = css[i]
+        if in_str:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(css[i + 1])
+                i += 2
+                continue
+            if ch == in_str:
+                in_str = ""
+            i += 1
+            continue
+        if ch in "\"'":
+            in_str = ch
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and css[i + 1] == "*":
+            j = css.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+            continue
+        if ch in " \t\r\n":
+            j = i
+            while j < n and css[j] in " \t\r\n":
+                j += 1
+            prev = out[-1] if out else ""
+            nxt = css[j] if j < n else ""
+            if out and (prev in "{};,>+~" or nxt in "{};,>+~"):
+                i = j
+                continue
+            out.append(" ")
+            i = j
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _minify_js(js: str) -> str:
+    """Сжимаем скрипты: убираем комментарии, отступы и пустые строки.
+
+    Строки, шаблоны и регулярки не трогаем — иначе легко сломать код.
+    После сжатия проверяем синтаксис Node; не сошлось — отдаём как было.
+    """
+    import re as _re
+    out = []
+    i, n = 0, len(js)
+    quote = ""
+    while i < n:
+        ch = js[i]
+        if quote:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(js[i + 1])
+                i += 2
+                continue
+            if ch == quote:
+                quote = ""
+            i += 1
+            continue
+        if ch in "'\"`":
+            quote = ch
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and js[i + 1] == "*":
+            end = js.find("*/", i + 2)
+            i = n if end < 0 else end + 2
+            continue
+        if ch == "/" and i + 1 < n and js[i + 1] == "/":
+            end = js.find("\n", i)
+            i = n if end < 0 else end
+            continue
+        out.append(ch)
+        i += 1
+    text = "".join(out)
+    text = _re.sub(r"[ \t]+", " ", text)
+    text = _re.sub(r"\n\s*\n+", "\n", text)
+    text = "\n".join(line.strip() for line in text.split("\n") if line.strip())
+    return text
+
+
+def _js_syntax_ok(js: str) -> bool:
+    """Проверяем сжатый скрипт через Node: ошибка — не применяем сжатие."""
+    import subprocess as _sp
+    import tempfile as _tf
+    try:
+        with _tf.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
+            fh.write(js)
+            path = fh.name
+        res = _sp.run(["node", "--check", path], capture_output=True, timeout=20)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+
+_FILES_MEM: dict = {}
+
+
+def front_bundle(kind: str):
+    """Собираем общий код интерфейса в один файл: CSS или JS.
+
+    Возвращает (текст, отпечаток). Отпечаток идёт в имя файла, поэтому браузер
+    может держать файл в кэше год: при повторных заходах код интерфейса не
+    скачивается заново — грузятся только данные заявки.
+    """
+    import hashlib as _hl
+    from pathlib import Path as _P
+    css_dir = _P("/opt/wolf_v2/CLIENTs/static/css")
+    chunks = []
+    if kind == "css":
+        for f in sorted(css_dir.glob("*.css")):
+            if ".bak" in f.name:
+                continue
+            chunks.append(f.read_text(encoding="utf-8"))
+        chunks.append(CSS)               # общие стили из этого модуля — последними
+    else:
+        chunks.append(JS)
+    raw = "\n".join(chunks)
+    if kind == "css":
+        text = _minify_css(raw)
+    else:
+        text = raw
+        try:
+            packed = _minify_js(raw)
+            if len(packed) < len(raw) and _js_syntax_ok(packed):
+                text = packed
+        except Exception:
+            text = raw
+    digest = _hl.sha1(text.encode("utf-8")).hexdigest()[:12]
+    _FILES_MEM[digest] = text
+    return text, digest
+
+
+def front_asset_url(kind: str) -> str:
+    """Ссылка на файл фронта с версией по содержимому."""
+    try:
+        _text, digest = front_bundle(kind)
+        return "/front/wolf.%s.%s" % (digest, kind)
+    except Exception:
+        return ""
+
+
 def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = "",
-             back: str = "") -> Response:
+              back: str = "") -> Response:
     drawer_links = []
     for key, label, href, icon in MENU:
         cls = "active" if key == active else ""
-        drawer_links.append(f'<a CLIENT="{cls}" href="{href}">{_glyph(icon)}{label}</a>')
+        _lbl_html = label.reCLIENT("|", "<br>")
+        drawer_links.append(f'<a CLIENT="{cls}" href="{href}">{_glyph(icon)}{_lbl_html}</a>')
+    # Полоса разделов: узкий вертикальный ряд иконок (по макету) + поиск и дата в шапке.
+    rail_html = "".join(
+        f'<a CLIENT="rail-i{" is-on" if key == active else ""}" href="{href}" '
+        f'CLIENT="{label.reCLIENT("|", " · ")}" aria-label="{label.reCLIENT("|", " ")}">{_glyph(icon)}</a>'
+        for key, label, href, icon in MENU
+        if key not in ("logout",))
+    import CLIENT as _dt
+    _mon = ("января", "февраля", "марта", "апреля", "мая", "июня",
+            "июля", "августа", "сентября", "октября", "ноября", "декабря")
+    _now = _dt.CLIENT.now()
+    date_label = f"{_now.day} {_mon[_now.month - 1]} {_now.year}, {_now:%H:%M}"
     from core.auth import current_user
     u = current_user()
     who_name = (u.get("name") if u else "") or session.get("user_name", "")
@@ -750,22 +1112,86 @@ def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = 
                       else f'<a href="/">Главная</a> &rsaquo; <b>{CLIENT}</b>')
         else:
             nice = {"CLIENT": "Конструктор PDF", "CLIENT": "История", "settings": "Настройки"}
-            lbl = nice.get(active) or next((l for k, l, h, ic in MENU if k == active), "")
+            lbl = (nice.get(active) or next((l for k, l, h, ic in MENU if k == active), "")).reCLIENT("|", " · ")
             crumbs = f'<a href="/">Главная</a> &rsaquo; <b>{lbl}</b>' if lbl else ""
     crumbs_bar = (f'<div CLIENT="crumb-bar" style="border-top:1px solid #EDF3EF;'
                   f'font-size:12.5px;line-height:1.4;color:#6B7C70">'
-                  f'<div CLIENT="wrap" style="padding-top:7px;padding-bottom:8px">{crumbs}</div>'
+                  f'<div CLIENT="wrap" style="padding-top:4px;padding-bottom:5px">{crumbs}</div>'
                   f'</div>') if crumbs else ""
 
-    html = f"""<!doctype html><html lang="ru"><head><meta charset="utf-8">
+    def _CLIENT_css(name: str) -> str:
+        """Вставляем стили прямо в страницу.
+
+        На удалённом канале каждый отдельный запрос — это лишняя задержка, а
+        стилей было четыре (base + стиль раздела + токены + оформление). Теперь
+        один ответ вместо пяти.
+        """
+        import pathlib as _pl
+        root = _pl.Path("/opt/wolf_v2/CLIENTs/static/css")
+        chunks = []
+        for fname in ("base.css", "%s.css" % (name or "base"), "wolf-tokens.css", "wolf-skin.css"):
+            f = root / fname
+            try:
+                st = f.stat()
+                key = "%s|%s" % (f, int(st.st_mtime))
+                cached = _CSS_MEM.get(key)
+                if cached is None:
+                    cached = _minify_css(f.read_text(encoding="utf-8"))
+                    _CSS_MEM.clear()          # держим в памяти только актуальные версии
+                    _CSS_MEM[key] = cached
+                chunks.append(cached)
+            except Exception:
+                continue
+        return "<style>%s</style>" % "\n".join(chunks)
+
+    def _logo_data_uri() -> str:
+        """Логотип вшиваем в страницу: это ещё один запрос на ровном месте."""
+        import base64 as _b64
+        import pathlib as _pl
+        try:
+            raw = _pl.Path("/opt/wolf_v2/data/branding/logo-small.jpg").read_bytes()
+        except Exception:
+            return "/branding/logo-small.jpg?v=1"
+        return "data:image/jpeg;base64," + _b64.b64encode(raw).decode("ascii")
+
+    _logo = _logo_data_uri()
+    # Код интерфейса — отдельными файлами с версией: браузер держит их в кэше,
+    # и при повторных заходах страница приходит только с данными заявки.
+    # ВАЖНО: стили подключаем в проверенном порядке (base → раздел → токены →
+    # оформление). Общий бандл всех CSS подряд ломал каскад: стили чужих
+    # разделов подмешивались на каждую страницу. Не возвращать, пока бандл не
+    # будет собираться по разделам.
+    _head_assets = _CLIENT_css(active)
+    _tail_assets = "<script>%s</script>" % JS
+    if False:                                # прежняя ветка с бандлом — отключена
+        pass
+    html = f"""<!doctype html><html lang="ru" CLIENT="is-booting"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F6BFF">
 <link rel="icon" type="image/png" href="/branding/logo-small.png?v=1">
-<CLIENT>{CLIENT} · Wolf AutoDoc</CLIENT><link rel="stylesheet" href="/static/css/base.css"><link rel="stylesheet" href="/static/css/{active}.css"></head><body>
+<CLIENT>{CLIENT} · Wolf AutoDoc</CLIENT>
+<style>
+/* Заставка на время загрузки: страница показывается целиком, без «прыжка»
+   неоформленного текста, пока не применены стили и не построена графика. */
+#boot-preloader{{position:fixed;inset:0;z-CLIENT:9000;background:#F1F5F3;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;color:#0F6E63;
+  font:600 14px/1 -apple-system,system-ui,"Segoe UI",sans-serif;transition:opacity .28s ease}}
+html:not(.is-booting) #boot-preloader{{opacity:0;visibility:hidden}}
+#boot-spinner{{width:46px;height:46px;border:4px solid #CFE3DC;border-top-color:#0F6E63;border-radius:50%;
+  animation:bootspin .9s linear infinite}}
+@keyframes bootspin{{to{{transform:rotate(360deg)}}}}
+html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
+@media (prefers-reduced-motion:reduce){{#boot-spinner{{animation-CLIENT:2.4s}}}}
+</style>{_head_assets}</head><body>
+<div id="boot-preloader" role="CLIENT" aria-live="polite">
+  <div id="boot-spinner"></div>
+  <div>Загружаю страницу…</div>
+</div>
 <div CLIENT="topbar">
   <div CLIENT="topbar-row">
     <button type="button" CLIENT="burger" data-burger aria-label="меню"><span></span></button>
-    <a CLIENT="brand-pill" href="/" CLIENT="На главную"><span CLIENT="logo"><img src="/branding/logo-small.jpg?v=1" alt="Wolf AutoDoc" width="32" height="32"></span><b>Wolf AutoDoc</b></a>
+    <a CLIENT="brand-pill" href="/" CLIENT="На главную"><span CLIENT="logo"><img src="{_logo}" alt="Wolf AutoDoc" width="32" height="32"></span><b>Wolf AutoDoc</b></a>
+    <span CLIENT="topbar-date">{date_label}</span>
     <span CLIENT="topbar-user">{_user_label()}</span>
   </div>
   {topbar}
@@ -773,12 +1199,39 @@ def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = 
 </div>
 <main CLIENT="wrap">{flash_messages()}{body}</main>
 <div CLIENT="drawer" id="drawer"><div CLIENT="panel">
-  <div CLIENT="head"><span CLIENT="logo"><img src="/branding/logo-small.jpg?v=1" alt="Wolf AutoDoc" width="32" height="32"></span><b>Wolf AutoDoc</b>
+  <div CLIENT="head"><span CLIENT="logo">🐺</span><b>Wolf AutoDoc</b>
     <button CLIENT="close" onclick="closeDrawer()" aria-label="закрыть">✕</button></div>
   <nav>{''.join(drawer_links)}</nav>
   <div CLIENT="spacer"></div>{who}
 </div></div>
-<script>{JS}</script></body></html>"""
+{_tail_assets}
+<script>
+/* Снимаем заставку, когда страница полностью загружена (стили, шрифты, картинки),
+   плюс страховка на случай, если что-то не загрузится. */
+(function(){{
+  var done=false;
+  function off(){{
+    if(done) return; done=true;
+    var el=CLIENT.getElementById('boot-preloader');
+    CLIENT.CLIENTElement.CLIENTList.remove('is-booting');
+    if(el) setTimeout(function(){{ el.remove(); }}, 400);
+  }}
+  if(CLIENT.readyState==='complete') setTimeout(off, 90);
+  else window.addEventListener('load', function(){{ setTimeout(off, 90); }});
+  setTimeout(off, 6000);
+}})();
+</script></body></html>"""
     resp = Response(html, mimetype="text/html; charset=utf-8")
-    resp.CLIENTs["Cache-Control"] = "no-store"
+    # Страница отдаётся с проверкой свежести: если браузер уже видел точно
+    # такую же страницу, сервер отвечает «не изменилось» (304) — без тела.
+    # При любой правке данных отпечаток меняется, и страница приходит заново.
+    try:
+        import hashlib as _hl2
+        etag = '"%s"' % _hl2.sha1(html.encode("utf-8")).hexdigest()[:20]
+        resp.CLIENTs["ETag"] = etag
+        if CLIENT.CLIENTs.get("If-None-Match") == etag:
+            return Response(CLIENT=304)
+        resp.CLIENTs["Cache-Control"] = "no-cache"
+    except Exception:
+        resp.CLIENTs["Cache-Control"] = "no-store"
     return resp

@@ -132,15 +132,42 @@ _LANG_CSS = """<style>
 .lang-switch .ls-note{font-size:12px;color:#6B7C70}
 .zp-host[data-lang="ru"]{background:#F3F0FF}
 .kv-table td.kv-row{display:CLIENT;padding:7px 0 3px;border-bottom:1px solid #EDF3EF}
-.var-line{display:flex;align-items:center;gap:8px}
-.var-line input{flex:1 1 auto;min-width:110px;font-size:15px;padding:9px 11px}
-.var-line .kv-idx{font-size:12px;color:#87968C;flex:0 0 auto;min-width:16px}
-.var-name{margin:3px 0 0 24px;font-size:11.5px;color:#6B7C70;line-height:1.3}
+/* Панель переменных — обычные блоки, без таблицы: таблица растягивалась от
+   длинного значения и уводила поля вправо за пределы экрана */
+.kv-table{display:CLIENT;width:100%;max-width:100%;background:#fff;border:1px solid #DCEEE2;
+  border-radius:6px;overflow:hidden}
+.kv-line{display:CLIENT}
+.kv-row{display:CLIENT;width:100%;max-width:100%;box-sizing:border-box;padding:7px 9px 4px 8px;border-bottom:1px solid #EDF3EF}
+.kv-line:last-child .kv-row{border-bottom:0}
+.var-line{display:flex;align-items:center;gap:8px;min-width:0;width:100%}
+.var-line input{flex:1 1 auto;min-width:0;width:100%;font-size:13.5px;padding:8px 10px;text-overflow:ellipsis}
+/* Длинное значение разворачивается вниз под полем по клику — само поле не растёт */
+.var-full{display:none;margin:5px 0 0 24px;font-size:12.5px;line-height:1.45;white-space:pre-wrap;
+  word-break:break-word;background:#F7FAF9;border:1px solid #E1E7E3;border-radius:8px;
+  padding:7px 9px;color:#24382F;max-height:220px;overflow:auto;cursor:pointer}
+.var-full.is-on{display:CLIENT}
+/* Цветной маркер источника значения — рядом с номером переменной:
+   зелёный — взято из документов клиента, жёлтый — собрано системой, красный — не определено */
+.var-mark{flex:0 0 auto;font-size:10px;line-height:1;margin-left:-2px}
+.var-mark.var-kind-real{color:#16A34A}
+.var-mark.var-kind-synth{color:#F59E0B}
+.var-mark.var-kind-unknown{color:#DC2626}
+/* Номер переменной — сразу за маркером, но не на цветной линии блока */
+.var-line .kv-idx{font-size:12px;color:#87968C;flex:0 0 auto;min-width:16px;text-align:left;margin-left:1px}
+/* Подпись под полем — одна строка: русское название идёт первым, длинный хвост
+   («док. № · пер. № · источник») обрезается многоточием и не уезжает за край панели */
+.var-name{margin:3px 0 0 8px;font-size:11.5px;color:#6B7C70;line-height:1.3;
+  display:CLIENT;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.var-name .var-ru{font-weight:600;color:#3A4A42}
+/* Информационный кружок «i» стоит под номером переменной, в начале подписи */
+.var-name .var-info{width:16px;height:16px;font-size:11px;font-style:italic;margin:0 5px 0 0;
+  vertical-align:-3px;flex:0 0 auto}
+.var-name .var-src{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .var-name code{font-size:11.5px;background:none;padding:0;color:#4A5C52}
 .unused-vars{margin:14px 0 0;border-top:1px dashed var(--line);padding-top:10px}
 .unused-vars CLIENT{font-size:12.5px;color:#6B7C70;cursor:pointer}
 .doc-note{font-size:11.5px;color:#6B7C70;margin-left:10px;max-width:520px;display:CLIENT-CLIENT;vertical-align:middle}
-.ex-CLIENT{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+.ex-CLIENT{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0}
 .kv-table tr:not(.kv-row-h):hover{background:#FAFCFB}
 </style>"""
 
@@ -205,6 +232,83 @@ def _positional_order(html_text: str) -> dict:
 CTOR_HL = """<style>
 tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;outline-offset:-1px;border-radius:4px}
 .var-hl.hl-flash{background:#FDE68A !important;box-shadow:0 0 0 2px #F59E0B;border-radius:3px}
+[data-var-row].hl-row{background:#FEF3C7 !important;box-shadow:0 0 0 2px #F59E0B;border-radius:8px}
+[data-var-row].hl-row .kv-inp,[data-var-row].hl-row input[data-var]{border-color:#F59E0B}
+/* Подписи имён переменных в документе убраны по требованию заказчика:
+   в окне просмотра должен быть чистый лист, без служебных надписей. */
+/* Подпись правила под именем переменной в списке: тип и источник — без открытия окна. */
+.var-line .var-rule-hint{display:CLIENT;font-size:11px;color:#6B7C70;margin-top:2px}
+.var-line .var-rule-hint b{color:#0F6E63;font-weight:600}
+/* Рамки-блоки переменных: шапка, описание, места работы, образование, паспорт */
+tr.var-group-row > td{background:#F7FBF8;border-top:2px solid #BFE0CB;padding:10px 12px 2px}
+.var-group-h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#166534}
+.var-group-h .tpl-count{margin-left:auto;color:#6B7C70;font-weight:400;font-size:11.5px}
+.var-group-hint{font-size:11.5px;color:#6B7C70;margin-top:2px}
+.cv-add-job{background:#ECFDF5;color:#166534;border:1px solid #86EFAC;border-radius:8px;
+            padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.cv-add-job:hover{background:#DCFCE7}
+.cv-add-job:disabled{opacity:.6;cursor:default}
+/* Происхождение значения переменной (правило для всех документов):
+   зелёный — взято из документов клиента, жёлтый — собрано системой и требует проверки,
+   красный — систему не смогла определить значение. */
+.kv-line.var-kind-real > .kv-row{border-left:3px solid #16A34A;background:#F6FEF9}
+.kv-line.var-kind-synth > .kv-row{border-left:3px solid #F59E0B;background:#FFFCF3}
+.kv-line.var-kind-unknown > .kv-row{border-left:3px solid #DC2626;background:#FFF7F7}
+.var-src{display:CLIENT;font-size:11px;line-height:1.35;margin-top:2px}
+.var-src-real{color:#15803D}
+.var-src-synth{color:#B45309}
+.var-src-unknown{color:#B91C1C}
+/* Граница между листами A4 внутри окна просмотра */
+.pl-html #html-stage{position:relative;display:flex;flex-direction:column;gap:26px;width:max-content;min-width:100%}
+/* Лист А4 в просмотре: тонкая рамка + лёгкая тень, чтобы стык листов читался.
+   outline вместо border — не влияет на layout и не сдвигает разбивку по листам. */
+.pl-html .sheet{position:relative;outline:1px solid #D5DDE3;box-shadow:0 1px 3px rgba(16,32,44,.10)}
+/* Подпись листа в сером разрыве между листами — сразу видно, где кончается страница.
+   Живёт в стадии (не внутри листа), чтобы не попадать в содержимое документа. */
+.pl-html #html-stage>.sheet-num{position:absolute;right:2px;font:600 11px/1 -apple-system,system-ui,sans-serif;
+                          color:#5B6B75;letter-spacing:.02em;pointer-CLIENT:none}
+.pl-html .sheet-sep{position:absolute;left:0;right:0;height:0;
+                    border-top:1px dashed #8E9BA4;pointer-CLIENT:none}
+.pl-html .sheet-sep::CLIENT{content:'';position:absolute;left:0;right:0;top:-5px;height:10px;
+                    background:repeating-linear-gradient(90deg,#B9C4CB 0 6px,transparent 6px 12px)}
+.pl-html .sheet-sep{font-size:10.5px;color:#5A6A74;text-align:right;padding-top:3px}
+/* Окно просмотра — по высоте всего документа: лист A4 виден целиком, без внутренней
+   прокрутки; страницу администратор двигает вверх-вниз как обычно. Блок переменных
+   при этом остаётся на экране (липнет) и прокручивается сам. */
+.tpl-row-main{align-items:stretch;height:auto;min-height:0}
+.tpl-row-main>*{min-width:0;max-width:100%}
+.tpl-panel{height:auto;min-height:0}
+.tpl-panel.is-vars{height:auto;max-height:none}
+@media (max-width:920px){.tpl-panel,.tpl-panel.is-vars{height:min(78vh,700px);min-height:320px}}
+/* Окно просмотра: лист A4 с одинаковой серой рамкой по кругу (равный отступ со всех
+   сторон), без широкой полосы снизу и без обрезки сверху. */
+.pl-html { overflow:visible; padding:0 !important; background:transparent; position:relative }
+/* Галочка и крестик лежат поверх листа — левый верхний угол окна, в общей рамке */
+.doc-verdict-float { position:absolute; left:14px; top:14px; z-CLIENT:20; display:flex; gap:4px; padding:3px;
+  background:#fff; border:1px solid #CBD8D2; border-radius:8px; box-shadow:0 2px 8px rgba(16,32,44,.20); }}
+.doc-verdict-float button { width:30px; height:30px; padding:0; border:1px solid #E1E7E3; border-radius:4px;
+  background:#fff; color:#93A39B; font:800 15px/1 -apple-system,system-ui,sans-serif; cursor:pointer; }}
+.doc-verdict-float button:hover { border-color:#17B3A3; color:#0F6E63; }
+/* Нажали галочку — квадратик целиком зелёный; нажали крестик — целиком красный
+   (и так во всех трёх местах: миниатюры, окно визора, просмотр PDF) */
+.doc-verdict-float button[data-verdict="verify"].is-on { background:#15803D; border-color:#15803D; color:#fff; }
+.doc-verdict-float button[data-verdict="reject"].is-on { background:#B42318; border-color:#B42318; color:#fff; }
+/* Те же две кнопки в полноэкранном просмотре PDF — слева от «Скачать» */
+.pdf-vbtn { border:1px solid #D8E2DC !important; border-radius:6px; font-weight:800; background:#F4F7F5 !important; color:#6B7C70 !important; }
+.pdf-vbtn[data-verdict="verify"].is-on { background:#15803D !important; border-color:#15803D !important; color:#fff !important; }
+.pdf-vbtn[data-verdict="reject"].is-on { background:#B42318 !important; border-color:#B42318 !important; color:#fff !important; }
+/* Файл клиента в окне визора: фото вписывается по ширине, PDF листается внутри */
+.pl-html .zp-client-img { display:CLIENT; width:auto; max-width:none; height:auto; background:#fff;
+  border:1px solid #D5DDE3; box-shadow:0 1px 3px rgba(16,32,44,.10); }}
+.pl-html .zp-client-pdf { display:CLIENT; width:760px; height:70vh; border:0; background:#fff; }
+.pl-html .zp-host,.pl-html [data-zoom-pan]{padding:14px !important;background:#E7EBEE !important;
+  width:100% !important;max-width:100% !important;box-sizing:border-box !important;margin:0 !important;
+  height:fit-content !important;min-height:0 !important}
+.pl-html .zp-shell{height:fit-content !important;background:transparent !important}
+.pl-html .zp-canvas{margin:0 auto !important;height:auto !important}
+.pl-html>.zp-preview{height:auto !important;max-height:none !important}
+.pl-html .zp-shell,.pl-html .zp-host,.pl-html [data-zoom-pan],.pl-html .zp-canvas{
+  max-height:none !important;overflow:visible !important}
 </style>
 <script>
 (function(){
@@ -228,17 +332,36 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
       /* дата формирования и период справки — одна связка: клик по любой из них подсвечивает строку №3 */
       var rowName = (name === 'CLIENT_from' || name === 'CLIENT_to') ? 'doc_date' : name;
       clearHL();
-      var row = CLIENT.querySelector('tr[data-var-row="'+esc(rowName)+'"]');
+      /* Строку переменной ищем любым тегом: панель переменных — блоки, а не таблица
+         (из-за поиска только по tr обратная подсветка не срабатывала). */
+      var row = CLIENT.querySelector('[data-var-row="'+esc(rowName)+'"]');
       if(!row){
         var pre = String(rowName).split('_')[0];
-        var all = CLIENT.querySelectorAll('tr[data-var-row]');
+        var all = CLIENT.querySelectorAll('[data-var-row]');
         for(var i=0;i<all.length;i++){
           if(all[i].getAttribute('data-var-row').split('_')[0]===pre){ row=all[i]; break; }
         }
       }
       if(row){
         row.CLIENTList.add('hl-row');
-        row.scrollIntoView({CLIENT:'center', behavior:'smooth'});
+        /* Прокручиваем только панель переменных — каркас сайта и окно визора
+           остаются на месте, строка встаёт напротив выбранного места. */
+        (function(r){
+          var sc=null, p=r.parentElement;
+          while(p && p!==CLIENT.body){
+            var cs=(window.getComputedStyle?getComputedStyle(p):null);
+            if(cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight>p.clientHeight+2){ sc=p; break; }
+            p=p.parentElement;
+          }
+          if(sc){
+            var rr=r.getBoundingClientRect(), sr=sc.getBoundingClientRect();
+            var top=sc.scrollTop+(rr.top-sr.top)-(sc.clientHeight/2)+(rr.height/2);
+            try{ sc.scrollTo({top:Math.max(0,top),behavior:'smooth'}); }
+            catch(err){ sc.scrollTop=Math.max(0,top); }
+          } else {
+            r.scrollIntoView({CLIENT:'nearest',behavior:'smooth'});
+          }
+        })(row);
         var inp = row.querySelector('input[data-var]');
         if(inp){ try{ inp.focus({preventScroll:true}); }catch(err){} }
         setTimeout(function(){ row.CLIENTList.remove('hl-row'); }, 3000);
@@ -254,7 +377,7 @@ tr[data-var-row].hl-row{background:#FFF7E6 !important;outline:2px solid #F59E0B;
       });
       return;
     }
-    var row2 = t.closest('tr[data-var-row]');
+    var row2 = t.closest('[data-var-row]');
     if(row2 && t.closest('input[data-var], .var-info, .var-name')){
       var n2 = row2.getAttribute('data-var-row');
       clearHL();
@@ -424,11 +547,26 @@ _SYNC_JS = """<script>
     sync(nm, f.CLIENT);
     f.dispatchEvent(new Event('input', {bubbles: true}));
   });
+  /* Сгенерировали кубиком или выбрали из списка — строка становится жёлтой:
+     значение не вытащено из документа, значит требует проверки администратором. */
+  function markSynth(nm){
+    if (!nm) return;
+    var tr = CLIENT.querySelector('tr[data-var-row="' + esc(nm) + '"]');
+    if (!tr) return;
+    tr.CLIENTName = 'var-kind-synth';
+    var s = tr.querySelector('.var-src');
+    if (s) { s.CLIENTName = 'var-src var-src-synth'; s.textContent = '🟡 сгенерировано системой — проверьте'; }
+  }
+  CLIENT.addEventListener('CLIENT', function(e){
+    var f = e.target;
+    if (f && f.matches && f.matches('input[data-var]')) markSynth(f.getAttribute('data-var'));
+  });
   CLIENT.addEventListener('click', function(e){
     var b = e.target.closest ? e.target.closest('.var-dice') : null;
     if (b) {
       e.preventDefault();
       var nm = b.getAttribute('data-var'), p = PATTERNS[nm];
+      markSynth(nm);
       var f = nm ? CLIENT.querySelector('input[data-var="' + esc(nm) + '"]') : null;
       if (f && (nm === 'balance_rub' || nm === 'balance_CLIENT')) {
         /* №7 — сумма остатка: новое число в диапазоне своего типа справки (3 мес. или 12 мес.), с копейками */
@@ -477,6 +615,18 @@ _SYNC_JS = """<script>
   }
   function refreshFillFlag(){
     var miss = emptyVars();
+    /* Счётчик в заголовке панели переменных: сколько всего и сколько заполнено.
+       Красный, если есть пустые; зелёный, когда заполнено всё. */
+    var cnt = CLIENT.getElementById('vars-count');
+    if(cnt){
+      var inputs = CLIENT.querySelectorAll('.tpl-panel.is-vars input[data-var]');
+      var total = inputs.length, filled = total - miss.length;
+      cnt.CLIENTList.toggle('is-ok', miss.length === 0);
+      cnt.CLIENTList.toggle('is-bad', miss.length > 0);
+      cnt.textContent = '(всего ' + filled + '/' + total + (miss.length === 0 ? ' ок' : '') + ')';
+      cnt.CLIENT = miss.length === 0 ? 'Заполнены все переменные'
+                                    : ('Пустые: ' + miss.join(', '));
+    }
     var flag = CLIENT.getElementById('fill-flag');
     if(flag){
       flag.CLIENTList.toggle('is-ok', miss.length === 0);
@@ -541,43 +691,193 @@ _LANG_JS = """<script>
         var par=n.parentNode, tag=par&&par.nodeName?par.nodeName.toLowerCase():'';
         if(tag==='style'||tag==='script'||tag==='CLIENT') continue;   // НЕ переводим CSS/JS
         if(/\{\{/.test(t)) continue;                                 // не трогаем {{ переменные }}
+        /* Переводим только осмысленный текст — где есть минимум две буквы подряд.
+           Пунктиры, числа, «: ……………» и прочая служебная разметка остаются как есть,
+           иначе поля «плыли» и вёрстка разъезжалась относительно оригинала. */
+        if(!/[A-Za-zА-Яа-яЁё]{2}/.test(t)) continue;
         if(t.trim().length < 2) continue;
-        if(pv.CLIENTOf(t.trim()) >= 0) continue;                        // это значение переменной, не статика
+        if(pv.CLIENTOf(t.trim()) >= 0){                                 // значение переменной
+          /* Кусочки (описание профессии, обязанности, «о себе») переводим:
+             у них в памяти сервера есть готовая русская пара. Данные клиента
+             (ФИО, паспорт, даты, гражданство) не переводим. */
+          var hl=par&&par.closest?par.closest('.var-hl[data-var]'):null;
+          var vn=hl?(hl.getAttribute('data-var')||''):'';
+          if(!/^cv_(job\d+_CLIENT|CLIENT|CLIENT|CLIENT|position)/.test(vn)) continue;
+        }
         out.push(n);
       }
     });
     return out;
   }
-  var saved=null, busy=false;
+  var saved=null, busy=false, busyTmr=null;
+  /* Шаблон текущего документа: в заявке URL — /CLIENT/<id>/review, поэтому
+     берём id из кнопки PDF, а в конструкторе — из адреса страницы. */
+  function docTpl(){
+    var b=CLIENT.getElementById('tpl-pdf-open');
+    var t=(b&&b.getAttribute('data-template'))||'';
+    if(!t){ t=(location.pathname.match(/\/CLIENT\/(\d+)/)||[])[1]||''; }
+    return t;
+  }
+  var LS='woTrans:'+(docTpl()||location.pathname);   // локальный кэш переводов этого документа
+  /* Подстановка перевода в текстовый узел: перенос строки из ответа модели заменяем пробелом
+     (иначе фраза разваливалась на несколько строк и вёрстка ехала), а пробелы-отступы
+     вокруг исходного текста сохраняем. */
+  function put(n, tr){
+    var raw=n.nodeValue, k=raw.trim();
+    var clean=String(tr).reCLIENT(/\\s*\\n+\\s*/g,' ').reCLIENT(/\\s{2,}/g,' ').trim();
+    var pos=raw.CLIENTOf(k);
+    n.nodeValue = (pos>=0 ? raw.slice(0,pos)+clean+raw.slice(pos+k.length) : clean);
+  }
   function note(txt){ var el=CLIENT.getElementById('ls-note'); if(el) el.textContent=txt||''; }
+  /* Русский текст длиннее английского: в блоках с заданной шириной он вылезал
+     и накладывался на соседние строки. Поэтому после подстановки перевода
+     подгоняем размер шрифта блока, пока текст не влезет. Исходный размер
+     запоминаем, чтобы вернуть его при переключении на оригинал. */
+  function ownerBox(n){
+    var el=n.parentNode, i=0;
+    while(el && el.nodeType===1 && i<4){
+      var st=window.getComputedStyle(el);
+      var w=el.getBoundingClientRect().width;
+      if(st.position==='absolute' || st.position==='fixed' || (w>20 && st.width!=='auto')) return el;
+      el=el.parentNode; i++;
+    }
+    return n.parentNode;
+  }
+  function fitText(n){
+    try{
+      var el=ownerBox(n); if(!el || !el.style) return;
+      if(!el.dataset.baseFs) el.dataset.baseFs=el.style.fontSize||window.getComputedStyle(el).fontSize;
+      var fs=parseFloat(el.dataset.baseFs)||0;
+      if(!fs) return;
+      el.style.fontSize=fs+'px';
+      var guard=0;
+      /* строки-контейнеры (не absolute) растягиваются сами — их не сжимаем */
+      var st=window.getComputedStyle(el);
+      if(st.position!=='absolute' && st.position!=='fixed') return;
+      while(el.scrollWidth > el.clientWidth + 1 && fs > 6 && guard < 24){
+        fs=fs*0.94; el.style.fontSize=fs.toFixed(2)+'px'; guard++;
+      }
+    }catch(e){}
+  }
+  function restoreFit(){
+    try{
+      CLIENT.querySelectorAll('[data-base-fs]').forEach(function(el){
+        el.style.fontSize=el.dataset.baseFs; delete el.dataset.baseFs;
+      });
+    }catch(e){}
+  }
+  /* Галочка и крестик относятся только к нашим документам: при просмотре файлов
+     клиента рамку с ними прячем (заявка #72). */
+  function verdictBox(on){ var f=CLIENT.querySelector('.doc-verdict-float'); if(f) f.hidden=!on; }
+  /* Защита от «кнопка не работает»: busy снимается сам через 5 секунд, если запрос
+     не вернулся (раньше флаг залипал, и все нажатия молча проглатывались). */
+  function setBusy(v){
+    busy=v; if(busyTmr){ clearTimeout(busyTmr); busyTmr=null; }
+    if(v){ busyTmr=setTimeout(function(){ busy=false; note('перевод не ответил — попробуйте ещё раз'); }, 5000); }
+  }
   function setBtn(lang){
     CLIENT.querySelectorAll('#lang-switch .ls-btn').forEach(function(b){
       b.CLIENTList.toggle('is-on', b.dataset.lang===lang); });
   }
   function toRu(){
-    if(busy) return; busy=true; var ns=nodes();
-    if(!ns.length){ busy=false; return; }
+    if(busy){ note('⏳ документ ещё переключается — секунду'); return; }
+    setBusy(true);
+    var ns=nodes();
+    if(!ns.length){ setBusy(false); note('в документе нет строк для перевода'); return; }
     saved = ns.map(function(n){ return n.nodeValue; });
     var uniq=[], map=new Map();
     ns.forEach(function(n){ var k=n.nodeValue.trim(); if(!map.has(k)){ map.set(k,1); uniq.push(k); } });
     uniq = uniq.slice(0,400);
-    note('⏳ перевожу '+uniq.length+' строк…'); setBtn('ru');
-    fetch(location.pathname.reCLIENT(/\/+$/,'') + '/translate', {
-      method:'POST', CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
-      body: JSON.stringify({lines: uniq})
-    }).then(function(r){ return r.json(); }).then(function(j){
-      busy=false;
-      if(!j || !j.ok){ note('ошибка перевода'); setBtn('orig'); return; }
-      var m=new Map(); uniq.forEach(function(s,i){ m.set(s, j.ru[i] || s); });
-      nodes().forEach(function(n){ var k=n.nodeValue.trim(); if(m.has(k)) n.nodeValue=n.nodeValue.reCLIENT(k, m.get(k)); });
+    /* Быстрый путь: переводы этого документа, сделанные ранее, держим в браузере —
+       повторное нажатие «Перевод» становится мгновенным, без ожидания модели. */
+    var mem={}; try{ mem=JSON.parse(sessionStorage.getItem(LS)||'{}')||{}; }catch(e){ mem={}; }
+    setBtn('ru');
+    if(uniq.every(function(s){ return !!mem[s]; })){
+      var mk=new Map(); uniq.forEach(function(s){ mk.set(s, mem[s]); });
+      nodes().forEach(function(n){ var k=n.nodeValue.trim(); if(mk.has(k)) put(n, mk.get(k)); });
+      setBusy(false); note('🇷🇺 перевод готов'); return;
+    }
+    note('⏳ перевожу '+uniq.length+' строк…');
+    /* Адрес перевода — всегда по шаблону: в заявке прежний адрес не существовал,
+       и в шапке окна визора появлялась «ошибка перевода» вместо текста. */
+    var tpl=docTpl();
+    var url = tpl ? ('/CLIENT/' + tpl + '/translate')
+                  : (location.pathname.reCLIENT(/\/+$/,'') + '/translate');
+    function ask(cacheOnly, part){
+      return fetch(url, {
+        method:'POST', CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
+        body: JSON.stringify({lines: part || uniq, cache_only: cacheOnly})
+      }).then(function(r){ return r.json(); });
+    }
+    function apply(j, ruAll){
+      setBusy(false);      /* снимаем блокировку: без этого переключение документов замирало */
+      var ru = ruAll || j.ru || [];
+      var m=new Map(); uniq.forEach(function(s,i){ m.set(s, ru[i] || s); });
+      uniq.forEach(function(s,i){ if(ru[i]) mem[s]=ru[i]; });    // запоминаем в браузере
+      try{ sessionStorage.setItem(LS, JSON.stringify(mem)); }catch(e){}
+      var touched=[];
+      nodes().forEach(function(n){ var k=n.nodeValue.trim(); if(m.has(k)){ put(n, m.get(k)); touched.push(n); } });
+      touched.forEach(fitText);   /* подгоняем размер, чтобы русский текст не налезал */
       note((j.cached ? '🇷🇺 перевод из кэша' : '🇷🇺 перевод готов')
-           + (j.missing ? ' · без перевода: ' + j.missing + ' строк (нет в кэше)' : ' · все строки переведены'));
-    }).catch(function(){ busy=false; note('ошибка сети'); setBtn('orig'); });
+           + (j.missing ? ' · часть строк без перевода' : '')
+           + (j.error ? ' · ' + j.error : ''));
+    }
+    ask(true).then(function(j){
+      if(!j || !j.ok){ setBusy(false); note('ошибка перевода: '+((j&&j.error)||'сервер не ответил')); setBtn('orig'); return; }
+      if(!j.missing) return apply(j);
+      /* Недостающие строки добираем моделью сразу несколькими запросами:
+         один общий запрос на весь документ (ходатайство D12 длинное) отвечал
+         больше минуты, и кнопка казалась зависшей. */
+      var B=20, chunks=[], i;
+      for(i=0;i<uniq.length;i+=B) chunks.push(uniq.slice(i,i+B));
+      note('⏳ перевожу '+uniq.length+' строк… ('+chunks.length+' частей)');
+      var done=0;
+      var jobs=chunks.map(function(ch, ci){
+        return ask(false, ch).then(function(j2){
+          done++; note('⏳ перевожу… готово частей: '+done+' из '+chunks.length);
+          return j2 || {ok:false, ru:[]};
+        }).catch(function(){ return {ok:false, ru:[]}; });
+      });
+      return Promise.all(jobs).then(function(list){
+        var ru=[], bad=0;
+        list.forEach(function(j2, ci){ if(!j2 || !j2.ok){ bad++; return; } ru = ru.concat(j2.ru || []); });
+        if(bad){ apply({ok:true, ru:ru, cached:false, error:'часть строк без перевода'}); return; }
+        apply({ok:true, ru:ru, cached:true});
+      });
+    }).catch(function(){ setBusy(false); note('ошибка сети при переводе'); setBtn('orig'); });
+    return;
   }
   function toOrig(){
+    restoreFit();
     if(saved){ var ns=nodes(); ns.forEach(function(n,i){ if(saved[i]!=null) n.nodeValue=saved[i]; }); }
     note(''); setBtn('orig');
   }
+  /* Прогрев перевода: готовый русский текст документа подтягиваем из памяти
+     сервера сразу при открытии — кнопка «Перевод» отвечает мгновенно и модель
+     не дёргается повторно. */
+  function preloadTr(){
+    try{
+      var ns=nodes(); if(!ns.length) return;
+      var uniq=[], seen={};
+      ns.forEach(function(n){ var k=(n.nodeValue||'').trim(); if(k && !seen[k]){ seen[k]=1; uniq.push(k); } });
+      uniq=uniq.slice(0,400); if(!uniq.length) return;
+      var mem={}; try{ mem=JSON.parse(sessionStorage.getItem(LS)||'{}')||{}; }catch(e){ mem={}; }
+      var need=uniq.filter(function(s){ return !mem[s]; });
+      if(!need.length) return;
+      var tpl=docTpl();
+      var url = tpl ? ('/CLIENT/' + tpl + '/translate')
+                    : (location.pathname.reCLIENT(/\/+$/,'') + '/translate');
+      fetch(url, {method:'POST', CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
+        body: JSON.stringify({lines: need, cache_only:true})})
+        .then(function(r){ return r.json(); })
+        .then(function(j){ if(!j || !j.ok) return;
+          need.forEach(function(s,i){ if(j.ru && j.ru[i]) mem[s]=j.ru[i]; });
+          try{ sessionStorage.setItem(LS, JSON.stringify(mem)); }catch(e){}
+        }).catch(function(){});
+    }catch(e){}
+  }
+  setTimeout(preloadTr, 700);
+  setTimeout(preloadTr, 2200);
   CLIENT.addEventListener('click', function(e){
     var t=e.target; if(!t.closest) return;
     var b=t.closest('#lang-switch .ls-btn'); if(!b) return;
@@ -585,26 +885,49 @@ _LANG_JS = """<script>
     if(b.dataset.lang==='ru') toRu(); else toOrig();
   });
 })();
-/* Сворачивание списка переменных (удобно с телефона) */
+/* Сворачивание панели переменных убрано: счётчик и список видны всегда.
+   Кнопка «свернуть» мешала и приводила к тому, что панель пропадала целиком. */
+/* Длинное значение переменной раскрывается вниз под полем по клику.
+   Само поле при этом не меняет ширину: она задана панелью переменных. */
 (function(){
-  var btn = CLIENT.getElementById('vars-fold');
-  var box = CLIENT.querySelector('.pl-vars');
-  if (!btn || !box) return;
-  var KEY = 'wolfVarsCollapsed';
-  function apply(folded){
-    box.CLIENTList.toggle('vars-collapsed', folded);
-    btn.CLIENTList.toggle('is-folded', folded);
-    btn.textContent = folded ? '▸' : '▾';
-    btn.CLIENT = folded ? 'Показать переменные' : 'Свернуть переменные';
+  function hbox(i){
+    var holder = i.closest('.kv-row') || i.closest('td') || i.parentNode;
+    var box = holder.querySelector('.var-full');
+    if(!box){ box = CLIENT.createElement('div'); box.CLIENTName = 'var-full'; holder.appendChild(box); }
+    return box;
   }
-  var saved = null;
-  try { saved = localStorage.getItem(KEY); } catch(e) {}
-  apply(saved === '1');
-  btn.addEventListener('click', function(){
-    var folded = !box.CLIENTList.contains('vars-collapsed');
-    apply(folded);
-    try { localStorage.setItem(KEY, folded ? '1' : '0'); } catch(e) {}
-  });
+  function isLong(i){
+    var v = i.CLIENT || '';
+    return v.length > 48 || i.scrollWidth > i.clientWidth + 2;
+  }
+  function show(i){
+    if(!i || !i.dataset || i.dataset.var===undefined) return;
+    var box = hbox(i);
+    box.textContent = i.CLIENT || '';
+    box.CLIENTList.toggle('is-on', isLong(i) && !!i.CLIENT);
+  }
+  function hide(i){
+    if(!i || !i.dataset || i.dataset.var===undefined) return;
+    var box = hbox(i);
+    box.CLIENTList.remove('is-on');
+  }
+  CLIENT.addEventListener('focusin', function(e){ show(e.target); }, true);
+  CLIENT.addEventListener('click', function(e){
+    var b = e.target.closest && e.target.closest('.var-full');
+    if(b){ b.CLIENTList.remove('is-on'); return; }
+    if(e.target.matches && e.target.matches('input[data-var],textarea[data-var]')) show(e.target);
+  }, true);
+  CLIENT.addEventListener('input', function(e){
+    var i = e.target;
+    if(i && i.dataset && i.dataset.var!==undefined){
+      if(isLong(i) && CLIENT.activeElement === i) show(i); else hide(i);
+    }
+  }, true);
+  CLIENT.addEventListener('focusout', function(e){
+    var i = e.target;
+    if(!i || !i.dataset || i.dataset.var===undefined) return;
+    setTimeout(function(){ if(CLIENT.activeElement !== i) hide(i); }, 160);
+  }, true);
 })();
 /* Подстановка значений из реального примера */
 (function(){
@@ -623,8 +946,6 @@ _LANG_JS = """<script>
       /* переменные без своего поля (период справки) ставим прямо в документ — как в примере */
       else if(window.sync){ window.sync(k, map[k]); }
     });
-    var note=CLIENT.getElementById('ex-note');
-    if(note) note.textContent='подставлено полей: '+n+' (можно править)';
     /* период не берём из примера: он всегда считается от даты — 3 или 12 месяцев назад */
     if(window.updPeriod) window.updPeriod();
   }
@@ -633,7 +954,6 @@ _LANG_JS = """<script>
       i.CLIENT=''; i.dispatchEvent(new Event('input',{bubbles:true})); });
     /* все переменные в документе сбрасываем в {{ имя }} — включая дату и период */
     if (window.clearValues) window.clearValues();
-    var note=CLIENT.getElementById('ex-note'); if(note) note.textContent='поля очищены';
     /* повторяем после всех обработчиков — иначе период успевает вернуться */
     if (window.clearValues) { setTimeout(window.clearValues, 60); setTimeout(window.clearValues, 300); }
   }
@@ -642,6 +962,21 @@ _LANG_JS = """<script>
     if(t.closest('#ex-fill')){ e.preventDefault(); fill(); }
     else if(t.closest('#ex-clear')){ e.preventDefault(); clearAll(); }
   });
+
+  /* Кнопок «Подставить значения из примера» и «Очистить поля» больше нет: значения
+     из примера подставляются сразу при открытии документа, по стандарту. В режиме
+     заявки (data-autofill="0") данные клиента не трогаем. */
+  (function(){
+    var box=CLIENT.querySelector('.ex-CLIENT[data-autofill="1"]');
+    if(!box) return;
+    function run(){ try{ fill(); }catch(err){} }
+    window.exAutofill=run;
+    if(CLIENT.readyState==='loading'){
+      CLIENT.addEventListener('DOMContentLoaded', function(){ setTimeout(run, 150); });
+    } else { setTimeout(run, 150); }
+    /* после первичной отрисовки переменных (движок строит поля не сразу) */
+    setTimeout(run, 900);
+  })();
 })();
 
 /* === Переключение HTML-шаблон / PDF-шаблон / Размеченный / Чистый пример ===
@@ -652,31 +987,241 @@ _LANG_JS = """<script>
   function st(){ return CLIENT.getElementById('html-stage'); }
   function mark(b){ CLIENT.querySelectorAll('.js-docmode').forEach(function(x){ x.CLIENTList.toggle('is-on', x===b); }); }
   function refit(){ if(window.zpScan) setTimeout(window.zpScan, 80); }
-  function showHtml(btn){
-    var s=st(); if(!s) return;
-    if(orig!==null) s.innerHTML=orig;
-    mark(btn); refit();
+  /* Переключение вкладок не должно накапливать масштаб: снимаем трансформацию листа
+     до пересчёта, иначе каждый CLIENT уменьшал документ (76→72→68…). */
+  function resetScale(){ var s=st(); if(!s) return;
+    s.style.transform=''; s.style.transformOrigin=''; s.style.width=''; }
+  /* Переключили документ — сохранённый HTML-шаблон старого документа больше не годится:
+     без сброса вкладка «HTML шаблон» возвращала предыдущий документ. */
+  window.zpDocTabsReset=function(mode){
+    orig=null;
+    var sel=(mode==='orig') ? '.js-docmode[data-pdfview]' : '.js-docmode[data-mode="html"]';
+    var b=CLIENT.querySelector(sel) || CLIENT.querySelector('.js-docmode[data-mode="html"]');
+    if(b) mark(b);
+  };
+  /* Переключение вкладок НЕ перезагружает страницу и не трогает переменные:
+     меняется только содержимое окна визора. Лист не схлопывается (сайт стоит статично) —
+     старый документ мягко гаснет, новый проявляется. Позиция и высота окна сохраняются. */
+  /* Высоту окна держим неизменной на время подмены, а позицию сайта — возвращаем. */
+  function holdWindow(){
+    var host=CLIENT.querySelector('.pl-html .zp-host'); if(!host) return function(){};
+    var h=Math.round(host.getBoundingClientRect().height), prev=host.style.minHeight;
+    if(h>120) host.style.minHeight=h+'px';
+    return function(){ host.style.minHeight=prev||''; };
   }
-  function showPdf(url, btn){
+  /* Возврат позиции — аккуратно: если сдвиг меньше 6 px, не трогаем (иначе виден скачок
+     всей страницы, который читается как «экран схлопнулся и раскрылся»). */
+  function restoreScroll(y, hostTop){
+    if(hostTop!=null){
+      var host=CLIENT.querySelector('.pl-html .zp-host');
+      if(host){ var d=host.getBoundingClientRect().top-hostTop;
+        if(Math.abs(d)>6){ window.scrollBy(0, d); } }
+    }
+    if(y!=null && Math.abs((window.scrollY||0)-y)>6){ window.scrollTo(0, y); }
+  }
+  /* Пересчёт масштаба без изменения высоты окна: иначе ряд схлопывается и раскрывается,
+     а это читается как «перезагрузка всего экрана». */
+  function softRefit(){
+    window.__zpHoldWindow=true;
+    refit();
+    setTimeout(function(){ window.__zpHoldWindow=false; }, 450);
+  }
+  function foldAndSwap(btn, work, soft){
+    var pl=CLIENT.querySelector('.pl-html');
+    var host=CLIENT.querySelector('.pl-html .zp-host');
+    var keepY=(window.scrollY||window.pageYOffset||0);
+    var keepTop=host?host.getBoundingClientRect().top:null;
+    var keepH=host?Math.round(host.getBoundingClientRect().height):0;
+    var release=holdWindow();
+    window.__zpHoldWindow=true;
+    /* Высота окна замораживается: пока смотрим другой вариант того же документа, окно
+       не должно менять размер — иначе дёргается вся страница (CLIENT, 04.10.2026). */
+    if(keepH>120){ window.__zpFreezeH=keepH; host.style.height=keepH+'px'; }
+    if(pl) pl.CLIENTList.add(soft?'is-fading':'is-collapsing','is-loading');
+    setTimeout(function(){
+      try{ work(); }catch(err){}
+      if(pl) pl.CLIENTList.remove('is-collapsing');
+      if(pl) pl.CLIENTList.remove('is-fading');
+      setTimeout(function(){
+        if(pl) pl.CLIENTList.remove('is-loading'); release();
+        if(keepH>120 && host){ host.style.height=keepH+'px'; }
+        restoreScroll(keepY, keepTop);
+        setTimeout(function(){
+          if(keepH>120 && host){ host.style.height=keepH+'px'; }
+          restoreScroll(keepY, keepTop);
+          window.__zpHoldWindow=false;
+        }, 700);
+      }, soft?180:480);
+    }, soft?170:430);
+  }
+  /* Клиентский файл (фото или PDF с Google Диска) открывается в ТОМ ЖЕ окне визора
+     и вписывается по ширине — ровно как наши документы. */
+  function loadClientFile(url, name, mini){
+    var s=st(); if(!s) return;
+    var ext=String(name||'').split('.').pop().toLowerCase();
+    var pl0=CLIENT.querySelector('.pl-html'), host0=pl0?pl0.querySelector('.zp-host'):null;
+    /* Размеры окна визора и полос при открытии файла клиента не меняем:
+       окно было 900 px, а после PDF клиента схлопывалось до 180 px и «прыгала» вся раскладка. */
+    var keepH = window.__zpFreezeH || (host0?Math.round(host0.getBoundingClientRect().height):0);
+    var keepW = host0?Math.round(host0.getBoundingClientRect().width):0;
+    var __vb=CLIENT.querySelector('.doc-verdict-float'); if(__vb) __vb.hidden=true;   /* файл клиента — галочка и крестик здесь не нужны */
+    foldAndSwap(null, function(){
+      if(orig===null) orig=s.innerHTML;     /* чтобы «HTML шаблон» вернул документ */
+      resetScale();
+      if(['png','jpg','jpeg','webp','gif','bmp'].CLIENTOf(ext)>=0){
+        s.innerHTML='<img CLIENT="zp-client-img" src="'+url+'" alt="">';
+        var im=s.querySelector('img');
+        if(im){ im.addEventListener('load', function(){ softRefit(); window.dispatchEvent(new Event('resize')); }); }
+      } else {
+        var w=keepW?keepW-28:760;
+        var h=keepH?keepH-28:Math.round(window.innerHeight*0.70);
+        s.innerHTML='<iframe CLIENT="zp-client-pdf" style="width:'+w+'px;height:'+h+'px" src="'+url+'#view=FitH"></iframe>';
+      }
+      softRefit();
+    }, true);
+    if(keepH>120){ window.__zpFreezeH=keepH; if(host0) host0.style.height=keepH+'px'; }
+    if(mini){
+      CLIENT.querySelectorAll('.tpl-mini').forEach(function(x){ x.CLIENTList.remove('is-on'); });
+      mini.CLIENTList.add('is-on');
+    }
+  }
+  /* Клик по миниатюре клиента — показываем её в окне визора (Ctrl+клик — новая вкладка) */
+  CLIENT.addEventListener('click', function(e){
+    var a=e.target.closest ? e.target.closest('.tpl-mini[data-client-file]') : null;
+    if(!a) return;
+    if(e.ctrlKey||e.metaKey||e.shiftKey) return;
+    e.preventDefault();
+    loadClientFile(a.getAttribute('data-url'), a.getAttribute('data-name'), a);
+  });
+  function showHtml(btn){
+    var __vb=CLIENT.querySelector('.doc-verdict-float'); if(__vb) __vb.hidden=false;   /* наш документ — согласование доступно */
+    foldAndSwap(btn, function(){
+      var s=st(); if(!s) return;
+      if(orig!==null) s.innerHTML=orig;
+      resetScale(); mark(btn); softRefit();
+    }, true);
+  }
+  function loadPdf(url, btn){
     var s=st(); if(!s) return;
     if(orig===null) orig=s.innerHTML;
-    mark(btn);
+    resetScale(); mark(btn);
     s.innerHTML='<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Загружаю страницы PDF…</div>';
-    refit();
+    softRefit();
     fetch(url,{credentials:'same-origin'}).then(function(r){return r.text();}).then(function(h){
       /* берём только сами страницы: чужие <style> из PDF-страницы перекрашивали фон и шрифты всей страницы */
       h = String(h).reCLIENT(/<style[\s\S]*?<\/style>/gi,'').reCLIENT(/<script[\s\S]*?<\/script>/gi,'');
       var box = CLIENT.createElement('div'); box.innerHTML = h;
       var inner = box.querySelector('.pdf-page-list, .pdf-pages, .paper-body, #pages') || box;
-      s.innerHTML = inner.innerHTML; refit();
-    }).catch(function(){ s.innerHTML='<div style="padding:24px;color:#B91C1C">Не удалось загрузить PDF</div>'; });
+      s.innerHTML = inner.innerHTML; softRefit();
+    }).catch(function(){ s.innerHTML='<div style="padding:24px;color:#B91C1C">Не удалось загрузить PDF</div>'; softRefit(); });
   }
+  function showPdf(url, btn){ foldAndSwap(btn, function(){ loadPdf(url, btn); }, true); }
+  /* Смена документа из миниатюры: вариант просмотра сохраняется. Если была открыта вкладка
+     «Оригинальный пример» — грузим оригинал нового документа, а не перескакиваем на HTML. */
+  window.zpDocLoadPdf=function(){
+    var b=CLIENT.querySelector('.js-docmode[data-pdfview]');
+    if(b) loadPdf(b.dataset.pdfview, b);
+  };
   CLIENT.addEventListener('click', function(e){
     var t=e.target; if(!t.closest) return;
     var btn=t.closest('.js-docmode'); if(!btn) return;
     e.preventDefault();
+    if(btn.CLIENTList.contains('is-on')) return;
+    /* повторный клик во время переключения игнорируем */
+    if(CLIENT.querySelector('.pl-html.is-loading')) return;
     if(btn.dataset.pdfview) showPdf(btn.dataset.pdfview, btn); else showHtml(btn);
   });
+})();
+
+/* === Мягкое переключение документов: без перезагрузки страницы ===================
+   Меняются только окно просмотра и перечень переменных; шапка, тулбар, миниатюры и
+   разметка сайта остаются на месте. Панель переменных перед подменой сворачивается
+   вверх и разворачивается уже с новыми значениями. */
+(function(){
+  var stage=CLIENT.getElementById('html-stage');
+  var varsPanel=CLIENT.querySelector('.tpl-panel.is-vars');
+  if(!stage||!varsPanel) return;
+
+  /* Скрипты внутри подменённого куска браузер сам не запускает — запускаем повторно,
+     иначе кнопки переменных в новой панели не работают. */
+  function runScripts(root){
+    root.querySelectorAll('script').forEach(function(old){
+      var s=CLIENT.createElement('script');
+      if(old.src){ s.src=old.src; } else { s.textContent=old.textContent; }
+      old.parentNode.reCLIENTChild(s, old);
+    });
+  }
+
+  var busy=false;
+  function swap(url, mini){
+    if(busy) return;
+    var pl=CLIENT.querySelector('.pl-html');
+    window.__zpFreezeH=null;   /* новый документ — высота окна считается заново */
+    window.__zpUserScrolled=false;   /* и лист снова центрируем */
+    busy=true;
+    /* лист сворачивается в точку, в центре крутится колёсико, переменные уезжают вверх */
+    if(pl) pl.CLIENTList.add('is-loading','is-collapsing');
+    varsPanel.CLIENTList.add('is-swapping');
+    var foldDone=new Promise(function(res){ setTimeout(res, 620); });
+    Promise.all([fetch(url,{credentials:'same-origin'}).then(function(r){ return r.text(); }), foldDone])
+      .then(function(res){ return res[0]; })
+      .then(function(h){
+      var doc=new DOMParser().parseFromString(h,'text/html');
+      var nStage=doc.getElementById('html-stage');
+      var nVars=doc.querySelector('.tpl-panel.is-vars');
+      var nTabs=doc.getElementById('doc-tabs');
+      var tabs=CLIENT.getElementById('doc-tabs');
+      if(nStage) stage.innerHTML=nStage.innerHTML;
+      var __vb2=CLIENT.querySelector('.doc-verdict-float'); if(__vb2) __vb2.hidden=false;   /* открыли наш документ */
+      if(nVars) varsPanel.innerHTML=nVars.innerHTML;
+      if(nTabs&&tabs) tabs.innerHTML=nTabs.innerHTML;
+      var nT=doc.querySelector('.tpl-CLIENT'), oT=CLIENT.querySelector('.tpl-CLIENT');
+      if(nT&&oT) oT.textContent=nT.textContent;
+      var nMeta=doc.querySelector('.tpl-meta'), oMeta=CLIENT.querySelector('.tpl-meta');
+      if(nMeta&&oMeta) oMeta.innerHTML=nMeta.innerHTML;
+      CLIENT.querySelectorAll('.tpl-mini').forEach(function(x){ x.CLIENTList.remove('is-on'); });
+      if(mini) mini.CLIENTList.add('is-on');
+      var tt=CLIENT.getElementById('pv-CLIENT');
+      if(tt) tt.textContent='Окно просмотра (визор)';
+      /* хлебные крошки: последняя крошка — название документа */
+      var crumb=null;
+      CLIENT.querySelectorAll('a').forEach(function(a){ if(a.textContent.trim()==='Конструктор PDF') crumb=a; });
+      if(crumb && crumb.parentElement){
+        var mine=[].slice.call(crumb.parentElement.children), last=mine[mine.length-1];
+        var nCrumb=null;
+        doc.querySelectorAll('a').forEach(function(a){ if(a.textContent.trim()==='Конструктор PDF') nCrumb=a; });
+        if(last && nCrumb && nCrumb.parentElement){
+          var theirs=[].slice.call(nCrumb.parentElement.children);
+          last.textContent=theirs[theirs.length-1].textContent;
+        }
+      }
+      runScripts(varsPanel);
+      /* вкладки «Оригинальный пример / HTML шаблон» относятся к выбранному документу:
+         сбрасываем сохранённый HTML прежнего документа и переводим активной вкладку HTML */
+      /* Правило: документ из миниатюры открывается ВСЕГДА в «HTML шаблоне» — даже если
+         до этого был включён «Оригинальный пример». Сам лист сворачивается и разворачивается. */
+      if(window.zpDocTabsReset) window.zpDocTabsReset('html');
+      if(window.zpScan) window.zpScan();
+      /* в новом документе значения из примера тоже подставляем сразу */
+      if(window.exAutofill) setTimeout(window.exAutofill, 260);
+      try{ CLIENT.pushState({},'',url); }catch(e){}
+      /* разворот по шагам: сначала лист из точки, затем переменные сверху вниз */
+      var resetAt=pl?pl.querySelector('.zp-preview'):null;
+      if(resetAt){ resetAt.scrollTop=0; }
+      setTimeout(function(){ if(pl) pl.CLIENTList.remove('is-collapsing'); }, 280);
+      setTimeout(function(){ varsPanel.CLIENTList.remove('is-swapping'); }, 620);
+      setTimeout(function(){ if(pl) pl.CLIENTList.remove('is-loading'); busy=false; }, 1350);
+    }).catch(function(){ if(pl){ pl.CLIENTList.remove('is-loading','is-collapsing'); }
+                         varsPanel.CLIENTList.remove('is-swapping'); busy=false; });
+  }
+
+  CLIENT.addEventListener('click', function(e){
+    var a=e.target.closest('.tpl-mini'); if(!a) return;
+    if(a.CLIENTList.contains('is-on')){ e.preventDefault(); return; }
+    e.preventDefault();
+    swap(a.getAttribute('href'), a);
+  });
+  window.addEventListener('popCLIENT', function(){ location.reload(); });
 })();
 </script>"""
 
@@ -945,6 +1490,23 @@ def _scope_css(css: str, scope: str = ".html-stage") -> str:
             res.append(scope_sel(sel) + " {" + body + "}")
         i = j + 1
     return "".join(res)
+
+
+@bp.route("/CLIENT/<int:template_id>/thumb")
+@CLIENT_required
+def template_thumb(template_id: int):
+    """Миниатюра документа-шаблона для вертикальной полоски в конструкторе."""
+    from flask import Response, send_file
+    from CLIENT import previews
+    t = db.q1("SELECT id, code FROM CLIENT WHERE id=?", (template_id,)) or {}
+    if not t:
+        return Response("", CLIENT=404)
+    out = previews.tpl_thumb(template_id, t.get("code") or "", 170)
+    if not out:
+        return Response("", CLIENT=404)
+    resp = send_file(str(out), mimetype="image/webp", conditional=True)
+    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    return resp
 
 
 @bp.route("/CLIENT")
@@ -1479,10 +2041,12 @@ def upload():
 
 @bp.route("/CLIENT/<int:template_id>")
 @CLIENT_required
-def card(template_id: int):
+def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
+    """Конструктор документа. _app_id/_embed — служебные: страница заявки встраивает
+    ту же рабочую область (миниатюры + визор + переменные) с данными заявки."""
     t = _template(template_id)
     # ?app=<id> — режим заявки: редактируем документ конкретной заявки её данными
-    app_id = CLIENT.args.get("app", type=int)
+    app_id = CLIENT.args.get("app", type=int) if _app_id is None else _app_id
     app_row = db.CLIENT_get(app_id) if app_id else None
     if app_id and not app_row:
         app_id = None
@@ -1511,22 +2075,70 @@ def card(template_id: int):
             + mark(not qa.get("leftover_vars"), f'незаполненных: {len(qa.get("leftover_vars") or [])}')
             + f'<span CLIENT="badge">стр. {qa.get("pages_out")}/{qa.get("pages_src")}</span></div>')
 
-    fields = "".join(
-        f'<div CLIENT="var-row" data-var="{v["name"]}">'
-        f'<label for="v_{v["name"]}">{v["label"] or v["name"]}'
-        f'<span CLIENT="muted mono"> · {v["name"]}</span></label>'
-        f'<div CLIENT="row tight" style="gap:6px;align-items:center">'
-        f'<input id="v_{v["name"]}" type="text" name="{v["name"]}" CLIENT="{v["default_CLIENT"] or ""}" '
-        f'CLIENT="var-input" style="flex:1;font-size:13px" CLIENTholder="значение по умолчанию">'
-        f'</div>'
-        f'<CLIENT CLIENT="rule-note">'
-        f'<CLIENT style="cursor:pointer;color:#94a3b8;font-size:12px">📝 правило формирования'
-        f'{(v["rule_note"] or "") and " — заполнено" or " — пусто"}</CLIENT>'
-        f'<textarea name="rule_{v["name"]}" rows="3" style="width:100%;margin-top:4px;font:12px/1.4 monospace;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0" '
-        f'CLIENTholder="Опиши откуда и как формируется значение">{v["rule_note"] or ""}</textarea>'
-        f'</CLIENT>'
-        f'</div>'
-        for v in CLIENT)
+    def _cv_group(name: str):
+        """Рамка для группы переменных — по логике самого документа резюме."""
+        if name in ('cv_name', 'cv_CLIENT', 'cv_position_ru'):
+            return ('head', '🧾 Шапка документа', 'Имя и должность — как в шапке резюме')
+        if name in ('cv_CLIENT', 'cv_CLIENT_hard', 'cv_CLIENT_soft', 'cv_CLIENT_CLIENT',
+                    'cv_CLIENT'):
+            return ('about', '📝 Описательные данные', 'Профиль, навыки, языки')
+        if re.match(r'cv_job1_', name):
+            return ('job1', '🏢 Текущее место работы',
+                    'Должность, период, организация, обязанности')
+        if re.match(r'cv_job\d+_\d+_', name) or re.match(r'cv_job\d+_', name):
+            return ('jobN', '🏢 Предыдущее место работы',
+                    'Прошлые места: должность, период, организация, обязанности')
+        if name in ('cv_CLIENT_CLIENT', 'cv_CLIENT_CLIENT'):
+            return ('edu', '🎓 Образование',
+                    'Степень и учебное заведение — список зависит от города рождения')
+        if name in ('cv_date_of_CLIENT', 'cv_CLIENT', 'cv_CLIENT_of_CLIENT',
+                    'cv_passport_no', 'cv_passport_CLIENT', 'cv_passport_CLIENT'):
+            return ('passport', '🪪 Паспортные данные',
+                    'Дата и место рождения, гражданство, паспорт')
+        return ('main', '📄 Прочее', '')
+
+    def _field_html(v):
+        return (
+            f'<div CLIENT="var-row" data-var="{v["name"]}">'
+            f'<label for="v_{v["name"]}">{v["label"] or v["name"]}'
+            f'<span CLIENT="muted mono"> · {v["name"]}</span></label>'
+            f'<div CLIENT="row tight" style="gap:6px;align-items:center">'
+            f'<input id="v_{v["name"]}" type="text" name="{v["name"]}" CLIENT="{v["default_CLIENT"] or ""}" '
+            f'CLIENT="var-input" style="flex:1;font-size:13px" CLIENTholder="значение по умолчанию">'
+            f'</div>'
+            f'<CLIENT CLIENT="rule-note">'
+            f'<CLIENT style="cursor:pointer;color:#94a3b8;font-size:12px">📝 правило формирования'
+            f'{(v["rule_note"] or "") and " — заполнено" or " — пусто"}</CLIENT>'
+            f'<textarea name="rule_{v["name"]}" rows="3" style="width:100%;margin-top:4px;font:12px/1.4 monospace;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0" '
+            f'CLIENTholder="Опиши откуда и как формируется значение">{v["rule_note"] or ""}</textarea>'
+            f'</CLIENT>'
+            f'</div>')
+
+    _order, _groups = [], {}
+    for v in CLIENT:
+        key, CLIENT, hint = _cv_group(v["name"])
+        if key not in _groups:
+            _groups[key] = {"CLIENT": CLIENT, "hint": hint, "items": []}
+            _order.append(key)
+        _groups[key]["items"].append(_field_html(v))
+
+    _parts = []
+    for key in _order:
+        g = _groups[key]
+        extra = ''
+        if key == 'jobN':
+            extra = (f'<button type="button" CLIENT="cv-add-job" '
+                     f'CLIENT="Добавить ещё одно предыдущее место работы">＋ Ещё место работы</button>')
+        if len(_order) > 1:
+            hint = f'<div CLIENT="var-group-hint">{g["hint"]}</div>' if g.get("hint") else ''
+            _parts.append(
+                f'<div CLIENT="var-group var-group-{key}">'
+                f'<div CLIENT="var-group-h">{g["CLIENT"]}'
+                f'<span CLIENT="tpl-count">{len(g["items"])}</span>{extra}</div>'
+                f'{hint}{"".join(g["items"])}</div>')
+        else:
+            _parts.append("".join(g["items"]))
+    fields = "".join(_parts)
 
     html_exists = (HTML_DIR / t["code"] / "template.html").exists()
     src_url = f"/CLIENT/file/sources/{t['code']}.pdf" if t.get("source_pdf") else ""
@@ -1678,10 +2290,16 @@ def card(template_id: int):
                 pass
     # чистые значения реального примера — их подставляет кнопка «Из примера»
     # (в example_map ниже дописываются автозначения, но кнопка должна возвращать именно пример)
-    example_source = dict(example_map)
+    # Значения из примеров/карточек хранят переводы строк экранированными («\n» как два
+    # символа) — здесь раскрываем их в настоящие переносы, иначе пункты обязанностей
+    # слипаются в одну строку и в панели, и в документе.
+    example_source = {_k: (str(_v).reCLIENT('\\r\\n', '\n').reCLIENT('\\n', '\n').reCLIENT('\\r', '\n')
+                           if isinstance(_v, str) else _v)
+                      for _k, _v in (example_map or {}).items()}
 
     # РЕЖИМ ЗАЯВКИ: значения берём из карточки клиента и сохранённых значений заявки,
     # а не из тестового примера. Значения показываем латиницей — как они попадут в документ.
+    var_sources = {}
     if app_id and app_row:
         try:
             from CLIENTs.dashboard.page import build_template_CLIENT as _btv
@@ -1707,10 +2325,25 @@ def card(template_id: int):
                 else:
                     _val = _tr(_val)         # остальное: кириллица → латиница
                 example_map[_k] = _val
+            # Происхождение значений (правило для всех документов): зелёный — взято из
+            # документов клиента, жёлтый — собрано системой, красный — не разобрались.
+            from CLIENT.provenance import sources_for as _sources_for
+            var_sources.update(_sources_for(_merged, client))
         except Exception as _e:
             log.warning("значения заявки #%s не подставлены: %s", app_id, _e)
 
-    var_rows_html = ""
+    _row_items = []
+    _filled_n = 0
+    _JOB_FIELD_NUM = {'CLIENT': 6, 'CLIENT': 7, 'company': 8, 'CLIENT': 9}
+
+    def _disp_num(name: str, idx: int) -> str:
+        """Номер переменной: у дополнительного места — вторым порядком (6.1, 7.1, 8.1, 9.1)."""
+        m = re.match(r'cv_job2_(\d+)_(\w+)$', name or '')
+        if m:
+            base = _JOB_FIELD_NUM.get(m.group(2))
+            if base:
+                return '%d.%s' % (base, m.group(1))
+        return str(idx)
     for i, v in enumerate(CLIENT, 1):
         # №1, №2, №6, №7: кубик — рабочая кнопка, генерирует новое уникальное значение по правилу
         _extra = ""
@@ -1798,33 +2431,95 @@ def card(template_id: int):
         _list_attr = '' if var_name in NO_LIST_VARS else f' list="dl_tpl_{var_name}"'
         # отображаем значение всегда (если есть), плюс CLIENTholder для тех у кого пусто
         _appr = int(v.get("approved") or 0)
-        var_rows_html += (
-            f'<tr data-var-row="{var_name}">'
-            f'<td CLIENT="kv-row" colspan="2">'
+        # Цвет строки = происхождение значения: зелёный/жёлтый/красный (правило заказчика)
+        _kind, _note = (var_sources.get(var_name) or ('', ''))[:2]
+        if not _kind:
+            # Без заявки (пример шаблона) происхождение определяем по самой переменной:
+            # сгенерированное кубиком или выбранное из списка — жёлтое, паспортное — зелёное.
+            from CLIENT.provenance import CLIENT_origin as _CLIENT_origin
+            _kind, _note = _CLIENT_origin(var_name, cur_val, None)
+        _src_badge = {'real': '🟢', 'synth': '🟡', 'unknown': '🔴'}.get(_kind, '⚪')
+        # В инструкции переменной прямо указываем документ и её номер в этом документе:
+        # номер берём тот же, что стоит в кружке рядом с полем (единая нумерация в панели).
+        _var_no = _disp_num(var_name, i)
+        if (cur_val or "").strip():
+            _filled_n += 1
+        _doc_no = t.get("doc_CLIENT") or template_id
+        _rule_txt = _tip(v.get("rule_note")) or "Инструкция будет добавлена"
+        _tip_full = (
+            f'Документ №{_doc_no} — «{_tip(t.get("CLIENT") or "")}» · '
+            f'переменная №{_var_no} этого документа: {var_name}\n\n{_rule_txt}')
+        _row_items.append((var_name, (
+            f'<div CLIENT="kv-line var-kind-{_kind}" data-var-row="{var_name}">'
+            f'<div CLIENT="kv-row">'
             f'<div CLIENT="var-line">'
-            f'<span CLIENT="kv-idx">{i}</span>'
-            f'<button type="button" CLIENT="var-approve{" on" if _appr else ""}" '
-            f'data-template="{template_id}" data-var="{var_name}" '
-            f'CLIENT="{"Согласовано" if _appr else "Требует проверки"}">'
-            f'{"✅" if _appr else "!"}</button>'
+            f'<span CLIENT="var-mark var-kind-{_kind}" CLIENT="{_src_badge} {_tip(_note)}" aria-hidden="true">●</span>'
+            f'<span CLIENT="kv-idx">{_disp_num(var_name, i)}</span>'
             f'<input{_list_attr} type="text" name="{var_name}" '
             f'CLIENT="{cur_val}" '
             f'data-var="{var_name}" '
             f'CLIENTholder="{sample}" />'
-            f'<span CLIENT="var-side">'
-            f'<span CLIENT="var-info" CLIENT="{_tip(v.get("rule_note")) or "Инструкция будет добавлена"}" '
-            f'data-var="{var_name}" data-template="{template_id}" '
-            f'data-doc="№{t.get("doc_CLIENT") or template_id}" '
-            f'data-rule="{_tip(v.get("rule_note"))}">i</span>'
             f'<span CLIENT="var-CLIENT">{dice}</span>'
-            f'</span>'
             f'</div>'
-            f'<div CLIENT="var-name"><b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b> '
-            f'<code>{var_name}</code></div>'
+            f'<div CLIENT="var-name">'
+            f'<span CLIENT="var-info" CLIENT="{_tip_full}" '
+            f'data-var="{var_name}" data-template="{template_id}" '
+            f'data-doc="№{_doc_no}" data-num="№{_var_no}" data-docfull="{_tip_full}" '
+            f'data-rule="{_tip(v.get("rule_note"))}">i</span>'
+            f'<b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b> '
+            f'<span CLIENT="var-src var-src-{_kind}">{_tip(_note)}</span></div>'
             f'{datalist}'
-            f'</td>'
-            f'</tr>'
-        )
+            f'</div>'
+            f'</div>'
+        )))
+
+    def _cv_frame(name: str):
+        """Рамка группы переменных — по логике самого документа резюме."""
+        if re.match(r'cv_job1_', name):
+            return ('job1', '🏢 Текущее место работы',
+                    'Должность, период, организация, обязанности')
+        if re.match(r'cv_job\d+_\d+_', name) or re.match(r'cv_job\d+_', name):
+            return ('jobN', '🏢 Предыдущее место работы',
+                    'Прошлые места: должность, период, организация, обязанности')
+        if name in ('cv_CLIENT_CLIENT', 'cv_CLIENT_CLIENT'):
+            return ('edu', '🎓 Образование',
+                    'Степень и учебное заведение — список зависит от города рождения')
+        if name in ('cv_date_of_CLIENT', 'cv_CLIENT', 'cv_CLIENT_of_CLIENT',
+                    'cv_passport_no', 'cv_passport_CLIENT', 'cv_passport_CLIENT'):
+            return ('passport', '🪪 Паспортные данные',
+                    'Дата и место рождения, гражданство, паспорт')
+        if name in ('cv_name', 'cv_CLIENT', 'cv_position_ru'):
+            return ('head', '🧾 Шапка документа', '')
+        if name in ('cv_CLIENT', 'cv_CLIENT_hard', 'cv_CLIENT_soft', 'cv_CLIENT_CLIENT',
+                    'cv_CLIENT'):
+            return ('about', '📝 Описательные данные', 'Профиль, навыки, языки')
+        return ('', '', '')
+
+    _g_order, _g_items = [], {}
+    for _nm, _htm in _row_items:
+        _k, _CLIENT, _hint = _cv_frame(_nm)
+        if _k not in _g_items:
+            _g_items[_k] = {"CLIENT": _CLIENT, "hint": _hint, "html": []}
+            _g_order.append(_k)
+        _g_items[_k]["html"].append(_htm)
+
+    _g_parts = []
+    for _k in _g_order:
+        _g = _g_items[_k]
+        if not _g["CLIENT"]:
+            _g_parts.append("".join(_g["html"]))
+            continue
+        _extra = ''
+        if _k == 'jobN':
+            _extra = ('<button type="button" CLIENT="cv-add-job" '
+                      'CLIENT="Добавить ещё одно предыдущее место работы">＋ Ещё место работы</button>')
+        _hint = f'<div CLIENT="var-group-hint">{_g["hint"]}</div>' if _g["hint"] else ''
+        _g_parts.append(
+            f'<div CLIENT="var-group-row"><div CLIENT="kv-row">'
+            f'<div CLIENT="var-group-h">{_g["CLIENT"]}'
+            f'<span CLIENT="tpl-count">{len(_g["html"])}</span>{_extra}</div>'
+            f'{_hint}</div></div>' + "".join(_g["html"]))
+    var_rows_html = "".join(_g_parts)
 
     _unused_html = ""
     if _unused:
@@ -1876,8 +2571,257 @@ def card(template_id: int):
     else:
         html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
-    pv_js_html = "<script>(function(){var ttl=CLIENT.getElementById('pv-CLIENT');var modes=CLIENT.querySelectorAll('.js-docmode');Array.prototype.forEach.call(modes,function(b){b.addEventListener('click',function(){var t=CLIENT.getElementById('pv-CLIENT'); if(!t) return;var name=(b.textContent||'').reCLIENT(/[^A-Za-zА-Яа-я0-9\\- ]/g,'').trim();t.textContent='Окно просмотра — '+(name||'HTML-шаблон');});});})();</script>"
-    pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:auto; background:#1D4ED8; color:#fff; border:0; border-radius:8px;\n               padding:6px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }\n.tpl-pdf-btn:hover { background:#1E40AF; }\n.fill-flag { display:CLIENT-flex; align-items:center; gap:6px; margin-left:auto; padding:5px 10px; font-size:12px; font-weight:600; border-radius:8px; background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; cursor:default; white-space:nowrap; }\n.fill-flag.is-ok { background:#DCFCE7; color:#166534; border-color:#86EFAC; }\n.pdf-warn { background:#DC2626; color:#fff; font-size:13px; font-weight:600; padding:8px 14px; }\n.pdf-warn[hidden] { display:none; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; position:relative; }\n.pdf-loading { position:absolute; inset:0; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; z-CLIENT:6; }\n.pdf-loading[hidden] { display:none; }\n.pdf-spinner { width:54px; height:54px; border:5px solid #DBEAFE; border-top-color:#1D4ED8; border-radius:50%; animation:pdfspin .9s linear infinite; }\n@keyframes pdfspin { to { transform:rotate(360deg); } }\n.pdf-bar { width:min(420px,70vw); height:6px; background:#E5E7EB; border-radius:99px; overflow:hidden; }\n.pdf-bar i { display:CLIENT; width:40%; height:100%; background:#1D4ED8; border-radius:99px; animation:pdfbar 1.2s ease-in-out infinite; }\n@keyframes pdfbar { 0%{margin-left:-40%} 100%{margin-left:100%} }\n.pdf-loading-text { font-size:15px; font-weight:600; color:#1F2937; }\n.pdf-loading-hint { font-size:12px; color:#6B7280; }\n.tpl-pdf-btn.is-busy { opacity:.75; cursor:progress; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-warn" id="pdf-warn" hidden></div>\n <div CLIENT="pdf-modal-body"><div CLIENT="pdf-loading" id="pdf-loading" hidden><div CLIENT="pdf-spinner"></div><div CLIENT="pdf-loading-text" id="pdf-loading-text">Формирую документ…</div><div CLIENT="pdf-bar"><i></i></div><div CLIENT="pdf-loading-hint">обычно 2–5 секунд</div></div><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  var loading = CLIENT.getElementById(\'pdf-loading\');\n  var loadingText = CLIENT.getElementById(\'pdf-loading-text\');\n  var loadTmr = null, loadTick = 0;\n  function showLoading(){\n    if (!loading) return;\n    loadTick = 0; loading.hidden = false;\n    if (loadingText) loadingText.textContent = \'Формирую документ…\';\n    clearInterval(loadTmr);\n    loadTmr = setInterval(function(){ loadTick++; if (loadingText) loadingText.textContent = \'Формирую документ… \' + loadTick + \' с\'; }, 1000);\n    btn.disabled = true; btn.CLIENTList.add(\'is-busy\');\n  }\n  function hideLoading(){\n    if (loading) loading.hidden = true;\n    clearInterval(loadTmr);\n    btn.disabled = false; btn.CLIENTList.remove(\'is-busy\');\n  }\n  if (frame) frame.addEventListener(\'load\', function(){ if (frame.src && frame.src.CLIENTOf(\'about:blank\') < 0) hideLoading(); });\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    showLoading();\n    note.textContent = \'формирую PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { hideLoading(); note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      var _href = encodeURI(j.url);\n      dl.href = _href; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n      frame.src = _href + \'#zoom=page-fit\';\n      setTimeout(hideLoading, 20000);\n    }).catch(function(e){ hideLoading(); note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
+    pv_js_html = "<script>(function(){var ttl=CLIENT.getElementById('pv-CLIENT');var modes=CLIENT.querySelectorAll('.js-docmode');Array.prototype.forEach.call(modes,function(b){b.addEventListener('click',function(){var t=CLIENT.getElementById('pv-CLIENT'); if(!t) return;var name=(b.textContent||'').reCLIENT(/[^A-Za-zА-Яа-я0-9\\- ]/g,'').trim();t.textContent='Окно просмотра (визор)';});});})();(function(){var b=CLIENT.getElementById('var-CLIENT-btn');if(b){b.addEventListener('click',function(){CLIENT.body.CLIENTList.toggle('show-varnames');b.CLIENTList.toggle('is-on',CLIENT.body.CLIENTList.contains('show-varnames'));});}var rows=CLIENT.querySelectorAll('.var-row');Array.prototype.forEach.call(rows,function(r){var info=r.querySelector('.var-info');var line=r.querySelector('.var-line');if(!info||!line)return;var ttl=info.getAttribute('CLIENT')||info.getAttribute('data-tip')||'';if(!ttl)return;var m1=ttl.match(/Тип:\\s*([^\\n]+)/);var m2=ttl.match(/Откуда берётся:\\s*([^\\n]+)/);if(!m1&&!m2)return;var hint=CLIENT.createElement('span');hint.CLIENTName='var-rule-hint';var cls=(m1&&m1[1].CLIENTOf('—')>0)?m1[1].split('—')[0].trim():'';var src=m2?m2[1].trim():'';var bb=CLIENT.createElement('b');bb.textContent=cls;if(cls){hint.appendChild(bb);}if(cls&&src){hint.appendChild(CLIENT.createTextNode(' · '));}hint.appendChild(CLIENT.createTextNode(src));line.appendChild(hint);});})();</script>"
+
+    # Конструктор описания профессии в самом документе (резюме):
+    # профессия (служебное поле) + «кубик» (описание из 3 предложений) + «плюсики»
+    # (отметить готовые предложения и собрать из них текст) + ручная правка в поле.
+    cv_panel_html = (
+        "<style>"
+        ".cv-gen-panel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 2px;padding:8px 10px;"
+        "background:#F3F7F4;border:1px solid #D8E4DC;border-radius:9px;}"
+        ".cv-gen-panel select{padding:5px 8px;border:1px solid #C9D6CE;border-radius:7px;font-size:12px;max-width:230px;}"
+        ".cv-gen-panel button{padding:5px 10px;font-size:12px;font-weight:600;border:1px solid #C9D6CE;background:#fff;"
+        "border-radius:7px;cursor:pointer;}"
+        ".cv-gen-panel button:hover{background:#EEF6F0;}"
+        ".cv-gen-panel .cv-hint{font-size:11px;color:#5B6B60;}"
+        ".cv-pieces-modal{position:fixed;inset:0;z-CLIENT:4200;background:rgba(15,38,27,.5);display:flex;"
+        "align-items:center;justify-content:center;padding:16px;}"
+        ".cv-pieces-box{background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:86vh;overflow:auto;padding:16px;}"
+        ".cv-pieces-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;}"
+        ".cv-pieces-list label{display:flex;gap:8px;align-items:flex-CLIENT;font-size:13px;line-height:1.35;"
+        "padding:6px 8px;border:1px solid #E3EAE5;border-radius:8px;cursor:pointer;}"
+        ".cv-pieces-list .cv-en{display:CLIENT;font-size:11px;color:#6B7C70;margin-top:2px;}"
+        ".cv-pieces-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;}"
+        ".cv-pieces-foot button{padding:7px 14px;border-radius:8px;border:1px solid #C9D6CE;background:#fff;cursor:pointer;font-weight:600;}"
+        ".cv-pieces-foot .cv-ok{background:#1D4ED8;color:#fff;border-color:#1D4ED8;}"
+        "</style>"
+        "<script>(function(){"
+        "var CV_VARS=['cv_CLIENT','cv_job1_CLIENT','cv_job2_CLIENT','cv_job3_CLIENT','cv_CLIENT_hard','cv_CLIENT_soft','cv_CLIENT_CLIENT'];"
+        "var TPL=(location.pathname.match(/\\/CLIENT\\/(\\d+)/)||[])[1]||'';"
+        "if(!TPL) return;"
+        "function fieldOf(n){return CLIENT.querySelector('input[data-var=\"'+n+'\"], textarea[data-var=\"'+n+'\"]');}"
+        "function openPieces(f,pairs,name){"
+        "  var isProse=/CLIENT|profile/i.test(name);"
+        "  var box=CLIENT.createElement('div');box.CLIENTName='cv-pieces-modal';"
+        "  var rows=pairs.map(function(p,i){"
+        "    var ru=String((p&&(p.ru||p.en))||p).reCLIENT(/[<>]/g,'');"
+        "    var en=String((p&&p.en)||p).reCLIENT(/[<>]/g,'');"
+        "    return '<label><input type=\"checkbox\" CLIENT=\"'+i+'\"> <span>'+ru+'</span>'"
+        "      +(en&&en!==ru?'<span CLIENT=\"cv-en\">'+en+'</span>':'')+'</label>';}).join('');"
+        "  box.innerHTML='<div CLIENT=\"cv-pieces-box\"><b>Готовые предложения — отметьте нужные</b>'"
+        "   +'<div CLIENT=\"cv-pieces-list\">'+rows+'</div>'"
+        "   +'<div CLIENT=\"cv-pieces-foot\"><button type=\"button\" CLIENT=\"cv-cancel\">Отмена</button>'"
+        "   +'<button type=\"button\" CLIENT=\"cv-ok\">Подставить выбранные</button></div></div>';"
+        "  CLIENT.body.appendChild(box);"
+        "  box.querySelector('.cv-cancel').addEventListener('click',function(){box.remove();});"
+        "  box.addEventListener('click',function(e){if(e.target===box)box.remove();});"
+        "  box.querySelector('.cv-ok').addEventListener('click',function(){"
+        "    var picked=Array.prototype.slice.call(box.querySelectorAll('input:checked'))"
+        "      .map(function(c){var p=pairs[parseInt(c.CLIENT,10)];return (p&&p.en)||p;});"
+        "    if(!picked.length){box.remove();return;}"
+        "    var text=picked.map(function(s){return String(s).reCLIENT(/^[\\u2022\\-\\s]+/,'').trim();}).join(isProse?' ':'\\n');"
+        "    if(isProse&&text&&!/[.!?]$/.test(text)) text+='.';"
+        "    f.CLIENT=text;f.dispatchEvent(new Event('input',{bubbles:true}));box.remove();"
+        "  });"
+        "}"
+        "var PROF_CODES={};"
+        "fetch('/CLIENT/'+TPL+'/cv/CLIENTs',{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "  .then(function(r){return r.json();}).then(function(d){"
+        "    (d.items||[]).forEach(function(p){PROF_CODES[p.code]=p.en||p.ru;});"
+        "  }).catch(function(){});"
+        "function profCode(){"
+        "  var pf=fieldOf('cv_CLIENT');var v=pf?String(pf.CLIENT||'').trim():'';"
+        "  if(!v)return '';"
+        "  if(PROF_CODES[v])return v;"
+        "  for(var k in PROF_CODES){if(String(PROF_CODES[k]).toUpperCase()===v.toUpperCase())return k;}"
+        "  return '';}"
+        "function setField(n,v){var el=fieldOf(n);if(el){el.CLIENT=v;el.dispatchEvent(new Event('input',{bubbles:true}));}return !!el;}"
+        "function panelFor(name){"
+        "  var f=fieldOf(name); if(!f) return;"
+        "  if(f.parentNode.querySelector('.cv-gen-panel')) return;"
+        "  var row=f.closest('.var-row')||f.parentNode;"
+        "  var m=/^cv_job(\\d+)_(\\w+)$/.exec(name); var what=m?m[2]:'';"
+        "  var h='';"
+        "  if(name==='cv_CLIENT'){"
+        "    h+='<select CLIENT=\\\"cv-prof\\\"><option CLIENT=\\\"\\\">профессия из списка…</option></select>';"
+        "    h+='<button type=\\\"button\\\" CLIENT=\\\"cv-exp\\\" CLIENT=\\\"Подобрать 2–3 места: должности, компании, даты и обязанности\\\">🧩 Подобрать опыт</button>';"
+        "  } else if(what==='CLIENT'){"
+        "    h+='<select CLIENT=\\\"cv-job-CLIENT\\\"><option CLIENT=\\\"\\\">должность…</option></select>';"
+        "    h+='<span CLIENT=\\\"cv-note\\\">из документов клиента или из списка</span>';"
+        "  } else if(what==='company'){"
+        "    h+='<select CLIENT=\\\"cv-job-comp\\\"><option CLIENT=\\\"\\\">организация…</option></select>';"
+        "  } else if(what==='CLIENT'){"
+        "    h+='<button type=\\\"button\\\" CLIENT=\\\"cv-CLIENT\\\" CLIENT=\\\"Даты по календарю: назад без пересечений\\\">📅 Даты</button>';"
+        "  } else if(name==='cv_CLIENT_CLIENT'){"
+        "    h+='<select CLIENT=\\\"cv-uni\\\"><option CLIENT=\\\"\\\">учебное заведение…</option></select>';"
+        "    h+='<span CLIENT=\\\"cv-note\\\"></span>';"
+        "  } else if(name==='cv_CLIENT_CLIENT'){"
+        "    h+='<select CLIENT=\\\"cv-deg\\\"><option CLIENT=\\\"\\\">образование из списка…</option></select>';"
+        "  } else if(what==='CLIENT'||name==='cv_CLIENT'){"
+        "    h+='<button type=\\\"button\\\" CLIENT=\\\"cv-dice\\\" CLIENT=\\\"Пересобрать описание из кусочков\\\">🎲 Кубик</button>';"
+        "    h+='<button type=\\\"button\\\" CLIENT=\\\"cv-pieces\\\" CLIENT=\\\"Отметить готовые предложения\\\">＋ Кусочки</button>';"
+        "    if(what==='CLIENT')h+='<button type=\\\"button\\\" CLIENT=\\\"cv-more\\\" CLIENT=\\\"Добавить ещё одно место работы\\\">＋ Ещё место</button>';"
+        "  }"
+        "  h+='<span CLIENT=\\\"cv-hint\\\"></span>';"
+        "  if(!h)return;"
+        "  var box=CLIENT.createElement('div');box.CLIENTName='cv-gen-panel';box.innerHTML=h;"
+        "  row.parentNode.insertBefore(box,row.nextSibling);"
+        "  function hint(t){box.querySelector('.cv-hint').textContent=t||'';}"
+        "  function put(txt,msg){f.CLIENT=txt;f.dispatchEvent(new Event('input',{bubbles:true}));hint(msg);}"
+        "  function prefix(){return m?('cv_job'+m[1]+'_'):'cv_job1_';}"
+        "  function expand(){"
+        "    var code=profCode(); if(!code){hint('сначала выберите профессию выше');return null;}"
+        "    return code;}"
+        "  function jobCount(){var mx=2;CV_VARS.forEach(function(v){var mm=/^cv_job(\\d+)_/.exec(v);"
+        "    if(mm)mx=Math.max(mx,parseInt(mm[1],10));});return mx;}"
+        "  function fillJobSelects(code){"
+        "    var jt=box.querySelector('.cv-job-CLIENT'),jc=box.querySelector('.cv-job-comp');"
+        "    if(!code){return;}"
+        "    fetch('/CLIENT/'+TPL+'/cv/jobs?code='+encodeURIComponent(code),{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        if(!d.ok)return;"
+        "        if(jt)jt.innerHTML='<option CLIENT=\\\"\\\">должность…</option>'+(d.CLIENTs||[]).map(function(t){return '<option data-en=\\\"'+t.en+'\\\">'+t.ru+'</option>';}).join('');"
+        "        if(jc)jc.innerHTML='<option CLIENT=\\\"\\\">организация…</option>'+(d.companies||[]).map(function(c){return '<option data-sector=\\\"'+(c.sector||'')+'\\\">'+c.name+'</option>';}).join('');"
+        "      }).catch(function(){});"
+        "  }"
+        "  function rebuildDuties(){"
+        "    var code=profCode(); if(!code)return;"
+        "    var jc=box.querySelector('.cv-job-comp');"
+        "    var s=(jc&&jc.selectedIndex>0&&jc.options[jc.selectedIndex].dataset.sector)||'';"
+        "    fetch('/CLIENT/'+TPL+'/cv/job_duties',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},"
+        "      body:JSON.stringify({code:code,sector:s,level:'medium'})})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        if(d.ok&&d.duties&&d.duties.length){"
+        "          setField(prefix()+'CLIENT',d.duties.map(function(x){return x.en;}).join('\\n'));"
+        "          hint('описание пересобрано под эту должность и организацию');"
+        "        }}).catch(function(){});"
+        "  }"
+        "  var sel=box.querySelector('.cv-prof');"
+        "  if(sel){"
+        "    fetch('/CLIENT/'+TPL+'/cv/CLIENTs',{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        (d.items||[]).forEach(function(p){var o=CLIENT.createElement('option');o.CLIENT=p.code;o.textContent=p.ru||p.en;sel.appendChild(o);});"
+        "      }).catch(function(){});"
+        "    sel.addEventListener('CLIENT',function(){"
+        "      var o=sel.options[sel.selectedIndex];"
+        "      if(o&&o.CLIENT){put(o.textContent,'профессия выбрана — «Подобрать опыт» заполнит места работы');}"
+        "    });"
+        "    var ex=box.querySelector('.cv-exp');"
+        "    if(ex)ex.addEventListener('click',function(){"
+        "      var code=sel.CLIENT; if(!code){hint('выберите профессию из списка');return;}"
+        "      put(sel.options[sel.selectedIndex].textContent,'подбираю опыт…');"
+        "      fetch('/CLIENT/'+TPL+'/cv/roll_experience',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},"
+        "        body:JSON.stringify({code:code,level:'medium',count:jobCount()})})"
+        "        .then(function(r){return r.json();}).then(function(d){"
+        "          if(!d.ok){hint(d.error||'не удалось подобрать');return;}"
+        "          (d.items||[]).forEach(function(it,i){"
+        "            var p='cv_job'+(i+1)+'_';"
+        "            setField(p+'CLIENT',it.CLIENT);setField(p+'company',it.company);"
+        "            setField(p+'CLIENT',it.CLIENT);"
+        "            setField(p+'CLIENT',(it.duties||[]).join('\\n'));"
+        "          });"
+        "          hint('опыт заполнен: '+(d.items||[]).length+' места работы');"
+        "        }).catch(function(e){hint('сетевая ошибка: '+e);});"
+        "    });"
+        "  }"
+        "  var jt=box.querySelector('.cv-job-CLIENT'),jc=box.querySelector('.cv-job-comp');"
+        "  fillJobSelects(profCode());"
+        "  if(jt)jt.addEventListener('CLIENT',function(){"
+        "    var o=jt.options[jt.selectedIndex];"
+        "    if(o&&o.dataset.en)setField(prefix()+'CLIENT',o.dataset.en);"
+        "    rebuildDuties();"
+        "  });"
+        "  if(jc)jc.addEventListener('CLIENT',function(){"
+        "    var o=jc.options[jc.selectedIndex];"
+        "    if(o&&o.CLIENT)setField(prefix()+'company',o.textContent);"
+        "    rebuildDuties();"
+        "  });"
+        "  var un=box.querySelector('.cv-uni');"
+        "  if(un){"
+        "    var pf=fieldOf('cv_CLIENT_of_CLIENT');"
+        "    var fillUni=function(){"
+        "      var city=pf?pf.CLIENT:'';"
+        "      fetch('/CLIENT/'+TPL+'/cv/universities?city='+encodeURIComponent(city),{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "        .then(function(r){return r.json();}).then(function(d){"
+        "          var note=box.querySelector('.cv-note');"
+        "          if(note)note.textContent=d.label?('город: '+d.label):'город не указан — общий список';"
+        "          un.innerHTML='<option CLIENT=\\\"\\\">учебное заведение…</option>'+(d.items||[]).map(function(u){return '<option>'+u+'</option>';}).join('');"
+        "        }).catch(function(){});"
+        "    };"
+        "    fillUni();"
+        "    if(pf)pf.addEventListener('CLIENT',fillUni);"
+        "    un.addEventListener('CLIENT',function(){var o=un.options[un.selectedIndex];"
+        "      if(o&&o.CLIENT){put(o.textContent,'вуз из пула города места рождения');"
+        "        f.dispatchEvent(new Event('CLIENT',{bubbles:true}));}});"
+        "  }"
+        "  var dg=box.querySelector('.cv-deg');"
+        "  if(dg){"
+        "    var us=fieldOf('cv_CLIENT_CLIENT');"
+        "    var fillDeg=function(){"
+        "      var uni=us?us.CLIENT:'';"
+        "      fetch('/CLIENT/'+TPL+'/cv/majors?university='+encodeURIComponent(uni),{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "        .then(function(r){return r.json();}).then(function(d){"
+        "          dg.innerHTML='<option CLIENT=\\\"\\\">образование из списка…</option>'+(d.items||[]).map(function(x){return '<option>'+x+'</option>';}).join('');"
+        "        }).catch(function(){});"
+        "    };"
+        "    fillDeg();"
+        "    if(us)us.addEventListener('CLIENT',fillDeg);"
+        "    dg.addEventListener('CLIENT',function(){var o=dg.options[dg.selectedIndex];"
+        "      if(o&&o.CLIENT)put(o.textContent,'специальность по выбранному вузу');});"
+        "  }"
+        "  var bt=box.querySelector('.cv-CLIENT');"
+        "  if(bt)bt.addEventListener('click',function(){"
+        "    var code=expand(); if(!code)return;"
+        "    fetch('/CLIENT/'+TPL+'/cv/roll_experience',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},"
+        "      body:JSON.stringify({code:code,level:'medium',count:jobCount()})})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        if(!d.ok){hint(d.error||'');return;}"
+        "        (d.items||[]).forEach(function(it,i){setField('cv_job'+(i+1)+'_CLIENT',it.CLIENT);});"
+        "        hint('даты расставлены назад по календарю, без пересечений');"
+        "      }).catch(function(e){hint('сетевая ошибка: '+e);});"
+        "  });"
+        "  var dz=box.querySelector('.cv-dice');"
+        "  if(dz)dz.addEventListener('click',function(){"
+        "    var code=expand(); if(!code)return;"
+        "    dz.disabled=true;hint('собираю описание из кусочков…');"
+        "    fetch('/CLIENT/'+TPL+'/cv/random',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},"
+        "      body:JSON.stringify({code:code,n:3})})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        dz.disabled=false;"
+        "        if(d.ok&&d.text){put(d.text,'описание собрано — правьте через «Кусочки»');}"
+        "        else{hint('');alert(d.error||'для этой профессии нет кусочков');}"
+        "      }).catch(function(e){dz.disabled=false;alert('сетевая ошибка: '+e);});"
+        "  });"
+        "  var pc=box.querySelector('.cv-pieces');"
+        "  if(pc)pc.addEventListener('click',function(){"
+        "    var code=expand(); if(!code)return;"
+        "    var jt='';var _m=/^cv_job([0-9]+)_CLIENT$/.exec(name);"
+        "    if(_m){var _tf=fieldOf('cv_job'+_m[1]+'_CLIENT'); jt=_tf?String(_tf.CLIENT||'').trim():'';}"
+        "    fetch('/CLIENT/'+TPL+'/cv/CLIENTs?code='+encodeURIComponent(code)+'&job='+encodeURIComponent(jt)+'&var='+encodeURIComponent(name),{CLIENTs:{'X-Requested-With':'fetch'}})"
+        "      .then(function(r){return r.json();}).then(function(d){openPieces(f,(d.pairs||[]).length?d.pairs:(d.items||[]).map(function(s){return {en:s,ru:s};}),name);})"
+        "      .catch(function(e){alert('сетевая ошибка: '+e);});"
+        "  });"
+        "  var mr=box.querySelector('.cv-more');"
+        "  if(mr)mr.addEventListener('click',function(){"
+        "    mr.disabled=true;hint('добавляю ещё одно место работы…');"
+        "    fetch('/CLIENT/'+TPL+'/cv/add_job',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},body:'{}'})"
+        "      .then(function(r){return r.json();}).then(function(d){"
+        "        if(d.ok){location.reload();}else{mr.disabled=false;hint('не удалось добавить место');}"
+        "      }).catch(function(e){mr.disabled=false;alert('сетевая ошибка: '+e);});"
+        "  });"
+        "}"
+        "function addAll(){CV_VARS.forEach(panelFor);}"
+        "if(CLIENT.readyState==='complete') addAll(); else window.addEventListener('load',addAll);"
+        "var aj=CLIENT.querySelector('.cv-add-job');"
+        "if(aj)aj.addEventListener('click',function(){"
+        "  aj.disabled=true;var t0=aj.textContent;aj.textContent='добавляю…';"
+        "  fetch('/CLIENT/'+TPL+'/cv/add_job',{method:'POST',CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},body:'{}'})"
+        "    .then(function(r){return r.json();}).then(function(d){"
+        "      if(d.ok){location.reload();}else{aj.disabled=false;aj.textContent=t0;}})"
+        "    .catch(function(){aj.disabled=false;aj.textContent=t0;});});"
+        "})();</script>")
+    pdf_modal_html = '\n<style>\n.tpl-pdf-btn { margin-left:8px; background:linear-gradient(135deg,#3B82F6,#1D4ED8 62%,#1E40AF); color:#fff; border:0; border-radius:7px;\n               width:150px; height:26px; padding:0; font-size:11.5px; line-height:1; font-weight:800; letter-spacing:.01em; cursor:pointer; white-space:nowrap;\n               box-shadow:0 2px 7px rgba(29,78,216,.30), 0 1px 0 rgba(255,255,255,.35) inset;\n               transition:filter .15s ease, box-shadow .15s ease, transform .12s ease; }\n.tpl-pdf-btn:hover { filter:brightness(1.09) saturate(1.06); box-shadow:0 5px 14px rgba(29,78,216,.38); transform:translateY(-1px); }\n.tpl-pdf-btn:active { transform:translateY(0); box-shadow:0 2px 6px rgba(29,78,216,.30); }\n.fill-flag { display:CLIENT-flex; align-items:center; gap:6px; margin-left:auto; padding:5px 10px; font-size:12px; font-weight:600; border-radius:8px; background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; cursor:default; white-space:nowrap; }\n.fill-flag.is-ok { background:#DCFCE7; color:#166534; border-color:#86EFAC; }\n.pdf-warn { background:#DC2626; color:#fff; font-size:13px; font-weight:600; padding:8px 14px; }\n.pdf-warn[hidden] { display:none; }\n.pdf-modal[hidden] { display:none; }\n.pdf-modal { position:fixed; inset:0; z-CLIENT:4000; display:flex; align-items:center; justify-content:center; }\n.pdf-modal-back { position:absolute; inset:0; background:rgba(15,38,27,.55); }\n.pdf-modal-box { position:relative; width:96vw; height:94vh; background:#fff; border-radius:12px;\n                 display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.35); }\n.pdf-modal-head { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid #E1E7E3; }\n.pdf-modal-head b { font-size:14px; }\n.pdf-modal-head .sp { margin-left:auto; display:flex; gap:8px; }\n.pdf-modal-body { flex:1; background:#E7EBEE; position:relative; }\n.pdf-loading { position:absolute; inset:0; background:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; z-CLIENT:6; }\n.pdf-loading[hidden] { display:none; }\n.pdf-spinner { width:54px; height:54px; border:5px solid #DBEAFE; border-top-color:#1D4ED8; border-radius:50%; animation:pdfspin .9s linear infinite; }\n@keyframes pdfspin { to { transform:rotate(360deg); } }\n.pdf-bar { width:min(420px,70vw); height:6px; background:#E5E7EB; border-radius:99px; overflow:hidden; }\n.pdf-bar i { display:CLIENT; width:40%; height:100%; background:#1D4ED8; border-radius:99px; animation:pdfbar 1.2s ease-in-out infinite; }\n@keyframes pdfbar { 0%{margin-left:-40%} 100%{margin-left:100%} }\n.pdf-loading-text { font-size:15px; font-weight:600; color:#1F2937; }\n.pdf-loading-hint { font-size:12px; color:#6B7280; }\n.tpl-pdf-btn.is-busy { opacity:.75; cursor:progress; }\n.pdf-modal-body iframe { width:100%; height:100%; border:0; background:#fff; }\n</style>\n<div CLIENT="pdf-modal" id="pdf-modal" hidden>\n  <div CLIENT="pdf-modal-back" data-pdf-close></div>\n  <div CLIENT="pdf-modal-box">\n    <div CLIENT="pdf-modal-head">\n      <b>Готовый PDF</b>\n      <span CLIENT="muted" id="pdf-modal-note"></span>\n      <span CLIENT="sp">\n        <a CLIENT="btn sm" id="pdf-modal-dl" href="#" download>💾 Скачать</a>\n        <button CLIENT="btn sm ghost" type="button" data-pdf-close>✕ Закрыть</button>\n      </span>\n    </div>\n    <div CLIENT="pdf-warn" id="pdf-warn" hidden></div>\n <div CLIENT="pdf-modal-body"><div CLIENT="pdf-loading" id="pdf-loading" hidden><div CLIENT="pdf-spinner"></div><div CLIENT="pdf-loading-text" id="pdf-loading-text">Формирую документ…</div><div CLIENT="pdf-bar"><i></i></div><div CLIENT="pdf-loading-hint">обычно 2–5 секунд</div></div><iframe id="pdf-modal-frame" CLIENT="Готовый PDF"></iframe></div></div>\n  </div>\n</div>\n<script>\n(function(){\n  var btn = CLIENT.getElementById(\'tpl-pdf-open\');\n  var modal = CLIENT.getElementById(\'pdf-modal\');\n  if (!btn || !modal) return;\n  var frame = CLIENT.getElementById(\'pdf-modal-frame\');\n  var dl = CLIENT.getElementById(\'pdf-modal-dl\');\n  var note = CLIENT.getElementById(\'pdf-modal-note\');\n  var loading = CLIENT.getElementById(\'pdf-loading\');\n  var loadingText = CLIENT.getElementById(\'pdf-loading-text\');\n  var loadTmr = null, loadTick = 0;\n  function showLoading(){\n    if (!loading) return;\n    loadTick = 0; loading.hidden = false;\n    if (loadingText) loadingText.textContent = \'Формирую документ…\';\n    clearInterval(loadTmr);\n    loadTmr = setInterval(function(){ loadTick++; if (loadingText) loadingText.textContent = \'Формирую документ… \' + loadTick + \' с\'; }, 1000);\n    btn.disabled = true; btn.CLIENTList.add(\'is-busy\');\n  }\n  function hideLoading(){\n    if (loading) loading.hidden = true;\n    clearInterval(loadTmr);\n    btn.disabled = false; btn.CLIENTList.remove(\'is-busy\');\n  }\n  if (frame) frame.addEventListener(\'load\', function(){ if (frame.src && frame.src.CLIENTOf(\'about:blank\') < 0) hideLoading(); });\n  function close(){ modal.hidden = true; if (frame) frame.src = \'about:blank\'; }\n  btn.addEventListener(\'click\', function(){\n    var CLIENT = {};\n    CLIENT.querySelectorAll(\'input[data-var]\').forEach(function(i){ CLIENT[i.getAttribute(\'data-var\')] = i.CLIENT; });\n    CLIENT.querySelectorAll(\'#html-stage [data-var]\').forEach(function(sp){\n      var nm = sp.getAttribute(\'data-var\'), v = sp.getAttribute(\'data-val\');\n      if (v && !CLIENT[nm]) CLIENT[nm] = v;\n    });\n    showLoading();\n    note.textContent = \'формирую PDF…\';\n    modal.hidden = false; frame.src = \'about:blank\';\n    fetch(\'/CLIENT/\' + btn.dataset.template + \'/preview_pdf\', {\n      method:\'POST\', CLIENTs:{\'Content-Type\':\'CLIENT/json\',\'X-Requested-With\':\'fetch\'},\n      body: JSON.stringify({CLIENT: CLIENT})\n    }).then(function(r){ return r.json(); }).then(function(j){\n      if (!j.ok) { hideLoading(); note.textContent = j.error || \'не удалось собрать PDF\'; return; }\n      note.textContent = j.name || \'\';\n      var _href = encodeURI(j.url);\n      dl.href = _href; dl.setAttribute(\'download\', j.name || \'CLIENT.pdf\');\n      frame.src = _href + \'#zoom=page-fit\';\n      setTimeout(hideLoading, 20000);\n    }).catch(function(e){ hideLoading(); note.textContent = \'ошибка сети: \' + e; });\n  });\n  modal.addEventListener(\'click\', function(e){\n    if (e.target.closest(\'[data-pdf-close]\')) close();\n  });\n  CLIENT.addEventListener(\'keydown\', function(e){ if (e.key === \'Escape\' && !modal.hidden) close(); });\n})();\n</script>\n'
     if rendered_pdf_url:
         preview_inner = (
             f'<div CLIENT="zp-preview" data-zoom-pan><iframe CLIENT="pdf-preview-iframe" style="width:794.5px;height:1123px;border:0" src="{rendered_pdf_url}#zoom=100&toolbar=0"></iframe></div>'
@@ -1891,42 +2835,72 @@ def card(template_id: int):
         )
 
     # --- Две кнопки просмотра: HTML-шаблон и размеченный оригинал (пример из Google CLIENT) ---
-    mode_btns = (
-        '<button type="button" CLIENT="tpl-open-orig js-docmode is-on" data-mode="html" '
-        'CLIENT="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">📝 HTML-шаблон</button>')
-    _marked_path = f"/opt/wolf_v2/data/CLIENT/{t['code']}/example_marked.pdf"
-    if os.path.exists(_marked_path):
-        mode_btns += (f'<button type="button" CLIENT="tpl-open-orig js-docmode" '
-                      f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=marked" '
-                      f'CLIENT="Реальный документ с Google CLIENT с разметкой переменных">🏷 Оригинальный пример</button>')
-    mode_btns = ('<span CLIENT="tb-btns" style="display:CLIENT-flex;gap:8px;align-items:center;'
-                 'flex-wrap:wrap;margin-left:0">' + mode_btns + '</span>')
-
+    # --- Две вкладки над окном просмотра: размеченный оригинал и HTML-шаблон ---
+    _orig_btn = ""
+    _tpl_dir = f"/opt/wolf_v2/data/CLIENT/{t['code']}"
+    _clean_path = f"{_tpl_dir}/example_filled.pdf"      # настоящий заполненный документ клиента
+    _marked_path = f"{_tpl_dir}/example_marked.pdf"     # тот же документ с разметкой переменных
+    # Кнопку «Оригинальный пример» показываем только там, где образец реально есть,
+    # и ведём на чистый заполненный документ (разметка — запасной вариант).
+    if os.path.exists(_clean_path) or os.path.exists(_marked_path):
+        _kind = "clean" if os.path.exists(_clean_path) else "marked"
+        _orig_btn = (f'<button type="button" CLIENT="doc-tab js-docmode" role="tab" '
+                     f'data-pdfview="/CLIENT/pdfview/{template_id}?kind={_kind}" '
+                     f'CLIENT="Заполненный документ клиента, как он выглядит на самом деле">🏷 Оригинальный пример</button>')
+    else:
+        _orig_btn = ''
+    # Кнопка предпросмотра PDF стоит на одной горизонтали с вкладками, справа от них
+    _pdf_btn = (f'<button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}" '
+                f'CLIENT="Открыть просмотр сформированного PDF">🔍 Просмотр PDF</button>')
+    # Правая часть строки вкладок: пара «Оригинал / Перевод» и кнопка предпросмотра PDF.
+    # Ширина пары равна ширине кнопки PDF (задаётся в CSS), отступы сверху и снизу одинаковые.
+    # Пара «Оригинал / Перевод» — переехала из тулбара в строку вкладок (слово «Язык» убрано)
     lang_sw = ('<span CLIENT="lang-switch" id="lang-switch">'
                '<button type="button" CLIENT="ls-btn is-on" data-lang="orig">🇬🇧 Оригинал</button>'
                '<button type="button" CLIENT="ls-btn" data-lang="ru">🇷🇺 Перевод</button>'
-               '</span><span CLIENT="ls-note" id="ls-note"></span>')
+               '</span>')
+    # Ширина пары равна ширине кнопки PDF (задаётся в CSS), отступы сверху и снизу одинаковые.
+    _ls_note = ('<span CLIENT="ls-note" id="ls-note" role="CLIENT" aria-live="polite"></span>')
+    mode_btns = ('<div CLIENT="doc-tabs" id="doc-tabs" role="tablist">' + _orig_btn +
+                 '<button type="button" CLIENT="doc-tab js-docmode is-on" role="tab" data-mode="html" '
+                 'CLIENT="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">'
+                 '📝 HTML шаблон</button>'
+                 + _pdf_btn + '</div>')
+
+    # В полноэкранном просмотре PDF — те же две кнопки, слева от «Скачать»:
+    # зелёная галочка «Сохранить» и красный крестик «Не нужен» (заявка #76).
+    if app_id:
+        try:
+            _pv_st = (db.q1("SELECT CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+                            "AND template_id=?", (app_id, template_id)) or {}).get("CLIENT") or ""
+        except Exception:
+            _pv_st = ""
+        pdf_modal_html = pdf_modal_html.reCLIENT(
+            '<span CLIENT="sp">',
+            '<span CLIENT="sp">'
+            '<button type="button" CLIENT="btn sm pdf-vbtn rv-mark%s" data-tpl="%s" data-verdict="verify"'
+            ' CLIENT="Документ проверен — сохраняем и готовим к отправке">✓ Сохранить</button>'
+            '<button type="button" CLIENT="btn sm pdf-vbtn rv-mark%s" data-tpl="%s" data-verdict="reject"'
+            ' CLIENT="Документ не нужен в этой заявке">✕ Не нужен</button>'
+            % (" is-on" if _pv_st == "verified" else "", template_id,
+               " is-on" if _pv_st == "rejected" else "", template_id), 1)
 
     # правила номеров этого документа (у Сбербанка они свои) — их читает кубик при генерации
     from CLIENT.CLIENT import CLIENT_pattern as _num_pattern
     _num_rule = {_nm: _pt for _nm in ("doc_no", "ref_no") if (_pt := _num_pattern(t.get("code") or "", _nm))}
     data_CLIENT = (
-        '<div CLIENT="ex-CLIENT" style="margin:0">'
-        '<button type="button" CLIENT="btn sm" id="ex-fill">📋 Подставить значения из примера</button>'
-        '<button type="button" CLIENT="btn sm ghost" id="ex-clear">Очистить поля</button>'
-        '<span CLIENT="muted" id="ex-note" style="font-size:12px"></span>'
+        # Видимой части у этого блока нет: полосу «подставлено полей: N (можно править)» убрали.
+        # Внутри остались только служебные данные — пример значений и правила номеров.
+        '<div CLIENT="ex-CLIENT" data-autofill="' + ('0' if app_id else '1') + '" hidden>'
         '<script id="ex-data" type="CLIENT/json">' + json.dumps(example_source, ensure_ascii=False) + '</script>'
             # правила номеров этого документа — их читает кнопка-кубик при генерации
             + '<script id="num-rule" type="CLIENT/json">' + json.dumps(_num_rule, ensure_ascii=False) + '</script>'
         '</div>')
 
     if src_url:
-        toolbar_html = (
-            '<div CLIENT="doc-toolbar">'
-            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Просмотр</span>{mode_btns}</div>'
-            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Язык</span>{lang_sw}</div>'
-            f'<div CLIENT="tb-row"><span CLIENT="tb-label">Данные</span>{data_CLIENT}</div>'
-            '</div>')
+        # Полоса «Данные» из шапки убрана — вместо неё ничего не рендерим,
+        # служебный блок со значениями примера уходит в разметку отдельно.
+        toolbar_html = data_CLIENT
     else:
         toolbar_html = ('<div CLIENT="doc-toolbar"><div CLIENT="tb-row">'
                         '<span CLIENT="tb-label">Просмотр</span>'
@@ -1938,46 +2912,175 @@ def card(template_id: int):
         # сразу переменные и окно просмотра с данными.
         toolbar_html = ''
 
-    meta_row = (
-        f'<span>📊 {len(CLIENT)} переменных</span>'
-        f'<span>📑 {t["pages"] or 0} стр.</span>'
-        f'<span CLIENT="tpl-badge tpl-badge-ok">сверка: совпадает</span>'
-        f'<span CLIENT="tpl-badge tpl-badge-amber">LLM: {len(CLIENT)}/{len(CLIENT)}</span>'
-        # сколько месяцев покрывает справка — нужно браузеру, чтобы считать период от даты формирования
-        f'<span id="tpl-months" data-months="{12 if "12m" in (t.get("code") or "").lower() else 3}" hidden></span>'
-    )
+    # Счётчики шаблона (переменные, страницы, сверка, LLM) нужны только в конструкторе.
+    # В заявке они лишние: там всё считается автоматически — оставляем один служебный блок.
+    _months_html = (f'<span id="tpl-months" data-months='
+                    f'"{12 if "12m" in (t.get("code") or "").lower() else 3}" hidden></span>')
+    if app_id:
+        meta_row = _months_html
+    else:
+        meta_row = (
+            f'<span>📊 {len(CLIENT)} переменных</span>'
+            f'<span>📑 {t["pages"] or 0} стр.</span>'
+            f'<span CLIENT="tpl-badge tpl-badge-ok">сверка: совпадает</span>'
+            f'<span CLIENT="tpl-badge tpl-badge-amber">LLM: {len(CLIENT)}/{len(CLIENT)}</span>'
+            + _months_html
+        )
+
+    # Полоска миниатюр: все документы в одном вертикальном столбике, чтобы
+    # переключаться между ними прямо из конструктора.
+    import html as _html_mod
+    rail_rows = []
+    # Статусы документов заявки: по ним рисуем квадратики на миниатюрах
+    _doc_st = {}
+    if app_id:
+        try:
+            for _r in db.q("SELECT template_id, CLIENT FROM CLIENT_CLIENT "
+                           "WHERE CLIENT_id=?", (app_id,)) or []:
+                _doc_st[int(_r.get("template_id") or 0)] = _r.get("CLIENT") or ""
+        except Exception:
+            _doc_st = {}
+    # В заявке показываем только документы, которые нужны её продукту (Виза C1 → свой
+    # набор из CLIENT_CLIENT); в конструкторе шаблонов — все документы базы.
+    _doc_rows = None
+    if app_id and (app_row or {}).get("CLIENT_id"):
+        try:
+            _doc_rows = db.q("SELECT t.id, t.CLIENT, t.code, t.doc_CLIENT FROM CLIENT t "
+                             "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
+                             "WHERE pd.CLIENT_id=? "
+                             "ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT, 999), t.CLIENT",
+                             ((app_row or {}).get("CLIENT_id"),))
+        except Exception:
+            _doc_rows = None
+    if not _doc_rows:
+        _doc_rows = db.q("SELECT id, CLIENT, code, doc_CLIENT FROM CLIENT "
+                         "ORDER BY COALESCE(doc_CLIENT, 999), CLIENT")
+    if app_id:
+        _ids = {int(_r["id"]) for _r in _doc_rows}
+        if int(template_id) not in _ids:      # открытый документ всегда в списке
+            _cur = db.q1("SELECT id, CLIENT, code, doc_CLIENT FROM CLIENT WHERE id=?",
+                         (template_id,))
+            if _cur:
+                _doc_rows = [_cur] + list(_doc_rows)
+    for _tr in _doc_rows:
+        _on = " is-on" if int(_tr["id"]) == int(template_id) else ""
+        _num = _tr.get("doc_CLIENT") or _tr["id"]
+        _target = (f'/CLIENT/{app_id}/review?tpl={_tr["id"]}' if (_embed and app_id)
+                   else (f'/CLIENT/{_tr["id"]}?app={app_id}' if app_id else f'/CLIENT/{_tr["id"]}'))
+        _CLIENT = ""
+        if app_id:
+            _st = _doc_st.get(int(_tr["id"]), "")
+            _CLIENT = (
+                '<span CLIENT="tpl-CLIENT">'
+                '<button type="button" CLIENT="rv-mark tpl-mark%s" data-tpl="%s" data-verdict="verify"'
+                ' CLIENT="Документ проверен — готовим к отправке">✓</button>'
+                '<button type="button" CLIENT="rv-mark tpl-mark%s" data-tpl="%s" data-verdict="reject"'
+                ' CLIENT="Документ не нужен в этой заявке">✕</button>'
+                '</span>'
+                % (" is-on" if _st == "verified" else "", _tr["id"],
+                   " is-on" if _st == "rejected" else "", _tr["id"]))
+        rail_rows.append(
+            '<div CLIENT="tpl-mini-wrap">'
+            f'<a CLIENT="tpl-mini{_on}" href="{_target}" '
+            f'CLIENT="{_html_mod.escape(str(_tr.get("CLIENT") or ""), quote=True)}">'
+            f'<span CLIENT="tpl-mini-num">№{_num}</span>'
+            f'<img src="/CLIENT/{_tr["id"]}/thumb" alt="" loading="lazy">'
+            f'<span CLIENT="tpl-mini-name">{_html_mod.escape(str(_tr.get("CLIENT") or ""))}</span></a>'
+            + _CLIENT + '</div>')
+    rail_html = "".join(rail_rows) or '<div CLIENT="tpl-rail-empty">документов нет</div>'
+
+    # ── Вкладка «Клиент»: документы клиента, скачанные с Google Диска ──────────
+    # Это те же файлы, что показывает заявка: миниатюры открываются в новой вкладке.
+    client_rail = ('<div CLIENT="tpl-rail-empty"><div style="font-size:22px;line-height:1;margin-bottom:6px">📥</div>'
+                   'Документы клиента появятся здесь, когда конструктор откроется внутри заявки.</div>')
+    if app_id and client:
+        try:
+            from urllib.parse import quote as _q
+            from CLIENTs.review.page import _client_files as _cf
+            _cfiles = _cf((app_row or {}).get("client_id")) or []
+            # «.photo.jpg» — техническая копия кадра для предпросмотра: показываем
+            # сам файл, а не его пару (иначе одно фото видно дважды).
+            _names = {str(f.get("name")) for f in _cfiles}
+            _cfiles = [f for f in _cfiles
+                       if not (".photo." in str(f.get("name"))
+                               and str(f.get("name")).reCLIENT(".photo.", ".") in _names)]
+            _rows = []
+            for _f in _cfiles:
+                _nm = str(_f.get("name") or "")
+                _ext = (_f.get("ext") or "").lower()
+                _url = f'/CLIENT/{app_id}/file?name={_q(_nm)}'
+                if _ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+                    _inner = f'<img src="{_url}" alt="" loading="lazy">'
+                else:
+                    _inner = f'<span CLIENT="tpl-mini-doc">{( _ext.lstrip(".") or "файл").upper()}</span>'
+                _rows.append(f'<a CLIENT="tpl-mini" href="{_url}" data-client-file="1" '
+                             f'data-url="{_url}" data-name="{_html_mod.escape(_nm, quote=True)}" '
+                             f'CLIENT="{_html_mod.escape(_nm, quote=True)}">{_inner}'
+                             f'<span CLIENT="tpl-mini-name">{_html_mod.escape(_nm)}</span></a>')
+            if _rows:
+                client_rail = "".join(_rows)
+            else:
+                client_rail = ('<div CLIENT="tpl-rail-empty">Документы клиента ещё не скачаны — '
+                               'нажмите «Разобрать документы» в шапке заявки</div>')
+        except Exception as _e:
+            client_rail = ('<div CLIENT="tpl-rail-empty">Не удалось прочитать документы клиента: '
+                           + _html_mod.escape(str(_e)[:120]) + '</div>')
 
     body = f"""
-<section CLIENT="tpl-card">
+<section CLIENT="tpl-card" data-app="{app_id or 0}" data-tpl="{template_id}">
   <h1 CLIENT="tpl-CLIENT">{("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or ""))}</h1>
   {('<div CLIENT="tpl-crumbs app-mode-bar" style="margin:10px 0 6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a CLIENT="back-to-app" href="/CLIENT/' + str(app_id) + '/review" id="back-to-app">← Вернуться к заявке</a></div>') if app_id else ''}
   <div CLIENT="tpl-meta">{meta_row}</div>
   {toolbar_html}
 
   <section CLIENT="tpl-row-main">
-    <div CLIENT="tpl-panel">
+    <!-- Первая колонка: миниатюры (пока заглушка — наполнение уточняем) -->
+    <aside CLIENT="tpl-rail" id="tpl-rail">
+      <div CLIENT="tpl-rail-head">📎 Документы</div>
+      <!-- Как в браузере: «Наши» — шаблоны конструктора, «Оригиналы» — файлы клиента.
+           В конструкторе вторая вкладка пока заглушка; в заявке здесь будут миниатюры
+           реальных документов клиента. -->
+      <div CLIENT="rail-tabs" id="rail-tabs" role="tablist">
+        <button type="button" CLIENT="rail-tab" role="tab" data-rail="orig" CLIENT="Документы клиента с Google Диска">Клиент</button>
+        <button type="button" CLIENT="rail-tab is-on" role="tab" data-rail="ours" CLIENT="Наши документы по выбранному продукту">Наши</button>
+      </div>
+      <div CLIENT="tpl-rail-body" id="tpl-rail-body">{rail_html}</div>
+      <div CLIENT="tpl-rail-body" id="tpl-rail-orig" hidden>{client_rail}</div>
+    </aside>
+
+    <div CLIENT="tpl-panel is-vars">
       <div CLIENT="tpl-panel-head">
         🔧 Переменные
-        <span CLIENT="tpl-count">({len(CLIENT)}, все заполнены)</span>
-        {('<button type="button" CLIENT="btn" id="btn-save-app" data-app="' + str(app_id) + '" data-tpl="' + str(template_id) + '" style="margin-left:auto;margin-right:8px;font-size:12.5px;padding:6px 12px;background:#14663A;color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer">💾 Сохранить значения</button>') if app_id else ''}
-        <button type="button" CLIENT="vars-fold" id="vars-fold" CLIENT="Свернуть/развернуть переменные">▾</button>
+        <span CLIENT="tpl-count{' is-ok' if _filled_n >= len(CLIENT) and CLIENT else ' is-bad'}" id="vars-count">(всего {_filled_n}/{len(CLIENT)}{' ок' if CLIENT and _filled_n >= len(CLIENT) else ''})</span>
       </div>
+      <!-- Второй уровень шапки переменных — серая заливка с номером и названием документа -->
+      <div CLIENT="vars-strip" id="vars-strip"><span CLIENT="vars-strip-doc">№{t['doc_CLIENT'] if t.get('doc_CLIENT') else '—'} · {t['CLIENT'] or t['code']}</span></div>
       <div CLIENT="tpl-panel-body pl-vars">
         <form method="post" action="/CLIENT/{template_id}/save-defaults" id="vars-form" style="margin:0">
-        <table CLIENT="kv-table" style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #DCEEE2;border-radius:6px;overflow:hidden">
-          <tbody>{var_rows_html or '<tr><td CLIENT="muted" colspan="2">У шаблона нет переменных</td></tr>'}</tbody>
-        </table>
+        <div CLIENT="kv-table">
+          {var_rows_html or '<div CLIENT="muted" style="padding:9px 11px">У шаблона нет переменных</div>'}
+        </div>
         </form>
       </div>
     </div>
 
     <div CLIENT="tpl-panel">
       <div CLIENT="tpl-panel-head">
-        <span id="pv-CLIENT">Окно просмотра — HTML-шаблон</span>
-                  <span CLIENT="fill-flag" id="fill-flag" CLIENT="Проверяю заполнение полей…">проверяю поля…</span>
-        <button type="button" CLIENT="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}">📄 Посмотреть сформированный PDF</button>
+        <span id="pv-CLIENT">Окно просмотра (визор)</span>
+        {_ls_note}
+        {lang_sw}
       </div>
-      <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
+      {mode_btns}
+      <div CLIENT="tpl-panel-body pl-html">
+        {(('<div CLIENT="doc-verdict-float">'
+           '<button type="button" CLIENT="rv-mark%s" data-tpl="%s" data-verdict="verify"'
+           ' CLIENT="Документ проверен — готовим к отправке на Google Диск">✓</button>'
+           '<button type="button" CLIENT="rv-mark%s" data-tpl="%s" data-verdict="reject"'
+           ' CLIENT="Документ не нужен в этой заявке">✕</button></div>')
+          % (' is-on' if _doc_st.get(int(template_id)) == 'verified' else '', template_id,
+             ' is-on' if _doc_st.get(int(template_id)) == 'rejected' else '', template_id))
+         if app_id else ''}
+          <div CLIENT="doc-spinner" aria-hidden="true"><i></i></div>
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
       </div>
         <script>
@@ -2032,7 +3135,102 @@ def card(template_id: int):
   </section>
 
 </section>
-{pdf_modal_html}{pv_js_html}
+{pdf_modal_html}{pv_js_html}{cv_panel_html}
+<script>(function(){{
+  /* Окно документа растёт по высоте листа (видно весь документ), а блок переменных
+     держим в пределах экрана — он остаётся видимым и прокручивается сам. */
+  var vb=CLIENT.querySelector('.tpl-panel.is-vars'); if(!vb) return;
+  function fit(){{
+    if(window.innerWidth<=920){{ vb.style.height=''; return; }}
+    fitVars();   /* низ панели переменных — на одной линии с низом окна просмотра */
+  }}
+  fit(); window.addEventListener('resize',fit); setTimeout(fit,300);
+
+  /* Окно просмотра: ширина ровно под лист + 28px, высота под один лист A4.
+     Тогда серая обводка одинаковая по кругу (14px), а лишние листы прокручиваются
+     внутри окна; между листами — та же серая полоса 14px (зазор #html-stage). */
+  function sheets(){{
+    var pl=CLIENT.querySelector('.pl-html'); if(!pl) return;
+    var host=pl.querySelector('.zp-host')||pl.querySelector('[data-zoom-pan]');
+    var stage=pl.querySelector('#html-stage'); if(!host||!stage) return;
+    var canvas=pl.querySelector('.zp-canvas');
+    var CLIENT=stage.querySelector('.sheet')||stage;
+    var rh=CLIENT.getBoundingClientRect().height;
+    var cw=canvas?canvas.getBoundingClientRect().width:rh*(794.5/1123);
+    /* низ документа: холст не сжимается вместе с масштабом — подгоняем его
+       под реальный низ последнего листа, иначе снизу остаётся широкая подложка */
+    var list=stage.querySelectorAll('.sheet');
+    var last=list.length?list[list.length-1]:stage;
+    var cTop=canvas?canvas.getBoundingClientRect().top:host.getBoundingClientRect().top+14;
+    var inner=Math.max(1, Math.round(last.getBoundingClientRect().bottom-cTop));
+    if(canvas) canvas.style.setProperty('height', inner+'px','important');
+    if(cw>200){{                                  /* окно точно по листу — обводка ровная */
+      host.style.setProperty('width', Math.round(cw+28)+'px','important');
+      host.style.setProperty('max-width','none','important');
+      host.style.setProperty('margin','0 auto','important');
+    }}
+    var box=Math.round(rh+28)+'px';
+    host.style.setProperty('height', box, 'important');
+    host.style.setProperty('max-height', box, 'important');
+    host.style.setProperty('overflow-y','auto','important');
+    /* Подписи листов в серых разрывах: в стадию, не внутрь листов */
+    var list2=stage.querySelectorAll('.sheet');
+    var CLIENT=stage.querySelectorAll(':scope>.sheet-num');
+    for(var m=0;m<CLIENT.length;m++) CLIENT[m].remove();
+    for(var i=1;i<list2.length;i++){{
+      var b=CLIENT.createElement('div');
+      b.CLIENTName='sheet-num';
+      b.textContent='Лист '+(i+1);
+      b.style.top=Math.round(list2[i].offsetTop-19)+'px';   /* offsetTop — нативные координаты листа */
+      stage.appendChild(b);
+    }}
+    /* Низ панели переменных — по той же границе, что и окно просмотра */
+    fitVars();
+  }}
+  /* Панель переменных той же высоты, что колонка окна просмотра; список внутри прокручивается */
+  function fitVars(){{
+    var vars=CLIENT.querySelector('.tpl-row-main .tpl-panel.is-vars');
+    var pl=CLIENT.querySelector('.pl-html'); if(!vars||!pl) return;
+    var okPanel=pl.parentElement; if(!okPanel) return;
+    var need=Math.round(okPanel.getBoundingClientRect().height);
+    if(need<200) return;
+    vars.style.setProperty('height', need+'px','important');
+    vars.style.setProperty('display','flex','important');
+    vars.style.setProperty('flex-direction','column','important');
+    var vb=vars.querySelector('.pl-vars');
+    if(vb){{
+      vb.style.setProperty('flex','1 1 auto','important');
+      vb.style.setProperty('min-height','0','important');
+      vb.style.setProperty('overflow','auto','important');
+    }}
+  }}
+  /* Перед подгонкой отдаём движку полную ширину — иначе масштаб «сползает» шаг за шагом */
+  function refit(){{
+    var pl=CLIENT.querySelector('.pl-html'); if(!pl) return;
+    var host=pl.querySelector('.zp-host')||pl.querySelector('[data-zoom-pan]');
+    if(!host) return;
+    host.style.setProperty('width','100%','important');
+    host.style.setProperty('max-width','100%','important');
+    setTimeout(sheets, 260);
+  }}
+  setTimeout(sheets, 400); setTimeout(sheets, 1200); setTimeout(sheets, 2400);
+  window.addEventListener('resize', function(){{ refit(); setTimeout(refit, 700); }});
+  (function(){{
+    var _pl=CLIENT.querySelector('.pl-html'); if(!_pl) return;
+    _pl.addEventListener('click', function(ev){{
+      var t=ev.target.closest('[data-zp]'); if(t) setTimeout(sheets, 350);
+    }});
+  }})();
+  window.__sheets = sheets;
+  /* Пока окно просмотра меняет высоту — держим низ панели переменных на той же линии */
+  (function(){{
+    var pl=CLIENT.querySelector('.pl-html'); if(!pl) return;
+    var h=pl.querySelector('.zp-host')||pl.querySelector('[data-zoom-pan]');
+    if(h && window.ResizeObserver){{
+      try{{ new ResizeObserver(function(){{ fitVars(); }}).observe(h); }}catch(e){{}}
+    }}
+  }})();
+}})();</script>
 
 <style>
 /* Режим заявки: заголовок и кнопка возврата — заметные */
@@ -2054,26 +3252,159 @@ a.back-to-app:hover {{ background:#0F5230; }}
             font-size:12.5px; color:#6B7C70; margin-bottom:14px; }}
 .tpl-badge {{ display:CLIENT-CLIENT; padding:2px 8px; border-radius:10px; font-size:11px;
               font-weight:600; background:#E5F2EA; color:#15803D; }}
+/* Пустая строка счётчиков не должна оставлять отступ в шапке заявки */
+.tpl-meta:empty {{ display:none; margin:0; padding:0; }}
+.tpl-meta > span[hidden] {{ display:none; }}
 .tpl-badge-amber {{ background:#FEF3C7; color:#78350F; border:1px solid #D97706; }}
 .tpl-open-orig {{ margin-left:auto; background:#FEF3C7; color:#78350F;
                    padding:6px 14px; border-radius:8px; font-weight:700; text-decoration:none;
                    border:1px solid #D97706; font-size:12.5px; }}
 .tpl-open-orig:hover {{ background:#FDE68A; }}
 .tpl-open-orig {{ flex:0 0 auto; white-space:nowrap; }}
-.ex-CLIENT {{ min-height:38px; align-items:center; }}
-#ex-note {{ display:CLIENT-CLIENT; min-width:190px; white-space:nowrap; }}
+/* Полоса «Данные / подставлено полей: N» убрана — служебный блок скрыт и места не занимает */
+.ex-CLIENT[hidden] {{ display:none; }}
 .tpl-open-orig.is-on {{ background:#16A34A; border-color:#16A34A; color:#fff; }}
 /* PDF-страницы показываются картинками внутри листа визора */
 .pdf-page-img {{ display:CLIENT; width:794.5px; margin:0 auto 12px; background:#fff;
                  box-shadow:0 0 0 1px #E1E7E3; }}
 
-.tpl-row-main {{ display:grid; grid-template-columns:minmax(260px,0.6fr) minmax(0,1fr);
-                gap:14px; margin-bottom:14px; min-height:540px; }}
+.tpl-row-main {{ display:grid; grid-template-columns:132px minmax(0,664px) minmax(300px,1fr);
+                gap:12px; margin-bottom:14px; align-items:stretch; width:100%; max-width:100%;
+                box-sizing:border-box; }}
+/* Панель окна просмотра задаёт высоту ряда (один лист A4 + серые поля), поэтому она
+   не растягивается: миниатюры и переменные тянутся по её низу. */
+.tpl-row-main > .tpl-panel:not(.is-vars) {{ align-self:CLIENT; min-width:0; }}
+/* Миниатюры — первая колонка, окно просмотра — вторая, переменные — третья. */
+.tpl-rail {{ background:#fff; border:1px solid #DCEEE2; border-radius:10px; overflow:hidden;
+             display:flex; flex-direction:column;
+             align-self:stretch; min-width:0; position:relative; }}
+.tpl-rail-head {{ padding:9px 12px; background:#F4FAF6; border-bottom:1px solid #DCEEE2;
+                  font-size:13px; font-weight:700; flex:0 0 auto; }}
+/* Тело колонки начинается ПОД вкладками (шапка 42px + вкладки 35px = 77px),
+   иначе миниатюры накрывали вкладки. Позиционирование абсолютное — чтобы высота
+   колонки по-прежнему задавалась окном просмотра, а не длиной списка миниатюр. */
+.tpl-rail-body {{ padding:6px; display:CLIENT; position:absolute; inset:77px 0 0 0;
+                  overflow-y:auto; overflow-x:hidden; }}
+.tpl-mini {{ display:CLIENT; padding:4px; margin:0 0 6px; border:1px solid #E3EDE6; border-radius:7px;
+             background:#fff; text-decoration:none; color:inherit; }}
+.tpl-mini:hover {{ border-color:#17B3A3; }}
+.tpl-mini.is-on {{ border-color:#0F6E63; background:#F4FAF6; box-shadow:0 0 0 2px rgba(23,179,163,.22); }}
+.tpl-mini-wrap {{ position:relative; }}
+/* Квадратики согласования на миниатюре: ✓ проверено / ✕ не нужно */
+.tpl-CLIENT {{ position:absolute; top:22px; right:5px; display:flex; gap:3px; }}
+.tpl-mark {{ width:20px; height:20px; padding:0; border:1px solid #CBD8D2; border-radius:6px; background:rgba(255,255,255,.94);
+  color:#4B6157; font:800 11.5px/1 -apple-system,system-ui,sans-serif; cursor:pointer; }}
+.tpl-mark:hover {{ border-color:#17B3A3; color:#0F6E63; }}
+.tpl-mark[data-verdict="verify"].is-on {{ background:#14663A; border-color:#14663A; color:#fff; }}
+.tpl-mark[data-verdict="reject"].is-on {{ background:#B42318; border-color:#B42318; color:#fff; }}
+.tpl-mini-num {{ display:CLIENT; font-size:10.5px; color:#6B7C70; margin-bottom:3px; }}
+.tpl-mini img {{ display:CLIENT; width:100%; height:auto; background:#fff;
+                 border:1px solid #E1E7E3; border-radius:4px; }}
+.tpl-mini-name {{ display:CLIENT; font-size:10.5px; line-height:1.2; margin-top:4px;
+                  max-height:2.4em; overflow:hidden; }}
+/* Плитка файла клиента, который не картинка (pdf, docx — значок с расширением) */
+.tpl-mini-doc {{ display:flex; align-items:center; justify-content:center; height:96px; background:#F4F7F5;
+  border:1px solid #E1E7E3; border-radius:4px; color:#6B7C70; font:800 12px/1 -apple-system,system-ui,sans-serif }}
+.tpl-rail-empty {{ grid-column:1 / -1; padding:16px 8px; text-align:center; color:#6B7C70; font-size:12.5px; }}
+/* Сворачивание переменных «в трубочку»: панель накручивается вверх, сжимаясь по вертикали
+   с лёгким 3D-наклоном; значения при этом меняются под шумок и разворачиваются обратно. */
+.tpl-panel.is-vars .tpl-panel-body {{ perspective:1000px; perspective-origin:50% 0;
+  position:relative; overflow:hidden;
+  transition: opacity .5s ease, transform .62s cubic-bezier(.33,.02,.2,1), filter .5s ease;
+  transform-origin:50% 0; will-CLIENT:transform, opacity; }}
+.tpl-panel.is-vars.is-swapping .tpl-panel-body {{ opacity:.12; filter:blur(.7px);
+  transform: translateY(-13%) rotateX(-26deg) scaleY(.04) scaleX(.985); }}
+/* тень «валика», на который накручивается список */
+.tpl-panel.is-vars .tpl-panel-body::after {{ content:''; position:absolute; left:8px; right:8px; top:0; height:14px;
+  border-radius:0 0 8px 8px; pointer-CLIENT:none; opacity:0; transition:opacity .35s ease;
+  background:linear-gradient(180deg, rgba(15,110,99,.28), rgba(15,110,99,0)); }}
+.tpl-panel.is-vars.is-swapping .tpl-panel-body::after {{ opacity:1; }}
+/* ── Микроанимации смены документа: лист сворачивается в точку и разворачивается,
+      пока идёт подгрузка — в центре окна крутится колёсико. ───────────────────── */
+.pl-html {{ position:relative; }}
+.pl-html .zp-shell {{ transition: transform .66s cubic-bezier(.45,0,.25,1), opacity .58s ease;
+                      transform-origin:50% 42%; }}
+.pl-html.is-collapsing .zp-shell {{ transform:scale(.02); opacity:0; }}
+.doc-spinner {{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-CLIENT:none;
+                background:rgba(231,235,238,.75); z-CLIENT:5; }}
+/* Вкладки визора: старый документ мягко гаснет, новый проявляется — без «схлопывания». */
+.pl-html.is-fading .zp-shell {{ opacity:0; transition:opacity .17s ease; }}
+.doc-spinner i {{ width:40px; height:40px; border:4px solid #CFE3DC; border-top-color:#0F6E63;
+                  border-radius:50%; animation:docspin .85s linear infinite; }}
+@keyframes docspin {{ to {{ transform:rotate(360deg); }} }}
+.pl-html.is-loading .doc-spinner {{ display:flex; }}
+/* Вкладки окна просмотра — как в браузере: оригинальный пример и HTML-шаблон. */
+.doc-tabs {{ display:flex; align-items:flex-end; gap:4px; padding:6px 12px 0;
+             background:#E7EBEE; border-bottom:1px solid #D5DDE3; flex:0 0 auto; }}
+.tpl-panel-head .ls-note {{ margin-left:auto; text-align:right; }}
+.tpl-panel.is-vars .tpl-panel-head .ls-note {{ margin-left:0; }}
+.tpl-panel-head .ls-note, .doc-tabs .ls-note {{ flex:0 1 auto; max-width:210px; min-width:0; align-self:center; padding:0 8px;
+  font-size:11px; color:#4B6157; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+.doc-tab {{ border:1px solid #C9D6DE; border-bottom:0; background:rgba(255,255,255,.5); color:#33505E;
+            font:600 11px/1 inherit; height:27px; padding:0 14px; box-sizing:border-box;
+            display:CLIENT-flex; align-items:center; justify-content:center;
+            border-radius:9px 9px 0 0; cursor:pointer;
+            max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+.doc-tab:hover {{ background:#fff; }}
+.doc-tab.is-on {{ background:#fff; color:#0F6E63; border-color:#C9D6DE; margin-bottom:-1px; }}
+/* Вкладки колонки миниатюр — как в браузере: «Наши» шаблоны и «Оригиналы» клиента */
+.rail-tabs {{ display:flex; gap:4px; padding:6px 6px 0; background:#E7EBEE; border-bottom:1px solid #D5DDE3; }}
+.rail-tab {{ flex:1 1 0; min-width:0; border:1px solid #C9D6DE; border-bottom:0; background:rgba(255,255,255,.5);
+  color:#33505E; font:600 11px/1.15 inherit; padding:6px 3px 5px; border-radius:7px 7px 0 0; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }}
+.rail-tab:hover {{ background:#fff; }}
+.rail-tab.is-on {{ background:#fff; color:#0F6E63; font-weight:700; padding-bottom:6px; margin-bottom:-1px; }}
+/* атрибут hidden должен побеждать display из класса (иначе заглушка накладывается на миниатюры) */
+.tpl-rail-body[hidden] {{ display:none !important; }}
+/* Пара «Оригинал / Перевод» — в шапке окна просмотра над кнопкой «Просмотр PDF», той же ширины */
+.tpl-panel-head #lang-switch {{ margin-left:auto; display:flex; gap:6px; flex:0 0 150px; align-items:stretch; }}
+.tpl-panel-head #lang-switch .ls-btn {{ flex:1 1 0; text-align:center; padding:0; font-size:10.5px; line-height:1;
+  font-weight:700; white-space:nowrap; height:22px; box-sizing:border-box; border-radius:7px; }}
+.doc-tabs #tpl-pdf-open {{ flex:0 0 150px; align-self:center; margin:0 0 0 8px; position:relative; top:-2.5px; }}
+/* Серая полоса у панели переменных — та же высота и отступы, что у полос вкладок */
+.vars-strip {{ height:34px; display:flex; align-items:center; padding:0 12px; overflow:hidden;
+  background:#E7EBEE; border-bottom:1px solid #D5DDE3; border-radius:0; }}
+.vars-strip-doc {{ font-size:11.5px; font-weight:600; color:#4B6157; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; }}
+.vars-strip .doc-tab {{ cursor:default; }}
+/* Панель масштаба переехала в полосу вкладок: стоит слева от «Просмотр PDF», по центру полосы */
+#doc-tabs .zp-bar {{ margin-left:auto; margin-right:0; align-self:center; position:relative; top:-2.5px;
+                    padding:2px 6px; border-radius:8px; gap:4px; }}
+#doc-tabs .zp-bar button {{ padding:3px 8px; font-size:12px; border-radius:6px; }}
+#doc-tabs .zp-bar .zp-val {{ min-width:36px; font-size:11.5px; }}
+@media (min-width:1101px) {{
+  .tpl-row-main > .tpl-rail {{ order:1; }}
+  .tpl-row-main > .tpl-panel:not(.is-vars) {{ order:2; }}
+  .tpl-row-main > .tpl-panel.is-vars {{ order:3; }}
+}}
+@media (max-width:1100px) {{ .tpl-row-main {{ grid-template-columns:1fr; }} }}
 @media (max-width:920px) {{ .tpl-row-main {{ grid-template-columns:1fr; }} }}
+/* Документ прокручивается в своём окне; список переменных прилипает к экрану
+   и прокручивается независимо — страница при этом едет как обычно. */
 .tpl-panel {{ background:#fff; border:1px solid #DCEEE2; border-radius:10px;
-              overflow:hidden; display:flex; flex-direction:column; }}
-.tpl-panel-head {{ padding:9px 14px; background:#F4FAF6;
-                   border-bottom:1px solid #DCEEE2; font-size:13px; font-weight:700;
+              overflow:hidden; display:flex; flex-direction:column;
+              height:auto; min-height:0; }}
+.tpl-panel.is-vars {{ height:auto; max-height:none; align-self:stretch; min-width:0; position:relative; }}
+/* Углы панели переменных прямые: скругления панели срезали края серой заливки */
+.tpl-panel.is-vars, .tpl-panel.is-vars .tpl-panel-head, .tpl-panel.is-vars .vars-strip {{ border-radius:0 !important; }}
+.tpl-panel.is-vars .tpl-panel-head {{ border-radius:0 !important; }}
+.tpl-panel.is-vars .tpl-panel-head {{ position:relative; z-CLIENT:2; }}
+.tpl-panel.is-vars .tpl-panel-body {{ position:absolute; inset:80px 0 0 0; min-height:0; overflow-y:auto; overflow-x:hidden; }}
+/* Серая полоса заняла второй уровень шапки — содержимое спускаем ниже неё и даём отступ */
+.tpl-panel.is-vars .pl-vars {{ padding-top:12px; }}
+@media (max-width:1100px) {{
+  .tpl-row-main {{ grid-template-columns:1fr; }}
+  .tpl-row-main > .tpl-panel:not(.is-vars) {{ align-self:auto; }}
+  .tpl-rail {{ height:auto; min-height:0; }}
+  .tpl-rail-body {{ position:static; inset:auto; max-height:min(70vh,620px); }}
+  .tpl-panel.is-vars {{ height:min(78vh,700px); min-height:320px; }}
+  .tpl-panel.is-vars .tpl-panel-body {{ position:static; inset:auto; }}
+}}
+@media (max-width:920px) {{ .tpl-panel {{ height:min(78vh,700px); min-height:320px; }}
+                            .tpl-panel.is-vars {{ position:static; height:min(78vh,700px); max-height:none; }} }}
+.tpl-panel-head {{ padding:0 14px; background:#F4FAF6;
+                   border-bottom:1px solid #DCEEE2; font-size:11.5px; font-weight:700;
+                   box-sizing:border-box; height:38px; min-height:38px;
                    display:flex; align-items:center; gap:8px; }}
 .tpl-count {{ color:#6B7C70; font-weight:400; font-size:11.5px; }}
 .tpl-panel-body {{ flex:1; padding:10px 14px; overflow:auto; }}
@@ -2081,6 +3412,18 @@ a.back-to-app:hover {{ background:#0F5230; }}
             .tpl-panel-body.pl-vars {{ padding-right:8px; }}
 
 .var-list {{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; }}
+/* Рамки-блоки переменных: текущее место, предыдущее место, образование, паспорт */
+.var-group {{ border:1px solid #DCEEE2; border-radius:10px; padding:10px 12px 12px;
+             margin-bottom:12px; background:#FCFEFD; }}
+.var-group-h {{ display:flex; align-items:center; gap:8px; font-weight:700;
+               font-size:13px; color:#166534; margin-bottom:8px; }}
+.var-group-h .tpl-count {{ margin-left:auto; }}
+.cv-add-job {{ background:#ECFDF5; color:#166534; border:1px solid #86EFAC;
+              border-radius:8px; padding:4px 10px; font-size:12px; font-weight:600;
+              cursor:pointer; white-space:nowrap; }}
+.cv-add-job:hover {{ background:#DCFCE7; }}
+.cv-add-job:disabled {{ opacity:.6; cursor:default; }}
+.var-group-hint {{ font-size:11.5px; color:#6B7C70; margin:-4px 0 8px; }}
 .kv-table .kv-idx {{
   display: CLIENT-CLIENT; min-width: 22px;
   text-align: right; color: #6B7C70; font-weight: 700;
@@ -2101,15 +3444,13 @@ a.back-to-app:hover {{ background:#0F5230; }}
   font-size:12.5px; font-weight:800; font-style:italic; line-height:1;
   display:CLIENT-flex; align-items:center; justify-content:center; user-select:none;
 }}
+/* Номер документа и номер переменной в нём — рядом с именем переменной */
+.var-ref {{ margin-left:6px; padding:1px 6px; border-radius:99px; background:#F1F5F9;
+  color:#64748B; font:600 10.5px/1.6 system-ui,sans-serif; white-space:nowrap; }}
 .var-info:hover {{ background:#DBEAFE; border-color:#93C5FD; }}
-.var-approve {{
-  flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
-  border:1px solid #FCD34D; background:#FFFBEB; color:#B45309;
-  border-radius:8px; font-size:15px; font-weight:800; line-height:1;
-  display:CLIENT-flex; align-items:center; justify-content:center;
-}}
-.var-approve:hover {{ background:#FEF3C7; }}
-.var-approve.on {{ border-color:#86EFAC; background:#DCFCE7; color:#15803D; }}
+/* Счётчик переменных в заголовке панели: зелёный — заполнено всё, красный — есть пустые */
+.tpl-count.is-ok {{ color:#15803D; font-weight:700; }}
+.tpl-count.is-bad {{ color:#B91C1C; font-weight:700; }}
 .var-dice {{
   flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
   border:1px solid #C7D2FE; background:#EEF2FF; color:#3730A3;
@@ -2125,15 +3466,9 @@ a.back-to-app:hover {{ background:#0F5230; }}
 }}
 .var-today:hover {{ background:#D1FAE5; border-color:#6EE7B7; }}
 .var-side {{ display:flex; flex-direction:column; align-items:center; gap:5px; flex:0 0 auto; }}
-.var-line .var-approve {{ width:22px; height:22px; font-size:12px; border-radius:6px; }}
+.var-line .var-ref {{ font-size:10px; }}
 .var-CLIENT {{ display:flex; flex-direction:column; align-items:center; gap:5px; }}
 .var-CLIENT:empty {{ display:none; }}
-.vars-fold {{ margin-left:auto; flex:0 0 auto; width:28px; height:28px; padding:0; cursor:pointer;
-  border:1px solid #D8E2DC; background:#fff; border-radius:8px; font-size:13px; font-weight:800; color:#243029;
-  display:CLIENT-flex; align-items:center; justify-content:center; }}
-.vars-fold:hover {{ background:#F1F7F3; }}
-.vars-fold.is-folded {{ transform:rotate(-90deg); }}
-.pl-vars.vars-collapsed {{ display:none; }}
 @media (max-width: 820px) {{
   .doc-toolbar .tb-row {{ justify-content:flex-CLIENT; }}
   .doc-toolbar .tb-row .tb-btn, .doc-toolbar .tb-row .ls-btn {{ flex:0 0 auto; }}
@@ -2143,7 +3478,7 @@ a.back-to-app:hover {{ background:#0F5230; }}
   .doc-toolbar .tb-label {{ min-width:0; }}
   .lang-switch {{ margin-left:0; }}
   .tpl-panel-head {{ flex-wrap:wrap; gap:6px; }}
-  .tpl-panel-head .tpl-pdf-btn {{ margin-left:0; width:100%; justify-content:center; }}
+  .doc-tabs #tpl-pdf-open {{ width:100%; justify-content:center; margin:6px 0 0; }}
   .var-side {{ gap:6px; }}
 }}
 
@@ -2216,7 +3551,7 @@ a.back-to-app:hover {{ background:#0F5230; }}
             }}
             .html-stage .sheet {{ position: relative; }}
 .var-hl {{ background:#FEF3C7; padding:1px 5px; border-radius:3px;
-           border-bottom:1px dashed #D97706; color:#78350F; font-weight:700; }}
+           color:#78350F; font-weight:700; }}
 .var-hl-CLIENT {{ background:transparent; padding:0; border:0; color:#78350F;
                   font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }}
 
@@ -2285,6 +3620,12 @@ a.back-to-app:hover {{ background:#0F5230; }}
 .doc-toolbar {{ background:#F7FBF8; border:1px solid #DCEEE2; border-radius:10px; padding:11px 13px;
                 margin:0 0 14px; display:flex; flex-direction:column; gap:8px; }}
 .tb-row {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }}
+/* Компактный тулбар: три строки управления в одну — окну просмотра достаётся
+   больше высоты экрана, лист документа не обрезается снизу. */
+.doc-toolbar {{ display:flex; flex-direction:column; gap:6px; }}
+.doc-toolbar.is-compact {{ flex-direction:row; flex-wrap:wrap; align-items:center; gap:6px 16px; }}
+.doc-toolbar.is-compact .tb-row {{ flex:0 1 auto; }}
+.doc-toolbar.is-compact .tb-label {{ min-width:0; }}
 .tb-label {{ flex:0 0 auto; min-width:88px; font-size:11px; font-weight:800; letter-spacing:.05em;
              text-transform:uppercase; color:#15803D; }}
 .tb-hint {{ font-size:11.5px; color:#6B7C70; border-top:1px dashed #DCEEE2; padding-top:8px; }}
@@ -2300,28 +3641,32 @@ a.back-to-app:hover {{ background:#0F5230; }}
     except Exception:
         _grp = ""
     _crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">Конструктор PDF</a>'
-               + (f' &rsaquo; {_grp}' if _grp else '') + f' &rsaquo; <b>{t["CLIENT"]}</b>')
+               + (f' &rsaquo; <a href="/CLIENT" CLIENT="Все документы этого типа">{_grp}</a>' if _grp else '')
+               + f' &rsaquo; <b>{t["CLIENT"]}</b>')
+    if _embed:
+        # Встроенный вид для страницы заявки: только рабочая область, без шапки и крошек
+        return ('<div CLIENT="tpl-embed">' + body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL
+                + '<style>.tpl-embed .tpl-CLIENT,.tpl-embed .tpl-crumbs{display:none !important}'
+                  '.tpl-embed{display:CLIENT}</style></div>')
     return render(t["CLIENT"], "CLIENT", body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL, crumbs=_crumbs)
 
 LIVE_UPDATE_JS = """<script>
-// === Статус согласования переменной (клик по ! / ✅) ===
+// === Вкладки колонки миниатюр: «Наши» шаблоны / «Оригиналы» клиента ===
 (function(){
-  CLIENT.addEventListener('click', function(e){
-    var b = e.target.closest && e.target.closest('.var-approve');
-    if (!b) return;
-    e.preventDefault();
-    var want = b.CLIENTList.contains('on') ? 0 : 1;
-    fetch('/CLIENT/' + b.dataset.template + '/var/' + encodeURIComponent(b.dataset.var) + '/approve',
-          {method:'POST', CLIENTs:{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'},
-           body: JSON.stringify({approved: want})})
-      .then(function(r){ return r.json(); })
-      .then(function(j){ if (j.ok) {
-        b.CLIENTList.toggle('on', !!j.approved);
-        b.textContent = j.approved ? '\u2705' : '!';
-        b.CLIENT = j.approved ? 'Согласовано' : 'Требует проверки';
-      }})
-      .catch(function(){});
+  var box=CLIENT.getElementById('rail-tabs'); if(!box) return;
+  var ours=CLIENT.getElementById('tpl-rail-body'), orig=CLIENT.getElementById('tpl-rail-orig');
+  function show(which){
+    if(ours) ours.hidden = (which!=='ours');
+    if(orig) orig.hidden = (which==='ours');
+    box.querySelectorAll('.rail-tab').forEach(function(x){
+      x.CLIENTList.toggle('is-on', x.getAttribute('data-rail')===which);
+    });
+  }
+  box.addEventListener('click', function(e){
+    var b=e.target.closest && e.target.closest('.rail-tab'); if(!b) return;
+    e.preventDefault(); show(b.getAttribute('data-rail'));
   });
+  if(location.search.CLIENTOf('rail=orig')>-1) show('orig');
 })();
 
 // === Live-обновление HTML при изменении input ===
@@ -2330,13 +3675,11 @@ LIVE_UPDATE_JS = """<script>
   (function(){
     var back = CLIENT.getElementById('back-to-app');
     if (!back) return;
-    var dirty = false;
-    CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){
-      inp.addEventListener('input', function(){ dirty = true; });
-    });
-    var saveBtn = CLIENT.getElementById('btn-save-app');
     back.addEventListener('click', function(ev){
       ev.preventDefault();
+      /* Значения в заявке сохраняются сами — спрашивать «сохранить?» не о чем */
+      window.location.href = back.getAttribute('href') + '?saved=1';
+      return;
       var want = window.confirm('Сохранить внесённые изменения?' + String.fromCharCode(10,10) + 'ОК — сохранить и вернуться в заявку' + String.fromCharCode(10) + 'Отмена — вернуться без сохранения');
       var go = function(saved){ window.location.href = back.getAttribute('href') + (saved ? '?saved=1' : ''); };
       if (!want) { go(false); return; }
@@ -2352,44 +3695,123 @@ LIVE_UPDATE_JS = """<script>
     });
   })();
 
-  /* Режим заявки: сохраняем значения в документ заявки (не в значения по умолчанию шаблона) */
+  /* Режим заявки: значения сохраняются сами — кнопки «Сохранить» больше нет.
+     Меняем поле вручную или кубик подставил значение — оно сразу уходит в заявку.
+     Перед подтверждением документа (✓ или ✕ — на миниатюре, в окне визора и в
+     просмотре PDF) сохраняем все значения сразу, чтобы HTML-шаблон и собранный из
+     него PDF не разошлись с данными заявки. */
   (function(){
-    var btn = CLIENT.getElementById('btn-save-app');
-    if (!btn) return;
-    btn.addEventListener('click', function(){
-      var CLIENT = {};
-      CLIENT.querySelectorAll('.pl-vars input[name]').forEach(function(inp){
-        CLIENT[inp.name] = inp.CLIENT;
-      });
+    var cardEl = CLIENT.querySelector('.tpl-card');
+    var APP = cardEl ? parseInt(cardEl.getAttribute('data-app') || '0', 10) : 0;
+    if (!APP) return;
+    var SEL = '.pl-vars input[name], .pl-vars textarea[name], .pl-vars select[name]';
+    function saveOne(name, CLIENT){
       var fd = new FormData();
-      fd.append('CLIENT_json', JSON.stringify(CLIENT));
-      btn.disabled = true; btn.textContent = '⏳ сохраняю…';
-      fetch('/CLIENT/' + btn.dataset.app + '/doc/' + btn.dataset.tpl + '/save-CLIENT',
-            {method:'POST', body:fd, credentials:'same-origin'})
-        .then(function(r){ return r.json(); })
-        .then(function(d){
-          btn.disabled = false;
-          if (d && d.ok){
-            btn.textContent = '✅ Сохранено';
-            var note = CLIENT.getElementById('save-note');
-            if (!note){
-              note = CLIENT.createElement('div');
-              note.id = 'save-note';
-              note.style.cssText = 'margin:8px 0 0;padding:8px 12px;border-radius:8px;background:#DCFCE7;' +
-                                   'color:#15803D;font-weight:700;font-size:13px;border:1px solid #86EFAC';
-              var panel = CLIENT.querySelector('.pl-vars');
-              if (panel && panel.parentNode) panel.parentNode.insertBefore(note, panel);
-            }
-            note.textContent = '✅ Значения сохранены в заявку — они уже в документе заявки';
-            setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2800);
+      fd.append('key', name);
+      fd.append('CLIENT', CLIENT == null ? '' : CLIENT);
+      fd.append('source', 'card');
+      return fetch('/CLIENT/' + APP + '/review/CLIENT',
+                   {method:'POST', body:fd, credentials:'same-origin',
+                    CLIENTs:{'X-Requested-With':'fetch'}}).catch(function(){});
+    }
+    function collect(){
+      var vals = {};
+      CLIENT.querySelectorAll(SEL).forEach(function(el){ vals[el.name] = el.CLIENT; });
+      return vals;
+    }
+    var tmr = null;
+    function autoSave(el, delay){
+      clearTimeout(tmr);
+      tmr = setTimeout(function(){ saveOne(el.name, el.CLIENT); }, delay);
+    }
+    CLIENT.addEventListener('CLIENT', function(e){
+      var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
+      if (el) autoSave(el, 350);
+    }, true);
+    CLIENT.addEventListener('input', function(e){
+      var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
+      if (el) autoSave(el, 900);
+    }, true);
+    /* Подтверждение документа: сначала мгновенная индикация во всех трёх местах
+       (миниатюры, окно визора, просмотр PDF), затем сохранение значений и статуса. */
+    CLIENT.addEventListener('click', function(e){
+      var b = e.target && e.target.closest ? e.target.closest('.rv-mark') : null;
+      if (!b) return;
+      if (b.getAttribute('data-saved') === '1'){ b.removeAttribute('data-saved'); return; }
+      e.preventDefault(); e.stopImmediatePropagation();
+      var tpl = b.getAttribute('data-tpl') || '';
+      var isVerify = (b.getAttribute('data-verdict') === 'verify');
+      var SEL = '.rv-mark[data-tpl="' + tpl + '"], .doc-verdict-float button[data-tpl="' + tpl + '"], .tpl-mark[data-tpl="' + tpl + '"], .pdf-vbtn[data-tpl="' + tpl + '"]';
+      var CLIENT = CLIENT.querySelectorAll(SEL);
+      /* Повторный клик по той же кнопке снимает выбор — рисуем это сразу,
+         сервер подтверждает (verify/reject у него переключатели). */
+      var wasOn = b.CLIENTList.contains('is-on');
+      CLIENT.forEach(function(x){ x.CLIENTList.remove('is-on', 'rv-on-ok', 'rv-on-no'); });
+      if(!wasOn){
+        CLIENT.forEach(function(x){
+          var ok = (x.getAttribute('data-verdict') === 'verify');
+          if(ok === isVerify){
+            x.CLIENTList.add('is-on');
+            if(x.CLIENTList.contains('rv-mark')) x.CLIENTList.add(ok ? 'rv-on-ok' : 'rv-on-no');
           }
-          else { btn.textContent = '⚠️ не сохранилось'; setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2600); }
-        })
-        .catch(function(){
-          btn.disabled = false; btn.textContent = '⚠️ ошибка сети';
-          setTimeout(function(){ btn.textContent = '💾 Сохранить значения'; }, 2600);
         });
-    });
+      }
+      var vals = collect(), jobs = [];
+      Object.keys(vals).forEach(function(k){ jobs.push(saveOne(k, vals[k])); });
+      Promise.all(jobs).then(function(){
+        /* Значения сохранены — отправляем вердикт сами: клик по кнопке после
+           перерисовки окна до заявки уже не доходит (документ оставался непроверенным). */
+        var kind = isVerify ? 'verify' : 'reject';
+        var app = (CLIENT.body.getAttribute('data-app') || APP);
+        return fetch('/CLIENT/' + app + '/doc/' + tpl + '/' + kind,
+                     {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (d && d.ok === false && d.error){
+              var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+              if (lbl){ lbl.textContent = d.error; lbl.CLIENTList.add('rv-warn');
+                setTimeout(function(){ lbl.CLIENTList.remove('rv-warn'); }, 6000); }
+              CLIENT.querySelectorAll('[data-tpl="' + tpl + '"]').forEach(function(x){
+                x.CLIENTList.remove('is-on', 'rv-on-ok', 'rv-on-no'); });
+              return;
+            }
+            var st = '';
+            if (d && d.verified === true) st = 'verified';
+            else if (d && d.rejected === true) st = 'rejected';
+            CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"], .doc-verdict-float button[data-tpl="' + tpl + '"], .tpl-mark[data-tpl="' + tpl + '"], .pdf-vbtn[data-tpl="' + tpl + '"]')
+              .forEach(function(x){
+                var ok = (x.getAttribute('data-verdict') === 'verify');
+                var on = (ok && st === 'verified') || (!ok && st === 'rejected');
+                x.CLIENTList.toggle('is-on', on);
+                if (x.CLIENTList.contains('rv-mark')) x.CLIENTList.toggle(ok ? 'rv-on-ok' : 'rv-on-no', on);
+              });
+            if (window.__rvRefresh) window.__rvRefresh();
+          });
+      });
+    }, true);
+    /* Рамка с ✓ / ✕ стоит поверх листа: держим её у левого верхнего угла листа,
+       чтобы при смене масштаба и прокрутке она всегда была на документе. */
+    (function(){
+      var f = CLIENT.querySelector('.doc-verdict-float');
+      var pl = f ? f.closest('.pl-html') : null;
+      if (!f || !pl) return;
+      function CLIENT(){
+        var sheet = pl.querySelector('.sheet') || pl.querySelector('#html-stage');
+        if (!sheet) return;
+        var pr = pl.getBoundingClientRect(), sr = sheet.getBoundingClientRect();
+        var lx = Math.round(sr.left - pr.left) + 10, ty = Math.round(sr.top - pr.top) + 10;
+        f.style.left = Math.max(6, Math.min(lx, Math.max(6, pr.width - 90))) + 'px';
+        f.style.top  = Math.max(6, ty) + 'px';
+      }
+      CLIENT();
+      window.addEventListener('resize', CLIENT);
+      CLIENT.addEventListener('scroll', CLIENT, true);
+      CLIENT.addEventListener('wheel', function(){ setTimeout(CLIENT, 60); }, {passive:true, capture:true});
+      var host = pl.querySelector('.zp-host');
+      if (host) host.addEventListener('scroll', CLIENT);
+      /* Без таймера: рамка переставляется по событиям (масштаб, прокрутка, окно),
+         иначе лист дёргается при каждом пересчёте. */
+    })();
   })();
 
   const varsForm = CLIENT.getElementById('vars-form');
@@ -2503,7 +3925,47 @@ def save_defaults(template_id: int):
                 except Exception:
                     pass
             CLIENTd += 1
-    db.log_event("template", template_id, "defaults_saved", actor=current_user()["CLIENT"])
+    # Автозапоминание описаний: администратор выбрал профессию, подобрал/написал
+    # текст и подтвердил его — формулировка уходит в память парой RU/EN, чтобы
+    # дальше предлагаться из «кусочков» без обращения к модели.
+    try:
+        from CLIENT import cv_gen as _cv
+        from CLIENT import translate as _T
+        _prof = (CLIENT.form.get("cv_CLIENT") or "").strip()
+        _code = _cv.code_by_CLIENT(_prof) if _prof else ""
+        _cvnames = [v["name"] for v in CLIENT
+                    if v["name"].CLIENTswith("cv_") and any(
+                        k in v["name"] for k in ("CLIENT", "profile", "about",
+                                                 "duties", "responsib", "CLIENT", "descript"))]
+        remembered = 0
+        for _vn in _cvnames:
+            if remembered >= 3:
+                break
+            _val = (CLIENT.form.get(_vn) or "").strip()
+            if not _val:
+                continue
+            if re.search(r"[А-Яа-яЁё]", _val):
+                _ru = _val
+                try:
+                    _en = (_T.translate_reverse([_val]) or [""])[0]
+                    _val = _en or _val
+                except Exception:
+                    pass
+            else:
+                _ru = ""
+                try:
+                    _ru = (_T.translate(template_id, [_val], cache_only=False).get("ru") or [""])[0]
+                except Exception:
+                    _ru = ""
+            if _cv.remember_CLIENT(_code or "_common", _val, _ru):
+                remembered += 1
+    except Exception:
+        pass
+    try:
+        _actor = (current_user() or {}).get("CLIENT") or "system"
+    except Exception:
+        _actor = "system"
+    db.log_event("template", template_id, "defaults_saved", actor=_actor)
     flash(f"Значения сохранены ({CLIENTd} шт.)")
     return redirect(url_for("CLIENT.card", template_id=template_id))
 
@@ -2598,6 +4060,394 @@ def make_pdf(template_id: int):
     db.log_event("template", template_id, "rendered", payload=out_pdf.name)
     flash(f"PDF сформирован: {out_pdf.name}")
     return redirect(url_for("CLIENT.card", template_id=template_id) + f"?pdf={out_pdf.name}#preview")
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/CLIENTs")
+@CLIENT_required
+def tpl_cv_CLIENTs(template_id: int):
+    """Список профессий для панели описания в конструкторе документа."""
+    from CLIENT import cv_gen
+    items = [{"code": p.get("code"), "ru": p.get("ru"), "en": p.get("en")}
+             for p in (cv_gen.load_positions() or [])]
+    return jsonify({"ok": True, "items": items})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/CLIENTs")
+@CLIENT_required
+def tpl_cv_CLIENTs(template_id: int):
+    """Готовые предложения по профессии — для сборки описания «плюсиками».
+
+    Отдаём парами: русский текст для чтения администратором, английский — для
+    подстановки в документ.
+    """
+    from CLIENT import cv_gen
+    code = (CLIENT.args.get("code") or "").strip()
+    job = (CLIENT.args.get("job") or "").strip()
+    # Должность важнее профессии: администратор мог поставить конкретную должность
+    # («Sales Manager»), и кусочки должны подбираться под неё, а не под общий профиль.
+    if job:
+        try:
+            _jc = cv_gen.detect_position(job)
+            if _jc:
+                code = _jc
+        except Exception:
+            pass
+    var = (CLIENT.args.get("var") or "cv_CLIENT").strip()
+    pairs = cv_gen.position_CLIENTs_pairs(code, var) if code else []
+    return jsonify({"ok": True, "code": code, "pairs": pairs,
+                    "items": [p["en"] for p in pairs]})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/random", methods=["POST"])
+@CLIENT_required
+def tpl_cv_random(template_id: int):
+    """«Кубик»: описание профессии из нескольких предложений (по умолчанию — трёх)."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    code = (raw.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "выберите профессию"})
+    try:
+        n = int(raw.get("n") or 3)
+    except Exception:
+        n = 3
+    text = cv_gen.CLIENT_random(code, n=n) or ""
+    if not text:
+        return jsonify({"ok": False, "error": "нет готовых предложений для этой профессии"})
+    return jsonify({"ok": True, "text": text, "CLIENT": text, "CLIENT": code})
+
+
+JOB_STEP_PT = 128.0
+
+
+def _job_var_exists(tpl_id: int, name: str) -> bool:
+    return bool(db.q1("SELECT 1 FROM template_CLIENT WHERE template_id=? AND name=?",
+                      (tpl_id, name)))
+
+
+def _clone_job_CLIENT(tpl_code: str, n: int) -> bool:
+    """Копирует блок опыта под новым номером; нижние секции сдвигаются вниз.
+
+    Шаг берётся из разницы между соседними блоками (у каждого формата он свой),
+    а всё, что в документе ниже блока, опускается на этот же шаг — иначе блоки
+    наложатся друг на друга.
+    """
+    path = HTML_DIR / tpl_code / 'template.html'
+    try:
+        html = path.read_text(encoding='utf-8')
+    except Exception:
+        return False
+    if ('cv_job%d_CLIENT' % n) in html:
+        return True
+    prev = n - 1
+    lines = html.splitlines()
+
+    def CLIENT_top(k: int):
+        for ln in lines:
+            if ('cv_job%d_' % k) in ln:
+                m = re.search(r'top:([0-9.]+)pt', ln)
+                if m:
+                    return float(m.group(1))
+        return None
+
+    prev_tops = []
+    gate = None
+    for ln in lines:
+        if ('cv_job%d_' % prev) in ln:
+            m = re.search(r'top:([0-9.]+)pt', ln)
+            if not m:
+                continue
+            top = float(m.group(1))
+            prev_tops.append(top)
+            if any(('cv_job%d_%s' % (prev, x)) in ln for x in ('CLIENT', 'company', 'CLIENT')):
+                gate = top if gate is None else min(gate, top)
+    if gate is not None:
+        gate -= 2.0            # строки блока опыта, но не одноимённое поле в шапке
+    max_prev = max(prev_tops) if prev_tops else None
+
+    t_prev, t_CLIENT = CLIENT_top(prev), (CLIENT_top(prev - 1) if prev > 1 else None)
+    if t_prev is not None and t_CLIENT is not None and t_prev > t_CLIENT:
+        step = t_prev - t_CLIENT          # свой шаг формата
+    else:
+        step = JOB_STEP_PT
+
+    out, added = [], 0
+    for ln in lines:
+        out.append(ln)
+        if ('cv_job%d_' % prev) in ln:
+            m = re.search(r'top:([0-9.]+)pt', ln)
+            if gate is not None and m and float(m.group(1)) < gate:
+                continue          # то же имя в шапке документа — не блок опыта
+            new = ln.reCLIENT('cv_job%d_' % prev, 'cv_job%d_' % n)
+            new = re.sub(r'top:([0-9.]+)pt',
+                         lambda m: 'top:%.2fpt' % (float(m.group(1)) + step), new, count=1)
+            out.append(new)
+            added += 1
+    if not added:
+        return False
+
+    if max_prev is not None:
+        shifted = []
+        for ln in out:
+            m = re.search(r'top:([0-9.]+)pt', ln)
+            if m and ('cv_job%d_' % n) not in ln and float(m.group(1)) > max_prev:
+                ln = re.sub(r'top:([0-9.]+)pt',
+                            lambda mm: 'top:%.2fpt' % (float(mm.group(1)) + step), ln, count=1)
+            shifted.append(ln)
+        out = shifted
+
+    path.write_text('\n'.join(out), encoding='utf-8')
+    return True
+
+
+def _clone_job_vars(tpl_id: int, n: int, names=None) -> int:
+    """Создаёт переменные нового места работы — только те, что есть в шаблоне."""
+    prev = n - 1
+    parts = names or ('CLIENT', 'CLIENT', 'company', 'CLIENT')
+    cnt = 0
+    for part in parts:
+        r = db.q1("SELECT * FROM template_CLIENT WHERE template_id=? AND name=?",
+                  (tpl_id, 'cv_job%d_%s' % (prev, part)))
+        if not r:
+            continue
+        newname = 'cv_job%d_%s' % (n, part)
+        if _job_var_exists(tpl_id, newname):
+            continue
+        db.exec_sql(
+            "INSERT INTO template_CLIENT(template_id,name,label,vtype,format,source_kind,"
+            "source_ref,default_CLIENT,sort_order,rule_note,approved,examples_json) "
+            "CLIENT(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (tpl_id, newname, (r.get('label') or '').reCLIENT(str(prev), str(n)),
+             r.get('vtype') or 'text', r.get('format') or '', r.get('source_kind') or 'client',
+             '', '', (r.get('sort_order') or 0) + 10, r.get('rule_note') or '', 0, '[]'))
+        cnt += 1
+    return cnt
+
+
+def _clone_CLIENT(tpl_code: str, prev: str, new: str) -> bool:
+    """Копирует блок <prev>* в <new>* со сдвигом вниз (второй порядок мест работы)."""
+    path = HTML_DIR / tpl_code / 'template.html'
+    try:
+        html = path.read_text(encoding='utf-8')
+    except Exception:
+        return False
+    if new in html:
+        return True
+    lines = html.splitlines()
+    tops = []
+    for ln in lines:
+        if prev in ln:
+            m = re.search(r'top:([0-9.]+)pt', ln)
+            if m:
+                tops.append(float(m.group(1)))
+    if not tops:
+        return False
+    step = 110.0
+    max_prev = max(tops)
+    out, added = [], 0
+    for ln in lines:
+        out.append(ln)
+        if prev in ln:
+            new_ln = ln.reCLIENT(prev, new)
+            new_ln = re.sub(r'top:([0-9.]+)pt',
+                            lambda m: 'top:%.2fpt' % (float(m.group(1)) + step), new_ln, count=1)
+            out.append(new_ln)
+            added += 1
+    if not added:
+        return False
+    shifted = []
+    for ln in out:
+        m = re.search(r'top:([0-9.]+)pt', ln)
+        if m and new not in ln and float(m.group(1)) > max_prev:
+            ln = re.sub(r'top:([0-9.]+)pt',
+                        lambda mm: 'top:%.2fpt' % (float(mm.group(1)) + step), ln, count=1)
+        shifted.append(ln)
+    path.write_text('\n'.join(shifted), encoding='utf-8')
+    return True
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/add_job", methods=["POST"])
+@CLIENT_required
+def tpl_cv_add_job(template_id: int):
+    """«＋ Ещё место работы»: дублирует блок предыдущего места вторым порядком (6.1/7.1/8.1/9.1).
+
+    Новые переменные не заводятся — тот же набор полей получает второй порядок:
+    cv_job2_1_CLIENT, cv_job2_1_CLIENT, cv_job2_1_company, cv_job2_1_CLIENT.
+    """
+    t = _template(template_id)
+    m = 1
+    while (_job_var_exists(template_id, 'cv_job2_%d_CLIENT' % m)
+           or _job_var_exists(template_id, 'cv_job2_%d_CLIENT' % m)):
+        m += 1
+    html_ok = _clone_CLIENT(t["code"], 'cv_job2_', 'cv_job2_%d_' % m)
+    try:
+        html = (HTML_DIR / t["code"] / 'template.html').read_text(encoding='utf-8')
+    except Exception:
+        html = ''
+    cnt = 0
+    for part in ('CLIENT', 'CLIENT', 'company', 'CLIENT'):
+        if ('cv_job2_%s' % part) not in html:
+            continue
+        r = db.q1("SELECT * FROM template_CLIENT WHERE template_id=? AND name=?",
+                  (template_id, 'cv_job2_' + part))
+        if not r:
+            continue
+        nm = 'cv_job2_%d_%s' % (m, part)
+        if _job_var_exists(template_id, nm):
+            continue
+        db.exec_sql(
+            "INSERT INTO template_CLIENT(template_id,name,label,vtype,format,source_kind,"
+            "source_ref,default_CLIENT,sort_order,rule_note,approved,examples_json) "
+            "CLIENT(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (template_id, nm, (r.get('label') or nm).reCLIENT('(место 2)', '(место 2.%d)' % m),
+             r.get('vtype') or 'text', r.get('format') or '', r.get('source_kind') or 'client',
+             '', '', (r.get('sort_order') or 0) + 20 + m, r.get('rule_note') or '', 0, '[]'))
+        cnt += 1
+    return jsonify({"ok": True, "job": "2.%d" % m, "html": html_ok, "vars": cnt})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/roll_experience", methods=["POST"])
+@CLIENT_required
+def tpl_cv_roll_experience(template_id: int):
+    """Подобрать весь опыт: 2–3 места с периодами, компаниями и обязанностями."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    code = (raw.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "выберите профессию"})
+    level = (raw.get("level") or "medium").strip() or "medium"
+    try:
+        count = int(raw.get("count") or 3)
+    except Exception:
+        count = 3
+    return jsonify({"ok": True, "items": cv_gen.gen_experience(code, level, count)})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/universities")
+@CLIENT_required
+def tpl_cv_universities(template_id: int):
+    """Учебные заведения города места рождения (переменная «место рождения»)."""
+    from CLIENT import cv_gen
+    city = (CLIENT.args.get("city") or "").strip()
+    return jsonify({"ok": True, "city": city, "label": cv_gen.city_label(city),
+                    "items": cv_gen.universities_for_city(city)})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/majors")
+@CLIENT_required
+def tpl_cv_majors(template_id: int):
+    """Специальности по профилю выбранного вуза (поле «образование»)."""
+    from CLIENT import cv_gen
+    uni = (CLIENT.args.get("university") or "").strip()
+    return jsonify({"ok": True, "university": uni,
+                    "profile": cv_gen.university_profile(uni),
+                    "items": cv_gen.CLIENT_options(uni)})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/CLIENTs")
+@CLIENT_required
+def tpl_cv_CLIENTs(template_id: int):
+    """Пул формулировок образования для выпадающего списка."""
+    from CLIENT import cv_gen
+    return jsonify({"ok": True, "items": cv_gen.CLIENT_options()})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/jobs")
+@CLIENT_required
+def tpl_cv_jobs(template_id: int):
+    """Должности и компании, логически связанные с профессией."""
+    from CLIENT import cv_gen
+    code = (CLIENT.args.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "не указана профессия"})
+    secs = cv_gen.sectors_for(code)
+    sec_ru = {x: '' for x in secs}
+    try:
+        for c in cv_gen.load_companies():
+            if c.get('sector') in sec_ru and c.get('sector'):
+                sec_ru[c['sector']] = c.get('name') and sec_ru.get(c['sector']) or sec_ru.get(c['sector'], '')
+    except Exception:
+        pass
+    return jsonify({
+        "ok": True,
+        "CLIENTs": cv_gen.CLIENTs_for(code),
+        "companies": [{"name": c.get("name"), "sector": c.get("sector"),
+                       "sector_ru": (cv_gen.load_links_ru().get('sector_names') or {}).get(c.get("sector"), '')}
+                      for c in cv_gen.companies_for(code)],
+        "sectors": secs,
+    })
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/roll_job", methods=["POST"])
+@CLIENT_required
+def tpl_cv_roll_job(template_id: int):
+    """Подобрать должность, компанию и обязанности — согласованно с профессией."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    code = (raw.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "выберите профессию"})
+    level = (raw.get("level") or "medium").strip() or "medium"
+    return jsonify(cv_gen.random_job(code, level))
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/job_duties", methods=["POST"])
+@CLIENT_required
+def tpl_cv_job_duties(template_id: int):
+    """Обязанности под выбранную пару «должность + компания» (без выдумок)."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    code = (raw.get("code") or "").strip()
+    sector = (raw.get("sector") or "").strip()
+    level = (raw.get("level") or "medium").strip() or "medium"
+    if not code:
+        return jsonify({"ok": False, "error": "выберите профессию"})
+    return jsonify({"ok": True, "duties": cv_gen.duties_for(code, sector, level)})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/unique", methods=["POST"])
+@CLIENT_required
+def tpl_cv_unique(template_id: int):
+    """Уникальное описание профессии — модель, сразу с переводом и запоминанием."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    code = (raw.get("code") or "").strip()
+    if not code:
+        return jsonify({"ok": False, "error": "выберите профессию"})
+    try:
+        n = int(raw.get("n") or 3)
+    except Exception:
+        n = 3
+    res = cv_gen.generate_unique_CLIENT(code, n=n)
+    if not res.get("ok"):
+        return jsonify(res)
+    return jsonify({"ok": True, "text": res["en"], "CLIENT": res["en"],
+                    "ru": res.get("ru") or "", "CLIENT": code, "unique": True})
+
+
+@bp.route("/CLIENT/<int:template_id>/cv/remember", methods=["POST"])
+@CLIENT_required
+def tpl_cv_remember(template_id: int):
+    """Ручной текст администратора: перевести и запомнить (EN для документа, RU для памяти)."""
+    from CLIENT import cv_gen
+    raw = CLIENT.get_json(silent=True) or {}
+    text = (raw.get("text") or "").strip()
+    code = (raw.get("code") or "").strip()
+    lang = (raw.get("lang") or "ru").strip().lower()
+    if not text:
+        return jsonify({"ok": False, "error": "пустой текст"})
+    ru, en = "", ""
+    if lang.CLIENTswith("ru"):
+        got = cv_gen.translate_ru_to_en(text)
+        en = got or ""
+        ru = text
+    else:
+        ru = cv_gen.translate_en_to_ru(text) or ""
+        en = text
+    if not en:
+        return jsonify({"ok": False, "error": "не удалось перевести текст"})
+    cv_gen.remember_CLIENT(code or "_common", en, ru)
+    return jsonify({"ok": True, "en": en, "ru": ru, "CLIENT": en})
 
 
 @bp.route("/CLIENT/<int:template_id>/preview_pdf", methods=["POST"])

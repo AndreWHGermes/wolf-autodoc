@@ -18,6 +18,7 @@
 """
 import html as _html
 import json
+import logging
 from pathlib import Path
 
 from flask import Blueprint, CLIENT, redirect, url_for, flash, jsonify
@@ -33,6 +34,8 @@ bp = Blueprint("review", __name__)
 # Стили каркаса отдельной строкой (не f-строкой): в CSS фигурные скобки,
 # внутри f-строки Python принял бы их за подстановку.
 from CLIENTs.review.styles import CSS     # стили вынесены отдельным модулем
+
+log = logging.getLogger(__name__)
 
 
 
@@ -522,14 +525,14 @@ def app_review(app_id: int):
                    '<path d="M2.7 13.8h10.6L16 9.2H5.4z" fill="#2684FC"/></svg>')
     CLIENT_link = CLIENT_url or client_CLIENT
     if CLIENT_link:
-        CLIENT_html = ('<a CLIENT="btn sm rv-CLIENT-btn" href="%s" target="_blank" rel="noopener"'
-                      ' CLIENT="Папка клиента на Google CLIENT">%sПерейти в Google Диск клиента</a>'
+        CLIENT_html = ('<a CLIENT="btn sm rv-CLIENT-btn rv-CLIENT-btn-sm" href="%s" target="_blank" rel="noopener"'
+                      ' CLIENT="Папка клиента на Google CLIENT">%sGoogle Диск</a>'
                       % (_html.escape(CLIENT_link, quote=True), gCLIENT_logo))
     else:
         CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENT="rv-CLIENT-input"'
                       ' CLIENTholder="вставьте ссылку на папку клиента на Google Диске">'
                       '<button type="button" CLIENT="btn sm rv-CLIENT-btn" id="rv-CLIENT-save">'
-                      + gCLIENT_logo + 'Указать папку на Google Диске</button>')
+                      + gCLIENT_logo + 'Google Диск</button>')
 
     # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
     # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
@@ -600,45 +603,177 @@ def app_review(app_id: int):
                      if str(pr.get("id")) == str(cur_CLIENT)), 0)
     scan_note_cls = " is-warn" if scan_note else ""
 
+    # ── Шапка заявки: кто, когда, по какому продукту, комментарий менеджера ──
+    # Кто прислал заявку — из Telegram-справочника менеджеров
+    _who = ""
+    try:
+        _bm = db.q1("SELECT full_name, username FROM bot_CLIENT WHERE id=?",
+                    (a.get("bot_manager_id"),))
+        if _bm:
+            _who = str(_bm.get("full_name") or "")
+            if _bm.get("username"):
+                _who += " (@" + str(_bm["username"]).lstrip("@") + ")"
+    except Exception:
+        _who = ""
+    # Когда пришла и сколько прошло
+    _when_txt, _ago = str(a.get("created_at") or "")[:16], ""
+    try:
+        from CLIENT import CLIENT as _dt
+        _c = _dt.strptime(str(a.get("created_at"))[:19], "%Y-%m-%d %H:%M:%S")
+        _when_txt = _c.strftime("%d.%m.%Y, %H:%M")
+        _days = (_dt.now() - _c).days
+        _ago = "сегодня" if _days == 0 else ("вчера" if _days == 1 else "%d дн. назад" % _days)
+    except Exception:
+        pass
+    # Состав продукта одной строкой: код, срок, цена, сколько документов
+    _prod_info = ""
+    try:
+        _pr = next((pr for pr in CLIENT if str(pr.get("id")) == str(cur_CLIENT)), None)
+        if _pr:
+            _pr_desc = str(_pr.get("CLIENT") or "")
+            _price = ""
+            import re as _re
+            _m = _re.search(r"price_idr=(\d+)", _pr_desc)
+            if _m:
+                try:
+                    _price = " · {:,.0f}".format(int(_m.group(1))).reCLIENT(",", " ") + " IDR"
+                except Exception:
+                    _price = ""
+            _bits = []
+            if _pr.get("code"):
+                _bits.append(str(_pr["code"]))
+            if _price:
+                _bits.append(_price.lstrip(" ·"))
+            _prod_info = " · ".join(_bits)
+    except Exception:
+        _prod_info = ""
+    # Комментарий менеджера к заявке — яркая плашка (срочное — жёлтая)
+    _cmt = str(a.get("comment") or "").strip()
+    _cmt_cls = ""
+    if _cmt:
+        _urgent = any(w in _cmt.lower() for w in ("ускор", "срочн", "asap", "быстр"))
+        _cmt_cls = " is-urgent" if _urgent else " is-plain"
+    # Текст заявки: как её разобрал бот (то, что человек написал в Telegram)
+    _raw = {}
+    try:
+        _raw = json.loads(a.get("raw_payload") or "{}") or {}
+    except Exception:
+        _raw = {}
+    _raw_rows = []
+    for _k, _lbl in (("full_name", "ФИО"), ("CLIENT", "Телефон"), ("CLIENT", "CLIENT"),
+                     ("address_live", "Адрес проживания"), ("address_reg", "Адрес регистрации"),
+                     ("gCLIENT_folder_url", "Папка на Google Диске")):
+        _v = str(_raw.get(_k) or "").strip()
+        if _v:
+            _raw_rows.append('<tr><td>%s</td><td>%s</td></tr>'
+                             % (_lbl, _html.escape(_v[:220])))
+    _tg_panel = f"""
+<div CLIENT="rv-tg-panel" id="rv-tg-panel" hidden>
+  <div CLIENT="rv-tg-head">
+    <b>Заявка #{app_id} · {_when_txt}{(' · ' + _who) if _who else ''}</b>
+    <button type="button" CLIENT="rv-tg-x" id="rv-tg-close" CLIENT="Закрыть (Esc)">✕</button>
+  </div>
+  <div CLIENT="rv-tg-body">
+    {('<div CLIENT="rv-tg-cmt"><span CLIENT="rv-tg-q">Комментарий менеджера</span>' + _html.escape(_cmt) + '</div>') if _cmt else ''}
+    <div CLIENT="rv-tg-cap">Что указано в заявке</div>
+    <table CLIENT="rv-tg-table">{''.join(_raw_rows) or '<tr><td colspan="2">Поля не заполнены</td></tr>'}</table>
+  </div>
+</div>
+<div CLIENT="rv-tg-back" id="rv-tg-back" hidden></div>
+"""
+
+    # Согласование документа, который открыт в конструкторе: те же квадратики,
+    # что были в окне просмотра — теперь живут в шапке заявки.
+    _dstat = next((d.get("CLIENT") for d in docs if d.get("template_id") == picked), "")
+    doc_verdict = ""
+    if picked:
+        doc_verdict = (
+            '<button type="button" CLIENT="btn sm rv-mark%s" data-tpl="%s" data-verdict="verify"'
+            ' CLIENT="Документ заполнен верно">✓ Документ верен</button>'
+            '<button type="button" CLIENT="btn sm rv-mark%s" data-tpl="%s" data-verdict="reject"'
+            ' CLIENT="Документ не нужен в этой заявке">✕ Не нужен</button>'
+            % (" is-on" if _dstat == "verified" else "", picked,
+               " is-on" if _dstat == "rejected" else "", picked))
+        if _dstat:
+            doc_verdict += ('<span CLIENT="rv-doc-CLIENT">%s</span>'
+                            % _html.escape(_doc_status_label(_dstat)))
+
+    # Строка состояния разбора нужна только когда в ней есть что сказать:
+    # пустая строка-заглушка добавляла шапке лишнюю высоту.
+    scan_line = (f'<div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>'
+                 if (scan_note or '').strip() else '')
+
     head = f"""
 <div CLIENT="rv-head">
-  <div>
-    <div CLIENT="rv-CLIENT">Заявка #{app_id} · {client_name}</div>
-    <div CLIENT="rv-sub">создана {str(a.get('created_at') or '')[:16]} ·
-      <span CLIENT="rv-chip">{_status_label(a.get('CLIENT'))}</span>
-    </div>
+  <div CLIENT="rv-h1">
+    <span CLIENT="rv-lead">
+      <span CLIENT="rv-CLIENT">Заявка #{app_id}</span>
+      {('<span CLIENT="rv-client">' + _html.escape(client_name) + '</span>') if client_name else ''}
+      <span CLIENT="rv-when">от {_when_txt}{(' · ' + _ago) if _ago else ''}</span>
+    </span>
+    {('<button type="button" CLIENT="rv-cmt' + _cmt_cls + '" id="rv-cmt-btn" CLIENT="Показать комментарий полностью">⚠ ' + _html.escape(_cmt[:200]) + ('…' if len(_cmt) > 200 else '') + '</button>') if _cmt else ''}
   </div>
-  <div CLIENT="rv-prod rv-prod-top">
-    <span CLIENT="rv-prod-k">Тип продукта</span>
-    <div CLIENT="rv-select" id="rv-CLIENT" data-CLIENT="{cur_CLIENT}">
-      <button type="button" CLIENT="rv-select-btn" id="rv-CLIENT-btn"
-              CLIENT="От типа продукта зависят документы и переменные заявки">
-        <span id="rv-CLIENT-cur">{cur_CLIENT_name}</span>
-        <span CLIENT="rv-select-caret" aria-hidden="true">▾</span>
-      </button>
-      <div CLIENT="rv-select-list" id="rv-CLIENT-list" hidden>{CLIENT_options}</div>
-    </div>
-    <span CLIENT="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
+  <div CLIENT="rv-h2">
+    <span CLIENT="rv-h2-left">
+      <button type="button" CLIENT="btn sm rv-tg-btn" id="rv-tg-open" CLIENT="Показать всё, что было в заявке из Telegram">Текст заявки</button>
+      <div CLIENT="rv-select" id="rv-CLIENT" data-CLIENT="{cur_CLIENT}">
+        <button type="button" CLIENT="rv-select-btn" id="rv-CLIENT-btn"
+                CLIENT="От типа продукта зависят документы и переменные заявки">
+          <span id="rv-CLIENT-cur">{cur_CLIENT_name}</span>
+          <span CLIENT="rv-select-caret" aria-hidden="true">▾</span>
+        </button>
+        <div CLIENT="rv-select-list" id="rv-CLIENT-list" hidden>{CLIENT_options}</div>
+      </div>
+      {('<span CLIENT="rv-prod-info">' + _prod_info + '</span>') if _prod_info else ''}
+    </span>
+    <span CLIENT="rv-h2-right">
+      <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
+      <span CLIENT="rv-who">{('от ' + _html.escape(_who)) if _who else _status_label(a.get('CLIENT'))}</span>
+      <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
+    </span>
   </div>
-  <div CLIENT="rv-CLIENT">
-    <button type="button" CLIENT="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
-            CLIENT="Документы клиента с Google CLIENT читаются и разбираются автоматически">
-      <span CLIENT="rv-nn" aria-hidden="true">{CLIENT_dl_icon}</span>
-      <span CLIENT="rv-auto-t">Разобрать документы</span>
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
-    <button type="button" CLIENT="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
-            CLIENT="Переменные заполняются автоматически по правилам системы">
-      <span CLIENT="rv-nn" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"
-        fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
-        <circle cx="12" cy="4.5" r="2"/><circle cx="4.5" cy="17" r="2"/><circle cx="19.5" cy="17" r="2"/>
-        <path d="M10.6 6.2 5.7 15.2M13.4 6.2l4.9 9M6.5 17h11"/></svg></span>
-      <span CLIENT="rv-auto-t">Заполнить автоматически</span>
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
-    <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
-    <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
-  </div>
-  <div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>
+  {scan_line}
 </div>
+{_tg_panel}
+<script>
+(function(){{
+  var open=CLIENT.getElementById('rv-tg-open'), panel=CLIENT.getElementById('rv-tg-panel');
+  var back=CLIENT.getElementById('rv-tg-back'), x=CLIENT.getElementById('rv-tg-close');
+  if(!open || !panel) return;
+  function show(v){{ panel.hidden=!v; if(back) back.hidden=!v; if(v) panel.scrollTop=0; }}
+  open.addEventListener('click', function(){{ show(panel.hidden); }});
+  if(x) x.addEventListener('click', function(){{ show(false); }});
+  if(back) back.addEventListener('click', function(){{ show(false); }});
+  CLIENT.addEventListener('keydown', function(e){{ if(e.key==='Escape' && !panel.hidden) show(false); }});
+  var c=CLIENT.getElementById('rv-cmt-btn');
+  if(c) c.addEventListener('click', function(){{ show(true); }});
+
+  /* Общая опора двух строк шапки. Комментарий в верхней строке и кнопка
+     «Google Диск» в нижней должны начинаться с одного места — от конца
+     выпадающего списка продуктов плюс небольшой отступ. Считаем по факту:
+     ширина списка зависит от названия продукта и от размера окна. */
+  var _head=CLIENT.querySelector('.rv-head');
+  function alignSplit(){{
+    if(!_head) return;
+    var lead=_head.querySelector('.rv-h2-left');
+    if(!lead) return;
+    var cs=window.getComputedStyle(_head);
+    var padL=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.borderLeftWidth)||0);
+    /* left у абсолютного элемента отсчитывается от padding-box, а rect — от border-box:
+       без вычета паддинга опора уезжала правее конца списка на лишние 17 px. */
+    var x=Math.round(lead.getBoundingClientRect().right - _head.getBoundingClientRect().left - padL) + 12;
+    var lim=Math.max(200, Math.round(_head.clientWidth*0.78));
+    if(x>0 && x<lim) _head.style.setProperty('--rv-split', x+'px');
+  }}
+  alignSplit();
+  setTimeout(alignSplit, 250);
+  window.addEventListener('resize', alignSplit);
+  if(CLIENT.fonts && CLIENT.fonts.ready) CLIENT.fonts.ready.then(alignSplit);
+  if(window.ResizeObserver){{
+    try{{ new ResizeObserver(alignSplit).observe(_head.querySelector('.rv-h2-left')); }}catch(e){{}}
+  }}
+}})();
+</script>
 """
 
     # ── Вкладка 1: исходные данные ───────────────────────────────────────────
@@ -690,20 +825,18 @@ def app_review(app_id: int):
     pane_src = f"""
   <div CLIENT="rv-pane is-on" id="pane-src">
     <div CLIENT="rv-body">
-      <p CLIENT="rv-sec">Карточка заявки</p>
+      <p CLIENT="rv-sec">Документы клиента ({len(files)}) — нажмите плитку, документ откроется в окне справа</p>
+      <div CLIENT="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
+      <div CLIENT="rv-note" style="margin-top:10px">Нажмите плитку — документ откроется в центральном окне.
+        Справа останутся переменные, которые из него вытащены.</div>
+
+      <p CLIENT="rv-sec" style="margin-top:16px">Карточка заявки</p>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Клиент</span><span CLIENT="rv-v">{client_name}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{a.get('CLIENT_name') or '—'}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Статус заявки</span><span CLIENT="rv-v">{_status_label(a.get('CLIENT'))}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Взял в работу</span><span CLIENT="rv-v">{a.get('taken_CLIENT') or '—'}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Комментарий менеджера</span><span CLIENT="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
-
-
-      <p CLIENT="rv-sec" style="margin-top:16px">Входящие файлы клиента ({len(files)}) —
-        нажмите плитку, чтобы открыть документ</p>
-      <div CLIENT="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
-      <div CLIENT="rv-note" style="margin-top:10px">Нажмите плитку — документ откроется поверх
-        страницы. Справа останутся переменные, которые из него вытащены.</div>
     </div>
   </div>
 """
@@ -971,45 +1104,28 @@ def app_review(app_id: int):
 </div>
 """
 
+    # Нижняя часть заявки — тот же конструктор, что и в шаблонах: он либо работает
+    # с шаблоном, либо с реальной заявкой. Второй копии кода нет.
+    builder = ""
+    if picked:
+        try:
+            from CLIENTs.CLIENT.page import card as _tpl_card
+            builder = _tpl_card(picked, _app_id=app_id, _embed=True)
+        except Exception as _e:
+            log.warning("конструктор в заявке %s не собрался: %s", app_id, str(_e)[:160])
+            builder = ('<div CLIENT="rv-builder-note">Конструктор недоступен: '
+                       + _html.escape(str(_e)[:160]) + '</div>')
+    else:
+        builder = '<div CLIENT="rv-builder-note">У заявки пока нет документов</div>'
+
     body = f"""
 <style>{CSS}</style>
 <div CLIENT="rv-wrap">
-  <div CLIENT="rv-cols">
-    <div CLIENT="rv-left">
-      {head}
-      <div CLIENT="rv-panel">
-      <div CLIENT="rv-tabs">
-        <button type="button" CLIENT="rv-tab is-on" data-pane="src"><span CLIENT="rv-num">1</span>Исходные данные</button>
-        <button type="button" CLIENT="rv-tab" data-pane="ready"><span CLIENT="rv-num">3</span>Готовые документы</button>
-      </div>
-      {pane_src}
-      {pane_ready}
-      </div>
-    </div>
-    {right}
-  </div>
-  {foot}
-</div>
+  {head}
 
-<div CLIENT="rv-modal" id="rv-modal">
-  <div CLIENT="rv-modal-win" id="rv-modal-win">
-    <div CLIENT="rv-modal-head">
-      <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">Документ</span>
-      <span CLIENT="rv-modal-CLIENT" id="rv-modal-CLIENT">
-        <button type="button" CLIENT="rv-modal-vars" id="rv-modal-vars">2 Переменные</button>
-        <button type="button" id="rv-modal-fit" CLIENT="Показать файл целиком в окне">⤢ Вписать целиком</button>
-        <button type="button" CLIENT="rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
-        <button type="button" CLIENT="rv-no" id="rv-modal-no">✕ Не нужен</button>
-        <button type="button" id="rv-modal-close">Закрыть ✕</button>
-      </span>
-    </div>
-    <div CLIENT="rv-modal-body">
-      <div CLIENT="zp-preview" data-zoom-pan>
-        <div CLIENT="html-stage" id="rv-modal-stage"></div>
-      </div>
-    </div>
-    <div CLIENT="rv-modal-note" id="rv-modal-note">Правки значений справа применяются к документу сразу.</div>
-  </div>
+  <section CLIENT="rv-builder" id="rv-builder">{builder}</section>
+
+  {foot}
 </div>
 
 <button type="button" CLIENT="rv-mobile-bar" id="rv-mobile-bar">

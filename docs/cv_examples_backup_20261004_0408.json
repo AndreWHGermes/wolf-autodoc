@@ -1,0 +1,67 @@
+[
+ {
+  "template_id": 4,
+  "name": "cv_CLIENT",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 4,
+  "name": "cv_job1_CLIENT",
+  "examples_json": "[\"Jun 2025 – Present\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_job1_CLIENT",
+  "examples_json": "[\"March 2018 – Present\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT_CLIENT",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT_hard",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT_soft",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT_CLIENT",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_CLIENT",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_CLIENT",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_job1_CLIENT",
+  "examples_json": "[\"September 2025 – Present\"]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_CLIENT_hard",
+  "examples_json": null
+ },
+ {
+  "template_id": 6,
+  "name": "cv_CLIENT_CLIENT",
+  "examples_json": null
+ }
+]

@@ -266,47 +266,47 @@ body.pdf-fullpage iframe{border:0;width:100%;height:100vh;display:CLIENT}
 .var-meta{font-size:11px;color:#666}
 .var-hint{font-size:11px;margin-left:6px}
 
-.doc-edit-grid {{
+.doc-edit-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
   gap: 14px;
   align-items: CLIENT;
-}}
-.doc-edit-left {{ min-width: 0; }}
-.doc-edit-right {{ min-width: 0; position: sticky; top: 8px; display:flex; flex-direction:column; gap:10px; }}
-.pdf-preview {{
+}
+.doc-edit-left { min-width: 0; }
+.doc-edit-right { min-width: 0; position: sticky; top: 8px; display:flex; flex-direction:column; gap:10px; }
+.pdf-preview {
   width: 100%; height: 56vh; border: 1px solid var(--line); border-radius: 8px;
   background: #fff;
-}}
-.doc-html-stage {{
+}
+.doc-html-stage {
   background: #fff; border: 0; padding: 0;
   width: 794.5px;
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: initial; color: #000; line-height: normal;
   white-space: normal; box-sizing: border-box;
-}}
-.doc-html-stage .var-hl {{
+}
+.doc-html-stage .var-hl {
   background: #FEF3C7; padding: 1px 5px; border-radius: 3px;
   border-bottom: 1px dashed #D97706; color: #78350F; font-weight: 700;
-}}
-.doc-html-stage .var-hl-filled {{
+}
+.doc-html-stage .var-hl-filled {
   background: #DCFCE7; padding: 1px 5px; border-radius: 3px;
   border: 1px solid #86EFAC; color: #15803D; font-weight: 700;
-}}
-@media(max-width: 820px) {{
-  .doc-edit-grid {{ grid-template-columns: 1fr; }}
-  .doc-edit-right {{ position: static; order: 2; }}
-  .doc-edit-left  {{ order: 1; }}
-  .pdf-preview {{ height: 60vh; }}
-  .doc-html-stage {{ max-height: 50vh; }}
-}}
-.var-row {{ display: flex; gap: 6px; align-items: stretch; }}
-.var-row input {{ flex: 1; min-width: 0; }}
-.random-btn {{
+}
+@media(max-width: 820px) {
+  .doc-edit-grid { grid-template-columns: 1fr; }
+  .doc-edit-right { position: static; order: 2; }
+  .doc-edit-left  { order: 1; }
+  .pdf-preview { height: 60vh; }
+  .doc-html-stage { max-height: 50vh; }
+}
+.var-row { display: flex; gap: 6px; align-items: stretch; }
+.var-row input { flex: 1; min-width: 0; }
+.random-btn {
   flex: 0 0 auto; min-width: 38px; min-height: 38px;
   padding: 0; font-size: 16px; line-height: 1;
   display: flex; align-items: center; justify-content: center;
-}}
+}
 
 /* === Блок 3 «Входные данные заявки»: аккуратно, без линий через строки === */
 #stage-3 .kv-table { border-collapse: separate; border-spacing: 0; }

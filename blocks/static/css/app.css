@@ -1,7 +1,7 @@
 /* Wolf AutoDoc — стили app.py (вынесено из кода) */
-.doc-list{{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}}
-.doc-card{{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
-  padding:12px;box-shadow:var(--shadow)}}
-.doc-name{{font-weight:700;font-size:15px;margin-bottom:8px}}
-.doc-actions{{display:flex;align-items:center;gap:8px;flex-wrap:wrap}}
-.doc-actions .btn{{flex:0 0 auto}}
+.doc-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.doc-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px;box-shadow:var(--shadow)}
+.doc-name{font-weight:700;font-size:15px;margin-bottom:8px}
+.doc-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.doc-actions .btn{flex:0 0 auto}

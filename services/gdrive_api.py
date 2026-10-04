@@ -113,7 +113,24 @@ def download(file_id: str, dest: Path) -> bool:
                 done = False
                 while not done:
                     _, done = dl.next_chunk()
-        return dest.is_file() and dest.stat().st_size > 0
+        ok = dest.is_file() and dest.stat().st_size > 0
+        if ok:
+            # Фото с телефона весят 3–6 МБ. Сразу после скачивания облегчаем
+            # снимок и готовим превью — тогда заявка открывается мгновенно,
+            # и полный снимок на сервере не хранится (см. CLIENT/previews.py).
+            try:
+                from CLIENT import previews
+                if dest.suffix.lower() in previews.IMAGE_EXT:
+                    kind = ""
+                    try:
+                        from scripts.CLIENT_scan import doc_kind_name
+                        kind = doc_kind_name(str(dest), "")
+                    except Exception:
+                        kind = ""
+                    previews.process_client_image(dest, kind)
+            except Exception:
+                pass
+        return ok
     except Exception:
         return False
 

@@ -604,6 +604,17 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
             log.info("автораэбор Google CLIENT по заявке #%s: %s", app_id, res.get("note"))
         except Exception as exc:  # noqa: BLE001
             log.warning("не удалось запустить автораэбор Google CLIENT: %s", exc)
+        # Пока заявка ждёт администратора, готовим её целиком: дожидаемся разбора,
+        # собираем документы и рисуем превью. Тогда открытие заявки мгновенное —
+        # ничего не нужно ждать и не нужно заново ходить на Диск.
+        try:
+            import subprocess as _sp
+            _sp.Popen(["/usr/bin/nice", "-n", "15", "/usr/bin/python3",
+                       "/opt/wolf_v2/scripts/app_prepare.py", str(app_id)],
+                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, CLIENT_new_session=True)
+            log.info("предподготовка заявки #%s запущена", app_id)
+        except Exception as _exc:  # noqa: BLE001
+            log.warning("предподготовка заявки #%s не запустилась: %s", app_id, _exc)
 
     # PDF генерируем отдельно и позже (это ~5 сек на 5 документов).
     # Если генерировать здесь, бот молчит всё это время и менеджер думает,

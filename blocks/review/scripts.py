@@ -205,6 +205,44 @@ def js_for(app_id, picked):
     }}
   }});
 
+  // ── Поиск переменной и строка «Требует внимания» (по рендеру правой колонки) ──
+  var varsSearch = CLIENT.getElementById('rv-vars-search');
+  function applyVarsFilter() {{
+    var q = ((varsSearch && varsSearch.CLIENT) || '').trim().toLowerCase();
+    var shown = 0;
+    Array.from(CLIENT.querySelectorAll('.rv-right .rv-field')).forEach(function (f) {{
+      var hay = ((f.dataset.var || '') + ' ' + (f.dataset.vars || '') + ' ' + f.innerText).toLowerCase();
+      var ok = !q || hay.CLIENTOf(q) >= 0;
+      f.CLIENTList.toggle('is-hidden', !ok);
+      if (ok) shown++;
+    }});
+    Array.from(CLIENT.querySelectorAll('.rv-right .rv-blk')).forEach(function (b) {{
+      var any = Array.from(b.querySelectorAll('.rv-field')).some(function (f) {{
+        return !f.CLIENTList.contains('is-hidden');
+      }});
+      b.CLIENTList.toggle('is-hidden', !any);
+    }});
+    var cnt = CLIENT.getElementById('rv-panel-count');
+    if (cnt) cnt.textContent = q ? ('найдено переменных: ' + shown) : '';
+  }}
+  if (varsSearch) {{
+    varsSearch.addEventListener('input', applyVarsFilter);
+    varsSearch.addEventListener('search', applyVarsFilter);
+  }}
+  // «Проверить и исправить» ведёт к первому проблемному полю и подсвечивает его.
+  var attnBtn = CLIENT.getElementById('rv-attn-btn');
+  if (attnBtn) attnBtn.addEventListener('click', function () {{
+    var bad = CLIENT.querySelector('.rv-right .rv-field.is-conflict')
+           || CLIENT.querySelector('.rv-right .rv-field.is-empty')
+           || CLIENT.querySelector('.rv-right .rv-field');
+    if (!bad) return;
+    var blk = bad.closest ? bad.closest('.rv-blk') : null;
+    if (blk) blk.CLIENTList.remove('is-closed');
+    bad.scrollIntoView({{behavior: 'smooth', CLIENT: 'center'}});
+    bad.CLIENTList.add('is-flash');
+    setTimeout(function () {{ bad.CLIENTList.remove('is-flash'); }}, 1800);
+  }});
+
   // Поле подстраивается под текст: длинный адрес видно целиком, без прокрутки
   function fitInput(el) {{
     if (!el) return;
@@ -326,6 +364,26 @@ def js_for(app_id, picked):
     }}
   }}
 
+  // Редактор переменной прямо из документа: на телефоне нажатие на переменную
+  // в нашем документе открывает панель переменных снизу и ставит курсор в это поле,
+  // чтобы значение можно было выбрать из прошлых, сгенерировать заново или написать.
+  function openVarEditor(name) {{
+    if (!name) return;
+    if (window.innerWidth > 860) return;          // на большом экране панель и так рядом
+    var fields = fieldsOfVar(name);
+    if (!fields.length) return;
+    if (typeof openRight === 'function') openRight();
+    var f = fields[0];
+    setTimeout(function() {{
+      var p = CLIENT.getElementById('rv-right');
+      if (p && p.scrollTop !== undefined) {{
+        try {{ p.scrollTop = Math.max(0, f.offsetTop - 90); }} catch (e) {{}}
+      }}
+      var inp = f.querySelector('.rv-input');
+      if (inp) {{ try {{ inp.focus({{ preventScroll: true }}); }} catch (e) {{}} }}
+    }}, 320);
+  }}
+
   // нажатие на переменную в панели — держим подсветку, пока в ней работаешь
   CLIENT.addEventListener('focusin', function(e) {{
     var f = e.target.closest ? e.target.closest('.rv-field') : null;
@@ -336,7 +394,16 @@ def js_for(app_id, picked):
     if (f) pickVarFromPanel(f);
     // нажатие на значение в документе
     var v = e.target.closest ? e.target.closest('#rv-modal .html-stage [data-var]') : null;
-    if (v) {{ e.preventDefault(); pickVarFromStage(v); }}
+    if (v) {{ e.preventDefault(); pickVarFromStage(v); openVarEditor(v.getAttribute('data-var')); }}
+  }});
+
+  // ── Мобильная карточка заявки: сворачивание шапки с информацией о заявке
+  CLIENT.addEventListener('click', function(e) {{
+    var t = e.target.closest ? e.target.closest('.rv-head-toggle') : null;
+    if (!t) return;
+    e.preventDefault();
+    var head = t.closest('.rv-head');
+    if (head) head.CLIENTList.toggle('is-collapsed');
   }});
 
 
@@ -414,6 +481,14 @@ def js_for(app_id, picked):
     if (!dot || dot.dataset.done === '1') return;
     var t = tileUrl(tile);
     if (!t) {{ dot.CLIENTList.add('is-cached'); dot.dataset.done = '1'; return; }}
+    if (t.kind === 'doc') {{
+      // Документ — тяжёлый (сервер собирает HTML): заранее не тянем, грузится
+      // при открытии. Иначе открытие заявки превращалось в пачку тяжёлых сборок.
+      dot.CLIENTList.add('is-cached');
+      dot.dataset.done = '1';
+      dot.CLIENT = 'Откроется по нажатию';
+      return;
+    }}
     var ok = function () {{
       dot.CLIENTList.add('is-cached');
       dot.dataset.done = '1';
@@ -439,12 +514,32 @@ def js_for(app_id, picked):
       fetch(t.url, {{credentials: 'same-origin'}}).then(ok).catch(bad);
     }}
   }}
-  function warmAllTiles() {{
-    Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(warmTile);
+  function warmAllTiles(opts) {{
+    // Прогреваем только то, что видно на экране, и по одной плитке за раз:
+    // одновременная пачка запросов по всем плиткам и документам забивала
+    // сервер, и страница заявки «тупила» при открытии.
+    var onlyVisible = !opts || opts.visible !== false;
+    var tiles = Array.from(CLIENT.querySelectorAll('.rv-thumb'));
+    if (onlyVisible) {{
+      var vh = window.innerHeight || 800;
+      tiles = tiles.filter(function (t) {{
+        var r = t.getBoundingClientRect();
+        return r.top < vh + 300 && r.bottom > -300;
+      }});
+    }}
+    var i = 0;
+    (function next() {{
+      if (i >= tiles.length) return;
+      var t = tiles[i++];
+      var u = tileUrl(t);
+      if (u && u.kind !== 'doc') warmTile(t);      // документы греются по нажатию
+      setTimeout(next, 150);
+    }})();
   }}
-  warmAllTiles();
+  // Фоновый прогрев плиток больше не нужен: миниатюры грузятся нативно
+  // (лёгкие копии, 5 КБ), а бланки — только активный. Лишние запросы убраны.
   Array.from(CLIENT.querySelectorAll('.rv-tab')).forEach(function(t) {{
-    t.addEventListener('click', function () {{ setTimeout(warmAllTiles, 250); }});
+    t.addEventListener('click', function () {{ setTimeout(function () {{ warmAllTiles(); }}, 250); }});
   }});
 
   // Колёсико загрузки на плитках: пока файл не отрисован, крутится; после загрузки
@@ -467,8 +562,15 @@ def js_for(app_id, picked):
       setTimeout(function () {{ if (!media.naturalWidth) done(); }}, 15000);
     }} else {{
       media.addEventListener('load', done);
-      var src = media.dataset.src || media.getAttribute('src');
-      if (src && media.getAttribute('src') !== src) media.setAttribute('src', src);
+      // Тянуть сразу все бланки — это серверная сборка каждого документа, из-за
+      // неё страница «тупила». Грузим только активный (он же в большом окне),
+      // остальные — по нажатию.
+      if (tile.CLIENTList.contains('is-on')) {{
+        var src = media.dataset.src || media.getAttribute('src');
+        if (src && media.getAttribute('src') !== src) media.setAttribute('src', src);
+      }} else {{
+        done();
+      }}
     }}
   }}
   function wireAllTiles() {{
@@ -498,6 +600,8 @@ def js_for(app_id, picked):
   // содержимое окна: документ заявки или входящий файл клиента
   function loadInto(tpl) {{
     if (!mStage) return;
+    var _empty = CLIENT.getElementById('rv-view-empty');
+    if (_empty) _empty.style.display = 'none';
     mStage.CLIENTList.remove('is-image');    // документ — лист фиксированной ширины
     resetStage();                          // чистая зона: без масштаба прошлого файла
     mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
@@ -578,6 +682,16 @@ def js_for(app_id, picked):
   // Переключателя нет: панель сама показывает переменные открытого документа.
 
   // открыть документ заявки: в окне появляются кнопки согласования
+  // Подпись в шапке окна просмотра: строка источника и ссылка на оригинал.
+  var mSrc = CLIENT.getElementById('rv-modal-src');
+  var mDl = CLIENT.getElementById('rv-modal-dl');
+  function setModalSource(text, href, label) {{
+    if (mSrc) mSrc.textContent = text || '';
+    if (mDl) {{
+      if (href) {{ mDl.href = href; mDl.textContent = label || 'Скачать оригинал'; mDl.hidden = false; }}
+      else {{ mDl.hidden = true; }}
+    }}
+  }}
   function openDoc(tpl) {{
     var tile = null;
     Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
@@ -597,12 +711,16 @@ def js_for(app_id, picked):
     loadInto(tpl);
     var n = filterByDoc(tpl);
     pickedVar = null; clearStageMarks();
+    setModalSource('Собран из шаблона · переменных: ' + n,
+                   '/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', 'Открыть оригинал');
     if (mNote) mNote.textContent = 'Справа — переменные этого документа (' + n + ' шт.): '
       + 'они подсвечены и подняты наверх. Поправите значение — документ пересоберётся.';
   }}
   // открыть входящий файл: кнопки согласования не нужны
   function openFile(tile) {{
     var frame = tile.querySelector('.rv-thumb-frame');
+    var _empty2 = CLIENT.getElementById('rv-view-empty');
+    if (_empty2) _empty2.style.display = 'none';
     var img = frame ? frame.querySelector('img') : null;
     var fr = frame ? frame.querySelector('iframe') : null;
     var url = img ? (img.getAttribute('src') || img.dataset.src)
@@ -616,6 +734,9 @@ def js_for(app_id, picked):
     if (mOk) mOk.style.display = 'none';
     if (mNo) mNo.style.display = 'none';
     if (mNote) mNote.textContent = 'Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.';
+    setModalSource('Скан клиента · файл из папки клиента на Google Диске',
+                   '/CLIENT/' + APP_ID + '/file?name=' + encodeURIComponent(tile.dataset.file || ''),
+                   'Скачать оригинал');
     if (mStage) {{
       // Входящий файл показываем как снимок: ширину листа A4 здесь не задаём
       resetStage();
@@ -745,14 +866,15 @@ def js_for(app_id, picked):
   // Первый шаг: идём в папку клиента, достаём документы и читаем значения.
   // Галочка встаёт только тогда, когда документы действительно скачаны и прочитаны;
   // второй шаг (заполнение) запускается после этого и не раньше.
-  function stepScan(then) {{
+  function stepScan(then, force) {{
     if (!bScan) {{ if (then) then(); return; }}
     bScan.CLIENTList.add('is-press');
     setTimeout(function () {{ bScan.CLIENTList.remove('is-press'); }}, 460);
     bScan.CLIENTList.add('is-busy');
     bScan.disabled = true;
-    scanNote('идём в папку клиента на Google Диске — достаём документы…', false);
-    fetch('/CLIENT/' + APP_ID + '/CLIENT-scan',
+    scanNote(force ? 'идём в папку клиента заново — сверяем документы и считаем по ним заново…'
+                   : 'идём в папку клиента на Google Диске — достаём документы…', false);
+    fetch('/CLIENT/' + APP_ID + '/CLIENT-scan' + (force ? '?force=1' : ''),
           {{method: 'POST', credentials: 'same-origin',
             CLIENTs: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
@@ -825,7 +947,7 @@ def js_for(app_id, picked):
     }});
   }}
 
-  if (bScan) bScan.addEventListener('click', function () {{ stepScan(function () {{ stepFill(); }}); }});
+  if (bScan) bScan.addEventListener('click', function () {{ stepScan(function () {{ stepFill(); }}, true); }});
   if (bFill) bFill.addEventListener('click', function () {{ stepFill(); }});
 
   // Смена типа продукта: заявка пересобирается под новый пакет документов,
@@ -872,40 +994,29 @@ def js_for(app_id, picked):
           return;
         }}
         var cur = CLIENT.getElementById('rv-CLIENT-cur');
-        if (cur && name) cur.textContent = name;
-        var note = CLIENT.getElementById('rv-prod-note');
-        if (note) note.textContent = 'документов по продукту: ' + (d.CLIENT || 0);
+        if (cur) cur.textContent = d.CLIENT || name || cur.textContent;
         // подсветка внутри списка переезжает на выбранный продукт
         Array.from(CLIENT.querySelectorAll('#rv-CLIENT-list .rv-opt')).forEach(function (o) {{
           o.CLIENTList.toggle('is-current', o.dataset.CLIENT === pid);
         }});
-        CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + '. Пересобираю документы.', 'ok');
-        // дальше — как при обычном заходе: разбор документов, потом заполнение полей
-        if (bScan) {{ stepScan(function () {{ stepFill(); }}); }} else {{ stepFill(); }}
+        CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + ' — обновляю документы и переменные…', 'ok');
+        // Под новый продукт приходит свой пакет документов (миниатюры) и свой набор
+        // переменных. Перерисовываем страницу, иначе на экране остаётся прежний набор.
+        setTimeout(function () {{ window.location.reload(); }}, 400);
       }})
       .catch(function () {{
         CLIENTNote('⚠ не удалось сменить продукт', 'err');
       }});
   }}
 
-  // Автоматика: разбор документов → заполнение полей, без участия администратора.
-  // Запускается один раз: после перезагрузки страницы повторно не срабатывает,
-  // иначе получался бы бесконечный цикл «заполнить → обновить → заполнить».
+  // Автоматический разбор документов при ОТКРЫТИИ заявки убран сознательно:
+  // разбор идёт на Google Диск и читает сканы через OCR — если запускать его в
+  // момент открытия, страница «зависает» у администратора. Всё это готовится
+  // заранее в фоне (scripts/app_prepare.py, с низким приоритетом) и запускается
+  // вручную кнопками этапов 1 и 3.
   (function autoSteps() {{
-    var scanDone = bScan && bScan.dataset.done === '1';
-    var fillDone = bFill && bFill.dataset.done === '1';
     if (!bScan && !bFill) return;
-    var AUTO_KEY = 'rv-auto-' + APP_ID;
-    var last = parseInt(sessionStorage.getItem(AUTO_KEY) || '0', 10) || 0;
-    if (Date.now() - last < 120000) return;
-    if (scanDone && fillDone) return;
-    sessionStorage.setItem(AUTO_KEY, String(Date.now()));
-    if (!scanDone) {{
-      // сначала документы из Google Диска, заполнение включится само после разбора
-      stepScan(function () {{ if (!fillDone) stepFill(); }});
-    }} else if (!fillDone) {{
-      stepFill();
-    }}
+    return;
   }})();
 
   if (modal) {{
@@ -935,6 +1046,21 @@ def js_for(app_id, picked):
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (btn) btn.disabled = false;
+        // Сервер отказывает, если документ заполнен не полностью: показываем причину рядом с миниатюрой.
+        if (d && d.ok === false && d.error) {{
+          var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+          if (lbl) {{
+            if (!lbl.dataset.prev) lbl.dataset.prev = lbl.textContent;
+            lbl.textContent = d.error;
+            lbl.CLIENTList.add('rv-warn');
+            setTimeout(function() {{
+              if (lbl.dataset.prev) lbl.textContent = lbl.dataset.prev;
+              lbl.CLIENTList.remove('rv-warn');
+            }}, 6000);
+          }}
+          if (btn) btn.CLIENTList.remove('rv-on-ok');
+          return;
+        }}
         refreshCLIENTes();
         refreshState();
       }})
@@ -964,9 +1090,27 @@ def js_for(app_id, picked):
   if (mOk) mOk.addEventListener('click', function() {{ modalVerdict('verify'); }});
   if (mNo) mNo.addEventListener('click', function() {{ modalVerdict('reject'); }});
 
+  // Квадратик-подтверждение. Клик по нему НЕ выбирает документ (stopPropagation).
   Array.from(CLIENT.querySelectorAll('.rv-mark')).forEach(function(b) {{
-    b.addEventListener('click', function() {{
+    b.addEventListener('click', function(e) {{
+      e.stopPropagation();
       verdict(b.dataset.tpl, b.dataset.verdict, b);
+    }});
+  }});
+  // Сканы с Диска: квадратик означает «скачано с Диска», подпись меняется сразу.
+  function CLIENTStamp() {{
+    var d = new Date();
+    return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2);
+  }}
+  Array.from(CLIENT.querySelectorAll('.rv-check[data-check="CLIENT"]')).forEach(function(b) {{
+    b.addEventListener('click', function(e) {{
+      e.stopPropagation();
+      var tile = b.closest('.rv-thumb');
+      if (!tile) return;
+      var on = tile.CLIENTList.toggle('is-checked');
+      b.CLIENTList.toggle('rv-on-ok', on);
+      var st = tile.querySelector('.rv-thumb-CLIENT');
+      if (st) st.textContent = on ? ('Скачано с Диска · ' + CLIENTStamp()) : 'не подтверждено';
     }});
   }});
 
@@ -979,16 +1123,18 @@ def js_for(app_id, picked):
         Object.keys(d.statuses || {{}}).forEach(function(tpl) {{
           var CLIENT = d.statuses[tpl] || '';
           var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
-          if (lbl) lbl.textContent = CLIENT === 'rejected' ? '✕ не нужен'
-                                  : CLIENT === 'verified' ? '✓ проверен'
-                                  : CLIENT === 'rendered' ? 'собран — не подтверждён'
-                                  : CLIENT === 'filled' ? 'заполнен — не подтверждён'
-                                  : CLIENT === 'draft' ? 'черновик — не подтверждён'
-                                  : CLIENT || '—';
+          if (lbl) lbl.textContent = CLIENT === 'rejected' ? 'не нужен'
+                                  : CLIENT === 'verified' ? 'Проверено'
+                                  : CLIENT === 'rendered' ? 'собран · не проверено'
+                                  : CLIENT === 'filled' ? 'заполнен · не проверено'
+                                  : CLIENT === 'draft' ? 'черновик · ждём скан'
+                                  : 'не проверено';
           Array.from(CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"]')).forEach(function(x) {{
             var isOk = x.dataset.verdict === 'verify';
             var on = (isOk && CLIENT === 'verified') || (!isOk && CLIENT === 'rejected');
             x.CLIENTList.toggle(isOk ? 'rv-on-ok' : 'rv-on-no', on);
+            /* те же кнопки в окне визора, на миниатюрах и в просмотре PDF подсвечиваются так же */
+            x.CLIENTList.toggle('is-on', on);
           }});
           if (String(tpl) === String(modalTpl)) {{
             if (mOk) mOk.CLIENTList.toggle('is-on', CLIENT === 'verified');
@@ -998,6 +1144,9 @@ def js_for(app_id, picked):
       }})
       .catch(function() {{}});
   }}
+
+  /* Обновление подписей и подвала заявки «снаружи» (из конструктора окна визора) */
+  window.__rvRefresh = function () {{ refreshCLIENTes(); refreshState(); }};
 
   // готовность комплекта без перезагрузки
   function refreshState() {{
@@ -1428,13 +1577,16 @@ def js_for(app_id, picked):
     function closeBox() {{ if (box) {{ box.remove(); box = null; }} }}
     function esc(s) {{ return String(s).reCLIENT(/</g, '&lt;'); }}
 
-    function openPieces(key, items) {{
+    function openPieces(key, pairs) {{
       closeBox();
       box = CLIENT.createElement('div');
       box.CLIENTName = 'rv-piece-modal';
-      var rows = items.map(function (t, i) {{
+      var rows = pairs.map(function (p, i) {{
+        var ru = esc((p && (p.ru || p.en)) || p);
+        var en = esc((p && p.en) || p);
         return '<label CLIENT="rv-piece-row"><input type="checkbox" CLIENT="' + i + '">' +
-               '<span>' + esc(t) + '</span></label>';
+               '<span>' + ru + (en && en !== ru ? '<span CLIENT="rv-piece-en">' + en + '</span>' : '') +
+               '</span></label>';
       }}).join('');
       box.innerHTML = '<div CLIENT="rv-piece-box"><div CLIENT="rv-piece-head">' +
         'Готовые фразы — отметьте нужные</div><div CLIENT="rv-piece-list">' +
@@ -1446,9 +1598,14 @@ def js_for(app_id, picked):
       box.addEventListener('click', function (e) {{ if (e.target === box) closeBox(); }});
       box.querySelector('.rv-piece-ok').addEventListener('click', function () {{
         var picked = Array.prototype.slice.call(box.querySelectorAll('input:checked'))
-          .map(function (c) {{ return items[parseInt(c.CLIENT, 10)]; }});
+          .map(function (c) {{ var p = pairs[parseInt(c.CLIENT, 10)]; return (p && p.en) || p; }});
         if (!picked.length) {{ closeBox(); return; }}
-        var text = picked.join('\\n');
+        // описание профессии — связный абзац без маркеров; обязанности — пунктами
+        var isProse = /CLIENT|profile|описан/i.test(key);
+        var text = isProse
+          ? picked.map(function (s) {{ return String(s).reCLIENT(/^[\u2022\-\s]+/, '').trim(); }}).join(' ')
+          : picked.join('\\n');
+        if (isProse && text && !/[.!?]$/.test(text)) {{ text += '.'; }}
         put(key, text);
         save(key, text).then(closeBox);
       }});
@@ -1461,7 +1618,13 @@ def js_for(app_id, picked):
                   '&CLIENT=' + encodeURIComponent(profOf(key));
         fetch(url, {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
-          .then(function (d) {{ openPieces(key, (d && d.items) || []); }})
+          .then(function (d) {{
+            var pairs = (d && d.pairs) || [];
+            if (!pairs.length) {{
+              pairs = ((d && d.items) || []).map(function (s) {{ return {{ en: s, ru: s }}; }});
+            }}
+            openPieces(key, pairs);
+          }})
           .catch(function () {{ openPieces(key, []); }});
       }});
     }});

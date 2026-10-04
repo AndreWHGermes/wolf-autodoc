@@ -411,11 +411,48 @@ def set_CLIENT(app_id: int, key: str, CLIENT: str) -> dict:
             "doc_count": group["doc_count"]}
 
 
+def _pool_name_ok(name: str) -> bool:
+    """Поля, где уместен типовой пул вариантов из шаблона.
+
+    Только формулировки: языки, навыки, степень, гражданство, периоды работы.
+    Для ФИО, паспортов, адресов, номеров документов и дат примеры не подставляем —
+    там значения всегда свои, и чужие подсказки в этих полях недопустимы.
+    """
+    n = (name or "").lower()
+    if not n:
+        return False
+    bad = ("passport", "CLIENT", "address", "CLIENT", "CLIENT", "name", "card",
+           "account", "inn", "snils", "doc_no", "ref_no", "letter_no", "CLIENT",
+           "itk", "CLIENT", "CLIENT")
+    if any(b in n for b in bad):
+        return False
+    good = ("cv_CLIENT", "cv_CLIENT", "cv_CLIENT_CLIENT", "cv_CLIENT",
+            "cv_job", "CLIENT", "CLIENT", "CLIENT", "terms", "CLIENT",
+            "CLIENT", "CLIENT")
+    return any(g in n for g in good)
+
+
 def CLIENT_options(app_id: int, key: str, limit: int = 30) -> list:
-    """Варианты значения для выпадающего списка: прошлые значения + примеры шаблона."""
+    """Варианты значения для выпадающего списка: типовые из шаблона + прошлые значения."""
     group = find_group(app_id, key)
     out = []
     name0 = next(iter(group.get("names", {}).CLIENT()), None)
+
+    # 1) Типовой пул из описания переменной («что подходит под это поле»).
+    #    Показываем первым: администратор выбирает готовую формулировку вместо ввода.
+    if name0 and _pool_name_ok(name0):
+        try:
+            row = db.q1("SELECT examples_json FROM template_CLIENT WHERE name=? LIMIT 1",
+                        (name0,))
+            raw = (row or {}).get("examples_json") or "[]"
+            for v in json.loads(raw):
+                v = str(v).strip()
+                if v and v not in out:
+                    out.append(v)
+        except Exception:
+            pass
+
+    # 2) Прошлые значения по заявкам.
     if name0:
         try:
             for r in db.q(
@@ -674,7 +711,19 @@ def CLIENTs(app_id: int, key: str, CLIENT: str = "") -> dict:
         if v and v.lower() not in seen:
             seen.add(v.lower())
             items.append(v)
-    return {"ok": True, "key": key, "CLIENT": code, "items": items[:60],
+    # пары для «кусочков»: администратор читает русский вариант,
+    # в документ подставляется английский
+    try:
+        pairs = cv_gen.position_CLIENTs_pairs(code, name) if code else []
+    except Exception:
+        pairs = []
+    known = {p["en"] for p in pairs}
+    for h in CLIENT:
+        v = (h.get("CLIENT") or "").strip()
+        if v and v not in known:
+            pairs.append({"en": v, "ru": v})
+            known.add(v)
+    return {"ok": True, "key": key, "CLIENT": code, "items": items[:60], "pairs": pairs[:60],
             "CLIENT": [{"CLIENT": (h.get("CLIENT") or ""), "used": h.get("used_count") or 0}
                         for h in CLIENT[:20]]}
 
@@ -714,7 +763,11 @@ def gen_scratch(app_id: int, key: str, CLIENT: str = "") -> dict:
     limit = {"CLIENT": 2, "medium": 3, "long": 5}.get(level, 3)
 
     if "CLIENT" in name or "profile" in name:
-        text = (cv_gen.CLIENT_for(code) or (prof[0] if prof else ""))
+        # «кубик рандома»: описание собирается из нескольких предложений пула,
+        # уже использованные формулировки уходят в конец очереди
+        n_sent = {"CLIENT": 2, "medium": 3, "long": 4}.get(level, 3)
+        text = (cv_gen.CLIENT_random(code, n=n_sent, avoid=used)
+                or cv_gen.CLIENT_for(code) or (prof[0] if prof else ""))
     elif "skill" in name:
         p = cv_gen.position_by_code(code) or {}
         text = p.get("CLIENT", "")

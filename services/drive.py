@@ -109,7 +109,11 @@ def CLIENT_scan(app_id: int, client_id: int) -> dict:
     db.exec_sql("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) "
                 "CLIENT(?,?,?,?,?,?)", (app_id, client_id, "running", 0, 0, "разбор запущен"))
     try:
-        subprocess.Popen(["/usr/bin/python3", str(SCAN_SCRIPT), str(app_id)],
+        # Разбор документов идёт в фоне и с пониженным приоритетом: пока
+        # администратор работает в сайте, разбор не должен отбирать у него
+        # процессор. Дочерние процессы (OCR) наследуют этот приоритет.
+        subprocess.Popen(["/usr/bin/nice", "-n", "15", "/usr/bin/python3",
+                          str(SCAN_SCRIPT), str(app_id)],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, CLIENT_new_session=True)
     except Exception as e:  # noqa: BLE001
         db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? "
