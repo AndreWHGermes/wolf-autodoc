@@ -3164,8 +3164,11 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     var cTop=canvas?canvas.getBoundingClientRect().top:host.getBoundingClientRect().top+14;
     var inner=Math.max(1, Math.round(last.getBoundingClientRect().bottom-cTop));
     if(canvas) canvas.style.setProperty('height', inner+'px','important');
-    if(cw>200){{                                  /* окно точно по листу — обводка ровная */
-      host.style.setProperty('width', Math.round(cw+28)+'px','important');
+    if(cw>200){{                                  /* окно точно по листу, но НИКОГДА шире колонки:
+                                                     при зуме окно растягивалось вправо и «уезжало» */
+      var colW=Math.max(200, Math.round(pl.getBoundingClientRect().width)-2);
+      var wantW=Math.min(Math.round(cw+28), colW);
+      host.style.setProperty('width', wantW+'px','important');
       host.style.setProperty('max-width','none','important');
       host.style.setProperty('margin','0 auto','important');
     }}
@@ -3218,7 +3221,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
   (function(){{
     var _pl=CLIENT.querySelector('.pl-html'); if(!_pl) return;
     _pl.addEventListener('click', function(ev){{
-      var t=ev.target.closest('[data-zp]'); if(t) setTimeout(sheets, 350);
+      /* Пересборку листов делаем только для «вписать»: при «+»/«−» она растягивала
+         окно и лист уезжал вправо (документ №3, 04.10.2026). */
+      var t=ev.target.closest('[data-zp]'); if(t && t.getAttribute('data-zp')==='fit') setTimeout(sheets, 350);
     }});
   }})();
   window.__sheets = sheets;

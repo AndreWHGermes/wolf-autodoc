@@ -2861,7 +2861,7 @@ CLIENT.addEventListener('DOMContentLoaded', function() {
 }}
 .doc-html-stage .var-hl {{
   background: #FEF3C7; padding: 1px 5px; border-radius: 3px;
-  border-bottom: 1px dashed #D97706; color: #78350F; font-weight: 700;
+  color: #78350F; font-weight: 700;
 }}
 .doc-html-stage .var-hl-filled {{
   background: #DCFCE7; padding: 1px 5px; border-radius: 3px;

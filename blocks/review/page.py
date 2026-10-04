@@ -159,6 +159,52 @@ def _template_name(template_id) -> str:
 
 
 
+@bp.route("/CLIENT/<int:app_id>/photo-crop", methods=["GET", "POST"])
+def app_photo_crop(app_id: int):
+    """Кадрирование фото клиента для документов с фотографией.
+
+    GET  — текущие настройки (сдвиг кадра по вертикали, увеличение) и предпросмотр.
+    POST — сохранить настройки; документ собирается тем же движком, что и обычно
+           (CLIENT/CLIENT.py берёт подготовленный кадр).
+    """
+    from CLIENT import photo as photo_svc
+    a = db.CLIENT_get(app_id)
+    if not a:
+        return jsonify({"ok": False, "error": "Заявка не найдена"}), 404
+    cid = a.get("client_id")
+    if not cid:
+        return jsonify({"ok": False, "error": "У заявки не указан клиент"}), 400
+    try:
+        from CLIENT.CLIENT import _client_photo_path
+        src = _client_photo_path(cid)
+    except Exception:
+        src = ""
+    if CLIENT.method == "POST":
+        data = CLIENT.get_json(silent=True) or {}
+        try:
+            crop_y = float(data.get("crop_y", 0.35))
+            zoom = float(data.get("zoom", 1.0))
+        except Exception:
+            return jsonify({"ok": False, "error": "Неверные значения ползунков"}), 400
+        photo_svc.save_crop_settings(cid, crop_y=crop_y, zoom=zoom)
+        if src and Path(src).exists():
+            try:
+                photo_svc.prepare_photo(src, client_id=cid)
+            except Exception as e:
+                return jsonify({"ok": False, "error": "Не удалось подготовить кадр: %s" % e}), 500
+    st = photo_svc.crop_settings(cid)
+    prev = ""
+    if src and Path(src).exists():
+        try:
+            prev = photo_svc.preview_data_url(src, client_id=cid, max_width=240)
+        except Exception:
+            prev = ""
+    return jsonify({"ok": True, "preview": prev, "crop_y": st.get("crop_y", 0.35),
+                    "zoom": st.get("zoom", 1.0),
+                    "ratio": [st.get("ratio_w"), st.get("ratio_h")],
+                    "есть_фото": bool(src and Path(src).exists())})
+
+
 @bp.route("/CLIENT/<int:app_id>/file-page")
 def app_file_page(app_id):
     """Первая страница PDF клиента картинкой.
@@ -727,6 +773,8 @@ def app_review(app_id: int):
       {('<span CLIENT="rv-prod-info">' + _prod_info + '</span>') if _prod_info else ''}
     </span>
     <span CLIENT="rv-h2-right">
+      <button type="button" CLIENT="btn sm rv-photo-btn" id="rv-photo-btn"
+              CLIENT="Кадрирование фото клиента для документов с фотографией">📷 Фото</button>
       <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
       <span CLIENT="rv-who">{('от ' + _html.escape(_who)) if _who else _status_label(a.get('CLIENT'))}</span>
       <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
@@ -735,6 +783,74 @@ def app_review(app_id: int):
   {scan_line}
 </div>
 {_tg_panel}
+<div id="rv-photo-modal" hidden style="position:fixed;inset:0;z-CLIENT:9000;background:rgba(4,32,30,.5);display:none;align-items:center;justify-content:center;padding:18px">
+  <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:16px 18px;box-shadow:0 18px 60px rgba(0,0,0,.35)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <b style="font-size:15px">Фото клиента для документов</b>
+      <button type="button" id="rv-photo-close" style="border:0;background:transparent;font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:12px;align-items:flex-CLIENT;flex-wrap:wrap">
+      <img id="rv-photo-prev" alt="Предпросмотр фото" style="width:150px;height:210px;object-fit:cover;border:1px solid #E4EDE7;border-radius:8px;background:#F4FAF6">
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:10px">
+        <label style="font-size:13px;color:#42574A">Сдвиг кадра по вертикали
+          <input type="range" id="rv-photo-y" min="0" max="1" step="0.01" CLIENT="0.35" style="width:100%">
+        </label>
+        <label style="font-size:13px;color:#42574A">Увеличение
+          <input type="range" id="rv-photo-z" min="1" max="2.5" step="0.01" CLIENT="1" style="width:100%">
+        </label>
+        <div id="rv-photo-note" style="font-size:12.5px;color:#6B7C70">Двигайте ползунки — кадр обновляется сразу.</div>
+        <button type="button" CLIENT="btn" id="rv-photo-save">Сохранить в документ</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){{
+  var appId = {app_id};
+  var btn=CLIENT.getElementById('rv-photo-btn'), mod=CLIENT.getElementById('rv-photo-modal');
+  if(!btn||!mod) return;
+  var img=CLIENT.getElementById('rv-photo-prev'), ry=CLIENT.getElementById('rv-photo-y'),
+      rz=CLIENT.getElementById('rv-photo-z'), note=CLIENT.getElementById('rv-photo-note'),
+      save=CLIENT.getElementById('rv-photo-save'), x=CLIENT.getElementById('rv-photo-close');
+  var url='/CLIENT/'+appId+'/photo-crop', timer=null;
+  /* hidden не срабатывает при CLIENT display:flex — управляем показом явно. */
+  function show(v){{ mod.hidden=!v; mod.style.display = v ? 'flex' : 'none'; }}
+  show(false);
+  function load(){{
+    fetch(url, {{CLIENTs:{{'X-Requested-With':'fetch'}}}}).then(function(r){{ return r.json(); }}).then(function(j){{
+      if(!j.ok){{ note.textContent=j.error||'Не удалось открыть настройки'; return; }}
+      if(j.preview) img.src=j.preview;
+      if(typeof j.crop_y==='CLIENT') ry.CLIENT=j.crop_y;
+      if(typeof j.zoom==='CLIENT') rz.CLIENT=j.zoom;
+      note.textContent = j['есть_фото'] ? 'Двигайте ползунки — кадр обновляется сразу.' : 'Фото клиента в папке не найдено.';
+    }}).catch(function(){{ note.textContent='Сервис недоступен'; }});
+  }}
+  function save_crop(msgOk){{
+    var body={{crop_y: parseFloat(ry.CLIENT), zoom: parseFloat(rz.CLIENT)}};
+    return fetch(url, {{method:'POST', CLIENTs:{{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'}}, body:JSON.stringify(body)}})
+      .then(function(r){{ return r.json(); }}).then(function(j){{
+        if(!j.ok){{ note.textContent=j.error||'Не получилось'; return null; }}
+        if(j.preview) img.src=j.preview;
+        note.textContent=msgOk;
+        return j;
+      }}).catch(function(){{ note.textContent='Сервис недоступен'; return null; }});
+  }}
+  btn.addEventListener('click', function(){{ show(true); load(); }});
+  if(x) x.addEventListener('click', function(){{ show(false); }});
+  mod.addEventListener('click', function(e){{ if(e.target===mod) show(false); }});
+  function debounced(){{ clearTimeout(timer); note.textContent='Обновляю кадр…'; timer=setTimeout(function(){{ save_crop('Кадр обновлён — нажмите «Сохранить в документ».'); }}, 400); }}
+  ry.addEventListener('input', debounced); rz.addEventListener('input', debounced);
+  save.addEventListener('click', function(){{
+    save_crop('Сохраняю…').then(function(j){{
+      if(!j) return;
+      note.textContent='Кадр сохранён. Пересобираю документы заявки…';
+      return fetch('/CLIENT/'+appId+'/review/regen', {{method:'POST', CLIENTs:{{'X-Requested-With':'fetch'}}}})
+        .then(function(){{ note.textContent='Готово: кадр сохранён, документы пересобраны.'; setTimeout(function(){{ location.reload(); }}, 900); }})
+        .catch(function(){{ note.textContent='Кадр сохранён, но пересборку запустить не удалось.'; }});
+    }});
+  }});
+}})();
+</script>
 <script>
 (function(){{
   var open=CLIENT.getElementById('rv-tg-open'), panel=CLIENT.getElementById('rv-tg-panel');

@@ -361,7 +361,11 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
 /* === Универсальный Zoom + Pan для превью (любой контейнер с data-zoom-pan) === */
 (function(){
   var A4W=794.5, A4H=1122.6;
-  var MIN=.20, MAX=4.0;
+  var MIN=.20, MAX=1.0;
+  /* Потолок масштаба — 100%: при увеличении свыше 100% ширина прокрутки окна
+     раздувалась до миллионов пикселей и лист «улетал» вправо (документы №1, №3,
+     №8, 04.10.2026). Выше 100% документ всё равно не читается лучше — «вписать»
+     и уменьшение работают как раньше. */
   function init(host){
     if(host.dataset.zpReady) return; host.dataset.zpReady='1';
     host.CLIENTList.add('zp-host');
@@ -454,13 +458,19 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
          показывался со сдвигом вправо: слева пустая полоса, документ за краем
          окна (документ №8 ходатайства D12 в конструкторе). */
       try{
-        var sig=[natW,natH,content.querySelectorAll('.sheet').length,
-                 (content.textContent||'').length].join('x');
+        /* Подпись документа считаем ТОЛЬКО по естественным размерам листа.
+           Раньше в неё входили число листов и длина текста — они меняются от
+           самой разбивки и от масштаба, поэтому подпись «ложно» обновлялась и
+           зум сбрасывался (документ №3, 04.10.2026: 66→79→95→66). */
+        var sig=[natW,natH].join('x');
         if(host.dataset.zpSig!==sig){
           host.dataset.zpSig=sig;
-          window.__zpUserScrolled=false; userScale=null;
+          window.__zpUserScrolled=false;
           host.scrollLeft=0; host.scrollTop=0;
           delete host.dataset.zpShown;
+          /* Масштаб, заданный пользователем, НЕ сбрасываем: подпись меняется и
+             при пересборке листов, из-за чего зум «сам» возвращался к 66%
+             (документ №3, 04.10.2026). В авторежиме масштаб пересчитается ниже. */
         }
       }catch(e){}
       var avail=Math.max(120, cw - padW - sbw - 8);   // 8 px — воздух по краям
@@ -511,6 +521,32 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
         host.scrollLeft=0; host.scrollTop=0;
         content.style.visibility='';
       }
+      clampScroll();
+    }
+    /* Ограничитель прокрутки: после любого пересчёта масштаба, зума, панорамы и
+       изменения размеров окна прокрутка не может выйти за пределы листа. Без него
+       визор «уезжал» вправо: лист оставался в старом scrollLeft, когда окно
+       меняло ширину (документ №3, 04.10.2026). */
+    /* Пределы прокрутки считаем ОТ НАТУРАЛЬНОГО размера листа, а не от
+       host.scrollWidth: при ручном увеличении свыше 100% ширину прокрутки
+       раздувало до миллионов пикселей (документ №3, 04.10.2026), и лист улетал
+       вправо — центр брался от этой раздутой величины. */
+    function scrollLimits(){
+      var cwv=Math.ceil((content.offsetWidth||794.5)*s);
+      var chv=Math.ceil((content.offsetHeight||1123)*s);
+      return {maxL:Math.max(0,cwv-(host.clientWidth||0)),
+              maxT:Math.max(0,chv-(host.clientHeight||0))};
+    }
+    function clampScroll(){
+      if(!host) return;
+      var lim=scrollLimits();
+      /* Предохранитель: если окно «раздуто» сверх листа (глюк масштабирования) —
+         прокрутку в пустоту не допускаем, лист просто встаёт к левому краю. */
+      if((host.scrollWidth||0) > Math.ceil((content.offsetWidth||794.5)*s)+80) host.scrollLeft=0;
+      if(host.scrollLeft>lim.maxL) host.scrollLeft=lim.maxL;
+      if(host.scrollLeft<0) host.scrollLeft=0;
+      if(host.scrollTop>lim.maxT) host.scrollTop=lim.maxT;
+      if(host.scrollTop<0) host.scrollTop=0;
     }
     /* Зум: масштаб меняется от текущего и центр листа остаётся на месте —
        иначе при «+» документ «убегает» влево (заявка #76, 04.10.2026). */
@@ -521,12 +557,13 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       if(!host) return;
       var cx=host.scrollLeft+host.clientWidth/2, cy=host.scrollTop+host.clientHeight/2;
       userScale=nv; apply();
-      /* Лист держим по центру окна по горизонтали: при увеличении он сам шире
-         окна, и без этого сдвиг накапливался — документ «уползал» вправо. */
-      var sw=host.scrollWidth||0, cwid=host.clientWidth||0;
-      if(sw>cwid+1){ host.scrollLeft=Math.max(0, Math.round((sw-cwid)/2)); } else { host.scrollLeft=0; }
+      /* Лист держим по центру окна, но центр считаем от натуральной ширины листа:
+         host.scrollWidth при увеличении раздувается, и лист «уползал» вправо. */
+      var lim=scrollLimits();
+      host.scrollLeft = lim.maxL>1 ? Math.round(lim.maxL/2) : 0;
       var k=nv/old;
-      host.scrollTop=Math.max(0,Math.round(cy*k-host.clientHeight/2));
+      host.scrollTop=Math.max(0,Math.min(lim.maxT,Math.round(cy*k-host.clientHeight/2)));
+      clampScroll();
     }
     // Центрировать вид на элементе (для подсветки переменной)
     function focusEl(el){
@@ -565,7 +602,14 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
         var _roLastW=Math.round(host.clientWidth||0);
         new ResizeObserver(function(){
           var w=Math.round(host.clientWidth||0);
-          if(w && Math.abs(w-_roLastW)>2){ _roLastW=w; if(!userScale) apply(); }
+          if(w && Math.abs(w-_roLastW)>2){
+            var prevW=_roLastW; _roLastW=w;
+            /* В авторежиме пересчитываем вписывание; в ручном — сохраняем масштаб,
+               но прокрутку подрезаем по новым размерам, иначе лист уезжает вбок. */
+            if(!userScale){ apply(); host.scrollLeft=0; }
+            else if(w<prevW){ clampScroll(); }
+            else { clampScroll(); }
+          }
         }).observe(host);
       }
     }catch(e){}
