@@ -292,8 +292,16 @@ def _fill_example(html: str, template_id: int, code: str) -> str:
     def _esc(txt) -> str:
         return str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
 
-    return _re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                   lambda m: _esc((vals.get(m.group(1)) or "").strip()), html)
+    def _repl(m):
+        nm = m.group(1)
+        # Фотография клиента: в миниатюре данных клиента нет, а пустая рамка читается
+        # как дефект — ставим ту же заглушку, что и в конструкторе.
+        if nm in ("client_photo_url", "client_photo"):
+            return _esc((vals.get(nm) or "").strip()
+                        or "/static/tpl_assets/cv_photo_CLIENTholder.png")
+        return _esc((vals.get(nm) or "").strip())
+
+    return _re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _repl, html)
 
 
 def _pdf_has_CLIENTholders(pdf) -> bool:

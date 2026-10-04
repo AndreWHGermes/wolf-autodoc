@@ -28,6 +28,10 @@ bp = Blueprint("CLIENT", __name__)
 SAFE = re.compile(r"[^A-Za-zА-Яа-я0-9._-]+")
 VAR = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 
+# Заглушка фотографии клиента (аватарка 940×1314 px — ровно поле фото в резюме,
+# 141.15 × 197.30 pt). Показывается, пока в заявке нет настоящего кадра клиента.
+PHOTO_PLACEHOLDER = "/static/tpl_assets/cv_photo_CLIENTholder.png"
+
 STATUS_LABEL = {"ok": ("готов", "ok"), "needs_review": ("нужна проверка", "warn"),
                 "draft": ("черновик", "")}
 
@@ -2549,8 +2553,24 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
         except Exception:
             _auto = {}
 
+        # Фотография клиента — это <img src>, а не текст: обёртка подсветки сломала бы
+        # атрибут (в src попадал <span>). Источник тот же, что у генерации документа —
+        # подготовленный кадр клиента; пока кадра нет, показываем заглушку-аватарку
+        # размером с поле фотографии.
+        _photo_url = PHOTO_PLACEHOLDER
+        if app_id and app_row:
+            try:
+                from CLIENT.CLIENT import _client_photo_path as _cpp
+                _pp = _cpp((client or {}).get("id"))
+                if _pp and Path(_pp).is_file():
+                    _photo_url = f"/CLIENT/{app_id}/client-photo"
+            except Exception:
+                _photo_url = PHOTO_PLACEHOLDER
+
         def _hl(m):
             nm = m.group(1)
+            if nm in ("client_photo_url", "client_photo"):
+                return _photo_url
             val = (example_map.get(nm) or default_CLIENT.get(nm) or _auto.get(nm) or "").strip()
             # ФИО показываем по нашим правилам — с отчеством (в оригинальных примерах его нет)
             if val and nm in ("client_name", "full_name", "full_name_CLIENT", "cv_name",
