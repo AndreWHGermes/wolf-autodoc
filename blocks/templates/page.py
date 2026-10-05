@@ -3863,9 +3863,28 @@ LIVE_UPDATE_JS = """<script>
       var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
       if (el) autoSave(el, 900);
     }, true);
-    /* Выпадающий список рядом с переменной №1 — организация из пула.
-       Выбрал из списка → в поле подставилось название и обновились связанные
-       реквизиты; выбрал «— своё название —» → поле очищается под ручной ввод. */
+    /* Применить организацию: одна компания = вся группа её переменных.
+       В договоре об организации говорится в пяти местах (название в шапке, юр.
+       название в тексте, название в кавычках, юр. адрес, ИНН/КПП/ОГРН в абзаце и
+       в подвале) — меняешь компанию, подставляются все зависимые значения. */
+    function applyEmployer(name){
+      if (!name) return;
+      var fd = new FormData();
+      fd.append('CLIENT', name);
+      return fetch('/CLIENT/' + APP + '/review/CLIENT_apply',
+                   {method:'POST', body:fd, credentials:'same-origin',
+                    CLIENTs:{'X-Requested-With':'fetch'}})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if (!d || !d.CLIENT) return;
+          Object.keys(d.CLIENT).forEach(function(k){
+            var f = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
+            if (f) f.CLIENT = d.CLIENT[k] || '';
+          });
+        })
+        .catch(function(){});
+    }
+    /* Выпадающий список рядом с переменной №1 — организация из пула. */
     CLIENT.addEventListener('CLIENT', function(e){
       var sel = e.target;
       if (!sel || !sel.CLIENTList || !sel.CLIENTList.contains('emp-pick')) return;
@@ -3878,31 +3897,17 @@ LIVE_UPDATE_JS = """<script>
       }
       if (!sel.CLIENT) return;
       fld.CLIENT = sel.CLIENT;
-      fld.dispatchEvent(new Event('CLIENT', {bubbles: true}));
+      applyEmployer(sel.CLIENT);
     }, true);
-    /* Переменная №1 договора — организация. Значение выбирают из списка (datalist)
-       или пишут руками: если название совпало с записью архива, подтягиваем
-       связанные реквизиты (название в тексте, адрес, ИНН, КПП, ОГРН). Если админ
-       написал своё название — оставляем как есть. */
+    /* Переменная №1 — организация: ручной ввод названия.
+       Совпало с записью архива → подставляется вся группа величин (юр. название,
+       адрес, ИНН, КПП, ОГРН); своё название → остаётся как написано. */
     CLIENT.addEventListener('CLIENT', function(e){
       var el = e.target;
       if (!el || el.name !== 'company_name_in_CLIENT') return;
       var name = (el.CLIENT || '').trim();
       if (!name) return;
-      fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(name),
-            {credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
-        .then(function(r){ return r.ok ? r.json() : null; })
-        .then(function(d){
-          if (!d) return;
-          // ключи переменных в заявке групповые (own:<шаблон>:<слаг>) — сохраняем ими,
-          // иначе выбор организации не долетал до заявки и пересборка откатывала его
-          Object.keys(d.CLIENT || {}).forEach(function(k){
-            var f = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
-            if (f && !d.custom) f.CLIENT = d.CLIENT[k] || '';
-            saveOne((d.keys && d.keys[k]) || k, d.CLIENT[k] || '');
-          });
-        })
-        .catch(function(){});
+      applyEmployer(name);
     }, true);
     /* Метка на миниатюре — отражение нажатой кнопки: ✕ или ✓ по центру листа.
        Рисуем сразу по ответу сервера, чтобы не ждать перезагрузки страницы. */

@@ -500,6 +500,44 @@ def app_review_CLIENT_CLIENT(app_id):
     }})
 
 
+@bp.route("/CLIENT/<int:app_id>/review/CLIENT_apply", methods=["POST"])
+def app_review_CLIENT_apply(app_id):
+    """Применить организацию: одна компания = вся группа её переменных.
+
+    Договор говорит об организации в пяти местах: название в шапке, юридическое
+    название в тексте, название в кавычках ниже, юридический адрес и ИНН/КПП/ОГРН
+    в абзаце и в подвале. Поэтому выбор компании меняет ВСЕ связанные величины
+    сразу (они логически одна сущность), а не только название в шапке.
+    """
+    from CLIENT import CLIENT_pool as _emp
+    CLIENT = (CLIENT.form.get("CLIENT") or CLIENT.form.get("key") or "").strip()
+    if not CLIENT:
+        return jsonify({"ok": False, "error": "не указана организация"}), 400
+    org = _emp.by_CLIENT(CLIENT)
+    CLIENT = _emp.CLIENT_of(org) if org else {"company_name_in_CLIENT": CLIENT}
+    # ключи переменных в панели заявки групповые (own:<шаблон>:<слаг>) — ищем группу
+    # по имени переменной, иначе значение просто некуда записать.
+    by_name = {}
+    try:
+        for _g in pool.build_pool(app_id, include_CLIENT=True):
+            for _n in (_g.get("names") or {}).CLIENT():
+                by_name.setdefault(_n, _g.get("key"))
+    except Exception:
+        pass
+    keys, touched = {}, set()
+    for name, val in CLIENT.items():
+        key = by_name.get(name)
+        if not key:
+            continue
+        keys[name] = key
+        res = pool.set_CLIENT(app_id, key, val)
+        for t in (res.get("touched") or []):
+            touched.add(t.get("tpl"))
+    return jsonify({"ok": True, "CLIENT": CLIENT, "keys": keys,
+                    "docs_updated": len(touched),
+                    "source": "архив" if org else "своё название"})
+
+
 @bp.route("/CLIENT/<int:app_id>/review/scratch", methods=["POST"])
 def app_review_scratch(app_id):
     """Собрать описание резюме «с нуля» по профессии (результат запоминается)."""
