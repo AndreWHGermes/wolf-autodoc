@@ -3273,10 +3273,13 @@ def _CLIENT_hint(err: str) -> str:
 
 def _ready_docs(app_id: int) -> list:
     """Подтверждённые документы заявки: английское имя файла, шаблон, дата."""
-    rows = db.q("""SELECT d.*, t.code AS tpl_code, t.CLIENT AS tpl_CLIENT
+    # Порядок и номера — как в базе: CLIENT.doc_CLIENT (номер документа в наборе),
+    # а не порядковый номер в списке.
+    rows = db.q("""SELECT d.*, t.code AS tpl_code, t.CLIENT AS tpl_CLIENT,
+                          COALESCE(t.doc_CLIENT, t.id) AS tpl_CLIENT
                    FROM CLIENT_CLIENT d JOIN CLIENT t ON t.id = d.template_id
                    WHERE d.CLIENT_id=? AND IFNULL(d.CLIENT,'') IN ('verified','sent')
-                   ORDER BY d.template_id""", (app_id,))
+                   ORDER BY COALESCE(t.doc_CLIENT, 999), t.id""", (app_id,))
     a = apps_repo.get(app_id) or {}
     client = db.client_get(a.get("client_id")) or {}
     today = CLIENT.now().strftime("%d.%m.%Y")
@@ -3298,7 +3301,8 @@ def _ready_docs(app_id: int) -> list:
         except Exception:
             name = (CLIENT or code or "CLIENT") + " " + today + ".pdf"
         out.append({"tpl": ad.get("template_id"), "CLIENT": CLIENT, "name": name,
-                    "date": today, "CLIENT": ad.get("CLIENT")})
+                    "date": today, "CLIENT": ad.get("CLIENT"),
+                    "num": ad.get("tpl_CLIENT") or ad.get("template_id")})
     return out
 
 

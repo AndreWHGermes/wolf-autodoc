@@ -1537,10 +1537,13 @@ def _ready_modal_html(app_id: int) -> str:
     for n, d in enumerate(docs, 1):
         tpl = str(d.get("tpl"))
         name = _html.escape(str(d.get("name") or ""))
-        meta = _html.escape(str(d.get("CLIENT") or "")) + " · " + _html.escape(str(d.get("date") or ""))
+        meta = ("\u2116" + str(d.get("num") or "") + " · "
+                + _html.escape(str(d.get("CLIENT") or "")) + " · "
+                + _html.escape(str(d.get("date") or "")))
+        num = str(d.get("num") or tpl)
         chips.append(
             '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
-            '<span CLIENT="rli-num">' + str(n) + '</span>'
+            '<span CLIENT="rli-num">\u2116' + num + '</span>'
             '<span CLIENT="rli-text"><span CLIENT="rli-name">' + name + '</span>'
             '<span CLIENT="rli-meta">' + meta + '</span></span></button>'
         )
