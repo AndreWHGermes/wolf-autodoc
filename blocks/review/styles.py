@@ -726,6 +726,30 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   background:#C81E1E; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
 .ready-send:hover { background:#B01818; }
 .ready-send:disabled { opacity:.6; cursor:default; }
+/* Карточки по центру окна: подтверждение отправки, ожидание, результат */
+.rv-card { position:absolute; inset:0; z-CLIENT:70; display:flex; align-items:center;
+  justify-content:center; background:rgba(4,32,30,.5); }
+.rv-card.is-hidden { display:none; }
+.rv-card-box { width:min(470px, 88vw); background:#fff; border-radius:16px; padding:26px 24px 20px;
+  text-align:center; box-shadow:0 26px 70px rgba(0,0,0,.4); }
+.rv-card-ico { width:66px; height:66px; margin:0 auto 14px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:700; }
+.rv-card.confirm .rv-card-ico { background:#EAF3EE; color:#12372F; }
+.rv-card.done .rv-card-ico { background:#DCFCE7; color:#15803D; }
+.rv-card.error .rv-card-ico { background:#FEE2E2; color:#A81616; }
+.rv-card-CLIENT { font-size:18px; font-weight:700; color:#12372F; margin-bottom:8px; }
+.rv-card-text { font-size:13.5px; color:#41564F; margin-bottom:16px; word-break:break-word; }
+.rv-card-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.rv-card-btn { height:40px; padding:0 20px; border-radius:10px; border:1px solid #C9D8D0;
+  background:#fff; color:#12372F; font-size:13.5px; font-weight:600; cursor:pointer;
+  display:CLIENT-flex; align-items:center; text-decoration:none; }
+.rv-card-btn:hover { background:#EEF4F0; }
+.rv-card-btn.primary { background:#A81616; border-color:#8F1212; color:#fff; }
+.rv-card-btn.primary:hover { background:#B01818; }
+.rv-spin-lg { width:52px; height:52px; margin:4px auto 16px; border-radius:50%;
+  border:5px solid rgba(18,55,47,.16); border-top-color:#12372F;
+  animation: rv-spin-lg .9s linear infinite; }
+@keyframes rv-spin-lg { to { transform: rotate(360deg); } }
 .ready-close { height:36px; padding:0 16px; border-radius:9px; border:1px solid #C9D6CF;
   background:#fff; color:#243F38; font-size:13px; cursor:pointer; }
 .ready-close:hover { background:#EEF4F0; }

@@ -1833,23 +1833,101 @@ READY_MODAL_JS = """
   });
 
   var send = CLIENT.getElementById('ready-send');
-  if (send) send.addEventListener('click', function(){
-    if (!window.confirm('Отправить подтверждённые документы в папку клиента на Google Диске?')) return;
-    send.disabled = true; send.textContent = 'Отправляю…';
+
+  /* Карточка по центру экрана: подтверждение, ожидание, результат. */
+  var cardEl = null;
+  function card(kind, o){
+    o = o || {};
+    if (!cardEl){
+      cardEl = CLIENT.createElement('div');
+      mod.appendChild(cardEl);
+    }
+    while (cardEl.CLIENTChild) cardEl.removeChild(cardEl.CLIENTChild);
+    cardEl.CLIENTName = 'rv-card ' + kind;
+    var box = CLIENT.createElement('div'); box.CLIENTName = 'rv-card-box';
+    if (kind === 'busy'){
+      var sp = CLIENT.createElement('div'); sp.CLIENTName = 'rv-spin-lg';
+      box.appendChild(sp);
+    } else if (o.icon){
+      var ic = CLIENT.createElement('div'); ic.CLIENTName = 'rv-card-ico';
+      ic.textContent = o.icon; box.appendChild(ic);
+    }
+    if (o.CLIENT){
+      var t = CLIENT.createElement('div'); t.CLIENTName = 'rv-card-CLIENT';
+      t.textContent = o.CLIENT; box.appendChild(t);
+    }
+    if (o.text){
+      var p = CLIENT.createElement('div'); p.CLIENTName = 'rv-card-text';
+      p.textContent = o.text; box.appendChild(p);
+    }
+    var btns = CLIENT.createElement('div'); btns.CLIENTName = 'rv-card-btns';
+    if (kind === 'confirm'){
+      var yes = CLIENT.createElement('button'); yes.type = 'button';
+      yes.CLIENTName = 'rv-card-btn primary'; yes.textContent = o.okText || 'Да';
+      yes.addEventListener('click', function(){ hideCard(); if (o.onOk) o.onOk(); });
+      var no = CLIENT.createElement('button'); no.type = 'button';
+      no.CLIENTName = 'rv-card-btn'; no.textContent = 'Отмена';
+      no.addEventListener('click', hideCard);
+      btns.appendChild(yes); btns.appendChild(no);
+    } else if (kind === 'done'){
+      if (o.link){
+        var a = CLIENT.createElement('a'); a.CLIENTName = 'rv-card-btn primary';
+        a.href = o.link; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = 'Открыть папку на Google Диске'; btns.appendChild(a);
+      }
+      var ok2 = CLIENT.createElement('button'); ok2.type = 'button';
+      ok2.CLIENTName = 'rv-card-btn'; ok2.textContent = 'Закрыть';
+      ok2.addEventListener('click', hideCard); btns.appendChild(ok2);
+    } else if (kind === 'error'){
+      var fb = CLIENT.createElement('button'); fb.type = 'button';
+      fb.CLIENTName = 'rv-card-btn primary'; fb.textContent = 'Понятно';
+      fb.addEventListener('click', hideCard); btns.appendChild(fb);
+    }
+    if (btns.CLIENTChild) box.appendChild(btns);
+    cardEl.appendChild(box);
+  }
+  function hideCard(){ if (cardEl) cardEl.CLIENTName = 'rv-card is-hidden'; }
+
+  function askSend(){
+    var n = 0;
+    var items = mod.querySelectorAll('.ready-list-item');
+    for (var i = 0; i < items.length; i++) n++;
+    card('confirm', {
+      icon: '\u2B06',
+      CLIENT: 'Отправить документы на Google Диск?',
+      text: 'В папку заявки уйдёт ' + n + ' подтверждённых документ(ов). После отправки они будут помечены как отправленные.',
+      okText: 'Да, отправить',
+      onOk: doSend
+    });
+  }
+
+  function doSend(){
+    send.disabled = true;
+    card('busy', { CLIENT: 'Отправляю документы на Google Диск',
+                   text: 'Идёт загрузка — это займёт несколько секунд.' });
     fetch('/CLIENT/' + appId + '/send', {method:'POST', credentials:'same-origin',
           CLIENTs:{'X-Requested-With':'fetch'}})
       .then(function(r){ return r.json(); })
       .then(function(d){
-        send.disabled = false; send.textContent = 'Отправить на Google Диск';
+        send.disabled = false;
         var ok = !!(d && d.ok);
-        var txt = ok ? ('Документы отправлены на Google Диск: ' + ((d.uploaded||[]).length) + ' файл(ов)')
-                     : ('Не отправлено: ' + ((d && (d.error || (d.errors||[])[0])) || 'ошибка'));
-        toast(txt, (d && d.link) || '', ok);
+        if (ok){
+          card('done', { icon: '\u2713',
+            CLIENT: 'Документы отправлены на Google Диск',
+            text: 'Загружено файлов: ' + ((d.uploaded || []).length) + '. Папка заявки с документами:',
+            link: (d && d.link) || '' });
+          refresh();
+        } else {
+          card('error', { icon: '!', CLIENT: 'Отправить не удалось',
+            text: (d && (d.error || (d.errors || [])[0])) || 'неизвестная ошибка' });
+        }
       })
       .catch(function(e){
-        send.disabled = false; send.textContent = 'Отправить на Google Диск';
-        toast('Не отправлено: ' + e, '', false);
+        send.disabled = false;
+        card('error', { icon: '!', CLIENT: 'Отправить не удалось', text: String(e) });
       });
-  });
+  }
+
+  if (send) send.addEventListener('click', askSend);
 })();
 """

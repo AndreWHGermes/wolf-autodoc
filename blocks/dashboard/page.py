@@ -3263,6 +3263,12 @@ def app_send(app_id: int):
         if d["CLIENT"] in ("filled", "verified"):
             db.CLIENT_doc_set(d["id"], "sent")
     db.CLIENT_set_status(app_id, "sent")
+    # Тому, кто прислал заявку: документы готовы и лежат на Google Диске (со ссылкой).
+    try:
+        from bot.notify import notify_manager_done
+        notify_manager_done(app_id, folder_link)
+    except Exception as exc:                            # noqa: BLE001
+        current_app.logger.warning("notify_manager_done failed: %s", exc)
     if want_json:
         return jsonify({"ok": True, "uploaded": uploaded, "link": folder_link,
                         "hint": "Документы отправлены на Google Диск"}), 200
