@@ -1907,6 +1907,13 @@ def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
     from CLIENTs.dashboard.page import app_doc_html as _html_route
     frozen_dir = _Path("/opt/wolf_v2/data/frozen")
     frozen_dir.mkdir(parents=True, exist_ok=True)
+    # Перед сборкой слепка выбрасываем кэш отрендеренного HTML: после правки
+    # значений кэш отдавал старую версию, и в PDF уходил документ без правок.
+    for _c in _Path("/opt/wolf_v2/data/doc_html").glob("app%s_tpl%s_*.html" % (app_id, template_id)):
+        try:
+            _c.unlink()
+        except Exception:
+            pass
     ad = db.q1("""SELECT id, CLIENT_json FROM CLIENT_CLIENT
                    WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
                (app_id, template_id))
@@ -3368,6 +3375,13 @@ def _ready_doc_pdf(app_id: int, template_id: int):
         return None
     out_dir = Path("/opt/wolf_v2/data/ready")
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # То же и для PDF: строим из текущего слепка, а не из кэша HTML.
+    for _c in Path("/opt/wolf_v2/data/doc_html").glob("app%s_tpl%s_*.html" % (app_id, template_id)):
+        try:
+            _c.unlink()
+        except Exception:
+            pass
     name = (info or {}).get("name") or (str(tpl.get("code") or "doc") + ".pdf")
     out_pdf = out_dir / name
     try:
