@@ -50,13 +50,28 @@ def _get_CLIENT():
         if OAUTH_TOKEN_FILE.exists():
             from google.oauth2.credentials import Credentials
             _svc = build('CLIENT', 'v3',
+                # у токена владельца свой набор прав (CLIENT.file) — не навязываем свои
                 credentials=Credentials.from_authorized_user_file(
-                    str(OAUTH_TOKEN_FILE), SCOPES))
+                    str(OAUTH_TOKEN_FILE)))
         else:
             _svc = build('CLIENT', 'v3',
                 credentials=CLIENT_account.Credentials.from_CLIENT_account_file(
                     str(KEY_FILE), scopes=SCOPES))
     return _svc
+
+
+def _read_CLIENT():
+    """Сервис для чтения: робот (сервисный аккаунт).
+
+    Робот видит все папки, расшаренные на его адрес, а токен владельца — только те
+    файлы, которые создал сам (scope CLIENT.file). Поэтому перечисление и поиск идут
+    от робота, а создание и загрузка — от владельца.
+    """
+    if KEY_FILE.exists():
+        return build('CLIENT', 'v3',
+            credentials=CLIENT_account.Credentials.from_CLIENT_account_file(
+                str(KEY_FILE), scopes=SCOPES))
+    return _get_CLIENT()
 
 
 def _retry_on_quota(func, *args, max_retries=3, base_delay=2.0, **kwargs):
@@ -88,7 +103,7 @@ def resolve_folder_id(folder_url_or_id: str) -> str:
 
 def list_folder_contents(folder_url_or_id: str) -> list[dict]:
     """Возвращает список файлов и папок в папке: [{id, name, mimeType, size, parents}]."""
-    svc = _get_CLIENT()
+    svc = _read_CLIENT()
     fid = resolve_folder_id(folder_url_or_id)
     out = []
     page_token = None
@@ -108,7 +123,7 @@ def list_folder_contents(folder_url_or_id: str) -> list[dict]:
 
 def find_file_in_folder(folder_url_or_id: str, name: str) -> Optional[dict]:
     """Ищет файл по точному имени в папке (не рекурсивно). Возвращает метаданные или None."""
-    svc = _get_CLIENT()
+    svc = _read_CLIENT()
     fid = resolve_folder_id(folder_url_or_id)
     resp = _retry_on_quota(svc.files().list,
         q=f"'{fid}' in parents and name='{name}' and trashed=false",

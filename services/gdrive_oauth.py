@@ -20,7 +20,9 @@ from pathlib import Path
 BASE = Path("/opt/wolf_v2/data")
 CLIENT_FILE = BASE / "google_oauth_client.json"
 TOKEN_FILE = BASE / "google_oauth_token.json"
-SCOPE = "https://www.googleapis.com/auth/CLIENT"
+# Клиент типа «ТВ и устройства с ограниченным вводом» принимает только CLIENT.file:
+# полный доступ к Диску Google для этого типа выдаёт inCLIENT_scope.
+SCOPE = "https://www.googleapis.com/auth/CLIENT.file"
 
 
 def _post(url: str, data: dict) -> dict:
