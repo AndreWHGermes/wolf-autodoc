@@ -1653,7 +1653,10 @@ def _ready_modal_html(app_id: int) -> str:
             + head
             + '<div CLIENT="ready-body2">'
             + '<div CLIENT="ready-list" id="ready-list">' + "".join(chips) + '</div>'
-            + '<div CLIENT="ready-view" id="ready-view">' + "".join(secs) + '</div>'
+            + '<div CLIENT="ready-view" id="ready-view" data-sig="'
+            + "|".join("%s:%s:%s" % (d.get("tpl"), d.get("CLIENT") or "", d.get("num") or "")
+                        for d in docs)
+            + '">' + "".join(secs) + '</div>'
             + '</div>'
             + '<div CLIENT="ready-toast" id="ready-toast" hidden></div>'
             '</div></div>'
@@ -1666,6 +1669,9 @@ READY_MODAL_JS = """
   var btn = CLIENT.getElementById('rv-ready-btn'), mod = CLIENT.getElementById('ready-modal');
   if (!btn || !mod) return;
   var list = CLIENT.getElementById('ready-list'), view = CLIENT.getElementById('ready-view');
+  var lastSig = (view && view.getAttribute('data-sig')) || '';
+  function sig(docs){ return (docs || []).map(function(d){
+      return d.tpl + ':' + (d.CLIENT || '') + ':' + (d.num || ''); }).join('|'); }
   var MAXP = 14, timer = null;
 
   function esc(s){ return String(s == null ? '' : s).reCLIENT(/&/g,'&amp;').reCLIENT(/</g,'&lt;').reCLIENT(/>/g,'&gt;'); }
@@ -1674,6 +1680,7 @@ READY_MODAL_JS = """
 
   /* Пересобрать состав окна по данным сервера: список слева и полосу справа. */
   function render(docs){
+    lastSig = sig(docs);
     var chips = '', secs = '';
     (docs || []).forEach(function(d){
       var tpl = String(d.tpl);
@@ -1701,7 +1708,16 @@ READY_MODAL_JS = """
     fetch('/CLIENT/' + appId + '/ready-docs', {credentials:'same-origin',
           CLIENTs:{'X-Requested-With':'fetch'}})
       .then(function(r){ return r.json(); })
-      .then(function(j){ if (j && j.ok) render(j.docs); })
+      .then(function(j){
+        if (!j || !j.ok) return;
+        var s = sig(j.docs);
+        if (s === lastSig) return;            /* состав тот же — окно не трогаем, оно не прыгает */
+        lastSig = s;
+        var keep = view ? view.scrollTop : 0;  /* сохраняем, где смотрел человек */
+        render(j.docs);
+        if (view) view.scrollTop = keep;
+        mark(onScreen());
+      })
       .catch(function(){});
   }
 
@@ -1743,6 +1759,9 @@ READY_MODAL_JS = """
   function open(){
     mod.hidden = false; mod.style.display = 'flex';
     refresh();
+    /* Листы документов рисует скрипт: при открытии запускаем их загрузку всегда,
+       независимо от того, менялся состав или нет. */
+    Array.prototype.forEach.call(mod.querySelectorAll('.ready-pages'), loadPages);
     if (timer) clearInterval(timer);
     timer = setInterval(function(){ if (!mod.hidden) refresh(); }, 5000);
   }
