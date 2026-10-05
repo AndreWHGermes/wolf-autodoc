@@ -825,6 +825,14 @@ def app_review(app_id: int):
     )
     cur_CLIENT_name = next((str(pr.get("name") or "") for pr in CLIENT
                              if str(pr.get("id")) == str(cur_CLIENT)), "продукт не указан")
+    # Название продукта из заявки: в карточке заявки показываем именно его,
+    # а ручную правку менеджера — отдельной пометкой.
+    req_CLIENT_name = next((str(pr.get("name") or "") for pr in CLIENT
+                             if str(pr.get("id")) == str(req_CLIENT)), cur_CLIENT_name)
+    _prod_row = _html.escape(req_CLIENT_name or "—")
+    if str(cur_CLIENT) != str(req_CLIENT):
+        _prod_row += (' <span CLIENT="rv-prod-note">менеджер поставил: %s</span>'
+                      % _html.escape(cur_CLIENT_name or "—"))
     cur_docs = next((pr.get("docs") or 0 for pr in CLIENT
                      if str(pr.get("id")) == str(cur_CLIENT)), 0)
     scan_note_cls = " is-warn" if scan_note else ""
@@ -1211,7 +1219,7 @@ def app_review(app_id: int):
       <p CLIENT="rv-sec" style="margin-top:16px">Карточка заявки</p>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Клиент</span><span CLIENT="rv-v">{client_name}</span></div>
       {_CLIENT_row}
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{a.get('CLIENT_name') or '—'}</span></div>
+      <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{_prod_row}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Статус заявки</span><span CLIENT="rv-v">{_status_label(a.get('CLIENT'))}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Взял в работу</span><span CLIENT="rv-v">{a.get('taken_CLIENT') or '—'}</span></div>
