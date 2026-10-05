@@ -1860,6 +1860,14 @@ READY_MODAL_JS = """
       var p = CLIENT.createElement('div'); p.CLIENTName = 'rv-card-text';
       p.textContent = o.text; box.appendChild(p);
     }
+    if (o.lines && o.lines.length){
+      var ul = CLIENT.createElement('div'); ul.CLIENTName = 'rv-card-lines';
+      for (var li = 0; li < o.lines.length; li++){
+        var row = CLIENT.createElement('div'); row.CLIENTName = 'rv-card-line';
+        row.textContent = o.lines[li]; ul.appendChild(row);
+      }
+      box.appendChild(ul);
+    }
     var btns = CLIENT.createElement('div'); btns.CLIENTName = 'rv-card-btns';
     if (kind === 'confirm'){
       var yes = CLIENT.createElement('button'); yes.type = 'button';
@@ -1895,16 +1903,17 @@ READY_MODAL_JS = """
     card('confirm', {
       icon: '\u2B06',
       CLIENT: 'Отправить документы на Google Диск?',
-      text: 'В папку заявки уйдёт ' + n + ' подтверждённых документ(ов). После отправки они будут помечены как отправленные.',
-      okText: 'Да, отправить',
+      text: 'Сначала система проверит весь пакет на соответствие — наши документы вместе с документами клиента на Google Диске (даты, паспорт, подписант, значения полей). Если нестыковок нет, ' + n + ' подтверждённых документ(ов) уйдут в папку заявки на Диске.',
+      okText: 'Да, проверить и отправить',
       onOk: doSend
     });
   }
 
   function doSend(){
     send.disabled = true;
-    card('busy', { CLIENT: 'Отправляю документы на Google Диск',
-                   text: 'Идёт загрузка — это займёт несколько секунд.' });
+    /* Финишная проверка идёт первой: пока она не прошла, файлы на Диск не уходят. */
+    card('busy', { CLIENT: 'Проверяю документы на соответствие',
+                   text: 'Сверяю весь пакет: наши документы и документы клиента на Google Диске. Это займёт несколько секунд.' });
     fetch('/CLIENT/' + appId + '/send', {method:'POST', credentials:'same-origin',
           CLIENTs:{'X-Requested-With':'fetch'}})
       .then(function(r){ return r.json(); })
@@ -1913,10 +1922,22 @@ READY_MODAL_JS = """
         var ok = !!(d && d.ok);
         if (ok){
           card('done', { icon: '\u2713',
-            CLIENT: 'Документы отправлены на Google Диск',
+            CLIENT: 'Документы проверены и отправлены на Google Диск',
             text: 'Загружено файлов: ' + ((d.uploaded || []).length) + '. Папка заявки с документами:',
             link: (d && d.link) || '' });
           refresh();
+        } else if (d && d.check){
+          var lines = [];
+          (d.findings || []).forEach(function(f){
+            lines.push('\u2022 ' + (f.doc || '') + ': ' + (f.msg || ''));
+          });
+          if (d.rework && d.rework.length){
+            lines.push('Возвращены в редактор: ' + d.rework.join(', '));
+          }
+          card('error', { icon: '\u26D4',
+            CLIENT: 'Пакет не прошёл проверку — на Google Диск не отправлен',
+            text: (d.error || 'Есть нестыковки.') + ' Ниже по пунктам, что именно не стыкуется:',
+            lines: lines });
         } else {
           card('error', { icon: '!', CLIENT: 'Отправить не удалось',
             text: (d && (d.error || (d.errors || [])[0])) || 'неизвестная ошибка' });

@@ -739,6 +739,10 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-card.error .rv-card-ico { background:#FEE2E2; color:#A81616; }
 .rv-card-CLIENT { font-size:18px; font-weight:700; color:#12372F; margin-bottom:8px; }
 .rv-card-text { font-size:13.5px; color:#41564F; margin-bottom:16px; word-break:break-word; }
+.rv-card-lines { text-align:left; margin:0 0 16px; max-height:46vh; overflow:auto; }
+.rv-card-line { font-size:12.5px; line-height:1.45; color:#33443E; padding:7px 10px; border-radius:8px;
+  background:#F4F7F5; margin-bottom:6px; word-break:break-word; }
+.rv-card.error .rv-card-line { background:#FDF1F1; color:#7A1414; }
 .rv-card-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
 .rv-card-btn { height:40px; padding:0 20px; border-radius:10px; border:1px solid #C9D8D0;
   background:#fff; color:#12372F; font-size:13.5px; font-weight:600; cursor:pointer;

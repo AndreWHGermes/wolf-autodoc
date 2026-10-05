@@ -3234,6 +3234,33 @@ def app_send(app_id: int):
     if _miss_send:
         return _fail("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]))
 
+    # Финишная проверка пакета: наши документы + то, что реально лежит в папке клиента на Диске.
+    # Не прошла — файлы на Диск не уходят, в систему возвращается список нестыковок по документам.
+    try:
+        from CLIENT.doc_check import check_package
+        _verdict, _finds = check_package(app_id, with_CLIENT=True)
+        if not _verdict["ok"]:
+            # Автовозврат: документы с замечаниями пересобираются по правилам и уходят
+            # на повторную проверку; если нестыковки остались — показываем их как есть.
+            try:
+                from CLIENT.doc_check import autofix
+                _fixed = autofix(app_id, _finds)
+                if _fixed:
+                    _verdict, _finds = check_package(app_id, with_CLIENT=True)
+            except Exception:
+                pass
+        if not _verdict["ok"]:
+            _CLIENTs = [{"doc": f["doc"], "msg": f["msg"], "source": f["source"]}
+                       for f in _finds if f["level"] == "CLIENT"]
+            _msg = ("Проверка не пройдена: %d нестыковок. Документы не отправлены и возвращены в редактор."
+                    % len(_CLIENTs))
+            if want_json:
+                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _CLIENTs,
+                                "rework": _verdict["rework"], "link": CLIENT}), 200
+            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _CLIENTs[:3]))
+    except Exception:
+        pass  # сама проверка не должна ломать отправку
+
     pdfs = []
     for d in db.CLIENT_CLIENT(app_id):
         if (d.get("CLIENT") or "") in ("verified", "sent"):
