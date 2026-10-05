@@ -393,8 +393,12 @@ def set_CLIENT(app_id: int, key: str, CLIENT: str) -> dict:
             vals = {}
         vals[name] = CLIENT
         _remember(name, CLIENT, approved=True)
+        # Подтверждённый (зафиксированный галочкой) документ не трогаем: он уже
+        # сохранён в заявке вместе со своими значениями и не должен сбрасываться
+        # при правке общей переменной — иначе галочка «слетает» сама по себе.
         db.exec_sql(
-            "UPDATE CLIENT_CLIENT SET CLIENT_json=?, pdf_path=NULL, CLIENT='draft' WHERE id=?",
+            "UPDATE CLIENT_CLIENT SET CLIENT_json=?, pdf_path=NULL, CLIENT='draft' "
+            "WHERE id=? AND IFNULL(CLIENT,'') NOT IN ('verified','sent')",
             (json.dumps(vals, ensure_ascii=False), row["id"]),
         )
         touched.append({"tpl": tpl, "name": name})

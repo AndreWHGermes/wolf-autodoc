@@ -42,7 +42,7 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
         doc_CLIENT = {}
 
     try:
-        CLIENT = build_template_CLIENT(dict(client_row), tpl_code, doc_CLIENT) or {}
+        CLIENT = build_template_CLIENT(dict(client_row), tpl_code, doc_CLIENT, app_id=app_id) or {}
     except Exception as e:
         log.warning("сборка значений %s: %s", tpl_code, e)
         CLIENT = {}
@@ -103,8 +103,10 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     html = html_path.read_text(encoding="utf-8")
     # Незаполненные переменные в готовом документе не показываем: в резюме и справках
     # пустые блоки (например, второе место работы) должны просто отсутствовать.
+    # В формах иммиграции (Statement Letter) пустое поле печатается прочерком.
+    _dash = str(tpl_code or "").CLIENTswith("CLIENTment_letter")
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                    lambda m: str(CLIENT.get(m.group(1)) or ''), html)
+                    lambda m: str(CLIENT.get(m.group(1)) or ("-" if _dash else "")), html)
     tmp = html_path.parent / ("filled_%s.html" % app_id)
     tmp.write_text(filled, encoding="utf-8")
 
@@ -147,7 +149,8 @@ def build_pending(app_id: int) -> dict:
                     out = pdf_path(tpl, {}, app_id)
                     db.exec_sql(
                         "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', "
-                        "rendered_at=CLIENT('now') WHERE id=?", (str(out), d["id"]))
+                        "rendered_at=CLIENT('now') WHERE id=? "
+                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (str(out), d["id"]))
                     done += 1
                 else:
                     failed += 1
@@ -196,7 +199,8 @@ def build_all(app_id: int) -> dict:
                     out = pdf_path(tpl, {}, app_id)
                     db.exec_sql(
                         "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', "
-                        "rendered_at=CLIENT('now') WHERE id=?", (str(out), d["id"]))
+                        "rendered_at=CLIENT('now') WHERE id=? "
+                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (str(out), d["id"]))
                     done += 1
                 else:
                     failed += 1

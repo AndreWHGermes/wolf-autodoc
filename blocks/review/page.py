@@ -52,7 +52,7 @@ def _status_label(code: str) -> str:
 
 def _doc_status_label(code: str) -> str:
     return {
-        "verified": "✓ проверен",
+        "verified": "✓ проверен · в очереди на отгрузку",
         "rejected": "✕ исключено",
         "rendered": "собран",
         "error": "ошибка сборки",

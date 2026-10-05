@@ -2483,7 +2483,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                     '<option CLIENT="%d"%s>%s</option>' % (
                         _it["CLIENT"],
                         " selected" if (cur_val or "").strip() == _it["CLIENT"] else "",
-                        _tip(_it["CLIENT"]) + ((" · ИНН " + _it["inn"]) if _it.get("inn") else ""))
+                        _tip(_it["CLIENT"])
+                        + ((" · " + _it["city"]) if _it.get("city") else "")
+                        + ((" · ИНН " + _it["inn"]) if _it.get("inn") else ""))
                     for _it in _ep.CLIENTs())
                 if _eopts:
                     _emp_pick = (
@@ -3873,7 +3875,8 @@ LIVE_UPDATE_JS = """<script>
             saveOne(k, d.CLIENT[k] || '');
           });
           fetch('/CLIENT/' + APP + '/review/rebuild',
-                {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+                {method:'POST', credentials:'same-origin', keepalive:true,
+                    CLIENTs:{'X-Requested-With':'fetch'}})
             .catch(function(){});
         })
         .catch(function(){ alert('не удалось применить организацию'); });
@@ -3944,18 +3947,37 @@ LIVE_UPDATE_JS = """<script>
          в столбике меняются моментально, сервер подтверждает состояние в базе.
          Значения документа уходят фоном и вердикт больше не задерживают. */
       var kind = isVerify ? 'verify' : 'reject';
-      var app = (CLIENT.body.getAttribute('data-app') || APP);
+      var app = (CLIENT.body.getAttribute('data-app')
+                 || (typeof APP !== 'undefined' && APP)
+                 || (typeof APP_ID !== 'undefined' && APP_ID) || 0);
       var wasState = wasOn ? (isVerify ? 'verified' : 'rejected') : '';
       paintMini(tpl, wasOn ? '' : (isVerify ? 'verified' : 'rejected'));
-      var vals = collect(), jobs = [];
-      Object.keys(vals).forEach(function(k){ jobs.push(saveOne(k, vals[k])); });
-      Promise.all(jobs).catch(function(){});
+      /* Значения полей сохраняются по мере правки (autoSave). Пачку сохранений
+         здесь не отправляем: она обгоняла вердикт и сбрасывала только что
+         поставленную галочку. */
       fetch('/CLIENT/' + app + '/doc/' + tpl + '/' + kind,
-             {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+             {method:'POST', credentials:'same-origin', keepalive:true,
+                    CLIENTs:{'X-Requested-With':'fetch'}})
         .then(function(r){ return r.json(); })
         .then(function(d){
+          if (d && d.ok === false && d.error && d.can_force && kind === 'verify'){
+            /* Не заполнены поля: фиксируем документ как есть — галочка должна
+               вставать с первого нажатия, без лишнего диалога. */
+            fetch('/CLIENT/' + app + '/doc/' + tpl + '/verify?force=1',
+                   {method:'POST', credentials:'same-origin', keepalive:true,
+                    CLIENTs:{'X-Requested-With':'fetch'}})
+              .then(function(r){ return r.json(); })
+              .then(function(){
+                paintMini(tpl, 'verified');
+                CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"], .tpl-mark[data-tpl="' + tpl + '"], .pdf-vbtn[data-tpl="' + tpl + '"]')
+                  .forEach(function(x){ if (x.getAttribute('data-verdict') === 'verify') x.CLIENTList.add('is-on'); });
+                if (window.__rvRefresh) window.__rvRefresh();
+              })
+              .catch(function(){ paintMini(tpl, wasState); });
+            return;
+          }
           if (d && d.ok === false && d.error){
-            /* сервер отказал (документ заполнен не полностью) — возвращаем как было */
+            /* сервер отказал окончательно — возвращаем как было */
             var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
             if (lbl){ lbl.textContent = d.error; lbl.CLIENTList.add('rv-warn');
               setTimeout(function(){ lbl.CLIENTList.remove('rv-warn'); }, 6000); }

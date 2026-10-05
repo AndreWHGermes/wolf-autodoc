@@ -517,6 +517,10 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
                 price_idr *= 1_000_000
 
     CLIENT_id = find_CLIENT_id(form.get("CLIENT_name") or "")
+    # Ссылка на папку клиента приходит под разными именами: бот-парсер пишет
+    # gCLIENT_folder_url, форма — gCLIENT_url. Берём любую, иначе автораэбор
+    # документов с Google Диска не запускается и заявка остаётся без файлов.
+    _gCLIENT_url = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
     cur = conn.execute(
         "INSERT INTO CLIENT (client_id, CLIENT_id, CLIENT, source, "
         "comment, price_idr, gCLIENT_url, raw_payload, bot_manager_id, created_at) "
@@ -524,7 +528,7 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
         (client_id, CLIENT_id,
          form.get("comment") or "",
          price_idr,
-         form.get("gCLIENT_url") or "",
+         _gCLIENT_url,
          json.dumps(form, ensure_ascii=False),
          from_user["id"]))
     app_id = cur.lastrowid
@@ -571,7 +575,19 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
             "SELECT t.id, t.code FROM CLIENT t "
             "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
             "WHERE pd.CLIENT_id=?", (CLIENT_id,)).fetchall()
+        # Письма в иммиграцию идут ровно одним комплектом: Ngurah Rai или
+        # Denpasar — по адресу проживания клиента. Второй вариант не создаём.
+        from CLIENT import immigration_CLIENT as _io
+        _CLIENT = (_io.resolve_for_client(conn, client_id) or {}).get("CLIENT")
         for r in rows:
+            # Лишний вариант письма не выбрасываем, а помечаем крестиком:
+            # в миниатюрах он виден с причиной, в работу не идёт (rejected).
+            _rejected = not _io.CLIENT_allows(r["code"], _CLIENT)
+            _why = ("исключено автоматически: адрес клиента — зона %s"
+                    % _io.CLIENT_name(_CLIENT)) if _rejected else None
+            if _rejected:
+                log.info("шаблон %s исключён — комплект %s (адрес клиента)",
+                         r["code"], _CLIENT)
             # Банк клиента определён — берём справку только этого банка.
             # Банк ещё не определён — даём ОБА варианта (Тинькофф и Сбер),
             # администратор выберет нужный кнопкой «Проверен».
@@ -581,13 +597,14 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
                 continue
             conn.execute(
                 "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, "
-                "CLIENT_json, rendered_at) CLIENT (?,?, 'pending', ?, CLIENT('now'))",
-                (app_id, r["id"], json.dumps(form, ensure_ascii=False)))
+                "CLIENT_json, rendered_at, error) CLIENT (?,?,?,?, CLIENT('now'), ?)",
+                (app_id, r["id"], "rejected" if _rejected else "pending",
+                 json.dumps(form, ensure_ascii=False), _why))
     conn.commit()
     # Разбор документов клиента из Google CLIENT — автоматически, сразу после
     # приёма заявки. Раньше приходилось жать «Разобрать документы (нейросеть)»
     # в карточке; теперь данные клиента уже вытащены, когда её открывают.
-    if (form.get("gCLIENT_url") or "").strip():
+    if _gCLIENT_url:
         try:
             # сразу проверяем содержимое папки: есть ли там паспорт клиента
             from CLIENT import CLIENT as _CLIENT_svc
@@ -663,15 +680,25 @@ def _apply_CLIENT(app_id: int, CLIENT_id: int) -> None:
              JOIN CLIENT t ON t.id=pd.template_id
             WHERE pd.CLIENT_id=? ORDER BY t.id""", (CLIENT_id,)).fetchall()
     now = CLIENT.now().isoformat(timespec="seconds")
+    # Комплект писем в иммиграцию — по адресу клиента: Ngurah Rai либо Denpasar.
+    from CLIENT import immigration_CLIENT as _io
+    _CLIENT = (_io.resolve_for_client(conn, client_id) or {}).get("CLIENT")
     for t in CLIENT:
+        _rejected = not _io.CLIENT_allows(t["code"], _CLIENT)
+        if _rejected:
+            log.info("_apply_CLIENT: шаблон %s исключён (комплект %s)",
+                     t["code"], _CLIENT)
         if not _bank_allows(t["code"], bank):
             log.info("_apply_CLIENT: шаблон %s пропущен (банк %s)",
                      t["code"], (bank or "—").upper())
             continue
         conn.execute(
             """INSERT INTO CLIENT_CLIENT
-                 (CLIENT_id, template_id, CLIENT, rendered_at)
-               CLIENT (?,?,?,?)""", (app_id, t["id"], "pending", now))
+                 (CLIENT_id, template_id, CLIENT, rendered_at, error)
+               CLIENT (?,?,?,?,?)""",
+            (app_id, t["id"], "rejected" if _rejected else "pending", now,
+             ("исключено автоматически: адрес клиента — зона %s"
+              % _io.CLIENT_name(_CLIENT)) if _rejected else None))
     conn.commit()
     log.info("_apply_CLIENT: заявка #%s → продукт %s, документов=%d",
              app_id, prod["code"], len(CLIENT))

@@ -2717,7 +2717,8 @@ def app_doc_edit(app_id: int, template_id: int):
                 _out = Path('/opt/wolf_v2/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
                 _pdf2html.render_pdf(_tmp, _out)
                 # обновим запись
-                db.exec_sql("UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') WHERE id=?",
+                db.exec_sql("UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') "
+                            "WHERE id=? AND IFNULL(CLIENT,'') NOT IN ('verified','sent')",
                             (str(_out), prev["id"]))
                 prev = db.q1("SELECT * FROM CLIENT_CLIENT WHERE id=?", (prev["id"],))
                 flash("PDF сформирован автоматически")
@@ -3188,10 +3189,17 @@ def app_text_file(app_id: int):
 @CLIENT_required
 def app_send(app_id: int):
     CLIENT = db.CLIENT_doc_CLIENT(app_id)
-    if CLIENT.get("verified", 0) + CLIENT.get("sent", 0) < CLIENT.get("total", 0):
+    # «Не нужен» (крестик) — тоже решение администратора: он не должен блокировать
+    # отправку пакета. В зачёт идёт проверенное, отправленное и исключённое.
+    _decided = (CLIENT.get("verified", 0) + CLIENT.get("sent", 0)
+                + CLIENT.get("rejected", 0))
+    if _decided < CLIENT.get("total", 0):
         flash("Не все документы проверены", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
+    # Незаполненные поля важны только у НЕпринятых документов: галочка означает,
+    # что администратор сверил документ и зафиксировал его значения как есть.
     _miss_send = sorted({m for d in db.CLIENT_CLIENT(app_id)
+                         if (d.get("CLIENT") or "") not in ("verified", "sent", "rejected")
                          for m in doc_missing_fields(app_id, d["template_id"])})
     if _miss_send:
         flash("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]), "error")

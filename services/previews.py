@@ -48,7 +48,24 @@ def ensure(target: Path, width: int = 0):
                        ["-f", "1", "-l", "1", "-singlefile", str(target), str(out.with_suffix(""))],
                        check=True, timeout=120)
     except Exception:
-        return None
+        # Сканы с Google Диска бывают с битой структурой PDF — pdftoppm такой файл
+        # не открывает, и миниатюра не появляется вовсе (ИТК в заявке №87).
+        # PyMuPDF читает такие файлы и отдаёт первую страницу.
+        try:
+            import pymupdf
+            doc = pymupdf.open(str(target))
+            page = doc[0]
+            if width:
+                dpi = max(12, min(150, int(round(width / 8.27))))
+            else:
+                long_pt = max(page.rect.width, page.rect.height) or 842.0
+                dpi = max(60, min(200, int(round(FULL_SCALE / (long_pt / 72.0)))))
+            zoom = dpi / 72.0
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+            pix.save(str(out))
+            doc.close()
+        except Exception:
+            return None
     return out if out.exists() and out.stat().st_size > 0 else None
 
 

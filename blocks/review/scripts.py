@@ -1043,26 +1043,28 @@ def js_for(app_id, picked):
   // согласование: ✓ проверен / ✕ не нужен
   function verdict(tpl, kind, btn) {{
     if (btn) btn.disabled = true;
+    /* Метка ставится сразу, сервер подтверждает состояние в базе. */
+    var wasOnBtn = btn ? btn.CLIENTList.contains('is-on') : false;
+    paintMiniRail(tpl, wasOnBtn ? '' : (kind === 'verify' ? 'verified' : 'rejected'));
     fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/' + kind, {{
-      method: 'POST', credentials: 'same-origin', CLIENTs: {{'X-Requested-With': 'fetch'}}
+      method: 'POST', credentials: 'same-origin', keepalive: true, CLIENTs: {{'X-Requested-With': 'fetch'}}
     }})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (btn) btn.disabled = false;
         // Сервер отказывает, если документ заполнен не полностью: показываем причину рядом с миниатюрой.
         if (d && d.ok === false && d.error) {{
-          // Есть незаполненные поля: спрашиваем подтверждение и фиксируем как есть.
+          // Не заполнены поля: фиксируем документ как есть — галочка встаёт
+          // с первого нажатия, без лишнего диалога.
           if (d.can_force && kind === 'verify') {{
-            var miss = (d.missing || []).join(', ');
-            if (window.confirm('Не заполнено: ' + miss + '.\\nПодтвердить документ как есть и зафиксировать значения?')) {{
-              fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify?force=1', {{
-                method: 'POST', credentials: 'same-origin', CLIENTs: {{'X-Requested-With': 'fetch'}}
-              }})
-                .then(function(r) {{ return r.json(); }})
-                .then(function() {{ if (btn) btn.disabled = false; refreshCLIENTes(); refreshState(); }})
-                .catch(function() {{ if (btn) btn.disabled = false; }});
-              return;
-            }}
+            fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify?force=1', {{
+              method: 'POST', credentials: 'same-origin', keepalive: true,
+              CLIENTs: {{'X-Requested-With': 'fetch'}}
+            }})
+              .then(function(r) {{ return r.json(); }})
+              .then(function() {{ if (btn) btn.disabled = false; refreshCLIENTes(); refreshState(); }})
+              .catch(function() {{ if (btn) btn.disabled = false; }});
+            return;
           }}
           var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
           if (lbl) {{
@@ -1193,7 +1195,7 @@ def js_for(app_id, picked):
           paintMiniRail(tpl, CLIENT);
           var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
           if (lbl) lbl.textContent = CLIENT === 'rejected' ? 'не нужен'
-                                  : CLIENT === 'verified' ? 'Проверено'
+                                  : CLIENT === 'verified' ? 'проверен · в очереди на отгрузку'
                                   : CLIENT === 'rendered' ? 'собран · не проверено'
                                   : CLIENT === 'filled' ? 'заполнен · не проверено'
                                   : CLIENT === 'draft' ? 'черновик · ждём скан'
