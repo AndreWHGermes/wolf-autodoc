@@ -3307,10 +3307,9 @@ def _ready_folder_name(app_id: int, a: dict, client: dict) -> str:
         made = CLIENT.strptime(made, "%Y-%m-%d").strftime("%d.%m.%Y")
     except Exception:
         pass
-    # Формат Андрея: Wolf autodoc / № заявки / имя клиента / тип продукта / дата создания.
-    # Слэши в имени папки Google не разрешает, поэтому части разделяются пробелом.
-    return " ".join(x for x in ("Wolf autodoc", "\u2116" + str(app_id), name,
-                               code or "CLIENT", made) if x).strip()
+    # Формат Андрея: Wolf AutoDoc №<заявка> <клиент> / <продукт> / <дата создания>.
+    # Разделитель « / » проверен на живом Диске: API его принимает.
+    return "Wolf AutoDoc \u2116%s %s / %s / %s" % (app_id, name, code or "CLIENT", made)
 
 
 def _ready_docs(app_id: int) -> list:
