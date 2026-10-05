@@ -316,6 +316,17 @@ def find_CLIENT_id(name: str) -> int | None:
         "SELECT id FROM CLIENT WHERE lower(code)=? LIMIT 1", (CLIENT,)).fetchone()
     if row:
         return row["id"]
+    # 2.5) синонимы из свободного текста: «BRIDGE», «мост» → BRIDGING;
+    #      «конверсия» → CONV; «CLIENT» → C1; «китас» → E33G-NEW и т.д.
+    try:
+        from bot.ai_parser import detect_CLIENT
+        code = detect_CLIENT(n)
+        if code:
+            row = db().execute("SELECT id FROM CLIENT WHERE code=? LIMIT 1", (code,)).fetchone()
+            if row:
+                return row["id"]
+    except Exception:
+        pass
     # 3) NEW vs EXT — различение
     if "e33g" in n:
         if has_ext:

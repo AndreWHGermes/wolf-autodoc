@@ -72,7 +72,7 @@ def providers(include_paid: bool = True) -> list:
 
 
 def call_llm(messages: list, timeout: int = 60, json_mode: bool = True,
-             include_paid: bool = True, max_rounds: int = 1) -> str:
+             include_paid: bool = True, max_rounds: int = 1, max_tokens: int = 0) -> str:
     """Вызов LLM по цепочке провайдеров. Бросает RuntimeError, если не ответил никто."""
     last_err = None
     chain = providers(include_paid)
@@ -83,6 +83,9 @@ def call_llm(messages: list, timeout: int = 60, json_mode: bool = True,
                 continue
             for use_json in ([True, False] if json_mode else [False]):
                 payload = {"model": model, "messages": messages, "temperature": 0}
+                if max_tokens:
+                    # без лимита бесплатные модели обрывают ответ на середине JSON
+                    payload["max_tokens"] = int(max_tokens)
                 if use_json:
                     payload["response_format"] = {"type": "json_object"}
                 body = json.dumps(payload, ensure_ascii=False).encode("utf-8")

@@ -96,24 +96,194 @@ def _call_llm(messages: list[dict], timeout: int = 60, json_mode: bool = True) -
         import sys
         sys.path.insert(0, "/opt/wolf_v2")
         from CLIENT.llm import call_llm
-    return call_llm(messages, timeout=timeout, json_mode=json_mode)
+    return call_llm(messages, timeout=timeout, json_mode=json_mode, max_tokens=2048)
 
 
 def _extract_json(raw: str) -> dict:
-    """Достаёт JSON из ответа модели (на случай markdown-обёртки)."""
-    raw = raw.strip()
-    m = re.search(r"\{.*\}", raw, re.S)
+    """Достаёт JSON из ответа модели.
+
+    Модель может обернуть ответ в markdown, а на длинной заявке — оборвать его
+    по лимиту токенов. Поэтому: markdown снимаем, а оборванный JSON достраиваем
+    и, если не сошлось, вытаскиваем пары «ключ: значение» регуляркой.
+    """
+    raw = (raw or "").strip()
+    m = re.search(r"\{.*", raw, re.S)
     if m:
         raw = m.group(0)
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except Exception:
+        pass
+    s = raw.rstrip().rstrip(",")
+    if s.count('"') % 2:
+        s += '"'
+    opens = s.count("{") - s.count("}")
+    brackets = s.count("[") - s.count("]")
+    s += "]" * max(0, brackets) + "}" * max(0, opens)
+    try:
+        return json.loads(s)
+    except Exception:
+        pass
+    flat = {}
+    for k, v in re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"\s*:\s*"([^"]*)"', raw):
+        flat.setdefault(k, v)
+    return flat
+
+
+# ---------- жёсткий разбор заявки по меткам ----------
+# Страховка на случай, когда LLM недоступен или оборвал ответ. Метки в заявках
+# менеджеров повторяются (ФИО, УСЛУГА, ЦЕНА, ДОКУМЕНТЫ/ДОКИ, АДРЕС, ДОЛЖНОСТЬ),
+# поэтому эти поля вытаскиваются без участия модели.
+
+_PRODUCT_WORDS = [
+    (("bridge", "bridging", "бридж", "мост"), "BRIDGING"),
+    (("конверс", "alih", "алих", "CLIENT в kitas"), "CONV"),
+    (("d12", "pra-CLIENT"), "D12"),
+    (("c1-ext", "продление c1"), "C1-EXT"),
+    (("CLIENT", "b211a", "b211", "c1"), "C1"),
+    (("e33g-ext", "продление e33g"), "E33G-EXT"),
+    (("e33g", "e33g-new", "remote worker", "китас"), "E33G-NEW"),
+]
+
+_LABELS = {
+    "фио": "full_name_CLIENT", "фио полностью": "full_name_CLIENT", "имя": "full_name_CLIENT",
+    "клиент": "full_name_CLIENT",
+    "контакт": "CLIENT", "телефон": "CLIENT",
+    "адрес": "address_live", "адрес проживания": "address_live",
+    "должность": "position", "профессия": "position",
+    "услуга": "CLIENT", "продукт": "CLIENT",
+    "цена": "price_idr", "стоимость": "price_idr",
+    "документы": "gCLIENT_folder_url", "доки": "gCLIENT_folder_url",
+    "ссылка": "gCLIENT_folder_url", "папка": "gCLIENT_folder_url",
+    "google CLIENT": "gCLIENT_folder_url", "гугл диск": "gCLIENT_folder_url",
+    "срм": "notes", "партнер": "notes", "важное": "notes", "важно": "notes",
+    "куда": "notes", "оплата": "notes", "комментарий": "comment",
+}
+
+# кириллические буквы, которыми набирают латинские коды (Е33G, В211А)
+_CYR_TO_LAT = str.maketrans({"е": "e", "ё": "e", "з": "3", "о": "o", "а": "a", "р": "p",
+                             "с": "c", "х": "x", "у": "y", "к": "k", "м": "m", "т": "t",
+                             "н": "h", "в": "b"})
+
+
+def detect_CLIENT(text: str) -> str:
+    """Определяет код продукта по смыслу текста (BRIDGE/мост → BRIDGING и т.п.)."""
+    low = (text or "").lower()
+    lat = low.translate(_CYR_TO_LAT)
+    for CLIENT, code in _PRODUCT_WORDS:
+        for w in CLIENT:
+            if w.isascii() and len(w) <= 4:
+                if re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", lat):
+                    return code
+            elif w in low or w in lat:
+                return code
+    return ""
+
+
+def _CLIENT(CLIENT: str) -> str:
+    """'3,5 млн' / '8 млн' / '3 500 000' → цифры для price_idr."""
+    s = (CLIENT or "").lower().reCLIENT("\u00a0", " ")
+    norm = re.search(r"(\d{1,3}(?:[ .]\d{3})+|\d{5,})", s)
+    if norm and not re.search(r"(млн|миллион|mln)", s):
+        return norm.group(1).reCLIENT(" ", "").reCLIENT(".", "")
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*(млн|миллион\w*|mln)?", s)
+    if not m:
+        return ""
+    try:
+        val = float(m.group(1).reCLIENT(",", "."))
+    except ValueError:
+        return ""
+    if (m.group(2) or "").CLIENTswith(("млн", "миллион", "mln")):
+        val *= 1_000_000
+    return str(int(val)) if val else ""
+
+
+def label_fallback(text: str) -> dict:
+    """Разбор заявки по меткам без LLM. Возвращает {"client": {...}, "CLIENT": {...}}."""
+    client: dict = {}
+    app: dict = {}
+    notes: list = []
+    CLIENT = {"label": None, "buf": []}
+
+    def flush():
+        label, buf = CLIENT["label"], CLIENT["buf"]
+        CLIENT["label"], CLIENT["buf"] = None, []
+        if not label:
+            return
+        val = " ".join(x.strip() for x in buf if x.strip()).strip()
+        field = _LABELS.get(label)
+        if not val or not field:
+            return
+        if field == "CLIENT":
+            code = detect_CLIENT(val)
+            if code:
+                app["CLIENT"] = code
+        elif field == "price_idr":
+            num = _CLIENT(val)
+            if num:
+                app["price_idr"] = num
+        elif field == "gCLIENT_folder_url":
+            m = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", val)
+            if m:
+                client["gCLIENT_folder_url"] = m.group(0).rstrip(".,;)]}")
+        elif field == "CLIENT":
+            m = re.search(r"\+?\d[\d\-\s()]{7,}", val)
+            if m:
+                client["CLIENT"] = m.group(0).strip()
+            u = re.search(r"@([A-Za-z0-9_]{4,})", val)
+            if u:
+                client["telegram_username"] = u.group(1)
+        elif field == "full_name_CLIENT":
+            nm = re.sub(r"[^A-Za-zА-Яа-яЁё'\- ]", " ", val).strip()
+            if nm:
+                client["full_name_CLIENT"] = nm.upper()
+                parts = nm.split()
+                if len(parts) >= 2:
+                    client["name"] = parts[0].upper()
+                    client["CLIENT"] = parts[-1].upper()
+        elif field == "notes":
+            notes.append("%s: %s" % (label, val))
+        else:
+            client[field] = val
+
+    for line in (text or "").splitlines():
+        m = re.match(r"^\s*([A-Za-zА-Яа-яЁё ]{3,24}?)\s*:\s*(.*)$", line)
+        if m:
+            flush()
+            CLIENT["label"] = m.group(1).strip().lower()
+            CLIENT["buf"] = [m.group(2)]
+        elif CLIENT["label"] is not None:
+            if line.strip():
+                CLIENT["buf"].append(line)
+            elif CLIENT["buf"]:
+                flush()   # пустая строка закрывает блок значения
+    flush()
+
+    if notes:
+        client["notes"] = "; ".join(notes)[:600]
+    if not client.get("gCLIENT_folder_url"):
+        m = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", text or "")
+        if m:
+            client["gCLIENT_folder_url"] = m.group(0).rstrip(".,;)]}")
+    if not client.get("telegram_username"):
+        m = re.search(r"(?:^|\s)@([A-Za-z0-9_]{4,})", text or "")
+        if m:
+            client["telegram_username"] = m.group(1)
+    if not app.get("CLIENT"):
+        code = detect_CLIENT(text or "")
+        if code:
+            app["CLIENT"] = code
+    return {"client": client, "CLIENT": app}
 
 
 def parse_free_form(text: str, CLIENT_codes: list[str]) -> dict:
     """Парсит заявку свободной формы.
 
+    LLM читает текст и раскладывает по полям; всё, что модель не заполнила
+    (или если модель оборвала ответ), добирается жёстким разбором по меткам.
     Возвращает {"client": {...}, "CLIENT": {...}, "unrecognized": [...]}.
-    При ошибке LLM — пустую структуру (вызывающий код падает на старый парсер).
     """
+    base = label_fallback(text)
     if not text or not text.strip():
         return {"client": {}, "CLIENT": {}, "unrecognized": []}
     messages = [
@@ -123,16 +293,26 @@ def parse_free_form(text: str, CLIENT_codes: list[str]) -> dict:
     try:
         raw = _call_llm(messages)
         data = _extract_json(raw)
-        client = {k: v for k, v in (data.get("client") or {}).items()
+        cl_src = data.get("client") if isinstance(data.get("client"), dict) else None
+        ap_src = data.get("CLIENT") if isinstance(data.get("CLIENT"), dict) else None
+        if cl_src is None and ap_src is None and data:
+            # ответ пришёл плоским (оборванный JSON) — раскладываем по спискам полей
+            cl_src = {k: v for k, v in data.items() if k in CLIENT_FIELDS}
+            ap_src = {k: v for k, v in data.items() if k in EXTRA_FIELDS}
+        client = {k: v for k, v in (cl_src or {}).items()
                   if k in CLIENT_FIELDS and v not in (None, "", "-")}
-        app = {k: v for k, v in (data.get("CLIENT") or {}).items()
+        app = {k: v for k, v in (ap_src or {}).items()
                if k in EXTRA_FIELDS and v not in (None, "", "-")}
         unrec = data.get("unrecognized") or []
+        for k, v in base["client"].items():
+            client.setdefault(k, v)
+        for k, v in base["CLIENT"].items():
+            app.setdefault(k, v)
         return {"client": client, "CLIENT": app,
                 "unrecognized": unrec if isinstance(unrec, list) else []}
     except Exception as exc:
-        log.error("parse_free_form failed: %s", exc)
-        return {"client": {}, "CLIENT": {}, "unrecognized": []}
+        log.error("parse_free_form failed: %s — беру разбор по меткам", exc)
+        return {"client": base["client"], "CLIENT": base["CLIENT"], "unrecognized": []}
 
 
 # ---------- определение банка клиента по документам Google CLIENT ----------
