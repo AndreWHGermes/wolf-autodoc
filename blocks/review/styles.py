@@ -472,6 +472,7 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 
 .rv-opt-name { flex:1; min-width:0; }
 .rv-opt-docs { font-size:11px; color:#8C9A91; white-space:nowrap; }
+.rv-opt-tag.is-cur { background:#E8EEF7; color:#33507A; border-color:#C6D4E8; }
 .rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; white-space:nowrap;
               background:none; border:0; }
 /* Продукт, который стоит в заявке, подсвечен внутри списка */

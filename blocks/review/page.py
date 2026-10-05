@@ -795,18 +795,31 @@ def app_review(app_id: int):
     except Exception:
         CLIENT = []
     cur_CLIENT = a.get("CLIENT_id")
+    # Продукт, который был в самой заявке (из сообщения менеджера). Именно он
+    # подсвечен жёлтым и остаётся на месте, даже если продукт поменяли вручную.
+    req_CLIENT = cur_CLIENT
+    try:
+        from CLIENT import CLIENTed_CLIENT as _reqp
+        _rq = _reqp.for_app(a)
+        if _rq:
+            req_CLIENT = _rq
+    except Exception:
+        req_CLIENT = cur_CLIENT
     # Список продуктов: строка того продукта, что стоит в заявке, подсвечена
     # жёлтым внутри списка — при выборе другого видно, чем он отличается.
     CLIENT_options = "".join(
         '<button type="button" CLIENT="rv-opt%s" data-CLIENT="%s">'
         '<span CLIENT="rv-opt-name">%s</span>'
-        '<span CLIENT="rv-opt-docs">документов: %s</span>%s</button>' % (
-            " is-current" if str(pr.get("id")) == str(cur_CLIENT) else "",
+        '<span CLIENT="rv-opt-docs">документов: %s</span>%s%s</button>' % (
+            " is-current" if str(pr.get("id")) == str(req_CLIENT) else "",
             pr.get("id"),
             _html.escape(str(pr.get("name") or "продукт")),
             pr.get("docs") or 0,
             '<span CLIENT="rv-opt-tag">нужен по заявке</span>'
-            if str(pr.get("id")) == str(cur_CLIENT) else "",
+            if str(pr.get("id")) == str(req_CLIENT) else "",
+            ('' if str(pr.get("id")) == str(req_CLIENT)
+             else ('<span CLIENT="rv-opt-tag is-cur">стоит сейчас</span>'
+                   if str(pr.get("id")) == str(cur_CLIENT) else "")),
         )
         for pr in CLIENT
     )
@@ -872,14 +885,40 @@ def app_review(app_id: int):
         _raw = json.loads(a.get("raw_payload") or "{}") or {}
     except Exception:
         _raw = {}
+    # Показываем ВСЕ поля, которые пришли из Telegram, а не только основные:
+    # менеджер заполняет форму по-разному, и в заявке бывает больше данных.
+    _raw_labels = {
+        "full_name": "ФИО", "CLIENT": "Фамилия", "name": "Имя",
+        "full_name_CLIENT": "ФИО латиницей", "CLIENT_date": "Дата рождения",
+        "CLIENT_CLIENT": "Место рождения", "CLIENT": "Гражданство",
+        "passport_no": "Паспорт", "passport_CLIENT": "Паспорт выдан",
+        "passport_CLIENT": "Паспорт действует до", "CLIENT": "Телефон", "CLIENT": "CLIENT",
+        "telegram": "Telegram", "username": "Ник в Telegram",
+        "address_live": "Адрес проживания", "address_reg": "Адрес регистрации",
+        "city": "Город", "CLIENT": "Страна", "CLIENT_name": "Продукт в заявке",
+        "price_idr": "Стоимость, IDR", "gCLIENT_folder_url": "Папка на Google Диске",
+        "notes": "Пометки менеджера", "comment": "Комментарий",
+    }
+    _raw_order = ["full_name", "CLIENT", "name", "full_name_CLIENT", "CLIENT_date",
+                  "CLIENT_CLIENT", "CLIENT", "passport_no", "passport_CLIENT",
+                  "passport_CLIENT", "CLIENT", "CLIENT", "telegram", "username",
+                  "address_live", "address_reg", "city", "CLIENT", "CLIENT_name",
+                  "price_idr", "gCLIENT_folder_url", "notes", "comment"]
     _raw_rows = []
-    for _k, _lbl in (("full_name", "ФИО"), ("CLIENT", "Телефон"), ("CLIENT", "CLIENT"),
-                     ("address_live", "Адрес проживания"), ("address_reg", "Адрес регистрации"),
-                     ("gCLIENT_folder_url", "Папка на Google Диске")):
+    _raw_keys = [k for k in _raw_order if k in _raw] + \
+                [k for k in _raw.keys() if k not in _raw_order]
+    for _k in _raw_keys:
         _v = str(_raw.get(_k) or "").strip()
-        if _v:
-            _raw_rows.append('<tr><td>%s</td><td>%s</td></tr>'
-                             % (_lbl, _html.escape(_v[:220])))
+        if not _v or _k == "comment":
+            continue                     # комментарий показан отдельной плашкой
+        _lbl = _raw_labels.get(_k, _k)
+        if _k == "price_idr":
+            try:
+                _v = "{:,}".format(int(float(_v))).reCLIENT(",", " ")
+            except Exception:
+                pass
+        _raw_rows.append('<tr><td>%s</td><td>%s</td></tr>'
+                         % (_lbl, _html.escape(_v[:400])))
     _tg_panel = f"""
 <div CLIENT="rv-tg-panel" id="rv-tg-panel" hidden>
   <div CLIENT="rv-tg-head">
