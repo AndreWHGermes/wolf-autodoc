@@ -1490,10 +1490,8 @@ def app_review(app_id: int):
 
 
 def _ready_modal_html(app_id: int) -> str:
-    """Окно «Готовые доки»: сверху перечень имён (клик — CLIENT), снизу один визор.
-
-    В визоре документы лежат подряд друг за другом — можно листать все подряд и
-    смотреть, что реально уйдёт на Google Диск.
+    """Окно «Готовые доки»: компактная шапка, перечень документов столбиком слева,
+    справа один визор со всеми PDF подряд — места под просмотр максимум.
     """
     try:
         from CLIENTs.dashboard.page import _ready_docs
@@ -1508,8 +1506,8 @@ def _ready_modal_html(app_id: int) -> str:
         chips.append(
             '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
             '<span CLIENT="rli-num">' + str(n) + '</span>'
-            '<span CLIENT="rli-name">' + name + '</span>'
-            '<span CLIENT="rli-meta">' + meta + '</span></button>'
+            '<span CLIENT="rli-text"><span CLIENT="rli-name">' + name + '</span>'
+            '<span CLIENT="rli-meta">' + meta + '</span></span></button>'
         )
         secs.append(
             '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
@@ -1530,14 +1528,13 @@ def _ready_modal_html(app_id: int) -> str:
             '<button type="button" CLIENT="ready-send" id="ready-send">Отправить на Google Диск</button>'
             '<button type="button" CLIENT="ready-close" id="ready-close">Закрыть</button>'
             '</span></div>')
-    hint = ('<div CLIENT="ready-hint">Подтверждённых документов: <b>' + str(len(docs)) + '</b>. '
-            'Тыкните по названию — визор ниже перейдёт к этому документу. '
-            'Файлы уйдут в папку клиента на Google Диске ровно в этом виде и с этими именами.</div>')
     return ('<div CLIENT="ready-modal" id="ready-modal" hidden>'
             '<div CLIENT="ready-window">'
-            + head + hint
+            + head
+            + '<div CLIENT="ready-body2">'
             + '<div CLIENT="ready-list" id="ready-list">' + "".join(chips) + '</div>'
             + '<div CLIENT="ready-view" id="ready-view">' + "".join(secs) + '</div>'
+            + '</div>'
             + '<div CLIENT="ready-toast" id="ready-toast" hidden></div>'
             '</div></div>'
             '<script>(function(){\n'

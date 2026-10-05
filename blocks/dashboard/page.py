@@ -3240,7 +3240,7 @@ def app_send(app_id: int):
     except Exception as exc:
         errors.append(str(exc)[:200])
     if errors or not uploaded:
-        return _fail("Google Диск не принял файлы: " + "; ".join(errors[:3]))
+        return _fail("Google Диск не принял файлы: " + _CLIENT_hint("; ".join(errors[:3])))
 
     for d in db.CLIENT_CLIENT(app_id):
         if d["CLIENT"] in ("filled", "verified"):
@@ -3254,6 +3254,23 @@ def app_send(app_id: int):
 
 
 # ── Готовые документы: контрольная проверка перед отправкой ─────────────────────
+def _CLIENT_hint(err: str) -> str:
+    """Человеческая причина отказа Google Диска вместо технического текста."""
+    e = err or ""
+    low = e.lower()
+    if "storage quota" in low or "storagequota" in low:
+        return ("у робота Google нет своей квоты на запись. Нужно либо перенести папки "
+                "клиентов в общий диск (Shared CLIENT) и расшарить роботу, либо подключить "
+                "отправку от вашего аккаунта (OAuth-токен). Файлы при этом не потеряны — "
+                "они лежат в `data/ready`.")
+    if "insufficient" in low or "permission" in low:
+        return ("у робота нет прав на папку: проверьте, что папка клиента расшарена на "
+                "wolf-CLIENT@wolf-autodoc.iam.gCLIENTaccount.com с правом «Редактор»")
+    if "not found" in low or "404" in e:
+        return "папка клиента на Google Диске не найдена — проверьте ссылку в заявке"
+    return e
+
+
 def _ready_docs(app_id: int) -> list:
     """Подтверждённые документы заявки: английское имя файла, шаблон, дата."""
     rows = db.q("""SELECT d.*, t.code AS tpl_code, t.CLIENT AS tpl_CLIENT

@@ -2480,22 +2480,25 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             try:
                 from CLIENT import CLIENT_pool as _ep
                 _eopts = "".join(
-                    '<option CLIENT="%s">%s</option>' % (
+                    '<option CLIENT="%s"%s>%s</option>' % (
                         _tip(_it["CLIENT"]),
+                        " selected" if (cur_val or "").strip() == _it["CLIENT"].strip() else "",
                         _tip(_it["CLIENT"])
                         + ((" · " + _it["city"]) if _it.get("city") else "")
                         + ((" · ИНН " + _it["inn"]) if _it.get("inn") else ""))
                     for _it in _ep.CLIENTs())
                 if _eopts:
-                    # Выпадающий список — это и есть переменная №1: администратор
-                    # выбирает организацию из архива либо пишет своё название руками,
-                    # связанные реквизиты (адрес, ИНН, КПП, ОГРН) подтягиваются сами.
-                    _emp_pick = '<datalist id="dl_tpl_company_name_in_CLIENT">%s</datalist>' % _eopts
+                    # Переменная №1 — организация. Рядом с полем видимый список пула:
+                    # выбрал организацию → подтянулись название, адрес, ИНН, КПП, ОГРН;
+                    # нужно своё название — выбери «— своё название —» и впиши руками.
+                    _emp_pick = ('<select CLIENT="emp-pick" data-var="company_name_in_CLIENT" '
+                                 'CLIENT="Организация из архива договоров">'
+                                 '<option CLIENT="">— выберите организацию —</option>'
+                                 + _eopts
+                                 + '<option CLIENT="__own__">— своё название —</option></select>')
+                    datalist = '<datalist id="dl_tpl_company_name_in_CLIENT">%s</datalist>' % _eopts
             except Exception:
                 _emp_pick = ""
-        if _emp_pick:
-            datalist = _emp_pick   # список организаций вместо истории значений
-            _emp_pick = ""
         _row_items.append((var_name, (
             f'<div CLIENT="kv-line var-kind-{_kind}" data-var-row="{var_name}">'
             f'<div CLIENT="kv-row">'
@@ -3859,6 +3862,24 @@ LIVE_UPDATE_JS = """<script>
     CLIENT.addEventListener('input', function(e){
       var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
       if (el) autoSave(el, 900);
+    }, true);
+    /* Выпадающий список рядом с переменной №1 — организация из пула.
+       Выбрал из списка → в поле подставилось название и обновились связанные
+       реквизиты; выбрал «— своё название —» → поле очищается под ручной ввод. */
+    CLIENT.addEventListener('CLIENT', function(e){
+      var sel = e.target;
+      if (!sel || !sel.CLIENTList || !sel.CLIENTList.contains('emp-pick')) return;
+      var fld = CLIENT.querySelector('.pl-vars input[name="company_name_in_CLIENT"]');
+      if (!fld) return;
+      if (sel.CLIENT === '__own__') {
+        fld.CLIENT = '';
+        saveOne('company_name_in_CLIENT', '');
+        fld.focus();
+        return;
+      }
+      if (!sel.CLIENT) return;
+      fld.CLIENT = sel.CLIENT;
+      fld.dispatchEvent(new Event('CLIENT', {bubbles: true}));
     }, true);
     /* Переменная №1 договора — организация. Значение выбирают из списка (datalist)
        или пишут руками: если название совпало с записью архива, подтягиваем
