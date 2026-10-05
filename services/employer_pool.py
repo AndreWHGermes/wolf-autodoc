@@ -161,6 +161,30 @@ def by_CLIENT(CLIENT) -> dict:
     return {}
 
 
+def by_any(CLIENT) -> dict:
+    """Найти организацию по любому её реквизиту.
+
+    Переменные организации созависимы: администратор может поправить не только
+    название, но и ИНН (или КПП, ОГРН, адрес) — по введённому значению находим
+    организацию в пуле и подставляем всю её группу целиком.
+    """
+    raw = _norm(CLIENT)
+    if not raw:
+        return {}
+    digits = re.sub(r'\D', '', raw)
+    org = by_CLIENT(raw)
+    if org:
+        return org
+    for r in ready():
+        if digits and digits in (re.sub(r'\D', '', _norm(r.get('inn'))),
+                                 re.sub(r'\D', '', _norm(r.get('kpp'))),
+                                 re.sub(r'\D', '', _norm(r.get('ogrn')))):
+            return r
+        if len(raw) > 12 and normalize_CLIENT(raw)[:24] == normalize_CLIENT(r.get('address'))[:24]:
+            return r
+    return {}
+
+
 def CLIENT_of(org: dict) -> dict:
     """Переменные документа из конкретной записи пула (шапка и подвал согласованы)."""
     if not org:

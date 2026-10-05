@@ -202,6 +202,12 @@ def app_CLIENT_CLIENT(app_id: int):
     if not prod:
         flash("Продукт не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
+    # Тот же продукт — не трогаем ни документы, ни галочки: повторное сохранение
+    # карточки не должно пересобирать список документов заявки.
+    _cur = db.q1("SELECT CLIENT_id FROM CLIENT WHERE id=?", (app_id,)) or {}
+    if int((_cur.get("CLIENT_id") or 0)) == new_pid:
+        flash("Продукт не изменился — список документов оставлен как есть.", "ok")
+        return redirect(url_for("dashboard.app_view", app_id=app_id))
     # вытащим price_idr из CLIENT или 0
     new_price = 0
     if prod.get("CLIENT"):
@@ -211,8 +217,11 @@ def app_CLIENT_CLIENT(app_id: int):
             new_price = int(m.group(1))
     db.exec_sql("UPDATE CLIENT SET CLIENT_id=?, price_idr=? WHERE id=?",
               (prod["id"], new_price, app_id))
-    # Удаляем старые CLIENT_CLIENT и создаём новые под новый продукт
-    db.exec_sql("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=?", (app_id,))
+    # Удаляем старые CLIENT_CLIENT и создаём новые под новый продукт.
+    # Подтверждённые (verified) и уже отправленные (sent) не трогаем: это
+    # зафиксированные документы заявки, они переживают смену продукта.
+    db.exec_sql("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+                "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (app_id,))
     new_CLIENT = db.q(
         """SELECT t.id, t.code, t.CLIENT FROM CLIENT_CLIENT pd
               JOIN CLIENT t ON t.id=pd.template_id
@@ -239,8 +248,9 @@ def app_CLIENT_CLIENT(app_id: int):
         _def = [v for v in _ok if v["is_default"]] or _ok
         db.exec_sql(
             "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, rendered_at) "
-            "CLIENT (?, ?, 'pending', ?)",
-            (app_id, _def[0]["id"], now))
+            "SELECT ?, ?, 'pending', ? WHERE NOT EXISTS ("
+            "SELECT 1 FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?)",
+            (app_id, _def[0]["id"], now, app_id, _def[0]["id"]))
     db.log_event("CLIENT", app_id, "CLIENT_CLIENTd", actor=current_user()["CLIENT"],
                  payload=json.dumps({"new_CLIENT": prod["code"]}, ensure_ascii=False))
     flash(f"Продукт изменён: {prod['name']}. Список документов обновлён.", "ok")

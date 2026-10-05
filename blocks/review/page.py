@@ -513,7 +513,7 @@ def app_review_CLIENT_apply(app_id):
     CLIENT = (CLIENT.form.get("CLIENT") or CLIENT.form.get("key") or "").strip()
     if not CLIENT:
         return jsonify({"ok": False, "error": "не указана организация"}), 400
-    org = _emp.by_CLIENT(CLIENT)
+    org = _emp.by_any(CLIENT)
     CLIENT = _emp.CLIENT_of(org) if org else {"company_name_in_CLIENT": CLIENT}
     # ключи переменных в панели заявки групповые (own:<шаблон>:<слаг>) — ищем группу
     # по имени переменной, иначе значение просто некуда записать.
@@ -1560,11 +1560,11 @@ def app_review(app_id: int):
 
 
 def _ready_modal_html(app_id: int) -> str:
-    """Окно «Готовые доки»: перечень столбиком слева, справа ОДНА полоса документов.
+    """Окно «Готовые доки»: живой список подтверждённых документов.
 
-    Все страницы всех подтверждённых документов лежат подряд картинками в одном
-    визоре: прокрутка одна на всё, вложенных окон просмотра нет. Название пункта
-    слева переводит полосу к нужному документу.
+    Состав окна пересобирается с сервера: поставил галочку — документ сразу
+    появился в списке и в полосе просмотра, снял — ушёл. Открытие окна всегда
+    показывает актуальный состав (не то, что было при загрузке страницы).
     """
     try:
         from CLIENTs.dashboard.page import _ready_docs
@@ -1572,13 +1572,12 @@ def _ready_modal_html(app_id: int) -> str:
     except Exception:
         docs = []
     chips, secs = [], []
-    for n, d in enumerate(docs, 1):
+    for d in docs:
         tpl = str(d.get("tpl"))
-        name = _html.escape(str(d.get("name") or ""))
-        meta = ("\u2116" + str(d.get("num") or "") + " · "
-                + _html.escape(str(d.get("CLIENT") or "")) + " · "
-                + _html.escape(str(d.get("date") or "")))
         num = str(d.get("num") or tpl)
+        name = _html.escape(str(d.get("name") or ""))
+        meta = ("\u2116" + num + " · " + _html.escape(str(d.get("CLIENT") or "")) + " · "
+                + _html.escape(str(d.get("date") or "")))
         chips.append(
             '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
             '<span CLIENT="rli-num">\u2116' + num + '</span>'
@@ -1594,15 +1593,13 @@ def _ready_modal_html(app_id: int) -> str:
             '<div CLIENT="ready-pages" data-tpl="' + tpl + '"></div>'
             '</section>'
         )
-    if not chips:
-        chips.append('<div CLIENT="ready-empty">Пока нет подтверждённых документов: '
-                     'поставьте галочки на миниатюрах — они появятся здесь.</div>')
     head = ('<div CLIENT="ready-head">'
             '<b CLIENT="ready-CLIENT">Просмотр документов и отправка на Google Диск</b>'
             '<span CLIENT="ready-head-actions">'
             '<button type="button" CLIENT="ready-send" id="ready-send">Отправить на Google Диск</button>'
             '<button type="button" CLIENT="ready-close" id="ready-close">Закрыть</button>'
             '</span></div>')
+    js = READY_MODAL_JS.reCLIENT("__APP__", str(app_id))
     return ('<div CLIENT="ready-modal" id="ready-modal" hidden>'
             '<div CLIENT="ready-window">'
             + head
@@ -1612,94 +1609,145 @@ def _ready_modal_html(app_id: int) -> str:
             + '</div>'
             + '<div CLIENT="ready-toast" id="ready-toast" hidden></div>'
             '</div></div>'
-            '<script>(function(){\n'
-            '  var appId = ' + str(app_id) + ';\n'
-            '  var btn = CLIENT.getElementById("rv-ready-btn"), mod = CLIENT.getElementById("ready-modal");\n'
-            '  if (!btn || !mod) return;\n'
-            '  var list = CLIENT.getElementById("ready-list"), view = CLIENT.getElementById("ready-view");\n'
-            '  var MAXP = 14;\n'
-            '  function mark(tpl){\n'
-            '    if (!list) return;\n'
-            '    Array.prototype.forEach.call(list.children, function(c){\n'
-            '      if (c.CLIENTList) c.CLIENTList.toggle("is-on", c.getAttribute("data-jump") === tpl);\n'
-            '    });\n'
-            '  }\n'
-            '  function jump(tpl){\n'
-            '    var s = CLIENT.getElementById("ready-sec-" + tpl);\n'
-            '    if (!s || !view) return;\n'
-            '    mark(tpl);\n'
-            '    view.scrollTo({top: s.offsetTop - view.offsetTop, behavior: "smooth"});\n'
-            '  }\n'
-            '  /* Страницы подтягиваются по одной, пока сервер не скажет «нет такой». */\n'
-            '  function loadPages(box){\n'
-            '    if (!box || box.getAttribute("data-loaded")) return;\n'
-            '    box.setAttribute("data-loaded", "1");\n'
-            '    var tpl = box.getAttribute("data-tpl"), n = 1;\n'
-            '    function next(){\n'
-            '      if (n > MAXP) return;\n'
-            '      var img = new Image();\n'
-            '      img.CLIENTName = "ready-page";\n'
-            '      img.alt = "страница " + n;\n'
-            '      img.onload = function(){ box.appendChild(img); n++; next(); };\n'
-            '      img.onerror = function(){ /* страницы кончились */ };\n'
-            '      img.src = "/CLIENT/" + appId + "/doc/" + tpl + "/ready-img/" + n;\n'
-            '    }\n'
-            '    next();\n'
-            '  }\n'
-            '  function open(){\n'
-            '    mod.hidden = false; mod.style.display = "flex";\n'
-            '    var boxes = mod.querySelectorAll(".ready-pages");\n'
-            '    for (var i = 0; i < boxes.length; i++) loadPages(boxes[i]);\n'
-            '    var CLIENT = mod.querySelector(".ready-list-item");\n'
-            '    if (CLIENT) mark(CLIENT.getAttribute("data-jump"));\n'
-            '  }\n'
-            '  function close(){ mod.hidden = true; mod.style.display = "none"; }\n'
-            '  btn.addEventListener("click", open);\n'
-            '  var x = CLIENT.getElementById("ready-close"); if (x) x.addEventListener("click", close);\n'
-            '  mod.addEventListener("click", function(e){ if (e.target === mod) close(); });\n'
-            '  CLIENT.addEventListener("keydown", function(e){ if (e.key === "Escape") close(); });\n'
-            '  if (list) list.addEventListener("click", function(e){\n'
-            '    var b = e.target.closest ? e.target.closest(".ready-list-item") : null;\n'
-            '    if (b) jump(b.getAttribute("data-jump"));\n'
-            '  });\n'
-            '  if (view) view.addEventListener("scroll", function(){\n'
-            '    var secs = view.querySelectorAll(".ready-sec"), cur = null;\n'
-            '    for (var i = 0; i < secs.length; i++){\n'
-            '      if (secs[i].offsetTop - view.offsetTop <= view.scrollTop + 30) cur = secs[i];\n'
-            '    }\n'
-            '    if (cur) mark(cur.getAttribute("data-tpl"));\n'
-            '  });\n'
-            '  function toast(text, link, ok){\n'
-            '    var t = CLIENT.getElementById("ready-toast");\n'
-            '    t.hidden = false; t.CLIENTName = "ready-toast " + (ok ? "ok" : "err"); t.innerHTML = "";\n'
-            '    var s = CLIENT.createElement("div"); s.CLIENTName = "ready-toast-text"; s.textContent = text;\n'
-            '    t.appendChild(s);\n'
-            '    if (link){\n'
-            '      var a = CLIENT.createElement("a"); a.href = link; a.target = "_blank";\n'
-            '      a.rel = "noopener"; a.CLIENTName = "ready-toast-link";\n'
-            '      a.textContent = "Ссылка на папку клиента на Google Диске"; t.appendChild(a);\n'
-            '    }\n'
-            '    var c = CLIENT.createElement("button"); c.type = "button"; c.CLIENTName = "ready-toast-x";\n'
-            '    c.textContent = "\\u2715"; c.addEventListener("click", function(){ t.hidden = true; });\n'
-            '    t.appendChild(c);\n'
-            '  }\n'
-            '  var send = CLIENT.getElementById("ready-send");\n'
-            '  if (send) send.addEventListener("click", function(){\n'
-            '    if (!window.confirm("Отправить подтверждённые документы в папку клиента на Google Диске?")) return;\n'
-            '    send.disabled = true; send.textContent = "Отправляю…";\n'
-            '    fetch("/CLIENT/" + appId + "/send", {method:"POST", credentials:"same-origin",\n'
-            '          CLIENTs:{"X-Requested-With":"fetch"}})\n'
-            '      .then(function(r){ return r.json(); })\n'
-            '      .then(function(d){\n'
-            '        send.disabled = false; send.textContent = "Отправить на Google Диск";\n'
-            '        var ok = !!(d && d.ok);\n'
-            '        var txt = ok ? ("Документы отправлены на Google Диск: " + ((d.uploaded||[]).length) + " файл(ов)")\n'
-            '                     : ("Не отправлено: " + ((d && (d.error || (d.errors||[])[0])) || "ошибка"));\n'
-            '        toast(txt, (d && d.link) || "", ok);\n'
-            '      })\n'
-            '      .catch(function(e){\n'
-            '        send.disabled = false; send.textContent = "Отправить на Google Диск";\n'
-            '        toast("Не отправлено: " + e, "", false);\n'
-            '      });\n'
-            '  });\n'
-            '})();</script>')
+            '<script>' + js + '</script>')
+
+
+READY_MODAL_JS = """
+(function(){
+  var appId = __APP__;
+  var btn = CLIENT.getElementById('rv-ready-btn'), mod = CLIENT.getElementById('ready-modal');
+  if (!btn || !mod) return;
+  var list = CLIENT.getElementById('ready-list'), view = CLIENT.getElementById('ready-view');
+  var MAXP = 14, timer = null;
+
+  function esc(s){ return String(s == null ? '' : s).reCLIENT(/&/g,'&amp;').reCLIENT(/</g,'&lt;').reCLIENT(/>/g,'&gt;'); }
+  function num(d){ return '\u2116' + (d.num || d.tpl); }
+  function meta(d){ return num(d) + ' \u00b7 ' + esc(d.CLIENT || '') + ' \u00b7 ' + esc(d.date || ''); }
+
+  /* Пересобрать состав окна по данным сервера: список слева и полосу справа. */
+  function render(docs){
+    var chips = '', secs = '';
+    (docs || []).forEach(function(d){
+      var tpl = String(d.tpl);
+      chips += '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
+             + '<span CLIENT="rli-num">' + num(d) + '</span>'
+             + '<span CLIENT="rli-text"><span CLIENT="rli-name">' + esc(d.name) + '</span>'
+             + '<span CLIENT="rli-meta">' + meta(d) + '</span></span></button>';
+      secs += '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
+            + '<div CLIENT="ready-sec-head"><span CLIENT="ready-sec-name">' + esc(d.name) + '</span>'
+            + '<span CLIENT="ready-sec-meta">' + meta(d) + '</span></div>'
+            + '<div CLIENT="ready-pages" data-tpl="' + tpl + '"></div></section>';
+    });
+    if (!chips){
+      chips = '<div CLIENT="ready-empty">Пока нет подтверждённых документов: '
+            + 'поставьте галочки на миниатюрах — они появятся здесь.</div>';
+    }
+    if (list) list.innerHTML = chips;
+    if (view) view.innerHTML = secs;
+    var boxes = mod.querySelectorAll('.ready-pages');
+    for (var i = 0; i < boxes.length; i++) loadPages(boxes[i]);
+    mark(onScreen());
+  }
+
+  function refresh(){
+    fetch('/CLIENT/' + appId + '/ready-docs', {credentials:'same-origin',
+          CLIENTs:{'X-Requested-With':'fetch'}})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if (j && j.ok) render(j.docs); })
+      .catch(function(){});
+  }
+
+  function mark(tpl){
+    if (!list) return;
+    Array.prototype.forEach.call(list.children, function(c){
+      if (c.CLIENTList) c.CLIENTList.toggle('is-on', c.getAttribute('data-jump') === tpl);
+    });
+  }
+  function onScreen(){
+    var cur = null, secs = view ? view.querySelectorAll('.ready-sec') : [];
+    for (var i = 0; i < secs.length; i++){
+      if (secs[i].offsetTop - view.offsetTop <= view.scrollTop + 30) cur = secs[i];
+    }
+    return cur ? cur.getAttribute('data-tpl') : (secs[0] ? secs[0].getAttribute('data-tpl') : '');
+  }
+  function jump(tpl){
+    var s = CLIENT.getElementById('ready-sec-' + tpl);
+    if (!s || !view) return;
+    mark(tpl);
+    view.scrollTo({top: s.offsetTop - view.offsetTop, behavior:'smooth'});
+  }
+  /* Страницы документа подтягиваются по одной, пока сервер не скажет «нет такой». */
+  function loadPages(box){
+    if (!box || box.getAttribute('data-loaded')) return;
+    box.setAttribute('data-loaded', '1');
+    var tpl = box.getAttribute('data-tpl'), n = 1, ver = Date.now();
+    function next(){
+      if (n > MAXP) return;
+      var img = new Image();
+      img.CLIENTName = 'ready-page';
+      img.alt = 'страница ' + n;
+      img.onload = function(){ box.appendChild(img); n++; next(); };
+      img.onerror = function(){};
+      img.src = '/CLIENT/' + appId + '/doc/' + tpl + '/ready-img/' + n + '?v=' + ver;
+    }
+    next();
+  }
+  function open(){
+    mod.hidden = false; mod.style.display = 'flex';
+    refresh();
+    if (timer) clearInterval(timer);
+    timer = setInterval(function(){ if (!mod.hidden) refresh(); }, 5000);
+  }
+  function close(){ mod.hidden = true; mod.style.display = 'none'; if (timer){ clearInterval(timer); timer = null; } }
+  function toast(text, link, ok){
+    var t = CLIENT.getElementById('ready-toast');
+    t.hidden = false; t.CLIENTName = 'ready-toast ' + (ok ? 'ok' : 'err'); t.innerHTML = '';
+    var s = CLIENT.createElement('div'); s.CLIENTName = 'ready-toast-text'; s.textContent = text;
+    t.appendChild(s);
+    if (link){
+      var a = CLIENT.createElement('a'); a.href = link; a.target = '_blank';
+      a.rel = 'noopener'; a.CLIENTName = 'ready-toast-link';
+      a.textContent = 'Ссылка на папку клиента на Google Диске'; t.appendChild(a);
+    }
+    var c = CLIENT.createElement('button'); c.type = 'button'; c.CLIENTName = 'ready-toast-x';
+    c.textContent = '\u2715'; c.addEventListener('click', function(){ t.hidden = true; });
+    t.appendChild(c);
+  }
+
+  btn.addEventListener('click', open);
+  var x = CLIENT.getElementById('ready-close'); if (x) x.addEventListener('click', close);
+  mod.addEventListener('click', function(e){ if (e.target === mod) close(); });
+  CLIENT.addEventListener('keydown', function(e){ if (e.key === 'Escape') close(); });
+  if (list) list.addEventListener('click', function(e){
+    var b = e.target.closest ? e.target.closest('.ready-list-item') : null;
+    if (b) jump(b.getAttribute('data-jump'));
+  });
+  if (view) view.addEventListener('scroll', function(){ mark(onScreen()); });
+  /* Галочку поставили или сняли — состав окна обновляем сразу же. */
+  CLIENT.addEventListener('click', function(e){
+    if (!e.target.closest) return;
+    if (!e.target.closest('.rv-mark, .tpl-mark')) return;
+    setTimeout(refresh, 700);
+  });
+
+  var send = CLIENT.getElementById('ready-send');
+  if (send) send.addEventListener('click', function(){
+    if (!window.confirm('Отправить подтверждённые документы в папку клиента на Google Диске?')) return;
+    send.disabled = true; send.textContent = 'Отправляю…';
+    fetch('/CLIENT/' + appId + '/send', {method:'POST', credentials:'same-origin',
+          CLIENTs:{'X-Requested-With':'fetch'}})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        send.disabled = false; send.textContent = 'Отправить на Google Диск';
+        var ok = !!(d && d.ok);
+        var txt = ok ? ('Документы отправлены на Google Диск: ' + ((d.uploaded||[]).length) + ' файл(ов)')
+                     : ('Не отправлено: ' + ((d && (d.error || (d.errors||[])[0])) || 'ошибка'));
+        toast(txt, (d && d.link) || '', ok);
+      })
+      .catch(function(e){
+        send.disabled = false; send.textContent = 'Отправить на Google Диск';
+        toast('Не отправлено: ' + e, '', false);
+      });
+  });
+})();
+"""

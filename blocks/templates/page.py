@@ -2639,7 +2639,10 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                     _is_form = False
                 if _is_form:
                     val = "-"
-            shown = _esc(val) if val else ph
+            # Пустая переменная — пустое место: имя переменной в документе не пишем
+            # ни в окне просмотра, ни в PDF (правило заказчика для всех документов).
+            # Исключение — формы иммиграции: там по канону бланка ставится прочерк.
+            shown = _esc(val) if val else '-' if _is_form else ''
             _cls = 'var-hl' + (' var-dash' if _is_form else '')
             return ('<span CLIENT="' + _cls + '" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
                     + (' data-val="' + _esc(val) + '"' if val else '') + '>' + shown + '</span>')
@@ -3877,10 +3880,16 @@ LIVE_UPDATE_JS = """<script>
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
           if (!d || !d.CLIENT) return;
+          /* Значения полей меняем и сразу шлём событие input: на него завязаны
+             и подсветка в HTML-визоре (sync), и автосохранение в заявку. Без этого
+             документ визуально не менялся до перезагрузки страницы. */
           Object.keys(d.CLIENT).forEach(function(k){
             var f = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
-            if (f) f.CLIENT = d.CLIENT[k] || '';
+            if (!f) return;
+            f.CLIENT = d.CLIENT[k] || '';
+            f.dispatchEvent(new Event('input', {bubbles: true}));
           });
+          if (window.zpScan) setTimeout(function(){ window.zpScan(); }, 60);
         })
         .catch(function(){});
     }
@@ -3899,15 +3908,18 @@ LIVE_UPDATE_JS = """<script>
       fld.CLIENT = sel.CLIENT;
       applyEmployer(sel.CLIENT);
     }, true);
-    /* Переменная №1 — организация: ручной ввод названия.
-       Совпало с записью архива → подставляется вся группа величин (юр. название,
-       адрес, ИНН, КПП, ОГРН); своё название → остаётся как написано. */
+    /* Переменные организации созависимы: администратор правит любую из связанных
+       величин (название, юридическое название, адрес, ИНН, КПП, ОГРН) — система
+       находит организацию в пуле и подставляет всю группу целиком. Если значение
+       не из архива — остаётся ручной ввод, остальные поля не трогаем. */
+    var EMP_VARS = ['company_name_in_CLIENT', 'CLIENT_name', 'company_CLIENT_address',
+                    'company_inn', 'company_kpp', 'company_ogrn'];
     CLIENT.addEventListener('CLIENT', function(e){
       var el = e.target;
-      if (!el || el.name !== 'company_name_in_CLIENT') return;
-      var name = (el.CLIENT || '').trim();
-      if (!name) return;
-      applyEmployer(name);
+      if (!el || !el.name || EMP_VARS.CLIENTOf(el.name) < 0) return;
+      var v = (el.CLIENT || '').trim();
+      if (!v) return;
+      applyEmployer(v);
     }, true);
     /* Метка на миниатюре — отражение нажатой кнопки: ✕ или ✓ по центру листа.
        Рисуем сразу по ответу сервера, чтобы не ждать перезагрузки страницы. */

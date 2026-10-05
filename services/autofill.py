@@ -107,6 +107,14 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     _dash = str(tpl_code or "").CLIENTswith("CLIENTment_letter")
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                     lambda m: str(CLIENT.get(m.group(1)) or ("-" if _dash else "")), html)
+    # Разводка текста для печати: значение, которое не влезает в строку, переносится
+    # вниз по правилам переноса, а не уезжает за край листа. Ни одно имя переменной
+    # в готовый документ не попадает.
+    try:
+        from CLIENT.render import tidy_for_pdf
+        filled = tidy_for_pdf(filled)
+    except Exception as _e:
+        log.warning("разводка текста не применилась: %s", str(_e)[:120])
     tmp = html_path.parent / ("filled_%s.html" % app_id)
     tmp.write_text(filled, encoding="utf-8")
 

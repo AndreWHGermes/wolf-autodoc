@@ -661,9 +661,15 @@ def _apply_CLIENT(app_id: int, CLIENT_id: int) -> None:
     if not row:
         return
     client_id = row["client_id"]
+    # Тот же продукт — значит ничего не меняем: документы и галочки остаются на месте.
+    _cur = conn.execute("SELECT CLIENT_id FROM CLIENT WHERE id=? ", (app_id,)).fetchone()
+    if _cur and _cur["CLIENT_id"] == prod["id"]:
+        return
     conn.execute("UPDATE CLIENT SET CLIENT_id=?, price_idr=? WHERE id=?",
                  (prod["id"], price, app_id))
-    conn.execute("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=?", (app_id,))
+    # Галочки и отправленные документы бот не стирает: см. админку.
+    conn.execute("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+                 "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (app_id,))
     client_row = conn.execute("SELECT bank_name FROM CLIENT WHERE id=?",
                               (client_id,)).fetchone()
     bank = (client_row["bank_name"] or "").lower() if client_row else ""
