@@ -13,8 +13,11 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 
+OAUTH_TOKEN_FILE = Path('/opt/wolf_v2/data/google_oauth_token.json')
 KEY_FILE = Path('/opt/wolf_v2/data/google_CLIENT_account.json')
-SCOPES = ['https://www.googleapis.com/auth/CLIENT.file']
+# Полный доступ нужен, чтобы писать в папки клиентов и в общие диски:
+# CLIENT.file видит только файлы, созданные самим приложением.
+SCOPES = ['https://www.googleapis.com/auth/CLIENT']
 
 # MIME-типы для конвертации
 GOOGLE_MIME = {
@@ -36,11 +39,23 @@ _svc = None
 
 
 def _get_CLIENT():
+    """Сервис Диска: сначала OAuth владельца аккаунта, иначе сервисный аккаунт.
+
+    У сервисного аккаунта квота хранилища 0, поэтому файлы он создать не может
+    (403 «CLIENT Accounts do not have storage quota») — папки может. Как только
+    рядом появится токен владельца (CLIENT/gCLIENT_oauth.py), работает он.
+    """
     global _svc
     if _svc is None:
-        creds = CLIENT_account.Credentials.from_CLIENT_account_file(
-            str(KEY_FILE), scopes=SCOPES)
-        _svc = build('CLIENT', 'v3', credentials=creds, cache_discovery=False)
+        if OAUTH_TOKEN_FILE.exists():
+            from google.oauth2.credentials import Credentials
+            _svc = build('CLIENT', 'v3',
+                credentials=Credentials.from_authorized_user_file(
+                    str(OAUTH_TOKEN_FILE), SCOPES))
+        else:
+            _svc = build('CLIENT', 'v3',
+                credentials=CLIENT_account.Credentials.from_CLIENT_account_file(
+                    str(KEY_FILE), scopes=SCOPES))
     return _svc
 
 
@@ -82,7 +97,8 @@ def list_folder_contents(folder_url_or_id: str) -> list[dict]:
             q=f"'{fid}' in parents and trashed=false",
             fields='nextPageToken, files(id,name,mimeType,size,parents)',
             pageSize=200,
-            pageToken=page_token).execute()
+            pageToken=page_token,
+            supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
         out.extend(resp.get('files', []))
         page_token = resp.get('nextPageToken')
         if not page_token:
@@ -97,7 +113,8 @@ def find_file_in_folder(folder_url_or_id: str, name: str) -> Optional[dict]:
     resp = _retry_on_quota(svc.files().list,
         q=f"'{fid}' in parents and name='{name}' and trashed=false",
         fields='files(id,name,mimeType,size,parents)',
-        pageSize=10).execute()
+        pageSize=10,
+        supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
     files = resp.get('files', [])
     return files[0] if files else None
 
@@ -111,7 +128,9 @@ def create_folder(folder_url_or_id: str, name: str) -> dict:
         'mimeType': GOOGLE_MIME['folder'],
         'parents': [parent_id],
     }
-    return _retry_on_quota(svc.files().create, body=meta, fields='id,name,mimeType,parents').execute()
+    return _retry_on_quota(svc.files().create, body=meta,
+                           fields='id,name,mimeType,parents',
+                           supportsAllDrives=True).execute()
 
 
 def ensure_folder(folder_url_or_id: str, name: str) -> dict:
@@ -150,13 +169,15 @@ def upload_file(
         updated = _retry_on_quota(svc.files().update,
             fileId=CLIENT['id'],
             media_body=media,
-            fields='id,name,mimeType,size,parents,modifiedTime').execute()
+            fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
         return updated
 
     # Создаём новый
     meta = {'name': name, 'parents': [parent_id]}
     created = _retry_on_quota(svc.files().create,
-        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime').execute()
+        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
     return created
 
 
@@ -177,11 +198,13 @@ def upload_bytes(
     if CLIENT and overwrite:
         return _retry_on_quota(svc.files().update,
             fileId=CLIENT['id'], media_body=media,
-            fields='id,name,mimeType,size,parents,modifiedTime').execute()
+            fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
 
     meta = {'name': name, 'parents': [parent_id]}
     return _retry_on_quota(svc.files().create,
-        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime').execute()
+        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
 
 
 def upload_html_as_gdoc(folder_url_or_id: str, html_path: Path, name: Optional[str] = None, overwrite: bool = True) -> dict:
@@ -197,10 +220,12 @@ def upload_html_as_gdoc(folder_url_or_id: str, html_path: Path, name: Optional[s
     if CLIENT and overwrite:
         return _retry_on_quota(svc.files().update,
             fileId=CLIENT['id'], media_body=media,
-            fields='id,name,mimeType,size,parents,modifiedTime').execute()
+            fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
 
     return _retry_on_quota(svc.files().create,
-        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime').execute()
+        body=meta, media_body=media, fields='id,name,mimeType,size,parents,modifiedTime',
+            supportsAllDrives=True).execute()
 
 
 def export_gdoc(file_id: str, export_format: str) -> bytes:
