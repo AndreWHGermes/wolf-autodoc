@@ -114,6 +114,17 @@ def create_folder(folder_url_or_id: str, name: str) -> dict:
     return _retry_on_quota(svc.files().create, body=meta, fields='id,name,mimeType,parents').execute()
 
 
+def ensure_folder(folder_url_or_id: str, name: str) -> dict:
+    """Папка с таким именем внутри указанной папки: найти или создать.
+
+    Нужно, чтобы повторная отправка пакета не создавала вторую папку заявки.
+    """
+    found = find_file_in_folder(folder_url_or_id, name)
+    if found and found.get("mimeType") == GOOGLE_MIME["folder"]:
+        return found
+    return create_folder(folder_url_or_id, name)
+
+
 def upload_file(
     folder_url_or_id: str,
     file_path: Path,

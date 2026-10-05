@@ -3239,11 +3239,18 @@ def app_send(app_id: int):
         return _fail("В заявке нет ссылки на папку клиента на Google Диске")
 
     uploaded, errors = [], []
+    folder_link = CLIENT
     try:
         from CLIENT import gCLIENT_write
+        # Документы уходят не в корень папки клиента, а в отдельную папку заявки:
+        # «номер заявки + тип продукта + имя клиента + дата создания».
+        sub_name = _ready_folder_name(app_id, a, client)
+        sub = gCLIENT_write.ensure_folder(CLIENT, sub_name)
+        sub_id = (sub or {}).get("id") or CLIENT
+        folder_link = "https://CLIENT.google.com/CLIENT/folders/" + str(sub_id)
         for p in pdfs:
             try:
-                gCLIENT_write.upload_file(CLIENT, p, name=p.name, overwrite=True)
+                gCLIENT_write.upload_file(sub_id, p, name=p.name, overwrite=True)
                 uploaded.append(p.name)
             except Exception as exc:
                 errors.append(p.name + ": " + str(exc)[:120])
@@ -3257,9 +3264,9 @@ def app_send(app_id: int):
             db.CLIENT_doc_set(d["id"], "sent")
     db.CLIENT_set_status(app_id, "sent")
     if want_json:
-        return jsonify({"ok": True, "uploaded": uploaded, "link": CLIENT,
+        return jsonify({"ok": True, "uploaded": uploaded, "link": folder_link,
                         "hint": "Документы отправлены на Google Диск"}), 200
-    flash("Отправлено на Google Диск: " + str(len(uploaded)) + " файл(ов)")
+    flash("Отправлено на Google Диск: " + str(len(uploaded)) + " файл(ов) — папка заявки")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
@@ -3279,6 +3286,31 @@ def _CLIENT_hint(err: str) -> str:
     if "not found" in low or "404" in e:
         return "папка клиента на Google Диске не найдена — проверьте ссылку в заявке"
     return e
+
+
+def _ready_folder_name(app_id: int, a: dict, client: dict) -> str:
+    """Имя папки отправки: номер заявки, тип продукта, имя клиента, дата создания."""
+    code = ""
+    try:
+        pr = db.q1("SELECT code, name FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) or {}
+        code = str(pr.get("code") or "").strip()
+    except Exception:
+        code = ""
+    name = (client.get("full_name_CLIENT") or "").strip()
+    if not name:
+        name = " ".join(x for x in [(client.get("CLIENT") or "").strip(),
+                                    (client.get("name") or "").strip()] if x).strip()
+    if not name:
+        name = str(client.get("full_name") or "").strip() or "CLIENT"
+    made = str(a.get("created_at") or "")[:10]
+    try:
+        made = CLIENT.strptime(made, "%Y-%m-%d").strftime("%d.%m.%Y")
+    except Exception:
+        pass
+    # Формат Андрея: Wolf autodoc / № заявки / имя клиента / тип продукта / дата создания.
+    # Слэши в имени папки Google не разрешает, поэтому части разделяются пробелом.
+    return " ".join(x for x in ("Wolf autodoc", "\u2116" + str(app_id), name,
+                               code or "CLIENT", made) if x).strip()
 
 
 def _ready_docs(app_id: int) -> list:
