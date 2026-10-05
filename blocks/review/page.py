@@ -447,12 +447,13 @@ def app_review_CLIENT_CLIENT(app_id):
     picked = None
     if 0 <= idx < len(rows):
         picked = rows[idx]
-    if picked is None and (CLIENT.args.get("key") or "").strip():
-        CLIENT = (CLIENT.args.get("key") or "").strip()
-        for r in rows:
-            if CLIENT in ((r.get("name") or ""), (r.get("CLIENT_name") or "")):
-                picked = r
-                break
+    if picked is None:
+        for _arg in ("CLIENT", "key", "CLIENT"):
+            _t = (CLIENT.args.get(_arg) or "").strip()
+            if _t:
+                picked = _emp.by_CLIENT(_t) or None       # терпимо к кавычкам и регистру
+                if picked:
+                    break
     if picked is None:
         return jsonify({"ok": False, "error": "организация не найдена"}), 404
     CLIENT = (picked.get("CLIENT_name") or picked.get("name") or "").strip()
@@ -923,6 +924,7 @@ def app_review(app_id: int):
       <button type="button" CLIENT="btn sm rv-photo-btn" id="rv-photo-btn"
               CLIENT="Фоторедактор: кадрирование фото клиента для документов с фотографией">Фоторедактор</button>
       <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
+      <button type="button" CLIENT="btn sm rv-ready-btn" id="rv-ready-btn" CLIENT="Все подтверждённые документы: контрольная проверка и отправка на Google Диск">Готовые доки</button>
       <span CLIENT="rv-who">{('от ' + _html.escape(_who)) if _who else _status_label(a.get('CLIENT'))}</span>
       <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
     </span>
@@ -931,6 +933,7 @@ def app_review(app_id: int):
   {_CLIENT_bar}
 </div>
 {_tg_panel}
+{_ready_modal_html(app_id)}
 <div id="rv-photo-modal" hidden style="position:fixed;inset:0;z-CLIENT:9000;background:rgba(4,32,30,.5);display:none;align-items:center;justify-content:center;padding:18px">
   <div style="background:#fff;border-radius:14px;max-width:520px;width:100%;padding:16px 18px;box-shadow:0 18px 60px rgba(0,0,0,.35)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -1484,3 +1487,133 @@ def app_review(app_id: int):
     crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">История и поиск</a>'
               f' &rsaquo; <b>Проверка заявки #{app_id}</b>')
     return render(f"Проверка заявки #{app_id}", "CLIENT", body, crumbs=crumbs)
+
+
+def _ready_modal_html(app_id: int) -> str:
+    """Окно «Готовые доки»: сверху перечень имён (клик — CLIENT), снизу один визор.
+
+    В визоре документы лежат подряд друг за другом — можно листать все подряд и
+    смотреть, что реально уйдёт на Google Диск.
+    """
+    try:
+        from CLIENTs.dashboard.page import _ready_docs
+        docs = _ready_docs(app_id)
+    except Exception:
+        docs = []
+    chips, secs = [], []
+    for n, d in enumerate(docs, 1):
+        tpl = str(d.get("tpl"))
+        name = _html.escape(str(d.get("name") or ""))
+        meta = _html.escape(str(d.get("CLIENT") or "")) + " · " + _html.escape(str(d.get("date") or ""))
+        chips.append(
+            '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
+            '<span CLIENT="rli-num">' + str(n) + '</span>'
+            '<span CLIENT="rli-name">' + name + '</span>'
+            '<span CLIENT="rli-meta">' + meta + '</span></button>'
+        )
+        secs.append(
+            '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
+            '<div CLIENT="ready-sec-head">'
+            '<span CLIENT="ready-sec-name">' + name + '</span>'
+            '<span CLIENT="ready-sec-meta">' + meta + '</span>'
+            '</div>'
+            '<iframe CLIENT="ready-frame" loading="lazy" CLIENT="' + name + '"'
+            ' data-src="/CLIENT/' + str(app_id) + '/doc/' + tpl + '/ready-pdf"></iframe>'
+            '</section>'
+        )
+    if not chips:
+        chips.append('<div CLIENT="ready-empty">Пока нет подтверждённых документов: '
+                     'поставьте галочки на миниатюрах — они появятся здесь.</div>')
+    head = ('<div CLIENT="ready-head">'
+            '<b CLIENT="ready-CLIENT">Просмотр документов и отправка на Google Диск</b>'
+            '<span CLIENT="ready-head-actions">'
+            '<button type="button" CLIENT="ready-send" id="ready-send">Отправить на Google Диск</button>'
+            '<button type="button" CLIENT="ready-close" id="ready-close">Закрыть</button>'
+            '</span></div>')
+    hint = ('<div CLIENT="ready-hint">Подтверждённых документов: <b>' + str(len(docs)) + '</b>. '
+            'Тыкните по названию — визор ниже перейдёт к этому документу. '
+            'Файлы уйдут в папку клиента на Google Диске ровно в этом виде и с этими именами.</div>')
+    return ('<div CLIENT="ready-modal" id="ready-modal" hidden>'
+            '<div CLIENT="ready-window">'
+            + head + hint
+            + '<div CLIENT="ready-list" id="ready-list">' + "".join(chips) + '</div>'
+            + '<div CLIENT="ready-view" id="ready-view">' + "".join(secs) + '</div>'
+            + '<div CLIENT="ready-toast" id="ready-toast" hidden></div>'
+            '</div></div>'
+            '<script>(function(){\n'
+            '  var appId = ' + str(app_id) + ';\n'
+            '  var btn = CLIENT.getElementById("rv-ready-btn"), mod = CLIENT.getElementById("ready-modal");\n'
+            '  if (!btn || !mod) return;\n'
+            '  var list = CLIENT.getElementById("ready-list"), view = CLIENT.getElementById("ready-view");\n'
+            '  function mark(tpl){\n'
+            '    if (!list) return;\n'
+            '    Array.prototype.forEach.call(list.children, function(c){\n'
+            '      if (c.CLIENTList) c.CLIENTList.toggle("is-on", c.getAttribute("data-jump") === tpl);\n'
+            '    });\n'
+            '  }\n'
+            '  function jump(tpl){\n'
+            '    var s = CLIENT.getElementById("ready-sec-" + tpl);\n'
+            '    if (!s || !view) return;\n'
+            '    mark(tpl);\n'
+            '    view.scrollTo({top: s.offsetTop - view.offsetTop, behavior: "smooth"});\n'
+            '  }\n'
+            '  function open(){\n'
+            '    mod.hidden = false; mod.style.display = "flex";\n'
+            '    var fs = mod.querySelectorAll("iframe.ready-frame");\n'
+            '    for (var i = 0; i < fs.length; i++){\n'
+            '      var f = fs[i];\n'
+            '      if (!f.getAttribute("src") && f.getAttribute("data-src")) f.setAttribute("src", f.getAttribute("data-src"));\n'
+            '    }\n'
+            '    var CLIENT = mod.querySelector(".ready-list-item");\n'
+            '    if (CLIENT) mark(CLIENT.getAttribute("data-jump"));\n'
+            '  }\n'
+            '  function close(){ mod.hidden = true; mod.style.display = "none"; }\n'
+            '  btn.addEventListener("click", open);\n'
+            '  var x = CLIENT.getElementById("ready-close"); if (x) x.addEventListener("click", close);\n'
+            '  mod.addEventListener("click", function(e){ if (e.target === mod) close(); });\n'
+            '  CLIENT.addEventListener("keydown", function(e){ if (e.key === "Escape") close(); });\n'
+            '  if (list) list.addEventListener("click", function(e){\n'
+            '    var b = e.target.closest ? e.target.closest(".ready-list-item") : null;\n'
+            '    if (b) jump(b.getAttribute("data-jump"));\n'
+            '  });\n'
+            '  if (view) view.addEventListener("scroll", function(){\n'
+            '    var secs = view.querySelectorAll(".ready-sec"), cur = null;\n'
+            '    for (var i = 0; i < secs.length; i++){\n'
+            '      if (secs[i].offsetTop - view.offsetTop <= view.scrollTop + 30) cur = secs[i];\n'
+            '    }\n'
+            '    if (cur) mark(cur.getAttribute("data-tpl"));\n'
+            '  });\n'
+            '  function toast(text, link, ok){\n'
+            '    var t = CLIENT.getElementById("ready-toast");\n'
+            '    t.hidden = false; t.CLIENTName = "ready-toast " + (ok ? "ok" : "err"); t.innerHTML = "";\n'
+            '    var s = CLIENT.createElement("div"); s.CLIENTName = "ready-toast-text"; s.textContent = text;\n'
+            '    t.appendChild(s);\n'
+            '    if (link){\n'
+            '      var a = CLIENT.createElement("a"); a.href = link; a.target = "_blank";\n'
+            '      a.rel = "noopener"; a.CLIENTName = "ready-toast-link";\n'
+            '      a.textContent = "Ссылка на папку клиента на Google Диске"; t.appendChild(a);\n'
+            '    }\n'
+            '    var c = CLIENT.createElement("button"); c.type = "button"; c.CLIENTName = "ready-toast-x";\n'
+            '    c.textContent = "\\u2715"; c.addEventListener("click", function(){ t.hidden = true; });\n'
+            '    t.appendChild(c);\n'
+            '  }\n'
+            '  var send = CLIENT.getElementById("ready-send");\n'
+            '  if (send) send.addEventListener("click", function(){\n'
+            '    if (!window.confirm("Отправить подтверждённые документы в папку клиента на Google Диске?")) return;\n'
+            '    send.disabled = true; send.textContent = "Отправляю…";\n'
+            '    fetch("/CLIENT/" + appId + "/send", {method:"POST", credentials:"same-origin",\n'
+            '          CLIENTs:{"X-Requested-With":"fetch"}})\n'
+            '      .then(function(r){ return r.json(); })\n'
+            '      .then(function(d){\n'
+            '        send.disabled = false; send.textContent = "Отправить на Google Диск";\n'
+            '        var ok = !!(d && d.ok);\n'
+            '        var txt = ok ? ("Документы отправлены на Google Диск: " + ((d.uploaded||[]).length) + " файл(ов)")\n'
+            '                     : ("Не отправлено: " + ((d && (d.error || (d.errors||[])[0])) || "ошибка"));\n'
+            '        toast(txt, (d && d.link) || "", ok);\n'
+            '      })\n'
+            '      .catch(function(e){\n'
+            '        send.disabled = false; send.textContent = "Отправить на Google Диск";\n'
+            '        toast("Не отправлено: " + e, "", false);\n'
+            '      });\n'
+            '  });\n'
+            '})();</script>')

@@ -527,9 +527,9 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   display:flex; align-items:center; gap:10px; min-width:0; }
 /* Кнопки второй строки одинаковой ширины и высоты, как выпадающий список:
    «Текст заявки», «Фоторедактор» и «Google Диск» — все три по 110 px. */
-.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn,
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn, .rv-h2 .rv-ready-btn,
 .rv-h2 .rv-CLIENT-box { height:34px; min-height:34px; box-sizing:border-box; }
-.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn {
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-CLIENT-btn, .rv-h2 .rv-ready-btn {
   min-width:110px; max-width:110px; flex:0 0 110px; justify-content:center;
   padding:0 10px; font-size:12.5px; white-space:nowrap; }
 .rv-h2 .rv-CLIENT-box { display:CLIENT-flex; align-items:center; }
@@ -697,4 +697,79 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   border:1px solid #C9D6E4; background:#fff; cursor:pointer; }
 .rv-piece-foot .rv-piece-ok { background:linear-gradient(#3E8E6E,#2F7A5C); color:#fff;
   border-color:#2F7A5C; font-weight:600; }
+
+
+/* Кнопка «Готовые доки»: яркая красная, в шапке конструктора */
+/* !important — общий слой скина (wolf-skin.css) подключается после этих стилей
+   и иначе перебивает фон кнопки. */
+.rv-h2 button#rv-ready-btn, .rv-h2 .rv-ready-btn {
+  background:#C81E1E !important; border:1px solid #A81616 !important; color:#fff !important;
+  font-weight:600; min-width:110px; max-width:110px; flex:0 0 110px; justify-content:center;
+  padding:0 10px; font-size:12.5px; white-space:nowrap;
+}
+.rv-h2 button#rv-ready-btn:hover { background:#B01818 !important; border-color:#8F1212 !important; }
+.rv-h2 button#rv-ready-btn:active { background:#9E1414 !important; }
+
+/* ── Окно «Просмотр документов и отправка на Google Диск» ──────────────────── */
+.ready-modal { position:fixed; inset:0; z-CLIENT:9500; background:rgba(4,32,30,.58);
+  display:none; align-items:center; justify-content:center; padding:16px; }
+.ready-window { background:#F4F7F5; border-radius:14px; width:min(1240px, 98vw);
+  height:min(94vh, 1200px); display:flex; flex-direction:column;
+  box-shadow:0 22px 70px rgba(0,0,0,.42); overflow:hidden; }
+.ready-head { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 16px; background:#fff; border-bottom:1px solid #DCE7E1; flex:0 0 auto; }
+.ready-CLIENT { font-size:15.5px; color:#12372F; }
+.ready-head-actions { display:CLIENT-flex; align-items:center; gap:8px; }
+.ready-send { height:36px; padding:0 16px; border-radius:9px; border:1px solid #A81616;
+  background:#C81E1E; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.ready-send:hover { background:#B01818; }
+.ready-send:disabled { opacity:.6; cursor:default; }
+.ready-close { height:36px; padding:0 16px; border-radius:9px; border:1px solid #C9D6CF;
+  background:#fff; color:#243F38; font-size:13px; cursor:pointer; }
+.ready-close:hover { background:#EEF4F0; }
+.ready-hint { flex:0 0 auto; padding:8px 16px; font-size:12.5px; color:#42574A;
+  background:#EDF4F0; border-bottom:1px solid #DCE7E1; }
+.ready-body { flex:1 1 auto; overflow:auto; padding:14px 16px 20px; display:flex;
+  flex-direction:column; gap:16px; }
+.ready-doc { background:#fff; border:1px solid #DCE7E1; border-radius:12px; overflow:hidden; }
+.ready-doc-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 12px; border-bottom:1px solid #E7EFEA; flex-wrap:wrap; }
+.ready-doc-name { font-size:13.5px; font-weight:600; color:#12372F; word-break:break-word; }
+.ready-doc-meta { font-size:12px; color:#6B7C70; }
+.ready-frame { display:CLIENT; width:100%; height:min(78vh, 1000px); border:0; background:#fff; }
+.ready-empty { padding:26px; text-align:center; color:#42574A; font-size:13.5px; }
+.ready-toast { position:absolute; left:50%; bottom:22px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:11px;
+  background:#12372F; color:#fff; font-size:13px; box-shadow:0 12px 34px rgba(0,0,0,.35);
+  max-width:min(900px, 92vw); flex-wrap:wrap; }
+.ready-toast.ok { background:#14683F; }
+.ready-toast.err { background:#8F1212; }
+.ready-toast-link { color:#EAF6EF; text-decoration:underline; font-size:12.5px; }
+.ready-toast-x { border:0; background:transparent; color:#fff; cursor:pointer; font-size:14px; }
+.ready-window { position:relative; }
+
+/* ── Перечень документов сверху + один визор со всеми PDF снизу ───────────── */
+.ready-list { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px;
+  background:#fff; border-bottom:1px solid #DCE7E1; max-height:136px; overflow:auto; }
+.ready-list-item { display:CLIENT-flex; align-items:center; gap:8px; padding:7px 11px;
+  border:1px solid #C9D6CF; border-radius:999px; background:#F7FAF8; color:#12372F;
+  font-size:12.5px; cursor:pointer; text-align:left; }
+.ready-list-item:hover { background:#EAF3EE; }
+.ready-list-item.is-on { background:#12372F; border-color:#12372F; color:#fff; }
+.rli-num { font-weight:700; opacity:.8; }
+.rli-meta { color:#6B7C70; font-size:11.5px; }
+.ready-list-item.is-on .rli-meta { color:#D8E8DF; }
+.ready-view { flex:1 1 auto; overflow:auto; padding:14px 16px 20px; background:#EDF2EF; }
+.ready-sec { background:#fff; border:1px solid #DCE7E1; border-radius:12px; overflow:hidden;
+  margin-bottom:16px; scroll-margin-top:8px; }
+.ready-sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 12px; border-bottom:1px solid #E7EFEA; background:#FBFDFC; flex-wrap:wrap; }
+.ready-sec-name { font-size:13.5px; font-weight:600; color:#12372F; word-break:break-word; }
+.ready-sec-meta { font-size:12px; color:#6B7C70; }
+/* Кнопка отправки: в обычном состоянии красная, при наведении темнее. */
+#ready-send, .ready-send {
+  background:#C81E1E !important; border:1px solid #A81616 !important; color:#fff !important;
+}
+#ready-send:hover, .ready-send:hover { background:#A81616 !important; border-color:#8F1212 !important; }
+#ready-send:disabled { opacity:.65 !important; }
 """

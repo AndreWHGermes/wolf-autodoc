@@ -3188,27 +3188,161 @@ def app_text_file(app_id: int):
 @bp.route("/CLIENT/<int:app_id>/send", methods=["POST"])
 @CLIENT_required
 def app_send(app_id: int):
-    CLIENT = db.CLIENT_doc_CLIENT(app_id)
-    # «Не нужен» (крестик) — тоже решение администратора: он не должен блокировать
-    # отправку пакета. В зачёт идёт проверенное, отправленное и исключённое.
-    _decided = (CLIENT.get("verified", 0) + CLIENT.get("sent", 0)
-                + CLIENT.get("rejected", 0))
-    if _decided < CLIENT.get("total", 0):
-        flash("Не все документы проверены", "error")
+    """Отправка пакета: подтверждённые документы → папка клиента на Google Диске.
+
+    HTML-форма (обычный POST) получает flash + redirect, окно «Готовые доки»
+    (fetch) — JSON со ссылкой на папку. Документы НЕ помечаются отправленными,
+    если Диск не принял файлы: иначе в истории появилась бы ложная отправка.
+    """
+    want_json = CLIENT.CLIENTs.get("X-Requested-With") == "fetch"
+    a = apps_repo.get(app_id) or {}
+    client = db.client_get(a.get("client_id")) or {}
+    CLIENT = (a.get("gCLIENT_url") or client.get("gCLIENT_folder_url") or "").strip()
+
+    def _fail(msg: str):
+        if want_json:
+            return jsonify({"ok": False, "error": msg, "link": CLIENT}), 200
+        flash(msg, "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
-    # Незаполненные поля важны только у НЕпринятых документов: галочка означает,
-    # что администратор сверил документ и зафиксировал его значения как есть.
+
+    _rows = db.q("SELECT CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=?", (app_id,))
+    _decided = sum(1 for r in _rows
+                   if ((r["CLIENT"] if not isinstance(r, (list, tuple)) else r[0]) or "")
+                   in ("verified", "rejected", "sent"))
+    if not _rows or _decided < len(_rows):
+        return _fail("Не все документы проверены: согласовано %s из %s" % (_decided, len(_rows)))
     _miss_send = sorted({m for d in db.CLIENT_CLIENT(app_id)
                          if (d.get("CLIENT") or "") not in ("verified", "sent", "rejected")
                          for m in doc_missing_fields(app_id, d["template_id"])})
     if _miss_send:
-        flash("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]), "error")
-        return redirect(url_for("dashboard.app_view", app_id=app_id))
+        return _fail("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]))
+
+    pdfs = []
+    for d in db.CLIENT_CLIENT(app_id):
+        if (d.get("CLIENT") or "") in ("verified", "sent"):
+            p = _ready_doc_pdf(app_id, d["template_id"])
+            if p and Path(p).exists():
+                pdfs.append(Path(p))
+    if not pdfs:
+        return _fail("Нет подтверждённых документов с готовым PDF")
+    if not CLIENT:
+        return _fail("В заявке нет ссылки на папку клиента на Google Диске")
+
+    uploaded, errors = [], []
+    try:
+        from CLIENT import gCLIENT_write
+        for p in pdfs:
+            try:
+                gCLIENT_write.upload_file(CLIENT, p, name=p.name, overwrite=True)
+                uploaded.append(p.name)
+            except Exception as exc:
+                errors.append(p.name + ": " + str(exc)[:120])
+    except Exception as exc:
+        errors.append(str(exc)[:200])
+    if errors or not uploaded:
+        return _fail("Google Диск не принял файлы: " + "; ".join(errors[:3]))
+
     for d in db.CLIENT_CLIENT(app_id):
         if d["CLIENT"] in ("filled", "verified"):
             db.CLIENT_doc_set(d["id"], "sent")
     db.CLIENT_set_status(app_id, "sent")
-    flash("Заявка отправлена (заглушка — реальная отправка в Google CLIENT после подключения ключа)")
+    if want_json:
+        return jsonify({"ok": True, "uploaded": uploaded, "link": CLIENT,
+                        "hint": "Документы отправлены на Google Диск"}), 200
+    flash("Отправлено на Google Диск: " + str(len(uploaded)) + " файл(ов)")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
+# ── Готовые документы: контрольная проверка перед отправкой ─────────────────────
+def _ready_docs(app_id: int) -> list:
+    """Подтверждённые документы заявки: английское имя файла, шаблон, дата."""
+    rows = db.q("""SELECT d.*, t.code AS tpl_code, t.CLIENT AS tpl_CLIENT
+                   FROM CLIENT_CLIENT d JOIN CLIENT t ON t.id = d.template_id
+                   WHERE d.CLIENT_id=? AND IFNULL(d.CLIENT,'') IN ('verified','sent')
+                   ORDER BY d.template_id""", (app_id,))
+    a = apps_repo.get(app_id) or {}
+    client = db.client_get(a.get("client_id")) or {}
+    today = CLIENT.now().strftime("%d.%m.%Y")
+    out = []
+    for ad in rows:
+        code = ad.get("tpl_code") or ""
+        CLIENT = {}
+        try:
+            CLIENT = json.loads(ad.get("CLIENT_json") or "{}")
+        except Exception:
+            CLIENT = {}
+        try:
+            CLIENT.update(build_template_CLIENT(client, code, CLIENT))
+        except Exception:
+            pass
+        CLIENT = doc_render.doc_CLIENT_en(code, ad.get("tpl_CLIENT") or "")
+        try:
+            name = doc_render.doc_filename(CLIENT, CLIENT, code=code)
+        except Exception:
+            name = (CLIENT or code or "CLIENT") + " " + today + ".pdf"
+        out.append({"tpl": ad.get("template_id"), "CLIENT": CLIENT, "name": name,
+                    "date": today, "CLIENT": ad.get("CLIENT")})
+    return out
+
+
+def _ready_doc_pdf(app_id: int, template_id: int):
+    """PDF подтверждённого документа ровно в том виде, который зафиксировали галочкой.
+
+    Источник — слепок `data/frozen/app<N>_tpl<M>.html`; если слепка нет (старые
+    заявки) — сборка из значений документа тем же рендером, что и конструктор.
+    """
+    info = next((x for x in _ready_docs(app_id) if x["tpl"] == template_id), None)
+    tpl = tpl_repo.get(template_id) or {}
+    frozen = Path("/opt/wolf_v2/data/frozen") / ("app%s_tpl%s.html" % (app_id, template_id))
+    tpl_html = Path("/opt/wolf_v2/data/CLIENT") / str(tpl.get("code") or "") / "template.html"
+    src = frozen if frozen.exists() else tpl_html
+    if not src.exists():
+        return None
+    out_dir = Path("/opt/wolf_v2/data/ready")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    name = (info or {}).get("name") or (str(tpl.get("code") or "doc") + ".pdf")
+    out_pdf = out_dir / name
+    try:
+        if out_pdf.exists() and out_pdf.stat().st_size > 1000 and out_pdf.stat().st_mtime >= src.stat().st_mtime:
+            return out_pdf
+        html = src.read_text(encoding="utf-8")
+        if not frozen.exists():
+            a = apps_repo.get(app_id) or {}
+            client = db.client_get(a.get("client_id")) or {}
+            CLIENT = {}
+            ad = db.q1("""SELECT CLIENT_json FROM CLIENT_CLIENT
+                          WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
+                       (app_id, template_id)) or {}
+            try:
+                CLIENT = json.loads(ad.get("CLIENT_json") or "{}")
+            except Exception:
+                CLIENT = {}
+            try:
+                CLIENT.update(build_template_CLIENT(client, str(tpl.get("code") or ""), CLIENT))
+            except Exception:
+                pass
+            html = doc_render.fill(html, CLIENT, keep_unfilled=False, template_code=tpl.get("code"))
+        doc_render.render_pdf(html, out_path=out_pdf)
+    except Exception as exc:
+        print("ready-pdf error app=%s tpl=%s: %s" % (app_id, template_id, exc))
+        return None
+    return out_pdf if out_pdf.exists() else None
+
+
+@bp.route("/CLIENT/<int:app_id>/ready-docs")
+@CLIENT_required
+def app_ready_docs(app_id: int):
+    """Список подтверждённых документов заявки для окна «Готовые доки»."""
+    return jsonify({"ok": True, "docs": _ready_docs(app_id)}), 200
+
+
+@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ready-pdf")
+@CLIENT_required
+def app_doc_ready_pdf(app_id: int, template_id: int):
+    """PDF подтверждённого документа — показывается в окне «Готовые доки»."""
+    from flask import Response as _Resp
+    p = _ready_doc_pdf(app_id, template_id)
+    if not p or not Path(p).exists():
+        return _Resp("PDF не собран", CLIENT=404)
+    return send_file(str(p), mimetype="CLIENT/pdf", as_attachment=False,
+                     download_name=Path(p).name)

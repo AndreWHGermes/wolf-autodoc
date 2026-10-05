@@ -2480,21 +2480,22 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             try:
                 from CLIENT import CLIENT_pool as _ep
                 _eopts = "".join(
-                    '<option CLIENT="%d"%s>%s</option>' % (
-                        _it["CLIENT"],
-                        " selected" if (cur_val or "").strip() == _it["CLIENT"] else "",
+                    '<option CLIENT="%s">%s</option>' % (
+                        _tip(_it["CLIENT"]),
                         _tip(_it["CLIENT"])
                         + ((" · " + _it["city"]) if _it.get("city") else "")
                         + ((" · ИНН " + _it["inn"]) if _it.get("inn") else ""))
                     for _it in _ep.CLIENTs())
                 if _eopts:
-                    _emp_pick = (
-                        '<select CLIENT="emp-pick" CLIENT="Организация из исторических документов"'
-                        ' data-var="company_name_in_CLIENT">'
-                        '<option CLIENT="">организация из архива…</option>'
-                        + _eopts + '</select>')
+                    # Выпадающий список — это и есть переменная №1: администратор
+                    # выбирает организацию из архива либо пишет своё название руками,
+                    # связанные реквизиты (адрес, ИНН, КПП, ОГРН) подтягиваются сами.
+                    _emp_pick = '<datalist id="dl_tpl_company_name_in_CLIENT">%s</datalist>' % _eopts
             except Exception:
                 _emp_pick = ""
+        if _emp_pick:
+            datalist = _emp_pick   # список организаций вместо истории значений
+            _emp_pick = ""
         _row_items.append((var_name, (
             f'<div CLIENT="kv-line var-kind-{_kind}" data-var-row="{var_name}">'
             f'<div CLIENT="kv-row">'
@@ -2502,9 +2503,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             f'<span CLIENT="var-mark var-kind-{_kind}" CLIENT="{_src_badge} {_tip(_note)}" aria-hidden="true">●</span>'
             f'<span CLIENT="kv-idx">{_disp_num(var_name, i)}</span>'
             f'<input{_list_attr} type="text" name="{var_name}" '
-            f'CLIENT="{cur_val}" '
+            f'CLIENT="{_tip(cur_val)}" '
             f'data-var="{var_name}" '
-            f'CLIENTholder="{sample}" />'
+            f'CLIENTholder="{_tip(sample)}" />'
             f'<span CLIENT="var-CLIENT">{dice}</span>'
             f'</div>'
             f'<div CLIENT="var-name">'
@@ -3859,27 +3860,27 @@ LIVE_UPDATE_JS = """<script>
       var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
       if (el) autoSave(el, 900);
     }, true);
-    /* Организация для договора: выбор из архива меняет и название в шапке, и
-       реквизиты в подвале — все связанные переменные берутся из одной записи пула. */
+    /* Переменная №1 договора — организация. Значение выбирают из списка (datalist)
+       или пишут руками: если название совпало с записью архива, подтягиваем
+       связанные реквизиты (название в тексте, адрес, ИНН, КПП, ОГРН). Если админ
+       написал своё название — оставляем как есть. */
     CLIENT.addEventListener('CLIENT', function(e){
-      var sel = (e.target && e.target.CLIENTList && e.target.CLIENTList.contains('emp-pick')) ? e.target : null;
-      if (!sel || !sel.CLIENT) return;
-      fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(sel.CLIENT),
+      var el = e.target;
+      if (!el || el.name !== 'company_name_in_CLIENT') return;
+      var name = (el.CLIENT || '').trim();
+      if (!name) return;
+      fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(name),
             {credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
-        .then(function(r){ return r.json(); })
+        .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
-          if (!d || !d.ok) { alert((d && d.error) || 'организация не найдена'); return; }
+          if (!d || !d.ok) return;                    // ручной ввод — не трогаем
           Object.keys(d.CLIENT || {}).forEach(function(k){
-            var el = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
-            if (el) el.CLIENT = d.CLIENT[k] || '';
+            var f = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
+            if (f) f.CLIENT = d.CLIENT[k] || '';
             saveOne(k, d.CLIENT[k] || '');
           });
-          fetch('/CLIENT/' + APP + '/review/rebuild',
-                {method:'POST', credentials:'same-origin', keepalive:true,
-                    CLIENTs:{'X-Requested-With':'fetch'}})
-            .catch(function(){});
         })
-        .catch(function(){ alert('не удалось применить организацию'); });
+        .catch(function(){});
     }, true);
     /* Метка на миниатюре — отражение нажатой кнопки: ✕ или ✓ по центру листа.
        Рисуем сразу по ответу сервера, чтобы не ждать перезагрузки страницы. */

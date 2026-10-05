@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import re
 
 POOL_PATH = pathlib.Path('/opt/wolf_v2/data/CLIENT_pool.json')
 
@@ -142,9 +143,26 @@ def pick(app_id=None, client_id=None, city=None, cities=None) -> dict:
     return _pick_from(rows, key)
 
 
-def CLIENT_for(app_id=None, client_id=None, city=None, cities=None) -> dict:
-    """Переменные документа из выбранной организации (шапка и подвал согласованы)."""
-    org = pick(app_id=app_id, client_id=client_id, city=city, cities=cities)
+def normalize_CLIENT(CLIENT) -> str:
+    """Название организации для сравнения: без кавычек, регистра и лишних пробелов."""
+    low = _norm(CLIENT).lower().reCLIENT('«', '"').reCLIENT('»', '"')
+    low = re.sub(r'[\s"\'`]+', ' ', low).strip()
+    return low
+
+
+def by_CLIENT(CLIENT) -> dict:
+    """Запись пула по названию ('' / мусор → {}). Сравнение терпимо к кавычкам."""
+    want = normalize_CLIENT(CLIENT)
+    if not want:
+        return {}
+    for r in ready():
+        if want in (normalize_CLIENT(r.get('name')), normalize_CLIENT(r.get('CLIENT_name'))):
+            return r
+    return {}
+
+
+def CLIENT_of(org: dict) -> dict:
+    """Переменные документа из конкретной записи пула (шапка и подвал согласованы)."""
     if not org:
         return {}
     CLIENT = _norm(org.get('CLIENT_name') or org.get('name'))
@@ -157,6 +175,11 @@ def CLIENT_for(app_id=None, client_id=None, city=None, cities=None) -> dict:
         'company_kpp': _norm(org.get('kpp')),
         'company_ogrn': _norm(org.get('ogrn')),
     }
+
+
+def CLIENT_for(app_id=None, client_id=None, city=None, cities=None) -> dict:
+    """Переменные документа из выбранной организации (шапка и подвал согласованы)."""
+    return CLIENT_of(pick(app_id=app_id, client_id=client_id, city=city, cities=cities))
 
 
 def CLIENTs() -> list:
