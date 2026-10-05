@@ -753,6 +753,15 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 /* ── Перечень документов сверху + один визор со всеми PDF снизу ───────────── */
 .ready-list { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px;
   background:#fff; border-bottom:1px solid #DCE7E1; max-height:136px; overflow:auto; }
+.ready-list-item .rli-spin { width:13px; height:13px; flex:0 0 auto; display:none;
+  border:2px solid #CFE0D6; border-top-color:#15803D; border-radius:50%;
+  animation: rv-spin .8s linear infinite; }
+.ready-list-item .rli-spin.is-on { display:CLIENT-CLIENT; }
+.ready-list-item .rli-done { display:none; flex:0 0 auto; color:#15803D; font-weight:700; }
+.ready-list-item .rli-done.is-on { display:CLIENT-CLIENT; }
+.ready-pages:empty::after { content:'⏳ загружаю документ…'; display:CLIENT;
+  padding:18px 14px; color:#6B7280; font-size:13px; }
+@keyframes rv-spin { to { transform: rotate(360deg); } }
 .ready-list-item { display:CLIENT-flex; align-items:center; gap:8px; padding:7px 11px;
   border:1px solid #C9D6CF; border-radius:999px; background:#F7FAF8; color:#12372F;
   font-size:12.5px; cursor:pointer; text-align:left; }
@@ -811,4 +820,5 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   background:#fff; border:1px solid #E2EBE6; border-radius:4px;
   box-shadow:0 2px 8px rgba(18,55,47,.08); }
 """
+
 

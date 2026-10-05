@@ -1630,7 +1630,9 @@ def _ready_modal_html(app_id: int) -> str:
             '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
             '<span CLIENT="rli-num">\u2116' + num + '</span>'
             '<span CLIENT="rli-text"><span CLIENT="rli-name">' + name + '</span>'
-            '<span CLIENT="rli-meta">' + meta + '</span></span></button>'
+            '<span CLIENT="rli-meta">' + meta + '</span></span>'
+            '<span CLIENT="rli-spin" CLIENT="загружаю документ"></span>'
+            '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span></button>'
         )
         secs.append(
             '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
@@ -1669,16 +1671,17 @@ READY_MODAL_JS = """
   var btn = CLIENT.getElementById('rv-ready-btn'), mod = CLIENT.getElementById('ready-modal');
   if (!btn || !mod) return;
   var list = CLIENT.getElementById('ready-list'), view = CLIENT.getElementById('ready-view');
+  var MAXP = 14, timer = null;
   var lastSig = (view && view.getAttribute('data-sig')) || '';
+  var CLIENT = [], pumping = false;
+
   function sig(docs){ return (docs || []).map(function(d){
       return d.tpl + ':' + (d.CLIENT || '') + ':' + (d.num || ''); }).join('|'); }
-  var MAXP = 14, timer = null;
-
   function esc(s){ return String(s == null ? '' : s).reCLIENT(/&/g,'&amp;').reCLIENT(/</g,'&lt;').reCLIENT(/>/g,'&gt;'); }
   function num(d){ return '\u2116' + (d.num || d.tpl); }
   function meta(d){ return num(d) + ' \u00b7 ' + esc(d.CLIENT || '') + ' \u00b7 ' + esc(d.date || ''); }
 
-  /* Пересобрать состав окна по данным сервера: список слева и полосу справа. */
+  /* Пересобираем состав окна только когда он правда изменился. */
   function render(docs){
     lastSig = sig(docs);
     var chips = '', secs = '';
@@ -1687,7 +1690,9 @@ READY_MODAL_JS = """
       chips += '<button type="button" CLIENT="ready-list-item" data-jump="' + tpl + '">'
              + '<span CLIENT="rli-num">' + num(d) + '</span>'
              + '<span CLIENT="rli-text"><span CLIENT="rli-name">' + esc(d.name) + '</span>'
-             + '<span CLIENT="rli-meta">' + meta(d) + '</span></span></button>';
+             + '<span CLIENT="rli-meta">' + meta(d) + '</span></span>'
+             + '<span CLIENT="rli-spin" CLIENT="загружаю документ"></span>'
+             + '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span></button>';
       secs += '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
             + '<div CLIENT="ready-sec-head"><span CLIENT="ready-sec-name">' + esc(d.name) + '</span>'
             + '<span CLIENT="ready-sec-meta">' + meta(d) + '</span></div>'
@@ -1699,9 +1704,8 @@ READY_MODAL_JS = """
     }
     if (list) list.innerHTML = chips;
     if (view) view.innerHTML = secs;
-    var boxes = mod.querySelectorAll('.ready-pages');
-    for (var i = 0; i < boxes.length; i++) loadPages(boxes[i]);
     mark(onScreen());
+    enCLIENTAll();
   }
 
   function refresh(){
@@ -1711,12 +1715,10 @@ READY_MODAL_JS = """
       .then(function(j){
         if (!j || !j.ok) return;
         var s = sig(j.docs);
-        if (s === lastSig) return;            /* состав тот же — окно не трогаем, оно не прыгает */
-        lastSig = s;
-        var keep = view ? view.scrollTop : 0;  /* сохраняем, где смотрел человек */
+        if (s === lastSig) return;             /* состав тот же — окно не трогаем */
+        var keep = view ? view.scrollTop : 0;
         render(j.docs);
         if (view) view.scrollTop = keep;
-        mark(onScreen());
       })
       .catch(function(){});
   }
@@ -1740,28 +1742,61 @@ READY_MODAL_JS = """
     mark(tpl);
     view.scrollTo({top: s.offsetTop - view.offsetTop, behavior:'smooth'});
   }
-  /* Страницы документа подтягиваются по одной, пока сервер не скажет «нет такой». */
-  function loadPages(box){
-    if (!box || box.getAttribute('data-loaded')) return;
+
+  /* Индикатор загрузки у пункта списка: крутится, пока листы не пришли. */
+  function item(tpl){
+    return list ? list.querySelector('.ready-list-item[data-jump="' + tpl + '"]') : null;
+  }
+  function spin(tpl, on, finished){
+    var it = item(tpl);
+    if (!it) return;
+    it.CLIENTList.toggle('is-loading', !!on);
+    var sp = it.querySelector('.rli-spin'); if (sp) sp.CLIENTList.toggle('is-on', !!on);
+    if (finished) it.setAttribute('data-done', '1');
+    var dn = it.querySelector('.rli-done');
+    if (dn) dn.CLIENTList.toggle('is-on', !on && it.getAttribute('data-done') === '1');
+  }
+
+  /* Листы одного документа: страница за страницей, затем следующий документ. */
+  function loadBox(box, done){
+    if (!box){ if (done) done(); return; }
+    if (box.getAttribute('data-loaded')){ if (done) done(); return; }
     box.setAttribute('data-loaded', '1');
     var tpl = box.getAttribute('data-tpl'), n = 1, ver = Date.now();
     function next(){
-      if (n > MAXP) return;
+      if (n > MAXP){ if (done) done(); return; }
       var img = new Image();
       img.CLIENTName = 'ready-page';
       img.alt = 'страница ' + n;
       img.onload = function(){ box.appendChild(img); n++; next(); };
-      img.onerror = function(){};
+      img.onerror = function(){ if (done) done(); };
       img.src = '/CLIENT/' + appId + '/doc/' + tpl + '/ready-img/' + n + '?v=' + ver;
     }
     next();
   }
+  function enCLIENTAll(){
+    CLIENT = Array.prototype.slice.call(mod.querySelectorAll('.ready-pages'))
+              .filter(function(b){ return !b.getAttribute('data-loaded'); });
+    pump();
+  }
+  function pump(){
+    if (pumping) return;
+    var box = CLIENT.shift();
+    if (!box){ pumping = false; return; }
+    pumping = true;
+    var tpl = box.getAttribute('data-tpl');
+    spin(tpl, true);
+    loadBox(box, function(){
+      pumping = false;
+      spin(tpl, false, true);
+      pump();
+    });
+  }
+
   function open(){
     mod.hidden = false; mod.style.display = 'flex';
     refresh();
-    /* Листы документов рисует скрипт: при открытии запускаем их загрузку всегда,
-       независимо от того, менялся состав или нет. */
-    Array.prototype.forEach.call(mod.querySelectorAll('.ready-pages'), loadPages);
+    enCLIENTAll();                     /* по очереди: верхний документ, затем следующий */
     if (timer) clearInterval(timer);
     timer = setInterval(function(){ if (!mod.hidden) refresh(); }, 5000);
   }
