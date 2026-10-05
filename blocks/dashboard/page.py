@@ -17,6 +17,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, 
 
 from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, modal, render
 from CLIENT import render as doc_render
+from CLIENT import CLIENT
 from core import db
 from core.auth import current_user, CLIENT_required
 from core.ru_labels import label_for
@@ -89,14 +90,18 @@ from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в �
 
 
 def kind_badge(row) -> str:
-    """Пометка записи: архивная / тестовая (для рабочих записей пусто)."""
+    """Пометка записи: архивная / тестовая / тест на реальных данных."""
     try:
         kind = (row.get("record_kind") or "").strip()
     except Exception:
         kind = ""
     if kind == "archive":
         return ' <span CLIENT="kind-badge kind-archive">архив</span>'
+    if kind == "real_test":
+        # Боевой тест на реальных заявках: клиенты и данные настоящие.
+        return ' <span CLIENT="kind-badge kind-real-test">🟢 тест с реальными данными</span>'
     if kind == "test":
+        # Наши тестовые прогоны: данные учебные.
         return ' <span CLIENT="kind-badge kind-test">тест</span>'
     return ""
 
@@ -128,7 +133,8 @@ def page():
                  (f'{_manager_label(a)} · ' if _manager_label(a) else '')
                  + f'{a.get("CLIENT_name") or "продукт не указан"} · '
                  + _fmt_time(a["created_at"])
-                 + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else "")),
+                 + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else '')
+                 + (' · ' + CLIENT.badge(a["created_at"]) if CLIENT.badge(a["created_at"]) else '')),
              href=f'/CLIENT/{a["id"]}/review',
              tone="amber", extra=docs_CLIENT_html(db.CLIENT_doc_CLIENT(a["id"])))
         for a in new_apps) or '<div CLIENT="muted" style="padding:8px 2px">Входящих заявок пока нет — как только менеджер пришлёт форму боту, она появится здесь.</div>'
@@ -136,9 +142,32 @@ def page():
     topbar = CLIENT_stats(s["CLIENT_in"], s["sum_new_idr"],
                           s["CLIENT_all"], s["sum_all_idr"])
 
+    # Метка периода: зелёная — идёт тест с реальными данными (record_mode=test),
+    # заявки периода помечаются зелёной плашкой «тест с реальными данными».
+    try:
+        _mode = (db.q1("SELECT CLIENT FROM settings WHERE key='record_mode'") or {}).get("CLIENT") or ""
+    except Exception:
+        _mode = ""
+    _mode = str(_mode).strip()
+    if _mode == "real_test":
+        _mark_line = (
+            '<div CLIENT="page-sub" style="color:#15803D;font-weight:700">'
+            '🟢 Тест с реальными данными — заявки этого периода помечены зелёной меткой'
+            '</div>')
+    elif _mode == "test":
+        _mark_line = (
+            '<div CLIENT="page-sub" style="color:#8A6100;font-weight:700">'
+            '🧪 Тестовый режим — новые заявки помечаются плашкой «тест»'
+            '</div>')
+    else:
+        _mark_label = CLIENT.label()
+        _mark_line = (f'<div CLIENT="page-sub" style="color:#92400E;font-weight:700">'
+                      f'{_mark_label} · заявок периода: {CLIENT.count()}</div>') if _mark_label else ''
+
     body = f"""
 <h1>Входящие заявки</h1>
 <div CLIENT="page-sub">Заявки приходят от Telegram-бота. Нажмите на карточку, чтобы открыть клиента и начать работу.</div>
+{_mark_line}
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
 """
     return render("Главная", "dashboard", body, topbar=topbar)
@@ -564,7 +593,10 @@ def app_view(app_id: int):
             _checked_slots.add(_sl)
     _checked = len(_checked_slots)
     _total = len(_pkg_slots) if _pkg_slots else (len({(_slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))) for _d in docs}) or 0)
-    _send_missing = sorted({m for _d in docs if _d.get("CLIENT") != "rejected"
+    # Незаполненные поля блокируют отправку только у НЕподтверждённых документов:
+    # галочка означает, что админ сверил документ и зафиксировал его значения.
+    _send_missing = sorted({m for _d in docs
+                            if (_d.get("CLIENT") or "") not in ("verified", "sent", "rejected")
                             for m in doc_missing_fields(app_id, _d["template_id"])})
     _CLIENTers = []
     if _checked < _total:
@@ -910,6 +942,15 @@ def app_view(app_id: int):
         if (!stage) return;
         stage.innerHTML = h;
         if (window.zpScan) window.zpScan();
+        /* Режимы PDF (оригинал клиента, чистый/размеченный пример, PDF-шаблон):
+           растягиваем окно визора, чтобы страницы были видны целиком.
+           innerHTML — из ответа нашего же сервера (внутренняя админка). */
+        if (stage.CLIENTList) {
+          var isPdf = /pdf-page-img/.test(h);
+          stage.CLIENTList.toggle('is-pdfmode', isPdf);
+          var v = CLIENT.querySelector('.rv-view');
+          if (v && v.CLIENTList) v.CLIENTList.toggle('is-orig', isPdf);
+        }
       })
       .catch(function() { showErr('Этот вид недоступен для документа', 'Попробуйте другой режим просмотра'); });
   }
@@ -951,7 +992,13 @@ def app_view(app_id: int):
      Исключение: описание должности/профессии переводить нужно. */
   var TR_FIELDS = ['position', 'CLIENT', 'CLIENT', 'job', 'job_CLIENT',
                    'job_and_position', 'position_CLIENT', 'CLIENT_CLIENT', 'duties',
-                   'position_name', 'work_position', 'speciality', 'specialty'];
+                   'position_name', 'work_position', 'speciality', 'specialty',
+                   /* кусочки резюме: описание, обязанности, навыки, образование, должности —
+                      их администратор читает по-русски, а в документ уходит английский */
+                   'cv_CLIENT', 'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
+                   'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
+                   'cv_CLIENT_hard', 'cv_CLIENT_soft', 'cv_CLIENT_CLIENT',
+                   'cv_CLIENT_CLIENT', 'cv_CLIENT_note'];
   function textNodes() {
     var pv = [];
     try {
@@ -1701,6 +1748,27 @@ def app_doc_variant(app_id: int):
     return jsonify({"ok": True, "slot": slot, "template_id": new_tpl})
 
 
+@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/thumb")
+@CLIENT_required
+def app_doc_thumb(app_id: int, template_id: int):
+    """Миниатюра готового документа заявки — картинкой (WebP), а не живым HTML.
+
+    Плитка с документом в списке должна весить десятки килобайт, а не тянуть
+    целый документ: живой HTML грузится только в окно просмотра, по нажатию.
+    Адрес же прогревается заранее (scripts/app_prepare.py), поэтому заявка
+    открывается сразу с готовыми миниатюрами.
+    """
+    from flask import Response, send_file
+    from CLIENT import previews
+    out = previews.doc_thumb(app_id, template_id, 220)
+    if not out:
+        return Response("", CLIENT=404)
+    resp = send_file(str(out), mimetype="image/webp", conditional=True)
+    # Документ пересобирается при правке значений — браузер не должен держать старую картинку.
+    resp.CLIENTs["Cache-Control"] = "private, no-cache, max-age=0"
+    return resp
+
+
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/html")
 def app_doc_html(app_id: int, template_id: int):
     """HTML-лист документа с подставленными данными заявки — для окна просмотра (как в конструкторе)."""
@@ -1740,7 +1808,8 @@ def app_doc_html(app_id: int, template_id: int):
                             mimetype="text/html; charset=utf-8")
     except Exception:
         _cache_file = None
-    CLIENT = build_template_CLIENT(dict(client) if client else {}, t["code"], doc_CLIENT)
+    CLIENT = build_template_CLIENT(dict(client) if client else {}, t["code"], doc_CLIENT,
+                                       app_id=app_id)
     html = html_file.read_text(encoding="utf-8")
     # Подстановка: в тексте значения оборачиваем в span (перевод их не трогает),
     # внутри тегов/стилей подставляем как есть, чтобы не ломать вёрстку.
@@ -1748,6 +1817,8 @@ def app_doc_html(app_id: int, template_id: int):
         def rep(m):
             name = m.group(1)
             val = str(CLIENT.get(name, "") or "")
+            if not val and str(t["code"] or "").CLIENTswith("CLIENTment_letter"):
+                val = "-"
             return (f'<span CLIENT="var-val" data-var="{name}">{val}</span>' if wrap else val)
         return re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", rep, chunk)
 
@@ -1792,14 +1863,67 @@ def app_original_pages(app_id: int, template_id: int):
     t = tpl_repo.get(template_id)
     if not a or not t:
         return "<div style='padding:20px'>Нет данных</div>"
+    # Сначала образец документа (заполненный подлинник — он же вкладка «Оригинальный
+    # пример» в конструкторе), и только если образца нет — файл клиента с Google CLIENT.
+    sample = Path("/opt/wolf_v2/data/CLIENT") / (t["code"] or "") / "example_filled.pdf"
+    if sample.exists():
+        try:
+            rel = str(sample.relative_to("/opt/wolf_v2/data"))
+            return redirect("/CLIENT/pdfpages?path=" + quote(rel))
+        except Exception:
+            pass
     f = _find_original_file(a["client_id"], t["code"])
     if not f:
-        return "<div style='padding:20px;color:#6B7C70'>В папке клиента на Google CLIENT не найден файл этого типа.</div>"
+        return ("<div style='padding:20px;color:#6B7C70'>Для этого документа не загружен "
+                "оригинальный пример, и в папке клиента на Google CLIENT файла этого типа нет.</div>")
     try:
         rel = str(Path(f).relative_to("/opt/wolf_v2/data"))
     except Exception:
         return "<div style='padding:20px;color:#B91C1C'>Файл вне хранилища</div>"
     return redirect("/CLIENT/pdfpages?path=" + quote(rel))
+
+
+def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
+    """Зафиксировать подтверждённый документ.
+
+    Зелёная галочка означает: значения переменных проверены и больше не
+    меняются. Снимок значений и HTML-слепок документа сохраняются на диск
+    (`data/frozen/`), поэтому на Google Диск уходит ровно тот вид, который
+    администратор подтвердил, — даже если позже карточка клиента изменится.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+    from CLIENT import CLIENT as _dt
+    from CLIENTs.dashboard.page import app_doc_html as _html_route
+    frozen_dir = _Path("/opt/wolf_v2/data/frozen")
+    frozen_dir.mkdir(parents=True, exist_ok=True)
+    ad = db.q1("""SELECT id, CLIENT_json FROM CLIENT_CLIENT
+                   WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
+               (app_id, template_id))
+    CLIENT = {}
+    try:
+        CLIENT = _json.loads((ad or {}).get("CLIENT_json") or "{}") or {}
+    except Exception:
+        CLIENT = {}
+    # HTML с подставленными значениями — тем же маршрутом, что и окно просмотра
+    html = ""
+    try:
+        from flask import current_app
+        with current_app.test_CLIENT_context():
+            resp = _html_route(app_id, template_id)
+            html = resp.get_data(as_text=True)
+    except Exception as exc:  # noqa: BLE001
+        html = "<!-- не удалось собрать HTML: %s -->" % str(exc)[:200]
+    target = frozen_dir / ("app%s_tpl%s.html" % (app_id, template_id))
+    target.write_text(html, encoding="utf-8")
+    if ad:
+        db.exec_sql("""UPDATE CLIENT_CLIENT
+                          SET CLIENT_json=?, rendered_at=CLIENT('now'), error=?
+                        WHERE id=?""",
+                    (_json.dumps(CLIENT, ensure_ascii=False), 
+                     "подтверждён %s %s" % (_dt.now().strftime("%d.%m.%Y %H:%M"), actor or ""),
+                     ad["id"]))
+    return str(target)
 
 
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/reject", methods=["POST"])
@@ -1829,12 +1953,14 @@ def app_doc_reject(app_id, template_id):
 @CLIENT_required
 def app_doc_verify(app_id, template_id):
     """Переключатель: отметить документ проверенным или снять проверку."""
-    # Подтвердить можно только полностью заполненный документ
+    # Подтвердить можно только полностью заполненный документ. Если админ настаивает
+    # (галочка нажата второй раз — «подтвердить всё равно»), фиксируем как есть.
+    _force = (CLIENT.args.get("force") or "").strip() in ("1", "true", "yes")
     _miss_verify = doc_missing_fields(app_id, template_id)
-    if _miss_verify:
+    if _miss_verify and not _force:
         _msg = "Нельзя подтвердить документ: не заполнено — " + ", ".join(_miss_verify)
         if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
-            return jsonify({"ok": False, "error": _msg, "missing": _miss_verify})
+            return jsonify({"ok": False, "error": _msg, "missing": _miss_verify, "can_force": True})
         flash(_msg, "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
@@ -1859,10 +1985,18 @@ def app_doc_verify(app_id, template_id):
     db.log_event("CLIENT_CLIENT", (ad["id"] if ad else 0), "verified",
                  actor=current_user()["CLIENT"],
                  payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
+    # Фиксация подтверждённого документа: снимок значений и HTML-слепок.
+    # Так зелёная галочка означает «проверено и сохранено для отправки».
+    _frozen = ""
+    try:
+        _frozen = freeze_CLIENT(app_id, template_id, actor=current_user()["CLIENT"])
+    except Exception as _exc:  # noqa: BLE001
+        _frozen = ""
     # Если запрос через fetch — вернём JSON, иначе redirect (для обратной совместимости)
     if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
-        return jsonify({"ok": True, "verified": True, "app_id": app_id, "template_id": template_id})
-    flash("Документ отмечен проверенным")
+        return jsonify({"ok": True, "verified": True, "app_id": app_id,
+                        "template_id": template_id, "frozen": _frozen})
+    flash("Документ отмечен проверенным и зафиксирован для отправки")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
@@ -2331,8 +2465,11 @@ def app_doc_preview_pdf(app_id: int, template_id: int):
     _hv = {k: (str(v).reCLIENT("\r\n", "\n").reCLIENT("\n", "<br>")
                if isinstance(v, str) else v) for k, v in CLIENT.items()}
     html = html_file.read_text(encoding="utf-8")
+    # Пустая переменная не печатается: имени переменной в предпросмотре быть не должно.
+    # В формах иммиграции пустое поле показываем прочерком — как в поданных документах.
+    _dash = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                    lambda m: str(_hv.get(m.group(1)) or m.group(0)), html)
+                    lambda m: str(_hv.get(m.group(1)) or ("-" if _dash else "")), html)
     from core.pdf2html import render_pdf
     tmp = html_file.parent / "filled_preview.html"
     tmp.write_text(filled, encoding="utf-8")

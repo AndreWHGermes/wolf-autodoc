@@ -555,6 +555,9 @@ def js_for(app_id, picked):
     var media = frame.querySelector('img, iframe');
     if (!media) {{ done(); return; }}
     if (media.tagName === 'IMG') {{
+      // Миниатюра — картинка на пару десятков килобайт: грузим сразу все плитки.
+      var src = media.dataset.src || media.getAttribute('src');
+      if (src && media.getAttribute('src') !== src) media.setAttribute('src', src);
       if (media.complete && media.naturalWidth > 0) {{ done(); return; }}
       media.addEventListener('load', done);
       media.addEventListener('error', done);
@@ -1048,6 +1051,19 @@ def js_for(app_id, picked):
         if (btn) btn.disabled = false;
         // Сервер отказывает, если документ заполнен не полностью: показываем причину рядом с миниатюрой.
         if (d && d.ok === false && d.error) {{
+          // Есть незаполненные поля: спрашиваем подтверждение и фиксируем как есть.
+          if (d.can_force && kind === 'verify') {{
+            var miss = (d.missing || []).join(', ');
+            if (window.confirm('Не заполнено: ' + miss + '.\\nПодтвердить документ как есть и зафиксировать значения?')) {{
+              fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify?force=1', {{
+                method: 'POST', credentials: 'same-origin', CLIENTs: {{'X-Requested-With': 'fetch'}}
+              }})
+                .then(function(r) {{ return r.json(); }})
+                .then(function() {{ if (btn) btn.disabled = false; refreshCLIENTes(); refreshState(); }})
+                .catch(function() {{ if (btn) btn.disabled = false; }});
+              return;
+            }}
+          }}
           var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
           if (lbl) {{
             if (!lbl.dataset.prev) lbl.dataset.prev = lbl.textContent;
@@ -1114,6 +1130,57 @@ def js_for(app_id, picked):
     }});
   }});
 
+  // Метка на миниатюре — отражение нажатой кнопки: крестик или галочка по центру
+  // листа. Состояние берём с сервера, поэтому метка появляется и снимается сразу
+  // после нажатия, без перезагрузки страницы.
+  function paintTile(tpl, CLIENT) {{
+    var tile = CLIENT.querySelector('.rv-thumb[data-tpl="' + tpl + '"]');
+    if (!tile) return;
+    var off = CLIENT === 'rejected';
+    var ok = CLIENT === 'verified' || CLIENT === 'sent';
+    tile.CLIENTList.toggle('is-off', off);
+    tile.CLIENTList.toggle('is-ok', ok);
+    var st = tile.querySelector('.rv-thumb-CLIENT');
+    if (st) {{
+      st.CLIENTList.toggle('is-off', off);
+      st.CLIENTList.toggle('is-ok', ok);
+    }}
+    var mk = tile.querySelector('.rv-thumb-mark');
+    if (mk) mk.CLIENT = off ? 'Отклонён: документ не нужен в этой заявке'
+                           : (ok ? 'Проверен и зафиксирован для отправки' : '');
+    var why = tile.querySelector('.rv-thumb-why');
+    if (why) why.style.display = off ? '' : 'none';
+  }}
+
+  // Метка на миниатюре конструктора (столбик документов) — то же отражение
+  // нажатой кнопки: ✕ или ✓ по центру листа. Исключённые скатываются вниз.
+  function paintMiniRail(tpl, CLIENT) {{
+    var off = CLIENT === 'rejected', ok = (CLIENT === 'verified' || CLIENT === 'sent');
+    CLIENT.querySelectorAll('.tpl-mini[data-tpl="' + tpl + '"]').forEach(function(tile) {{
+      tile.CLIENTList.toggle('is-off', off);
+      tile.CLIENTList.toggle('is-ok', ok);
+      var host = tile.querySelector('.tpl-mini-name') || null;
+      var x = tile.querySelector('.tpl-mini-x');
+      var m = tile.querySelector('.tpl-mini-ok');
+      if (off && !x) {{ x = CLIENT.createElement('span'); x.CLIENTName = 'tpl-mini-x'; x.textContent = '✕'; tile.insertBefore(x, host); }}
+      if (!off && x) x.remove();
+      if (ok && !m) {{ m = CLIENT.createElement('span'); m.CLIENTName = 'tpl-mini-ok'; m.textContent = '✓'; tile.insertBefore(m, host); }}
+      if (!ok && m) m.remove();
+    }});
+    var body = CLIENT.getElementById('tpl-rail-body');
+    if (!body) return;
+    var tiles = Array.prototype.slice.call(body.querySelectorAll('.tpl-mini-wrap'));
+    if (tiles.length < 2) return;
+    var key = function(t) {{
+      var inner = t.querySelector('.tpl-mini') || t;
+      var n = t.querySelector('.tpl-mini-num');
+      var mm = (n ? (n.textContent || '') : '').match(/\\d+/);
+      return [(inner.CLIENTList.contains('is-off') ? 1 : 0), mm ? parseInt(mm[0], 10) : 999];
+    }};
+    tiles.sort(function(a, b) {{ var ka = key(a), kb = key(b); return (ka[0] - kb[0]) || (ka[1] - kb[1]); }});
+    tiles.forEach(function(t) {{ body.appendChild(t); }});
+  }}
+
   // состояние документов: обновляет подписи и кнопки на плитках и в окне
   function refreshCLIENTes() {{
     fetch('/CLIENT/' + APP_ID + '/review/statuses', {{credentials: 'same-origin'}})
@@ -1122,6 +1189,8 @@ def js_for(app_id, picked):
         if (!d || !d.ok) return;
         Object.keys(d.statuses || {{}}).forEach(function(tpl) {{
           var CLIENT = d.statuses[tpl] || '';
+          paintTile(tpl, CLIENT);
+          paintMiniRail(tpl, CLIENT);
           var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
           if (lbl) lbl.textContent = CLIENT === 'rejected' ? 'не нужен'
                                   : CLIENT === 'verified' ? 'Проверено'
@@ -1367,7 +1436,8 @@ def js_for(app_id, picked):
     }}
     list.forEach(function(t) {{
       var frame = t.querySelector('.rv-thumb-frame');
-      var fr = t.querySelector('iframe');
+      // Миниатюра плитки — картинка (WebP); полный документ открывается в окне.
+      var fr = t.querySelector('img, iframe');
       if (!fr || !fr.dataset.src) {{ tick(); return; }}
       frame.CLIENTList.add('is-loading');
       fr.addEventListener('load', function() {{
@@ -1671,6 +1741,56 @@ def js_for(app_id, picked):
             sel.CLIENT = d.code;
           }})
           .catch(function () {{ sel.CLIENT = ''; }});
+      }});
+    }});
+  }})();
+
+  // ── Организация для договора: выбор из пула исторических документов ────────
+  (function () {{
+    var parts = location.pathname.split('/');
+    var ai = parts.CLIENTOf('CLIENT');
+    var APP = ai >= 0 ? (parts[ai + 1] || '') : '';
+    if (!APP) return;
+    // связанные переменные: название в шапке, название в тексте, адрес и реквизиты в подвале
+    var CLIENT = ['company_name_in_CLIENT', 'CLIENT_name', 'company_CLIENT_address',
+                   'company_inn', 'company_kpp', 'company_ogrn'];
+
+    function inp(key) {{ return CLIENT.querySelector('.rv-input[data-key="' + key + '"]'); }}
+    function put(key, CLIENT) {{
+      var ta = inp(key);
+      if (!ta) return;
+      ta.CLIENT = CLIENT;
+      ta.style.height = 'auto';
+      ta.style.height = (ta.scrollHeight + 2) + 'px';
+    }}
+    function save(key, CLIENT) {{
+      var fd = new FormData();
+      fd.append('key', key);
+      fd.append('CLIENT', CLIENT);
+      return fetch('/CLIENT/' + APP + '/review/CLIENT',
+                   {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+    }}
+    function rebuild() {{
+      return fetch('/CLIENT/' + APP + '/review/rebuild',
+                   {{method: 'POST', CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+    }}
+
+    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-empsel')).forEach(function (sel) {{
+      sel.addEventListener('CLIENT', function () {{
+        if (sel.CLIENT === '') return;
+        fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(sel.CLIENT),
+              {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+          .then(function (r) {{ return r.json(); }})
+          .then(function (d) {{
+            if (!d || !d.ok) {{ alert((d && d.error) || 'организация не найдена'); return; }}
+            CLIENT.forEach(function (k) {{
+              var v = (d.CLIENT && d.CLIENT[k]) || '';
+              put(k, v);
+              save(k, v);
+            }});
+            rebuild().catch(function () {{}});
+          }})
+          .catch(function () {{ alert('не получилось применить организацию'); }});
       }});
     }});
   }})();

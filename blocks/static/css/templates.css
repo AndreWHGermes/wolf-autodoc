@@ -145,7 +145,8 @@
 #ex-note { display:CLIENT-CLIENT; min-width:190px; white-space:nowrap; }
 .tpl-open-orig.is-on { background:#16A34A; border-color:#16A34A; color:#fff; }
 /* PDF-страницы показываются картинками внутри листа визора */
-.pdf-page-img { display:CLIENT; width:794.5px; margin:0 auto 12px; background:#fff;
+.pdf-page-img { display:CLIENT; width:100%; max-width:794.5px; height:auto;
+                 margin:0 auto 12px; background:#fff;
                  box-shadow:0 0 0 1px #E1E7E3; }
 
 .tpl-row-main { display:grid; grid-template-columns:minmax(260px,0.6fr) minmax(0,1fr);
@@ -335,3 +336,4 @@
 .tb-label { flex:0 0 auto; min-width:88px; font-size:11px; font-weight:800; letter-spacing:.05em;
              text-transform:uppercase; color:#15803D; }
 .tb-hint { font-size:11.5px; color:#6B7C70; border-top:1px dashed #DCEEE2; padding-top:8px; }
+.var-name { margin: 3px 0 0 24px; }

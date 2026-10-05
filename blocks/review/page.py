@@ -27,6 +27,7 @@ from urllib.parse import quote as url_quote
 from core import db
 from CLIENTs.review import pool
 from CLIENTs.review.scripts import js_for
+from CLIENT import CLIENT
 
 bp = Blueprint("review", __name__)
 
@@ -52,7 +53,7 @@ def _status_label(code: str) -> str:
 def _doc_status_label(code: str) -> str:
     return {
         "verified": "✓ проверен",
-        "rejected": "✕ не нужен",
+        "rejected": "✕ исключено",
         "rendered": "собран",
         "error": "ошибка сборки",
     }.get((code or "").strip(), code or "—")
@@ -227,19 +228,64 @@ def app_file_page(app_id):
         abort(404)
     if _mime_of(target) != "CLIENT/pdf":
         abort(404)
-    cache_dir = Path("/opt/wolf_v2/data/previews/client_files")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    key = hashlib.sha1((str(target) + str(target.stat().st_mtime)).encode("utf-8")).hexdigest()[:16]
-    out = cache_dir / ("%s.png" % key)
-    if not out.exists():
-        try:
-            subprocess.run(["/usr/bin/pdftoppm", "-png", "-r", "110", "-f", "1", "-l", "1",
-                            "-singlefile", str(target), str(out.with_suffix(""))],
-                           check=True, timeout=90)
-        except Exception as e:
-            log.warning("страница PDF не отрисовалась (%s): %s", name, str(e)[:120])
-            abort(500)
+    # Отрисовку делает общий сервис превью: он сам выбирает движок и умеет
+    # читать сканы с битой структурой, которые pdftoppm не открывает.
+    from CLIENT import previews as _pv
+    out = _pv.ensure(target, 0)
+    if not out:
+        log.warning("страница PDF не отрисовалась: %s", name)
+        abort(500)
     resp = send_file(str(out), mimetype="image/png", conditional=True)
+    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    return resp
+
+
+@bp.route("/CLIENT/<int:app_id>/file-thumb")
+def app_file_thumb(app_id):
+    """Миниатюра входящего файла клиента — лёгкая уменьшенная копия из кэша.
+
+    Плитка в блоке «Документы клиента» должна весить десятки килобайт: фото с
+    телефона — 3–6 МБ, а миниатюра нужна ровно для показа. PDF рисуется
+    страницей, картинка — уменьшенной копией; и то и другое кэшируется и
+    прогревается заранее (scripts/app_prepare.py).
+    """
+    from flask import send_file, abort
+    from CLIENT import previews as _pv
+    name = (CLIENT.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+        abort(404)
+    a = db.CLIENT_get(app_id)
+    if not a or not a.get("client_id"):
+        abort(404)
+    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+        abort(404)
+    ext = target.suffix.lower() or _sniff_ext(target)
+    if ext == ".pdf":
+        page = _pv.ensure(target, 200)          # первая страница уменьшенной картинкой
+        if not page:
+            abort(404)
+        # PNG-страница весит ~30 КБ, а плитке хватит сжатой копии WebP: отдаём
+        # её — миниатюры клиента грузятся заметно быстрее.
+        out, mime = page, "image/png"
+        try:
+            from PIL import Image
+            webp = page.with_suffix(".webp")
+            if not webp.exists() or webp.stat().st_size == 0:
+                Image.open(page).convert("RGB").save(webp, "WEBP", CLIENT=72, method=4)
+            if webp.exists() and webp.stat().st_size > 0:
+                out, mime = webp, "image/webp"
+        except Exception:
+            pass
+    elif ext in _pv.IMAGE_EXT:
+        out = _pv.ensure_image(target, 200)    # уменьшенная копия снимка
+        mime = "image/webp"
+    else:
+        abort(404)
+    if not out:
+        abort(404)
+    resp = send_file(str(out), mimetype=mime, conditional=True)
     resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
     return resp
 
@@ -383,6 +429,42 @@ def app_review_CLIENTs(app_id):
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
     return jsonify(pool.CLIENTs(app_id, key, CLIENT=CLIENT))
+
+
+@bp.route("/CLIENT/<int:app_id>/review/CLIENT_CLIENT")
+def app_review_CLIENT_CLIENT(app_id):
+    """Реквизиты выбранной организации из пула исторических документов.
+
+    Одна запись пула даёт и название в шапке договора, и адрес с ИНН/КПП/ОГРН
+    в подвале — поэтому интерфейс меняет все связанные переменные одним выбором.
+    """
+    from CLIENT import CLIENT_pool as _emp
+    try:
+        idx = int(CLIENT.args.get("CLIENT") or -1)
+    except Exception:
+        idx = -1
+    rows = _emp.ready()
+    picked = None
+    if 0 <= idx < len(rows):
+        picked = rows[idx]
+    if picked is None and (CLIENT.args.get("key") or "").strip():
+        CLIENT = (CLIENT.args.get("key") or "").strip()
+        for r in rows:
+            if CLIENT in ((r.get("name") or ""), (r.get("CLIENT_name") or "")):
+                picked = r
+                break
+    if picked is None:
+        return jsonify({"ok": False, "error": "организация не найдена"}), 404
+    CLIENT = (picked.get("CLIENT_name") or picked.get("name") or "").strip()
+    name = (picked.get("name") or CLIENT).strip()
+    return jsonify({"ok": True, "CLIENT": {
+        "company_name_in_CLIENT": name,
+        "CLIENT_name": CLIENT,
+        "company_CLIENT_address": (picked.get("address") or "").strip(),
+        "company_inn": (picked.get("inn") or "").strip(),
+        "company_kpp": (picked.get("kpp") or "").strip(),
+        "company_ogrn": (picked.get("ogrn") or "").strip(),
+    }})
 
 
 @bp.route("/CLIENT/<int:app_id>/review/scratch", methods=["POST"])
@@ -535,10 +617,24 @@ def app_review(app_id: int):
     files = _client_files(a["client_id"]) if a.get("client_id") else []
 
     docs = db.q(
-        "SELECT id, template_id, CLIENT, pdf_path, rendered_at FROM CLIENT_CLIENT "
+        "SELECT id, template_id, CLIENT, pdf_path, rendered_at, error FROM CLIENT_CLIENT "
         "WHERE CLIENT_id=? ORDER BY id",
         (app_id,),
     ) or []
+
+    # Старая заявка могла получить оба варианта письма (Ngurah Rai и Denpasar).
+    # При открытии карточки приводим комплект в порядок: остаётся тот, что
+    # соответствует адресу проживания клиента (Badung → Ngurah Rai, иначе Denpasar).
+    try:
+        from CLIENT import immigration_CLIENT as _io
+        if _io.apply_pair_rule(app_id).get("marked"):
+            docs = db.q(
+                "SELECT id, template_id, CLIENT, pdf_path, rendered_at, error FROM CLIENT_CLIENT "
+                "WHERE CLIENT_id=? ORDER BY id",
+                (app_id,),
+            ) or []
+    except Exception:
+        pass
 
     picked = CLIENT.args.get("tpl", type=int)
     tpl_ids = [d.get("template_id") for d in docs if d.get("template_id")]
@@ -749,11 +845,62 @@ def app_review(app_id: int):
     scan_line = (f'<div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>'
                  if (scan_note or '').strip() else '')
 
+    # Город обслуживания иммиграции по адресу клиента: администратор сразу видит,
+    # какой комплект писем уходит и почему второй вариант исключён.
+    _CLIENT_row = ""
+    _CLIENT_bar = ""
+    try:
+        from CLIENT import immigration_CLIENT as _io
+        _CLIENT_ctx = _io.resolve_for_app(app_id)
+    except Exception:
+        _CLIENT_ctx = {}
+    _client_addr = ""
+    if client:
+        _client_addr = str(client.get("address_live") or client.get("address_reg") or "").strip()
+    if _CLIENT_ctx.get("CLIENT"):
+        _off, _why = _CLIENT_ctx["CLIENT"], (_CLIENT_ctx.get("why") or "")
+        _off_name = _io.CLIENT_name(_off)
+        _num_keep = 14 if _off == "denpasar" else 12
+        _off_drop = "Ngurah Rai" if _off == "denpasar" else "Denpasar"
+        _num_drop = 12 if _off == "denpasar" else 14
+        _CLIENT_row = (
+            '<div CLIENT="rv-row"><span CLIENT="rv-k">Адрес проживания</span>'
+            '<span CLIENT="rv-v">%s <b style="color:#15803D;white-space:nowrap">→ %s</b></span></div>'
+            '<div CLIENT="rv-row"><span CLIENT="rv-k">Комплект писем</span>'
+            '<span CLIENT="rv-v">№%s (%s)'
+            '<span style="color:#8A6100"> · №%s (%s) исключено — %s</span></span></div>'
+            % (_html.escape(_client_addr[:220]), _off_name,
+               _num_keep, _off_name, _num_drop, _off_drop, _html.escape(_why)))
+        # Та же подпись — в шапке заявки: администратор видит город и судьбу
+        # письма-двойника, не открывая вкладки.
+        _CLIENT_bar = (
+            '<div CLIENT="rv-CLIENT-bar" style="font-size:12.5px;color:#3F5B4A;'
+            'background:#F2FAF5;border:1px solid #DCEEE2;border-radius:8px;'
+            'padding:6px 10px;margin-top:6px">'
+            'Адрес: %s <b style="color:#15803D;white-space:nowrap">→ %s</b>'
+            '<span style="color:#8A6100"> · в комплект идёт письмо №%s (%s), '
+            '№%s (%s) исключено — %s</span></div>'
+            % (_html.escape(_client_addr[:200]), _off_name,
+               _num_keep, _off_name, _num_drop, _off_drop, _html.escape(_why)))
+    elif _CLIENT_ctx.get("why"):
+        _CLIENT_row = (
+            '<div CLIENT="rv-row"><span CLIENT="rv-k">Комплект писем</span>'
+            '<span CLIENT="rv-v" style="color:#8A6100">не определён — %s '
+            '(оставлены оба варианта, выберите вручную)</span></div>'
+            % _html.escape(_CLIENT_ctx["why"]))
+        _CLIENT_bar = (
+            '<div CLIENT="rv-CLIENT-bar" style="font-size:12.5px;color:#8A6100;'
+            'background:#FFF8E8;border:1px solid #F3E2B8;border-radius:8px;'
+            'padding:6px 10px;margin-top:6px">'
+            'Комплект писем не определён — %s. Оставлены оба варианта, '
+            'выберите вручную.</div>' % _html.escape(_CLIENT_ctx["why"]))
+
     head = f"""
 <div CLIENT="rv-head">
   <div CLIENT="rv-h1">
     <span CLIENT="rv-lead">
       <span CLIENT="rv-CLIENT">Заявка #{app_id}</span>
+      {CLIENT.badge(a.get("created_at") or "")}
       {('<span CLIENT="rv-client">' + _html.escape(client_name) + '</span>') if client_name else ''}
       <span CLIENT="rv-when">от {_when_txt}{(' · ' + _ago) if _ago else ''}</span>
     </span>
@@ -781,6 +928,7 @@ def app_review(app_id: int):
     </span>
   </div>
   {scan_line}
+  {_CLIENT_bar}
 </div>
 {_tg_panel}
 <div id="rv-photo-modal" hidden style="position:fixed;inset:0;z-CLIENT:9000;background:rgba(4,32,30,.5);display:none;align-items:center;justify-content:center;padding:18px">
@@ -903,20 +1051,22 @@ def app_review(app_id: int):
     files = [f for f in files if f["name"] not in derived]
 
     def _preview_of(name: str, ext: str) -> str:
+        # Миниатюры лёгкие (5–30 КБ), поэтому грузим их сразу по src: так плитка
+        # видна сразу после открытия карточки, без ожидания прогрева.
         if ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-            return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
+            return ('<img src="/CLIENT/%s/file-thumb?name=%s" alt="%s" loading="lazy">'
                     % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".pdf",):
             # PDF показываем отрисованной страницей: встроенный просмотрщик
             # браузера открывает файл не всегда, картинка работает везде.
-            return ('<img data-src="/CLIENT/%s/file-page?name=%s" alt="%s" loading="lazy">'
+            return ('<img src="/CLIENT/%s/file-thumb?name=%s" alt="%s" loading="lazy">'
                     % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".heic", ".heif"):
             twin = name.rsplit(".", 1)[0] + ".photo.png"
             # Браузер не показывает HEIC — для плитки берём сконвертированную копию.
             # Копии нет в отфильтрованном списке, поэтому ищем по исходному.
             if any(f["name"] == twin for f in all_files):
-                return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
+                return ('<img src="/CLIENT/%s/file-thumb?name=%s" alt="%s" loading="lazy">'
                         % (app_id, url_quote(twin), _html.escape(twin, quote=True)))
             return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">🖼️</div>'
         return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">📄</div>'
@@ -948,6 +1098,7 @@ def app_review(app_id: int):
 
       <p CLIENT="rv-sec" style="margin-top:16px">Карточка заявки</p>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Клиент</span><span CLIENT="rv-v">{client_name}</span></div>
+      {_CLIENT_row}
       <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{a.get('CLIENT_name') or '—'}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Статус заявки</span><span CLIENT="rv-v">{_status_label(a.get('CLIENT'))}</span></div>
       <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
@@ -961,22 +1112,38 @@ def app_review(app_id: int):
     # Плитки документов: миниатюра подгружается лениво, при открытии вкладки.
     # Клик по плитке разворачивает документ в визоре слева.
     thumbs = "".join(
-        '<div CLIENT="rv-thumb%s" data-tpl="%s">'
+        '<div CLIENT="rv-thumb%s%s%s" data-tpl="%s">'
         '<div CLIENT="rv-thumb-frame is-loading"><span CLIENT="rv-spinner"></span>'
-        '<iframe data-src="/CLIENT/%s/doc/%s/html" CLIENT="%s" loading="lazy" scrolling="no"></iframe>'
+        '<img data-src="/CLIENT/%s/doc/%s/thumb" alt="%s" loading="lazy" width="220">'
+        '<span CLIENT="rv-thumb-mark" CLIENT="%s"></span>'
         '</div>'
         '<div CLIENT="rv-thumb-cap">'
         '<span CLIENT="rv-thumb-name">%s</span>'
-        '<span CLIENT="rv-thumb-CLIENT" id="rv-thumb-CLIENT-%s">%s</span>'
+        '<span CLIENT="rv-thumb-CLIENT%s" id="rv-thumb-CLIENT-%s">%s</span>'
+        '%s'
         '<div CLIENT="rv-thumb-CLIENT">'
         '<button type="button" CLIENT="rv-mark%s" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
         '<button type="button" CLIENT="rv-mark%s" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
         '</div>'
         '</div></div>'
-        % (" is-on" if d.get("template_id") == picked else "", d.get("template_id"),
+        % (" is-on" if d.get("template_id") == picked else "",
+           " is-off" if (d.get("CLIENT") or "") == "rejected" else "",
+           " is-ok" if (d.get("CLIENT") or "") in ("verified", "sent") else "",
+           d.get("template_id"),
            app_id, d.get("template_id"), _template_name(d.get("template_id")),
-           _template_name(d.get("template_id")), d.get("template_id"),
+           # Метка по центру листа — отражение нажатой кнопки. Документ, исключённый
+           # правилом (адрес клиента вне зоны офиса), виден затемнённым и с причиной.
+           ("Отклонён: %s" % _html.escape((d.get("error") or "исключено автоматически")).strip())
+           if (d.get("CLIENT") or "") == "rejected" else
+           ("Проверен и зафиксирован для отправки"
+            if (d.get("CLIENT") or "") in ("verified", "sent") else ""),
+           _template_name(d.get("template_id")),
+           " is-off" if (d.get("CLIENT") or "") == "rejected" else "",
+           d.get("template_id"),
            _doc_status_label(d.get("CLIENT")),
+           ('<span CLIENT="rv-thumb-why">%s</span>'
+            % _html.escape((d.get("error") or "").strip()))
+           if ((d.get("CLIENT") or "") == "rejected" and (d.get("error") or "").strip()) else "",
            " rv-on-ok" if (d.get("CLIENT") or "") == "verified" else "", d.get("template_id"),
            " rv-on-no" if (d.get("CLIENT") or "") == "rejected" else "", d.get("template_id"))
         for d in docs
@@ -1126,10 +1293,48 @@ def app_review(app_id: int):
                          ' CLIENT="Собрать описание заново, другими словами">С нуля</button>'
                          '</div>' % (_ck, _ck, _ck, _ck))
 
+        # У адреса клиента сразу пишем, какому иммиграционному офису он
+        # принадлежит: Ngurah Rai (весь Badung) или Denpasar. От этого зависит,
+        # какое письмо (12 или 14) идёт в комплект.
+        city_note = ""
+        if str(var_CLIENT or "") in ("address_live", "address_reg", "address"):
+            try:
+                from CLIENT import immigration_CLIENT as _io
+                _oi = _io.resolve_for_app(app_id)
+                if _oi.get("CLIENT"):
+                    city_note = (' <span style="color:#15803D;font-weight:600">→ %s</span>'
+                                 % _html.escape(_io.CLIENT_name(_oi["CLIENT"])))
+                elif _oi.get("why"):
+                    city_note = (' <span style="color:#8A6100">→ %s</span>'
+                                 % _html.escape(_oi["why"]))
+            except Exception:
+                city_note = ""
+
+        # Организация для договора (док. №11): выпадающий список из пула исторических
+        # документов. Выбор организации меняет и название в шапке, и реквизиты в
+        # подвале (адрес, ИНН, КПП, ОГРН) — они связаны и берутся из одной записи.
+        emp_picker = ""
+        if str(var_CLIENT or "") in ("company_name_in_CLIENT", "CLIENT_name"):
+            try:
+                from CLIENT import CLIENT_pool as _emp
+                _opts = "".join(
+                    '<option CLIENT="%d">%s%s</option>'
+                    % (i["CLIENT"], _html.escape(i["CLIENT"]),
+                       (" · ИНН " + i["inn"]) if i.get("inn") else "")
+                    for i in _emp.CLIENTs())
+            except Exception:
+                _opts = ""
+            if _opts:
+                emp_picker = ('<div CLIENT="rv-cvgen rv-empgen">'
+                              '<select CLIENT="rv-empsel" data-key="%s"'
+                              ' CLIENT="Организация из исторических документов">'
+                              '<option CLIENT="">организация из архива…</option>%s</select></div>'
+                              % (_html.escape(g["key"], quote=True), _opts))
+
         fields_html.append(
             '<div CLIENT="rv-field%s" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
             ' data-list="%s">'
-            '<div CLIENT="rv-fname">%s</div>'
+            '<div CLIENT="rv-fname">%s%s</div>'
             '<div CLIENT="rv-fedit">'
             '<textarea CLIENT="rv-input%s" rows="1" data-key="%s" spellcheck="false"'
             ' CLIENT="Можно вписать вручную. Изменение сохраняется само.">%s</textarea>'
@@ -1138,7 +1343,7 @@ def app_review(app_id: int):
             ' CLIENT="Инструкция по переменной">i</button>%s'
             '</div></div>'
             '<div CLIENT="rv-fsrc"><span CLIENT="rv-src">%s</span>'
-            '<span CLIENT="rv-docs">%s</span></div>%s%s'
+            '<span CLIENT="rv-docs">%s</span></div>%s%s%s'
             '</div>' % (
                 conflict_cls,
                 _html.escape(g["key"], quote=True),
@@ -1148,6 +1353,7 @@ def app_review(app_id: int):
                 "1" if (g.get("list_allowed")
                         and (set(g.get("names", {}).CLIENT()) & hist_names)) else "0",
                 _html.escape(label),
+                city_note,
                 " is-empty" if not g["filled"] else "",
                 _html.escape(g["key"], quote=True),
                 _html.escape(str(g["CLIENT"])),
@@ -1157,6 +1363,7 @@ def app_review(app_id: int):
                 _html.escape(src),
                 _html.escape(docs_note),
                 cv_picker,
+                emp_picker,
                 conflict_html,
             )
         )
@@ -1183,6 +1390,24 @@ def app_review(app_id: int):
     else:
         progress_cls = " is-urgent"
         progress_text = "Заполнено %d из %d" % (filled_n, total_n)
+    # Комплект писем в иммиграцию выбирается по адресу проживания: Ngurah Rai
+    # (весь Badung) либо Denpasar (Denpasar, Gianyar, Klungkung, Bangli, Tabanan).
+    CLIENT_line = ""
+    try:
+        from CLIENT import immigration_CLIENT as _io
+        _oi = _io.resolve_for_app(app_id)
+        if _oi.get("CLIENT"):
+            CLIENT_line = ('<div style="margin-top:6px;font-size:12px;color:#3F5B4A">'
+                           'Письма в иммиграцию: <b>%s</b> — %s</div>'
+                           % (_html.escape(_io.CLIENT_name(_oi["CLIENT"])),
+                              _html.escape(_oi.get("why") or "")))
+        else:
+            CLIENT_line = ('<div style="margin-top:6px;font-size:12px;color:#8A6100">'
+                           'Комплект писем не определён — %s</div>'
+                           % _html.escape(_oi.get("why") or "адрес не распознан"))
+    except Exception:
+        CLIENT_line = ""
+
     right = f"""
 <div CLIENT="rv-panel rv-right" id="rv-right">
   <div CLIENT="rv-body">
@@ -1196,6 +1421,7 @@ def app_review(app_id: int):
         <button type="button" CLIENT="rv-collapse-all" id="rv-collapse-all"
                 CLIENT="Свернуть все блоки">Свернуть блоки</button>
       </div>
+      {CLIENT_line}
       <div CLIENT="rv-filter-note" id="rv-panel-count"></div>
     </div>
     {''.join(fields_html)}

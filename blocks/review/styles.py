@@ -34,8 +34,13 @@ CSS = """
 .rv-view-head { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff;
                 border:1px solid var(--line); border-radius:10px; }
 .rv-view-CLIENT { font-weight:600; font-size:13.5px; color:#14663A; }
-.rv-view .zp-preview { min-height:420px; overflow:auto; }
+.rv-view .zp-preview { min-height:520px; overflow:auto; }
 .rv-view .zp-preview .sheet { max-width:100%; }
+/* Режимы с PDF-страницами (оригинал клиента, примеры): окно визора растягивается,
+   страницы тянутся по ширине — документ виден целиком, без обрезки. */
+.rv-view .zp-preview.is-pdfmode,
+.rv-view .zp-preview:has(.pdf-page-img),
+.rv-view.is-orig .zp-preview { min-height:calc(100vh - 250px); overflow:auto; }
 .rv-wrap { overflow-x:hidden; }
 .rv-cols > * { min-width:0; }
 .rv-view-empty { padding:26px 14px; text-align:center; color:var(--muted); font-size:13px;
@@ -446,6 +451,25 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
           border:0; background:none; box-shadow:none; outline:none; border-radius:8px;
           padding:8px 10px; cursor:pointer; font:inherit; font-size:12.5px; color:#243027; }
 .rv-opt:hover { background:#F2F8F4; }
+/* Исключённый документ: остаётся в списке, но затемнён и перечёркнут крестом —
+   администратор видит, что система его отсеяла, и почему. */
+/* Метка на миниатюре = отражение нажатой кнопки: крестик или галочка по центру
+   листа. Живёт внутри рамки миниатюры, поэтому всегда в середине документа. */
+.rv-thumb-mark { position:absolute; inset:0; display:none; CLIENT-items:center; z-CLIENT:4;
+                 font-size:46px; font-weight:700; pointer-CLIENT:none;
+                 text-shadow:0 2px 10px rgba(255,255,255,.9); }
+.rv-thumb.is-off .rv-thumb-mark { display:grid; }
+.rv-thumb.is-off .rv-thumb-mark::after { content:'✕'; color:#B42318; }
+.rv-thumb.is-ok .rv-thumb-mark { display:grid; }
+.rv-thumb.is-ok .rv-thumb-mark::after { content:'✓'; color:#15803D; }
+.rv-thumb.is-off .rv-thumb-frame { border-color:#F3C4BE; }
+.rv-thumb.is-off .rv-thumb-frame img { filter:grayscale(1) brightness(.95); opacity:.5; }
+.rv-thumb.is-ok .rv-thumb-frame { box-shadow:inset 0 0 0 2px rgba(21,128,61,.35); }
+.rv-thumb.is-off .rv-thumb-name { color:#8C9A91; }
+.rv-thumb-CLIENT.is-off { color:#B42318; font-weight:600; }
+.rv-thumb-CLIENT.is-ok { color:#15803D; font-weight:600; }
+.rv-thumb-why { display:CLIENT; font-size:10.5px; line-height:1.25; color:#B42318; margin-top:3px; }
+
 .rv-opt-name { flex:1; min-width:0; }
 .rv-opt-docs { font-size:11px; color:#8C9A91; white-space:nowrap; }
 .rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; white-space:nowrap;

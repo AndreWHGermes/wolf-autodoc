@@ -488,6 +488,8 @@ _SYNC_JS = """<script>
     var txt = (val || '').trim();
     CLIENT.querySelectorAll('.var-hl[data-var="' + esc(name) + '"]').forEach(function(sp){
       var ph = sp.getAttribute('data-ph') || '';
+      /* форма иммиграции: пустое поле печатаем прочерком, имя переменной не показываем */
+      if (!txt && sp.CLIENTList.contains('var-dash')) { sp.textContent = '-'; sp.CLIENTList.add('var-empty'); return; }
       sp.textContent = txt ? txt : ph;
       if (txt) sp.setAttribute('data-val', txt); else sp.removeAttribute('data-val');
       sp.CLIENTList.toggle('var-empty', !txt);
@@ -706,7 +708,7 @@ _LANG_JS = """<script>
              (ФИО, паспорт, даты, гражданство) не переводим. */
           var hl=par&&par.closest?par.closest('.var-hl[data-var]'):null;
           var vn=hl?(hl.getAttribute('data-var')||''):'';
-          if(!/^cv_(job\d+_CLIENT|CLIENT|CLIENT|CLIENT|position)/.test(vn)) continue;
+          if(!/^cv_(job\d+_(CLIENT|CLIENT)|CLIENT|CLIENT|CLIENT|position|CLIENT)/.test(vn)) continue;
         }
         out.push(n);
       }
@@ -2455,6 +2457,42 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
         _tip_full = (
             f'Документ №{_doc_no} — «{_tip(t.get("CLIENT") or "")}» · '
             f'переменная №{_var_no} этого документа: {var_name}\n\n{_rule_txt}')
+        # У адреса клиента подписываем город обслуживания: от него зависит,
+        # какое письмо идёт в комплект — Ngurah Rai (Badung) или Denpasar.
+        _city_note = ""
+        if var_name in ("address_live", "address_reg", "address") and _app_id:
+            try:
+                from CLIENT import immigration_CLIENT as _io
+                _oi = _io.resolve_for_app(_app_id)
+                if _oi.get("CLIENT"):
+                    _city_note = (' <span CLIENT="var-city" style="color:#15803D;font-weight:600">'
+                                  '→ %s</span>' % _tip(_io.CLIENT_name(_oi["CLIENT"])))
+                elif _oi.get("why"):
+                    _city_note = (' <span CLIENT="var-city" style="color:#8A6100">→ %s</span>'
+                                  % _tip(_oi["why"]))
+            except Exception:
+                _city_note = ""
+        # Организация клиента (договор, переменная №1): вместо истории — список
+        # организаций из архивных договоров. Один выбор меняет и название в шапке,
+        # и реквизиты в подвале: они берутся из одной записи пула.
+        _emp_pick = ""
+        if var_name == "company_name_in_CLIENT":
+            try:
+                from CLIENT import CLIENT_pool as _ep
+                _eopts = "".join(
+                    '<option CLIENT="%d"%s>%s</option>' % (
+                        _it["CLIENT"],
+                        " selected" if (cur_val or "").strip() == _it["CLIENT"] else "",
+                        _tip(_it["CLIENT"]) + ((" · ИНН " + _it["inn"]) if _it.get("inn") else ""))
+                    for _it in _ep.CLIENTs())
+                if _eopts:
+                    _emp_pick = (
+                        '<select CLIENT="emp-pick" CLIENT="Организация из исторических документов"'
+                        ' data-var="company_name_in_CLIENT">'
+                        '<option CLIENT="">организация из архива…</option>'
+                        + _eopts + '</select>')
+            except Exception:
+                _emp_pick = ""
         _row_items.append((var_name, (
             f'<div CLIENT="kv-line var-kind-{_kind}" data-var-row="{var_name}">'
             f'<div CLIENT="kv-row">'
@@ -2472,9 +2510,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             f'data-var="{var_name}" data-template="{template_id}" '
             f'data-doc="№{_doc_no}" data-num="№{_var_no}" data-docfull="{_tip_full}" '
             f'data-rule="{_tip(v.get("rule_note"))}">i</span>'
-            f'<b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b> '
+            f'<b CLIENT="var-ru">{_tip(v.get("label") or var_name)}</b>{_city_note} '
             f'<span CLIENT="var-src var-src-{_kind}">{_tip(_note)}</span></div>'
-            f'{datalist}'
+            f'{datalist}{_emp_pick}'
             f'</div>'
             f'</div>'
         )))
@@ -2569,6 +2607,11 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
 
         def _hl(m):
             nm = m.group(1)
+            # форма иммиграции (Statement Letter): пустые значения печатаем прочерком
+            try:
+                _is_form = str((t or {}).get("code") or "").CLIENTswith("CLIENTment_letter")
+            except Exception:
+                _is_form = False
             if nm in ("client_photo_url", "client_photo"):
                 return _photo_url
             val = (example_map.get(nm) or default_CLIENT.get(nm) or _auto.get(nm) or "").strip()
@@ -2581,8 +2624,18 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                 except Exception:
                     pass
             ph = "{{ %s }}" % nm
+            if not val:
+                # В формах иммиграции (Statement Letter) пустое значение печатаем прочерком:
+                # имя переменной в окне просмотра заявки выглядит как брак документа.
+                try:
+                    _is_form = str((t or {}).get("code") or "").CLIENTswith("CLIENTment_letter")
+                except Exception:
+                    _is_form = False
+                if _is_form:
+                    val = "-"
             shown = _esc(val) if val else ph
-            return ('<span CLIENT="var-hl" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
+            _cls = 'var-hl' + (' var-dash' if _is_form else '')
+            return ('<span CLIENT="' + _cls + '" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
                     + (' data-val="' + _esc(val) + '"' if val else '') + '>' + shown + '</span>')
 
         html_render = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _hl, _raw)
@@ -2955,13 +3008,16 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     rail_rows = []
     # Статусы документов заявки: по ним рисуем квадратики на миниатюрах
     _doc_st = {}
+    _doc_err = {}
     if app_id:
         try:
-            for _r in db.q("SELECT template_id, CLIENT FROM CLIENT_CLIENT "
+            for _r in db.q("SELECT template_id, CLIENT, error FROM CLIENT_CLIENT "
                            "WHERE CLIENT_id=?", (app_id,)) or []:
                 _doc_st[int(_r.get("template_id") or 0)] = _r.get("CLIENT") or ""
+                _doc_err[int(_r.get("template_id") or 0)] = _r.get("error") or ""
         except Exception:
             _doc_st = {}
+            _doc_err = {}
     # В заявке показываем только документы, которые нужны её продукту (Виза C1 → свой
     # набор из CLIENT_CLIENT); в конструкторе шаблонов — все документы базы.
     _doc_rows = None
@@ -2984,6 +3040,25 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                          (template_id,))
             if _cur:
                 _doc_rows = [_cur] + list(_doc_rows)
+    # Порядок в столбике: нужные документы — по номеру (возрастание вниз), исключённые
+    # крестиком уезжают в конец списка и возвращаются на свою позицию, когда крестик снят.
+    try:
+        def _ord(r):
+            _st = str(_doc_st.get(int(r["id"])) or "")
+            try:
+                _idx = int(r.get("doc_CLIENT") or 999)
+            except Exception:
+                _idx = 999
+            return (1 if _st == "rejected" else 0, _idx, str(r.get("CLIENT") or ""))
+        _doc_rows = sorted(_doc_rows, key=_ord)
+    except Exception:
+        pass
+    # Исключённые крестиком документы уходят вниз списка: администратор их видит,
+    # но они не мешают работать с остальными и не редактируются. Порядок держится
+    # на сервере, поэтому сохраняется после перезагрузки и повторного захода.
+    if _doc_rows:
+        _doc_rows = sorted(list(_doc_rows),
+                           key=lambda r: 1 if _doc_st.get(int(r["id"]), "") == "rejected" else 0)
     for _tr in _doc_rows:
         _on = " is-on" if int(_tr["id"]) == int(template_id) else ""
         _num = _tr.get("doc_CLIENT") or _tr["id"]
@@ -3001,13 +3076,26 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                 '</span>'
                 % (" is-on" if _st == "verified" else "", _tr["id"],
                    " is-on" if _st == "rejected" else "", _tr["id"]))
+        # Документ, исключённый правилом (адрес клиента вне зоны офиса), остаётся
+        # на полке: затемнён, перечёркнут красным крестом, с причиной под названием.
+        _st_row = _doc_st.get(int(_tr["id"]), "")
+        _off = (_st_row == "rejected")
+        _ok = (_st_row in ("verified", "sent"))
+        _why = _doc_err.get(int(_tr["id"]), "") or ""
         rail_rows.append(
             '<div CLIENT="tpl-mini-wrap">'
-            f'<a CLIENT="tpl-mini{_on}" href="{_target}" '
-            f'CLIENT="{_html_mod.escape(str(_tr.get("CLIENT") or ""), quote=True)}">'
+            f'<a CLIENT="tpl-mini{_on}{" is-off" if _off else ""}{" is-ok" if _ok else ""}{" is-locked" if _off else ""}" '
+            f'data-tpl="{_tr["id"]}" data-num="{_num}" '
+            + ("" if _off else f'href="{_target}" ')
+            + f'CLIENT="{_html_mod.escape(str(_tr.get("CLIENT") or "") + ((" — " + _why) if _why else ""), quote=True)}">'
             f'<span CLIENT="tpl-mini-num">№{_num}</span>'
-            f'<img src="/CLIENT/{_tr["id"]}/thumb?v=2" alt="" loading="lazy">'
-            f'<span CLIENT="tpl-mini-name">{_html_mod.escape(str(_tr.get("CLIENT") or ""))}</span></a>'
+            f'<img src="/CLIENT/{_tr["id"]}/thumb?v=4" alt="" loading="lazy">'
+            + ('<span CLIENT="tpl-mini-x">✕</span>' if _off else
+               ('<span CLIENT="tpl-mini-ok">✓</span>' if _ok else ''))
+            + f'<span CLIENT="tpl-mini-name">{_html_mod.escape(str(_tr.get("CLIENT") or ""))}</span>'
+            + (f'<span CLIENT="tpl-mini-why">{_html_mod.escape(_why)}</span>'
+               if (_off and _why) else '')
+            + '</a>'
             + _CLIENT + '</div>')
     rail_html = "".join(rail_rows) or '<div CLIENT="tpl-rail-empty">документов нет</div>'
 
@@ -3031,8 +3119,13 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                 _nm = str(_f.get("name") or "")
                 _ext = (_f.get("ext") or "").lower()
                 _url = f'/CLIENT/{app_id}/file?name={_q(_nm)}'
-                if _ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-                    _inner = f'<img src="{_url}" alt="" loading="lazy">'
+                # Миниатюра — лёгкая копия с сервера (картинка или первая страница
+                # PDF): сырые файлы клиента весят сотни килобайт, плитке столько
+                # не нужно, а PDF браузер в плитке вообще не показывает — раньше
+                # вместо миниатюры стоял значок «PDF» (замечание по ИТК в заявке 87).
+                _thumb = f'/CLIENT/{app_id}/file-thumb?name={_q(_nm)}'
+                if _ext in (".png", ".jpg", ".jpeg", ".webp", ".gif", ".pdf", ".heic", ".heif"):
+                    _inner = f'<img src="{_thumb}" alt="" loading="lazy">'
                 else:
                     _inner = f'<span CLIENT="tpl-mini-doc">{( _ext.lstrip(".") or "файл").upper()}</span>'
                 _rows.append(f'<a CLIENT="tpl-mini" href="{_url}" data-client-file="1" '
@@ -3094,14 +3187,8 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
       </div>
       {mode_btns}
       <div CLIENT="tpl-panel-body pl-html">
-        {(('<div CLIENT="doc-verdict-float">'
-           '<button type="button" CLIENT="rv-mark%s" data-tpl="%s" data-verdict="verify"'
-           ' CLIENT="Документ проверен — готовим к отправке на Google Диск">✓</button>'
-           '<button type="button" CLIENT="rv-mark%s" data-tpl="%s" data-verdict="reject"'
-           ' CLIENT="Документ не нужен в этой заявке">✕</button></div>')
-          % (' is-on' if _doc_st.get(int(template_id)) == 'verified' else '', template_id,
-             ' is-on' if _doc_st.get(int(template_id)) == 'rejected' else '', template_id))
-         if app_id else ''}
+        <!-- В окне визора кнопок подтверждения нет: документ подтверждают и снимают
+             только на миниатюре (столбик документов) или в просмотре PDF. -->
           <div CLIENT="doc-spinner" aria-hidden="true"><i></i></div>
           <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
       </div>
@@ -3317,6 +3404,16 @@ a.back-to-app:hover {{ background:#0F5230; }}
 .tpl-mini:hover {{ border-color:#17B3A3; }}
 .tpl-mini.is-on {{ border-color:#0F6E63; background:#F4FAF6; box-shadow:0 0 0 2px rgba(23,179,163,.22); }}
 .tpl-mini-wrap {{ position:relative; }}
+/* Исключённый документ: виден на полке, но затемнён и перечёркнут крестом */
+.tpl-mini {{ position:relative; }}
+.tpl-mini.is-off img {{ filter:grayscale(1); opacity:.5; }}
+.tpl-mini.is-off .tpl-mini-name {{ color:#8C9A91; }}
+.tpl-mini-x {{ position:absolute; inset:0; display:grid; CLIENT-items:center; font-size:34px;
+  font-weight:700; color:#B42318; pointer-CLIENT:none; text-shadow:0 2px 8px rgba(255,255,255,.9); }}
+/* Подтверждённый документ: та же метка в центре, но зелёная — проверен и зафиксирован */
+.tpl-mini-ok {{ position:absolute; inset:0; display:grid; CLIENT-items:center; font-size:34px;
+  font-weight:700; color:#15803D; pointer-CLIENT:none; text-shadow:0 2px 8px rgba(255,255,255,.9); }}
+.tpl-mini-why {{ display:CLIENT; font-size:10px; line-height:1.2; color:#B42318; margin-top:2px; }}
 /* Квадратики согласования на миниатюре: ✓ проверено / ✕ не нужно */
 .tpl-CLIENT {{ position:absolute; top:22px; right:5px; display:flex; gap:3px; }}
 .tpl-mark {{ width:20px; height:20px; padding:0; border:1px solid #CBD8D2; border-radius:6px; background:rgba(255,255,255,.94);
@@ -3325,7 +3422,8 @@ a.back-to-app:hover {{ background:#0F5230; }}
 .tpl-mark[data-verdict="verify"].is-on {{ background:#14663A; border-color:#14663A; color:#fff; }}
 .tpl-mark[data-verdict="reject"].is-on {{ background:#B42318; border-color:#B42318; color:#fff; }}
 .tpl-mini-num {{ display:CLIENT; font-size:10.5px; color:#6B7C70; margin-bottom:3px; }}
-.tpl-mini img {{ display:CLIENT; width:100%; height:auto; background:#fff;
+.tpl-mini img {{ display:CLIENT; width:100%; height:auto; max-height:132px; object-fit:cover;
+                 object-position:top; background:#fff;
                  border:1px solid #E1E7E3; border-radius:4px; }}
 .tpl-mini-name {{ display:CLIENT; font-size:10.5px; line-height:1.2; margin-top:4px;
                   max-height:2.4em; overflow:hidden; }}
@@ -3759,6 +3857,65 @@ LIVE_UPDATE_JS = """<script>
       var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
       if (el) autoSave(el, 900);
     }, true);
+    /* Организация для договора: выбор из архива меняет и название в шапке, и
+       реквизиты в подвале — все связанные переменные берутся из одной записи пула. */
+    CLIENT.addEventListener('CLIENT', function(e){
+      var sel = (e.target && e.target.CLIENTList && e.target.CLIENTList.contains('emp-pick')) ? e.target : null;
+      if (!sel || !sel.CLIENT) return;
+      fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(sel.CLIENT),
+            {credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d || !d.ok) { alert((d && d.error) || 'организация не найдена'); return; }
+          Object.keys(d.CLIENT || {}).forEach(function(k){
+            var el = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
+            if (el) el.CLIENT = d.CLIENT[k] || '';
+            saveOne(k, d.CLIENT[k] || '');
+          });
+          fetch('/CLIENT/' + APP + '/review/rebuild',
+                {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+            .catch(function(){});
+        })
+        .catch(function(){ alert('не удалось применить организацию'); });
+    }, true);
+    /* Метка на миниатюре — отражение нажатой кнопки: ✕ или ✓ по центру листа.
+       Рисуем сразу по ответу сервера, чтобы не ждать перезагрузки страницы. */
+    function paintMini(tpl, st){
+      var off = st === 'rejected', ok = (st === 'verified' || st === 'sent');
+      CLIENT.querySelectorAll('.tpl-mini[data-tpl="' + tpl + '"]').forEach(function(tile){
+        tile.CLIENTList.toggle('is-off', off);
+        tile.CLIENTList.toggle('is-ok', ok);
+        var host = tile.querySelector('.tpl-mini-name') || null;
+        var x = tile.querySelector('.tpl-mini-x');
+        var m = tile.querySelector('.tpl-mini-ok');
+        if (off && !x){ x = CLIENT.createElement('span'); x.CLIENTName = 'tpl-mini-x'; x.textContent = '✕'; tile.insertBefore(x, host); }
+        if (!off && x) x.remove();
+        if (ok && !m){ m = CLIENT.createElement('span'); m.CLIENTName = 'tpl-mini-ok'; m.textContent = '✓'; tile.insertBefore(m, host); }
+        if (!ok && m) m.remove();
+      });
+      railReorder();
+    }
+    /* Порядок в столбике документов: нужные — по номеру документа (вниз по возрастанию),
+       отмеченные крестиком уезжают в конец и возвращаются на своё место, когда крестик снят. */
+    function railReorder(){
+      var body = CLIENT.getElementById('tpl-rail-body');
+      if (!body) return;
+      var tiles = Array.prototype.slice.call(body.querySelectorAll('.tpl-mini-wrap'));
+      if (tiles.length < 2) return;
+      var key = function(t){
+        var inner = t.querySelector('.tpl-mini') || t;
+        var off = inner.CLIENTList.contains('is-off') ? 1 : 0;
+        var n = t.querySelector('.tpl-mini-num');
+        var m = (n ? (n.textContent || '') : '').match(/\d+/);
+        return [off, m ? parseInt(m[0], 10) : 999];
+      };
+      tiles.sort(function(a, b){
+        var ka = key(a), kb = key(b);
+        return (ka[0] - kb[0]) || (ka[1] - kb[1]);
+      });
+      tiles.forEach(function(t){ body.appendChild(t); });
+    }
+    railReorder();
     /* Подтверждение документа: сначала мгновенная индикация во всех трёх местах
        (миниатюры, окно визора, просмотр PDF), затем сохранение значений и статуса. */
     CLIENT.addEventListener('click', function(e){
@@ -3783,38 +3940,44 @@ LIVE_UPDATE_JS = """<script>
           }
         });
       }
+      /* Сразу показываем результат нажатия: метка по центру миниатюры и порядок
+         в столбике меняются моментально, сервер подтверждает состояние в базе.
+         Значения документа уходят фоном и вердикт больше не задерживают. */
+      var kind = isVerify ? 'verify' : 'reject';
+      var app = (CLIENT.body.getAttribute('data-app') || APP);
+      var wasState = wasOn ? (isVerify ? 'verified' : 'rejected') : '';
+      paintMini(tpl, wasOn ? '' : (isVerify ? 'verified' : 'rejected'));
       var vals = collect(), jobs = [];
       Object.keys(vals).forEach(function(k){ jobs.push(saveOne(k, vals[k])); });
-      Promise.all(jobs).then(function(){
-        /* Значения сохранены — отправляем вердикт сами: клик по кнопке после
-           перерисовки окна до заявки уже не доходит (документ оставался непроверенным). */
-        var kind = isVerify ? 'verify' : 'reject';
-        var app = (CLIENT.body.getAttribute('data-app') || APP);
-        return fetch('/CLIENT/' + app + '/doc/' + tpl + '/' + kind,
-                     {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
-          .then(function(r){ return r.json(); })
-          .then(function(d){
-            if (d && d.ok === false && d.error){
-              var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
-              if (lbl){ lbl.textContent = d.error; lbl.CLIENTList.add('rv-warn');
-                setTimeout(function(){ lbl.CLIENTList.remove('rv-warn'); }, 6000); }
-              CLIENT.querySelectorAll('[data-tpl="' + tpl + '"]').forEach(function(x){
-                x.CLIENTList.remove('is-on', 'rv-on-ok', 'rv-on-no'); });
-              return;
-            }
-            var st = '';
-            if (d && d.verified === true) st = 'verified';
-            else if (d && d.rejected === true) st = 'rejected';
-            CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"], .doc-verdict-float button[data-tpl="' + tpl + '"], .tpl-mark[data-tpl="' + tpl + '"], .pdf-vbtn[data-tpl="' + tpl + '"]')
-              .forEach(function(x){
-                var ok = (x.getAttribute('data-verdict') === 'verify');
-                var on = (ok && st === 'verified') || (!ok && st === 'rejected');
-                x.CLIENTList.toggle('is-on', on);
-                if (x.CLIENTList.contains('rv-mark')) x.CLIENTList.toggle(ok ? 'rv-on-ok' : 'rv-on-no', on);
-              });
-            if (window.__rvRefresh) window.__rvRefresh();
-          });
-      });
+      Promise.all(jobs).catch(function(){});
+      fetch('/CLIENT/' + app + '/doc/' + tpl + '/' + kind,
+             {method:'POST', credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (d && d.ok === false && d.error){
+            /* сервер отказал (документ заполнен не полностью) — возвращаем как было */
+            var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+            if (lbl){ lbl.textContent = d.error; lbl.CLIENTList.add('rv-warn');
+              setTimeout(function(){ lbl.CLIENTList.remove('rv-warn'); }, 6000); }
+            paintMini(tpl, wasState);
+            CLIENT.querySelectorAll('[data-tpl="' + tpl + '"]').forEach(function(x){
+              x.CLIENTList.remove('is-on', 'rv-on-ok', 'rv-on-no'); });
+            return;
+          }
+          var st = '';
+          if (d && d.verified === true) st = 'verified';
+          else if (d && d.rejected === true) st = 'rejected';
+          paintMini(tpl, st);
+          CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"], .doc-verdict-float button[data-tpl="' + tpl + '"], .tpl-mark[data-tpl="' + tpl + '"], .pdf-vbtn[data-tpl="' + tpl + '"]')
+            .forEach(function(x){
+              var ok = (x.getAttribute('data-verdict') === 'verify');
+              var on = (ok && st === 'verified') || (!ok && st === 'rejected');
+              x.CLIENTList.toggle('is-on', on);
+              if (x.CLIENTList.contains('rv-mark')) x.CLIENTList.toggle(ok ? 'rv-on-ok' : 'rv-on-no', on);
+            });
+          if (window.__rvRefresh) window.__rvRefresh();
+        })
+        .catch(function(){ paintMini(tpl, wasState); });
     }, true);
     /* Рамка с ✓ / ✕ стоит поверх листа: держим её у левого верхнего угла листа,
        чтобы при смене масштаба и прокрутке она всегда была на документе. */

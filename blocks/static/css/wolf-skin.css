@@ -86,7 +86,8 @@ a.item:active{background:var(--wf-hover)}
 .badge.violet{background:var(--wf-gold-tint);color:#8A6D1F}
 .badge.fill-ok{background:var(--wf-ok-bg);color:var(--wf-ok)}
 .kind-badge{font-size:10.5px;font-weight:600;padding:1px 7px;letter-spacing:0}
-.kind-test{background:var(--wf-gold-tint);color:#8A6D1F}
+.kind-test{background:#FFF3D6;color:#8A6100}
+.kind-real-test{background:#DCFCE7;color:#15803D;border:1px solid #86EFAC}
 .kind-archive{background:var(--wf-hover);color:var(--wf-mut)}
 .docs-CLIENT{font-weight:600;font-size:12.5px;color:var(--wf-mut)}
 .docs-CLIENT.ok{color:var(--wf-ok)}.docs-CLIENT.warn{color:var(--wf-warn)}.docs-CLIENT.bad{color:var(--wf-err)}

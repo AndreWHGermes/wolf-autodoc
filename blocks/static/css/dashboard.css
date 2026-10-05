@@ -192,6 +192,7 @@
     padding:1px 6px; border-radius:20px; vertical-align:middle; text-transform:lowercase; }
   .kind-archive { background:#EDEFF3; color:#6B7280; }
   .kind-test { background:#FFF3D6; color:#8A6100; }
+  .kind-real-test { background:#DCFCE7; color:#15803D; border:1px solid #86EFAC; }
   .docs-CLIENT, .CLIENT-mark { font-size: 11px; }
   h1 { font-size: 20px; }
   .page-sub { font-size: 12.5px; }
