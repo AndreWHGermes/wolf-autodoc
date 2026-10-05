@@ -1033,6 +1033,7 @@ def app_review(app_id: int):
           <span id="rv-CLIENT-cur">{cur_CLIENT_name}</span>
           <span CLIENT="rv-select-caret" aria-hidden="true">▾</span>
         </button>
+        <script>window.RV_REQ_PID={req_CLIENT or 0};</script>
         <div CLIENT="rv-select-list" id="rv-CLIENT-list" hidden>{CLIENT_options}</div>
       </div>
       {('<span CLIENT="rv-prod-info">' + _prod_info + '</span>') if _prod_info else ''}

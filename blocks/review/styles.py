@@ -476,6 +476,7 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; white-space:nowrap;
               background:none; border:0; }
 /* Продукт, который стоит в заявке, подсвечен внутри списка */
+.rv-opt.is-picked { background:#EEF4FB; }
 .rv-opt.is-current { background:#FFF6D6; }
 .rv-opt.is-current:hover { background:#FFF0BE; }
 .rv-prod-note { font-size:11px; color:#7C8A80; }
@@ -810,3 +811,4 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
   background:#fff; border:1px solid #E2EBE6; border-radius:4px;
   box-shadow:0 2px 8px rgba(18,55,47,.08); }
 """
+

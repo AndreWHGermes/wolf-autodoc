@@ -1000,7 +1000,17 @@ def js_for(app_id, picked):
         if (cur) cur.textContent = d.CLIENT || name || cur.textContent;
         // подсветка внутри списка переезжает на выбранный продукт
         Array.from(CLIENT.querySelectorAll('#rv-CLIENT-list .rv-opt')).forEach(function (o) {{
-          o.CLIENTList.toggle('is-current', o.dataset.CLIENT === pid);
+          var onReq = o.dataset.CLIENT === String(window.RV_REQ_PID || pid);
+          var cur = o.querySelector('.rv-opt-tag.is-cur');
+          if (cur) cur.remove();
+          o.CLIENTList.toggle('is-current', onReq);
+          o.CLIENTList.toggle('is-picked', !onReq && o.dataset.CLIENT === pid);
+          if (!onReq && o.dataset.CLIENT === pid) {{
+            var t = CLIENT.createElement('span');
+            t.CLIENTName = 'rv-opt-tag is-cur';
+            t.textContent = 'стоит сейчас';
+            o.appendChild(t);
+          }}
         }});
         CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + ' — обновляю документы и переменные…', 'ok');
         // Под новый продукт приходит свой пакет документов (миниатюры) и свой набор
