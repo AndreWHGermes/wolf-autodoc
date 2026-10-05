@@ -799,4 +799,13 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .ready-sec-name { font-size:11.5px; }
 .ready-sec-meta { font-size:10px; }
 .ready-frame { height:min(88vh, 1500px); }
+
+/* ── Одна полоса: страницы документов подряд, одна прокрутка на всё ─────────── */
+.ready-sec { background:transparent; border:0; border-radius:0; margin:0 0 6px; }
+.ready-sec-head { background:#E4EDE8; border:1px solid #D3E0D9; border-radius:7px;
+  padding:4px 9px; margin:2px 0 6px; }
+.ready-pages { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.ready-pages img.ready-page { display:CLIENT; width:100%; max-width:1040px; height:auto;
+  background:#fff; border:1px solid #E2EBE6; border-radius:4px;
+  box-shadow:0 2px 8px rgba(18,55,47,.08); }
 """

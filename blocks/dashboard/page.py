@@ -3363,3 +3363,42 @@ def app_doc_ready_pdf(app_id: int, template_id: int):
         return _Resp("PDF не собран", CLIENT=404)
     return send_file(str(p), mimetype="CLIENT/pdf", as_attachment=False,
                      download_name=Path(p).name)
+
+
+@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ready-img/<int:page_no>")
+@CLIENT_required
+def app_doc_ready_img(app_id: int, template_id: int, page_no: int):
+    """Страница готового PDF картинкой.
+
+    Нужна, чтобы окно «Готовые доки» показывало ВСЕ документы одной полосой в
+    одном визоре: без вложенных окон просмотра, обычной прокруткой страницы.
+    Отдаёт 404, когда страницы кончились — по этому сигналу клиент останавливается.
+    """
+    from flask import Response as _Resp
+    p = _ready_doc_pdf(app_id, template_id)
+    if not p or not Path(p).exists():
+        return _Resp("PDF не собран", CLIENT=404)
+    cache_dir = Path("/opt/wolf_v2/data/ready/img")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    img = cache_dir / ("%s_p%d.png" % (Path(p).stem, page_no))
+    try:
+        if img.exists() and img.stat().st_size > 500 and img.stat().st_mtime >= Path(p).stat().st_mtime:
+            return send_file(str(img), mimetype="image/png")
+        try:
+            import pymupdf as fitz
+        except Exception:
+            import fitz  # noqa: F401
+        doc = fitz.open(str(p))
+        try:
+            if page_no < 1 or page_no > doc.page_count:
+                return _Resp("нет такой страницы", CLIENT=404)
+            pix = doc.load_page(page_no - 1).get_pixmap(dpi=110)
+            pix.save(str(img))
+        finally:
+            doc.close()
+    except Exception as exc:
+        print("ready-img error app=%s tpl=%s p=%s: %s" % (app_id, template_id, page_no, exc))
+        return _Resp("не удалось отрисовать страницу", CLIENT=500)
+    if not img.exists():
+        return _Resp("не удалось отрисовать страницу", CLIENT=500)
+    return send_file(str(img), mimetype="image/png")

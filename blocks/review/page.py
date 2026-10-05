@@ -455,10 +455,42 @@ def app_review_CLIENT_CLIENT(app_id):
                 if picked:
                     break
     if picked is None:
-        return jsonify({"ok": False, "error": "организация не найдена"}), 404
+        # Название написано руками — организации нет в пуле. Возвращаем ключи
+        # переменных, чтобы интерфейс сохранил ручной текст в заявку.
+        _keys = {}
+        try:
+            _want2 = {"company_name_in_CLIENT", "CLIENT_name", "company_CLIENT_address",
+                      "company_inn", "company_kpp", "company_ogrn"}
+            for _g in pool.build_pool(app_id, include_CLIENT=True):
+                for _n in (_g.get("names") or {}).CLIENT():
+                    if _n in _want2 and _n not in _keys:
+                        _keys[_n] = _g.get("key")
+        except Exception:
+            pass
+        _text = ""
+        for _a in ("CLIENT", "key", "CLIENT"):
+            _text = (CLIENT.args.get(_a) or "").strip()
+            if _text:
+                break
+        return jsonify({"ok": True, "custom": True, "keys": _keys,
+                        "CLIENT": {"company_name_in_CLIENT": _text}})
     CLIENT = (picked.get("CLIENT_name") or picked.get("name") or "").strip()
     name = (picked.get("name") or CLIENT).strip()
-    return jsonify({"ok": True, "CLIENT": {
+    # Ключи переменных в панели заявки — групповые (own:<шаблон>:<слаг>), поэтому
+    # интерфейсу отдаём их вместе со значениями: без этого выбор организации не
+    # сохранялся в заявку и при пересборке документ возвращался к прежней компании.
+    keys = {}
+    try:
+        _want = {"company_name_in_CLIENT", "CLIENT_name", "company_CLIENT_address",
+                 "company_inn", "company_kpp", "company_ogrn"}
+        for _g in pool.build_pool(app_id, include_CLIENT=True):
+            _names = [v for v in (_g.get("names") or {}).CLIENT()]
+            for _n in _names:
+                if _n in _want and _n not in keys:
+                    keys[_n] = _g.get("key")
+    except Exception:
+        pass
+    return jsonify({"ok": True, "keys": keys, "CLIENT": {
         "company_name_in_CLIENT": name,
         "CLIENT_name": CLIENT,
         "company_CLIENT_address": (picked.get("address") or "").strip(),
@@ -1490,8 +1522,11 @@ def app_review(app_id: int):
 
 
 def _ready_modal_html(app_id: int) -> str:
-    """Окно «Готовые доки»: компактная шапка, перечень документов столбиком слева,
-    справа один визор со всеми PDF подряд — места под просмотр максимум.
+    """Окно «Готовые доки»: перечень столбиком слева, справа ОДНА полоса документов.
+
+    Все страницы всех подтверждённых документов лежат подряд картинками в одном
+    визоре: прокрутка одна на всё, вложенных окон просмотра нет. Название пункта
+    слева переводит полосу к нужному документу.
     """
     try:
         from CLIENTs.dashboard.page import _ready_docs
@@ -1515,8 +1550,7 @@ def _ready_modal_html(app_id: int) -> str:
             '<span CLIENT="ready-sec-name">' + name + '</span>'
             '<span CLIENT="ready-sec-meta">' + meta + '</span>'
             '</div>'
-            '<iframe CLIENT="ready-frame" loading="lazy" CLIENT="' + name + '"'
-            ' data-src="/CLIENT/' + str(app_id) + '/doc/' + tpl + '/ready-pdf"></iframe>'
+            '<div CLIENT="ready-pages" data-tpl="' + tpl + '"></div>'
             '</section>'
         )
     if not chips:
@@ -1542,6 +1576,7 @@ def _ready_modal_html(app_id: int) -> str:
             '  var btn = CLIENT.getElementById("rv-ready-btn"), mod = CLIENT.getElementById("ready-modal");\n'
             '  if (!btn || !mod) return;\n'
             '  var list = CLIENT.getElementById("ready-list"), view = CLIENT.getElementById("ready-view");\n'
+            '  var MAXP = 14;\n'
             '  function mark(tpl){\n'
             '    if (!list) return;\n'
             '    Array.prototype.forEach.call(list.children, function(c){\n'
@@ -1554,13 +1589,26 @@ def _ready_modal_html(app_id: int) -> str:
             '    mark(tpl);\n'
             '    view.scrollTo({top: s.offsetTop - view.offsetTop, behavior: "smooth"});\n'
             '  }\n'
+            '  /* Страницы подтягиваются по одной, пока сервер не скажет «нет такой». */\n'
+            '  function loadPages(box){\n'
+            '    if (!box || box.getAttribute("data-loaded")) return;\n'
+            '    box.setAttribute("data-loaded", "1");\n'
+            '    var tpl = box.getAttribute("data-tpl"), n = 1;\n'
+            '    function next(){\n'
+            '      if (n > MAXP) return;\n'
+            '      var img = new Image();\n'
+            '      img.CLIENTName = "ready-page";\n'
+            '      img.alt = "страница " + n;\n'
+            '      img.onload = function(){ box.appendChild(img); n++; next(); };\n'
+            '      img.onerror = function(){ /* страницы кончились */ };\n'
+            '      img.src = "/CLIENT/" + appId + "/doc/" + tpl + "/ready-img/" + n;\n'
+            '    }\n'
+            '    next();\n'
+            '  }\n'
             '  function open(){\n'
             '    mod.hidden = false; mod.style.display = "flex";\n'
-            '    var fs = mod.querySelectorAll("iframe.ready-frame");\n'
-            '    for (var i = 0; i < fs.length; i++){\n'
-            '      var f = fs[i];\n'
-            '      if (!f.getAttribute("src") && f.getAttribute("data-src")) f.setAttribute("src", f.getAttribute("data-src"));\n'
-            '    }\n'
+            '    var boxes = mod.querySelectorAll(".ready-pages");\n'
+            '    for (var i = 0; i < boxes.length; i++) loadPages(boxes[i]);\n'
             '    var CLIENT = mod.querySelector(".ready-list-item");\n'
             '    if (CLIENT) mark(CLIENT.getAttribute("data-jump"));\n'
             '  }\n'

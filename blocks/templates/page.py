@@ -3873,8 +3873,7 @@ LIVE_UPDATE_JS = """<script>
       if (!fld) return;
       if (sel.CLIENT === '__own__') {
         fld.CLIENT = '';
-        saveOne('company_name_in_CLIENT', '');
-        fld.focus();
+        fld.focus();          // дальше администратор пишет название сам
         return;
       }
       if (!sel.CLIENT) return;
@@ -3894,11 +3893,13 @@ LIVE_UPDATE_JS = """<script>
             {credentials:'same-origin', CLIENTs:{'X-Requested-With':'fetch'}})
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
-          if (!d || !d.ok) return;                    // ручной ввод — не трогаем
+          if (!d) return;
+          // ключи переменных в заявке групповые (own:<шаблон>:<слаг>) — сохраняем ими,
+          // иначе выбор организации не долетал до заявки и пересборка откатывала его
           Object.keys(d.CLIENT || {}).forEach(function(k){
             var f = CLIENT.querySelector('.pl-vars input[name="' + k + '"], .pl-vars textarea[name="' + k + '"]');
-            if (f) f.CLIENT = d.CLIENT[k] || '';
-            saveOne(k, d.CLIENT[k] || '');
+            if (f && !d.custom) f.CLIENT = d.CLIENT[k] || '';
+            saveOne((d.keys && d.keys[k]) || k, d.CLIENT[k] || '');
           });
         })
         .catch(function(){});
