@@ -670,4 +670,4 @@ docs/**/*.png
 /scripts/mark_cv_examples.py
 /scripts/one_cv.py
 /scripts/pick_examples.py
-/docs/reference/client_kit/
+/docs/reference/*kit*/
