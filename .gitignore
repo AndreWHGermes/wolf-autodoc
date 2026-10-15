@@ -24,9 +24,5 @@ docs/**/*.jpg
 docs/**/*.png
 
 # восстановленные рабочие заметки (содержат данные клиентов) — вне git
-blocks/static/
-blocks/static/proto/
-docs/
-docs/reference/
-docs/training/
-scripts/
+
+# рабочие заметки, содержащие данные клиентов (в git не хранятся)
