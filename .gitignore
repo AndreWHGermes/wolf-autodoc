@@ -11,3 +11,14 @@ data/uploads/
 backups/
 data/prep/
 data/CLIENT_cache.json
+
+# персональные данные клиентов, рабочие данные и выгрузки — не в git
+data/
+reports/
+docs/CLIENT/*kit*
+docs/passport_backup_*
+docs/cv5_*backup_*
+docs/*.pdf
+docs/*.docx
+docs/**/*.jpg
+docs/**/*.png
