@@ -1,0 +1,689 @@
+/* ============================================================================
+   Wolf AutoDoc — дизайн-система (прототип).
+   Единый источник стиля: палитра, типографика, тени, движение, компоненты.
+   Переносится на реальный сайт как base.css.
+   Правило: ни один экран не задаёт цвет/тень/скругление «своими» значениями —
+   только токенами отсюда. Иначе стиль расползётся.
+   ========================================================================== */
+
+:root{
+  /* --- палитра: один акцент (бирюза) + нейтраль + тёмная оболочка + золото как маркер */
+  --brand:#0F6E63; --brand-b:#17B3A3; --brand-700:#0B554C; --brand-900:#04201E;
+  --brand-tint:rgba(23,179,163,.10); --brand-tint-2:rgba(15,110,99,.06);
+  --gold:#D4AF37; --gold-tint:rgba(212,175,55,.14);
+
+  --ink:#0F1D1B; --ink2:#3A4B48; --mut:#6E807C; --mut2:#96A7A3;
+  --line:rgba(15,29,27,.09); --line2:rgba(15,29,27,.15); --line3:rgba(15,29,27,.24);
+  --bg:#F5F8F7; --card:#FFFFFF; --work:#EEF3F2; --hover:rgba(15,110,99,.055);
+
+  /* --- статусы: цвет текста + мягкая подложка (никогда не «чистый» красный/зелёный) */
+  --ok:#177245;   --ok-bg:rgba(23,114,69,.10);
+  --warn:#A9630A; --warn-bg:rgba(169,99,10,.11);
+  --err:#B5322A;  --err-bg:rgba(181,50,42,.10);
+  --info:#1D6FA5; --info-bg:rgba(29,111,165,.10);
+
+  /* --- типографика */
+  --f:"Inter","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --fmono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+
+  /* --- шкала 4 px */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px;
+
+  /* --- скругления: мягкие, крупнее на крупных блоках --- */
+  --r1:5px; --r2:8px; --r3:11px; --r4:14px; --r5:18px; --r6:24px; --rf:999px;
+
+  /* --- тени: три уровня, двухслойные, мягкие (глубина без «грязи») */
+  --sh0:0 1px 1px rgba(15,29,27,.04);
+  --sh1:0 1px 2px rgba(15,29,27,.06),0 1px 1px rgba(15,29,27,.03);
+  --sh2:0 4px 12px rgba(15,29,27,.08),0 1px 3px rgba(15,29,27,.05);
+  --sh3:0 16px 40px rgba(15,29,27,.16),0 4px 10px rgba(15,29,27,.06);
+  --sh-in:inset 0 1px 2px rgba(15,29,27,.05);
+
+  /* --- движение: единые кривые и длительности, ничего «на глаз» */
+  --e:cubic-bezier(.2,.7,.3,1);
+  --e-out:cubic-bezier(.16,1,.3,1);
+  --d1:120ms; --d2:200ms; --d3:320ms; --d4:520ms;
+
+  --ring:0 0 0 3px rgba(23,179,163,.30);
+  --ring-err:0 0 0 3px rgba(181,50,42,.22);
+}
+
+/* ---------------------------------------------------------------- база */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:400 15px/1.55 var(--f);color:var(--ink);background:var(--bg);
+     -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* сброс оформления кнопок и полей: браузер не должен рисовать свои рамки */
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
+input,textarea,select{font:inherit;color:inherit}
+h1,h2,h3{line-height:1.25;letter-spacing:-.01em;font-weight:600}
+h1{font-size:22px} h2{font-size:18px} h3{font-size:16px}
+small,.sm{font-size:13px}
+.mono{font-family:var(--fmono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+
+/* единое кольцо фокуса для клавиатуры — обязательное условие доступности */
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--r2)}
+.hidden{display:none!important}
+
+/* ------------------------------------------------------- поверхности */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r4);box-shadow:var(--sh1)}
+.card.flat{box-shadow:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r5);box-shadow:var(--sh2);overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line)}
+.panel-body{padding:var(--s4)}
+.sect{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut2);
+      padding:var(--s3) var(--s3) var(--s2)}
+.h{display:flex;align-items:center;gap:var(--s2);font-size:12px;font-weight:600;letter-spacing:.04em;
+   text-transform:uppercase;color:var(--mut);padding:var(--s3)}
+.h .cnt{margin-left:auto;font-size:12px;letter-spacing:0;text-transform:none;font-weight:500;color:var(--mut2)}
+
+/* --------------------------------------------------------------- кнопки */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+     height:36px;padding:0 var(--s4);border-radius:var(--r3);border:1px solid transparent;
+     font-size:14px;font-weight:500;white-space:nowrap;cursor:pointer;
+     background:var(--card);color:var(--ink2);border-color:var(--line2);
+     transition:background var(--d1) var(--e),border-color var(--d1) var(--e),
+                color var(--d1) var(--e),box-shadow var(--d2) var(--e),transform var(--d1) var(--e)}
+.btn:hover{background:#FBFDFC;border-color:var(--line3);color:var(--ink);box-shadow:var(--sh1)}
+.btn:active{transform:translateY(1px) scale(.995);box-shadow:none}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
+
+.btn.p{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:var(--sh1)}
+.btn.p:hover{background:var(--brand-700);border-color:var(--brand-700);box-shadow:var(--sh2)}
+.btn.s{background:var(--brand-tint);border-color:transparent;color:var(--brand-700);font-weight:600}
+.btn.s:hover{background:rgba(23,179,163,.17);border-color:transparent;color:var(--brand-700)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--mut)}
+.btn.ghost:hover{background:var(--hover);color:var(--ink);box-shadow:none}
+.btn.danger{background:var(--card);border-color:rgba(181,50,42,.32);color:var(--err)}
+.btn.danger:hover{background:var(--err-bg);border-color:var(--err);color:var(--err)}
+.btn.gold{background:var(--gold-tint);border-color:transparent;color:#7A5E0E;font-weight:600}
+
+.btn.sm{height:30px;padding:0 var(--s3);font-size:13px;border-radius:var(--r2)}
+.btn.lg{height:44px;padding:0 var(--s5);font-size:15px;border-radius:var(--r4)}
+.btn.ic{width:36px;padding:0} .btn.ic.sm{width:30px} .btn.ic.lg{width:44px}
+.btn .k{font-size:11px;opacity:.55;border:1px solid currentColor;border-radius:var(--r1);padding:0 4px}
+
+/* ------------------------------------------------------ статусы и чипы */
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:var(--rf);
+      font-size:12px;font-weight:600;letter-spacing:.01em;background:var(--work);color:var(--ink2)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.err{background:var(--err-bg);color:var(--err)}
+.chip.info{background:var(--info-bg);color:var(--info)}
+.chip.brand{background:var(--brand-tint);color:var(--brand-700)}
+.chip.no::before{display:none}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:var(--rf);
+    background:var(--work);color:var(--mut)}
+.st.done{background:var(--ok-bg);color:var(--ok)} .st.work{background:var(--warn-bg);color:var(--warn)}
+.st.err{background:var(--err-bg);color:var(--err)}  .st.gen{background:var(--brand-tint);color:var(--brand-700)}
+.st.wait{background:rgba(15,29,27,.06);color:var(--ink2)}
+
+/* ----------------------------------------------------------------- поля */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label{font-size:12px;font-weight:600;color:var(--mut);letter-spacing:.01em}
+.input,.sel,textarea.input{height:36px;padding:0 var(--s3);border:1px solid var(--line2);border-radius:var(--r3);
+  background:var(--card);color:var(--ink);font:400 14px var(--f);width:100%;
+  transition:border-color var(--d1) var(--e),box-shadow var(--d1) var(--e),background var(--d1) var(--e)}
+textarea.input{height:auto;padding:10px var(--s3);resize:vertical;line-height:1.5}
+.input::placeholder{color:var(--mut2)}
+.input:hover{border-color:var(--line3)}
+.input:focus{border-color:var(--brand-b);box-shadow:var(--ring);outline:none}
+.input.miss{border-color:rgba(169,99,10,.45);background:var(--warn-bg)}
+.input.miss:focus{box-shadow:0 0 0 3px rgba(169,99,10,.20)}
+.hint{font-size:11px;color:var(--mut2)}
+.hint.miss{color:var(--warn);font-weight:600}
+
+/* ---------------------------------------------------- строки и списки */
+.row{display:flex;align-items:center;gap:var(--s3);padding:10px var(--s3);border-radius:var(--r3);
+     border:1px solid transparent;width:100%;text-align:left;cursor:pointer;position:relative;
+     transition:background var(--d1) var(--e),border-color var(--d1) var(--e)}
+.row:hover{background:var(--hover)}
+.row.on{background:var(--brand-tint-2);border-color:rgba(23,179,163,.24)}
+.row.on::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand-b)}
+.row .l1{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px}
+.row .l2{font-size:12px;color:var(--mut);margin-top:1px}
+.row .grow{margin-left:auto}
+
+/* миниатюра листа — одна и та же на всех экранах */
+.thumb{width:30px;height:38px;border-radius:var(--r1);border:1px solid var(--line2);background:#fff;
+       flex:0 0 auto;overflow:hidden;position:relative;box-shadow:var(--sh0)}
+.thumb::before{content:"";position:absolute;left:5px;right:5px;top:8px;height:2px;border-radius:2px;
+  background:rgba(15,29,27,.16);
+  box-shadow:0 5px 0 rgba(15,29,27,.12),0 10px 0 rgba(15,29,27,.12),0 15px 0 rgba(15,29,27,.09)}
+.thumb .pgn{position:absolute;bottom:1px;right:3px;font-size:8px;color:var(--mut2)}
+.thumb.big{width:44px;height:56px} .thumb.big::before{top:12px;left:7px;right:7px}
+
+/* ----------------------------------------------------------------- вкладки */
+.vtabs{display:flex;align-items:center;gap:2px;padding:0 var(--s3);background:var(--card);
+       border-bottom:1px solid var(--line);position:relative}
+.vtab{position:relative;height:37px;padding:0 var(--s2);font-size:13.5px;font-weight:500;color:var(--mut);
+      display:inline-flex;align-items:center;gap:var(--s2);cursor:pointer;transition:color var(--d1) var(--e)}
+.vtab::after{content:"";position:absolute;left:var(--s3);right:var(--s3);bottom:-1px;height:2px;border-radius:2px 2px 0 0;
+  background:var(--brand);transform:scaleX(0);transform-origin:center;transition:transform var(--d3) var(--e-out)}
+.vtab:hover{color:var(--ink)}
+.vtab.on{color:var(--brand-700);font-weight:600}
+.vtab.on::after{transform:scaleX(1)}
+
+/* -------------------------------------------------------------- прогресс */
+.bar{height:4px;border-radius:var(--rf);background:rgba(15,29,27,.09);overflow:hidden}
+.bar>i{display:block;height:100%;border-radius:var(--rf);background:var(--brand-b);
+       transform-origin:left;animation:barIn var(--d4) var(--e-out) both}
+.bar.done>i{background:var(--ok)} .bar.err>i{background:var(--err)}
+
+/* ---------------------------------------------------------------- тосты */
+.toast{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r4);
+       background:var(--brand-900);color:#EAF3F1;box-shadow:var(--sh3);font-size:14px;animation:toastIn var(--d3) var(--e-out) both}
+.toast .ok{color:#7FE0C6}
+
+/* ============================================================== анимации
+   Правило: анимация объясняет изменение (что-то появилось, уехало,
+   переключилось). Никаких «украшений» — только смысл.                 */
+
+/* появление блока/строки со сдвигом; задержку задаёт --i для «лесенки» */
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.anim{animation:fadeSlideIn var(--d3) var(--e-out) both;animation-delay:calc(var(--i,0)*40ms)}
+
+/* смена содержимого зоны при переключении вкладки: лёгкий сдвиг + проявление */
+@keyframes paneIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+@keyframes paneInR{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
+.pane-in{animation:paneIn var(--d3) var(--e-out) both}
+.pane-in-r{animation:paneInR var(--d3) var(--e-out) both}
+.pane-out{opacity:0;transform:translateX(-6px);transition:opacity var(--d1) var(--e),transform var(--d1) var(--e)}
+
+/* зона сворачивается/разворачивается: список миниатюр уезжает, заголовок меняется */
+.aux-pane{transition:opacity var(--d2) var(--e),transform var(--d2) var(--e),max-height var(--d3) var(--e-out)}
+.aux-pane.collapsed{opacity:0;transform:translateX(-10px);pointer-events:none}
+
+/* подсветка поля в документе: короткий импульс, потом мягкое угасание */
+@keyframes fieldPulse{0%{background:var(--gold-tint);box-shadow:0 0 0 2px rgba(212,175,55,.55)}
+                      60%{background:var(--gold-tint);box-shadow:0 0 0 6px rgba(212,175,55,.14)}
+                      100%{background:transparent;box-shadow:0 0 0 0 rgba(212,175,55,0)}}
+.pulse{animation:fieldPulse 1.1s var(--e) both;border-radius:var(--r1)}
+
+/* пульс ожидания (идёт сборка / загрузка) */
+@keyframes softPulse{0%,100%{opacity:1}50%{opacity:.55}}
+.pulsing{animation:softPulse 1.6s var(--e) infinite}
+
+@keyframes barIn{from{transform:scaleX(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px) scale(.98)}}
+@keyframes checkPop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.pop{animation:checkPop var(--d3) var(--e-out) both}
+
+/* меню и затемнение */
+.overlay{transition:opacity var(--d2) var(--e)}
+.menu{transition:transform var(--d3) var(--e-out)}
+
+/* уважение к системной настройке «меньше движения» */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
+}
+
+/* ============================================================================
+   КОМПОНЕНТЫ КАРКАСА — перенос со согласованного референса.
+   Меню постоянное (не выезжающее), топбар с поиском, шапка страницы с действиями,
+   две рабочие колонки + правая панель состояния.
+   ========================================================================== */
+
+/* --- левое меню: тёмное, постоянное, подпись и счётчик в каждой строке --- */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh;background:#F1F4F2}
+.side{background:linear-gradient(178deg,#0E3E36 0%,#0A2F29 52%,#072420 100%);color:#B9D2CC;
+      display:flex;flex-direction:column;padding:var(--s4) var(--s3) var(--s2);position:sticky;top:0;height:100vh}
+.side-brand{display:flex;align-items:center;gap:10px;padding:var(--s1) var(--s2) var(--s6);color:#EAF3F1}
+.side-brand .mark{width:34px;height:34px;border-radius:var(--r3);background:var(--brand-b);color:#062A26;
+      display:grid;place-items:center;font-weight:700;font-size:15px}
+.side-brand .nm{font-weight:600;font-size:15px;line-height:1.1}
+.side-brand .sb{font-size:11px;color:#8FB0A9;letter-spacing:.02em;margin-top:1px}
+.snav{display:flex;flex-direction:column;gap:2px}
+.snav a{display:flex;align-items:center;gap:12px;height:42px;padding:0 var(--s3);border-radius:var(--r3);
+        color:#BBD3CD;font-size:14px;text-decoration:none;
+        transition:background var(--d1) var(--e),color var(--d1) var(--e)}
+.snav a .i{flex:0 0 auto;opacity:.8}
+.snav a:hover{background:rgba(255,255,255,.07);color:#EAF3F1}
+.snav a:hover .i{opacity:1}
+.snav a.on{background:rgba(23,179,163,.20);color:#fff;font-weight:600}
+.snav a.on .i{opacity:1}
+.snav a .cnt{margin-left:auto;font-size:12px;background:rgba(255,255,255,.12);border-radius:var(--rf);padding:1px 7px}
+.snav a.on .cnt{background:rgba(255,255,255,.24);color:#fff}
+.side-foot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:var(--s3) var(--s2);
+       border-top:1px solid rgba(255,255,255,.10);color:#CFE2DD;cursor:pointer;border-radius:var(--r3);
+       transition:background var(--d1) var(--e)}
+.side-foot:hover{background:rgba(255,255,255,.06)}
+.side-foot .av{width:34px;height:34px;border-radius:50%;background:#D9E6E1;color:#0A2F29;
+       display:grid;place-items:center;font-weight:600;font-size:13px}
+.side-foot .nm{font-size:13px;font-weight:600;line-height:1.2}
+.side-foot .rl{font-size:11px;color:#8FB0A9}
+.side-foot .chev{margin-left:auto}
+
+/* --- топбар: поиск слева-центр, уведомления, время, тема справа --- */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{height:60px;display:flex;align-items:center;gap:var(--s4);padding:0 var(--s5);background:var(--card);
+     border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.search{display:flex;align-items:center;gap:10px;height:40px;padding:0 var(--s4);border-radius:var(--r3);
+        background:#F4F6F5;border:1px solid transparent;color:var(--mut);font-size:14px;flex:0 1 460px;
+        transition:border-color var(--d2) var(--e),background var(--d2) var(--e),box-shadow var(--d2) var(--e)}
+.search:hover{border-color:var(--line2)}
+.search:focus-within{background:#fff;border-color:var(--brand-b);box-shadow:var(--ring)}
+.search input{border:0;background:none;outline:none;font:inherit;color:var(--ink);flex:1;min-width:0}
+.search .kbd{font-size:11px;color:var(--mut2);border:1px solid var(--line2);border-radius:var(--r1);padding:1px 6px}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:var(--s3);color:var(--ink2)}
+.iconbtn{width:38px;height:38px;border-radius:var(--r3);display:grid;place-items:center;color:var(--ink2);
+         transition:background var(--d1) var(--e),color var(--d1) var(--e),transform var(--d1) var(--e)}
+.iconbtn:hover{background:var(--hover);color:var(--ink)}
+.iconbtn:active{transform:scale(.94)}
+.iconbtn.bell{position:relative}
+.iconbtn.bell::after{content:"";position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;
+         background:#D6453B;border:2px solid #fff;animation:softPulse 2.4s var(--e) infinite}
+.clock{text-align:right;font-size:11px;color:var(--mut);line-height:1.3;padding-left:var(--s3);border-left:1px solid var(--line)}
+.clock b{display:block;font-size:14px;color:var(--ink2);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* --- шапка страницы: назад, заголовок, статус, мета, действия --- */
+.head{padding:13px var(--s5) 0;background:var(--card);display:flex;flex-direction:column;gap:var(--s3)}
+.head-top{display:flex;align-items:flex-start;gap:var(--s2)}
+.back{width:32px;height:32px;border-radius:var(--r2);display:grid;place-items:center;color:var(--ink2);margin-top:1px;
+      transition:background var(--d1) var(--e),transform var(--d1) var(--e)}
+.back:hover{background:var(--hover);transform:translateX(-2px)}
+.head h1{font-size:20px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:var(--s2);flex-wrap:wrap}
+.meta{display:flex;flex-wrap:wrap;gap:3px var(--s4);margin:5px 0 0 34px;color:var(--ink2);font-size:12px}
+.meta span{display:inline-flex;align-items:center;gap:7px}
+.meta .i{opacity:.5}
+.head-actions{margin-left:auto;display:flex;align-items:center;gap:var(--s2);padding-bottom:4px}
+.head-tabs{display:flex;gap:var(--s3);margin:0 calc(-1 * var(--s5));padding:0 var(--s5);border-top:1px solid transparent}
+
+/* --- рабочая область: две колонки + правая панель --- */
+.wrap{padding:var(--s5);display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr) 336px;
+      gap:var(--s4);align-items:start;background:#F1F4F2}
+@media (max-width:1500px){.wrap{grid-template-columns:minmax(0,1fr) 336px}}
+.card2{background:var(--card);border:1px solid var(--line);border-radius:var(--r5);box-shadow:var(--sh1);
+       transition:box-shadow var(--d2) var(--e),border-color var(--d2) var(--e)}
+.card2:hover{box-shadow:var(--sh2)}
+.card2-head{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s4) var(--s3);
+       flex-wrap:wrap;row-gap:8px}
+@media (max-width:1420px){.card2-head .src{display:none}}   /* узкий центр: подпись источника уступает место */
+.card2-head .pg{margin-left:auto}
+.card2-head .t{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.card2-head .src{font-size:12px;color:var(--mut);display:inline-flex;align-items:center;gap:6px;
+       border-left:1px solid var(--line);padding-left:var(--s3)}
+.card2-head .pg{margin-left:auto;display:flex;align-items:center;gap:2px;color:var(--mut);font-size:13px}
+.card2-body{padding:0 var(--s4) var(--s4)}
+.stack{display:flex;flex-direction:column;gap:var(--s4)}
+
+/* --- окно документа: вертикальные страницы + лист + тулбар --- */
+.docstage{display:grid;grid-template-columns:62px minmax(0,1fr);gap:var(--s3);background:#F7F9F8;
+          border:1px solid var(--line);border-radius:var(--r4);padding:var(--s3)}
+.pages{display:flex;flex-direction:column;gap:var(--s2);max-height:520px;overflow:auto;padding-right:2px}
+.pgbtn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 4px;border-radius:var(--r3);
+       border:1px solid transparent;cursor:pointer;background:none;
+       transition:background var(--d1) var(--e),border-color var(--d1) var(--e),transform var(--d2) var(--e-out)}
+.pgbtn .sheet{width:38px;height:50px;border-radius:var(--r1);background:#fff;border:1px solid var(--line2);
+       position:relative;box-shadow:var(--sh0)}
+.pgbtn .sheet::before{content:"";position:absolute;left:6px;right:6px;top:9px;height:2px;border-radius:2px;
+       background:rgba(15,29,27,.14);box-shadow:0 5px 0 rgba(15,29,27,.10),0 10px 0 rgba(15,29,27,.10)}
+.pgbtn .n{font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
+.pgbtn:hover{background:#fff;border-color:var(--line2)}
+.pgbtn.on{background:#fff;border-color:var(--brand-b);transform:translateX(2px)}
+.pgbtn.on .n{color:var(--brand-700);font-weight:600}
+.stage-tools{display:flex;align-items:center;gap:2px;margin-left:auto;background:#fff;border:1px solid var(--line);
+       border-radius:var(--r3);padding:2px;box-shadow:var(--sh0)}
+.stage-tools .iconbtn{width:32px;height:32px;border-radius:var(--r2)}
+.sheetview{margin:var(--s3) 0 var(--s4);background:#fff;border-radius:var(--r2);box-shadow:var(--sh2);
+       min-height:430px;padding:var(--s5);position:relative;overflow:hidden}
+.mk{display:inline-block;padding:1px 5px;border-radius:var(--r1);background:rgba(212,175,55,.16);
+    box-shadow:inset 0 -1px 0 rgba(212,175,55,.5);cursor:pointer;
+    transition:background var(--d2) var(--e),box-shadow var(--d2) var(--e)}
+.mk:hover{background:rgba(212,175,55,.28)}
+
+/* --- карточки переменных --- */
+.varlist{display:flex;flex-direction:column;gap:var(--s2)}
+.varcard{display:flex;align-items:flex-start;gap:var(--s3);padding:var(--s3);border:1px solid var(--line);
+         border-radius:var(--r3);background:var(--card);cursor:pointer;
+         transition:border-color var(--d1) var(--e),box-shadow var(--d2) var(--e),transform var(--d2) var(--e-out)}
+.varcard:hover{border-color:var(--line3);box-shadow:var(--sh1);transform:translateY(-1px)}
+.varcard .ic{width:30px;height:30px;border-radius:var(--r2);background:var(--work);display:grid;place-items:center;
+         color:var(--ink2);flex:0 0 auto}
+.varcard .nm{font-size:12px;color:var(--mut)}
+.varcard .vl{font-size:14px;font-weight:500;margin-top:2px;word-break:break-word}
+.varcard .right{margin-left:auto;display:flex;align-items:center;gap:var(--s2);flex:0 0 auto}
+.varcard.miss{border-color:rgba(169,99,10,.35);background:#FFFCF6}
+/* подпись и значение — всегда в две строки (иначе слипаются «НазваниеЗначение») */
+.varcard .nm,.varcard .vl,.kv .k,.kv .v{display:block}
+.tick{width:26px;height:26px;border-radius:50%;border:1px solid rgba(23,114,69,.35);color:var(--ok);
+      display:grid;place-items:center;background:#fff;
+      transition:background var(--d2) var(--e),border-color var(--d2) var(--e),transform var(--d2) var(--e-out)}
+.tick:hover{background:var(--ok-bg);transform:scale(1.06)}
+.tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
+
+/* --- степпер состояния заявки --- */
+.stepper{display:flex;padding:var(--s3) var(--s2) var(--s2)}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;text-align:center}
+.step .c{width:28px;height:28px;border-radius:50%;background:#EDF1F0;color:var(--mut);display:grid;place-items:center;
+      font-size:12px;font-weight:600;position:relative;z-index:1;
+      transition:background var(--d3) var(--e),color var(--d3) var(--e),box-shadow var(--d3) var(--e),transform var(--d3) var(--e-out)}
+.step .lb{font-size:11px;color:var(--mut);line-height:1.25}
+.step::before{content:"";position:absolute;top:14px;left:-50%;width:100%;height:2px;background:#E4E9E7}
+.step:first-child::before{display:none}
+.step.done .c{background:var(--ok);color:#fff}
+.step.done::before{background:rgba(23,114,69,.35)}
+.step.now .c{background:#fff;color:var(--warn);box-shadow:inset 0 0 0 2px var(--gold);transform:scale(1.08)}
+.step.now .lb{color:var(--ink);font-weight:600}
+
+/* --- строки «ключ-значение», плашки, таймлайн, заметка --- */
+.kv{display:flex;align-items:center;gap:var(--s3);padding:9px 0;border-bottom:1px solid var(--line)}
+.kv:last-child{border-bottom:0}
+.kv .ic{width:26px;height:26px;border-radius:var(--r2);background:var(--work);display:grid;place-items:center;color:var(--mut);flex:0 0 auto}
+.kv .k{font-size:12px;color:var(--mut)}
+.kv .v{font-size:14px;font-weight:500;color:var(--ink)}
+.kv .cp{margin-left:auto;color:var(--mut2);opacity:0;transition:opacity var(--d1) var(--e),color var(--d1) var(--e);
+      width:28px;height:28px;border-radius:var(--r2);display:grid;place-items:center}
+.kv:hover .cp{opacity:1}
+.kv .cp:hover{background:var(--hover);color:var(--brand)}
+.warnbox{display:flex;gap:var(--s3);padding:var(--s3);border-radius:var(--r3);background:#FDF7E8;
+      border:1px solid rgba(200,149,42,.30)}
+.warnbox .t{font-size:13px;font-weight:600;color:#8A6413}
+.warnbox .d{font-size:12px;color:#8A6413;opacity:.92;margin-top:3px;line-height:1.45}
+.warnbox a{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-size:12px;font-weight:600;color:#8A6413;
+      background:#fff;border:1px solid rgba(200,149,42,.38);border-radius:var(--r2);padding:6px 11px;
+      transition:background var(--d1) var(--e),transform var(--d1) var(--e)}
+.warnbox a:hover{background:#FFFDF7;transform:translateY(-1px)}
+.tl{display:flex;flex-direction:column}
+.tl .it{display:flex;gap:var(--s3);padding:7px 0;position:relative}
+.tl .dot{width:18px;height:18px;border-radius:50%;background:var(--work);color:var(--mut);display:grid;place-items:center;
+      font-size:10px;flex:0 0 auto;margin-top:1px}
+.tl .it.ok .dot{background:var(--ok-bg);color:var(--ok)}
+.tl .it.now .dot{background:var(--brand-tint);color:var(--brand-700);animation:softPulse 2s var(--e) infinite}
+.tl .it b{font-size:13px;font-weight:500;color:var(--ink2);display:block}
+.tl .it .tm{font-size:11px;color:var(--mut2)}
+.tl .it:not(:last-child)::before{content:"";position:absolute;left:8.5px;top:26px;bottom:-6px;width:1px;background:var(--line2)}
+.note{display:flex;gap:var(--s3);align-items:flex-start;border:1px solid var(--line2);border-radius:var(--r3);
+      padding:var(--s3);color:var(--mut);font-size:13px;background:var(--card);
+      transition:border-color var(--d1) var(--e),box-shadow var(--d2) var(--e)}
+.note:focus-within{border-color:var(--brand-b);box-shadow:var(--ring)}
+.note textarea{border:0;outline:none;resize:none;font:inherit;color:var(--ink);width:100%;background:none;min-height:36px}
+.banner{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s4);border-radius:var(--r3);
+      background:#EAF6F0;border:1px solid rgba(23,114,69,.22);color:#14603E;font-size:13px}
+.banner .b{font-weight:600;display:block}
+.banner .d{font-size:12px;color:#3E7A5C}
+.banner .btn{margin-left:auto}
+.banner .bl{width:26px;height:26px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center;flex:0 0 auto}
+
+/* переключатель «чип-фильтр» (сортировка/фильтр в шапке колонки) */
+.seg{display:inline-flex;background:#F2F5F4;border-radius:var(--r3);padding:3px;gap:2px}
+.seg button{height:30px;padding:0 var(--s3);border-radius:var(--r2);font-size:13px;color:var(--mut);
+      transition:background var(--d2) var(--e),color var(--d2) var(--e),box-shadow var(--d2) var(--e)}
+.seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:var(--sh1)}
+
+/* SVG-иконки: одна система, никаких «квадратиков» из эмодзи */
+svg.i{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+svg.i.s{width:16px;height:16px;stroke-width:1.8}
+svg.i.l{width:24px;height:24px}
+
+/* ============================================================================
+   НАШ КАРКАС СТРАНИЦЫ (не меняется от экрана к экрану).
+   Слева — меню-полоска (разворачивается и закрывает вспомогательную зону),
+   рядом с ней вспомогательная зона (что группирует работу),
+   в центре — рабочее поле, справа — объект (переменные документа).
+   ========================================================================== */
+.app6{display:grid;grid-template-columns:68px minmax(0,1fr);min-height:100vh;background:#F1F4F2}
+.rail{background:linear-gradient(180deg,#0E3E36 0%,#082B26 60%,#062220 100%);
+      display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 0 12px;
+      position:sticky;top:0;height:100vh;color:#BBD3CD;z-index:30}
+.rail .rbtn{width:44px;height:44px;border-radius:var(--r3);display:grid;place-items:center;color:#ADC7C1;position:relative;
+      transition:background var(--d1) var(--e),color var(--d1) var(--e),transform var(--d1) var(--e)}
+.rail .rbtn svg.i{width:23px;height:23px;stroke-width:1.6}
+.rail .rbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+.rail .rbtn:active{transform:scale(.93)}
+.rail .rbtn.on{background:rgba(23,179,163,.22);color:#fff}
+.rail .rbtn.on::before{content:"";position:absolute;left:-11px;top:11px;bottom:11px;width:3px;border-radius:0 3px 3px 0;background:var(--brand-b)}
+/* счётчики живут в развёрнутом меню: в полоске они налезают на иконку */
+.rail .rbtn .badge{position:absolute;top:3px;right:3px;width:8px;height:8px;border-radius:50%;
+      background:var(--brand-b);border:2px solid #082B26;font-size:0;overflow:hidden}
+.rail .sp{flex:1}
+.rail .rav{width:34px;height:34px;border-radius:50%;background:#D9E6E1;color:#0A2F29;display:grid;place-items:center;
+      font-size:12px;font-weight:600;cursor:pointer}
+
+/* развёрнутое меню: уезжает поверх вспомогательной зоны — миниатюры закрыты */
+.drawer{position:fixed;top:0;left:0;bottom:0;width:252px;z-index:60;color:#BBD3CD;
+      background:linear-gradient(178deg,#0E3E36 0%,#0A2F29 52%,#072420 100%);
+      display:flex;flex-direction:column;padding:14px 12px;transform:translateX(-100%);
+      transition:transform var(--d3) var(--e-out);box-shadow:var(--sh3)}
+.drawer.open{transform:none}
+.drawer .dhead{display:flex;align-items:center;gap:10px;padding:4px 4px 18px;color:#EAF3F1}
+.drawer .dhead .mark{width:32px;height:32px;border-radius:var(--r3);background:var(--brand-b);color:#062A26;
+      display:grid;place-items:center;font-weight:700}
+.drawer .dhead .x{margin-left:auto;opacity:.7}
+.drawer a{display:flex;align-items:center;gap:12px;height:42px;padding:0 12px;border-radius:var(--r3);color:#BBD3CD;
+      font-size:14px;text-decoration:none;transition:background var(--d1) var(--e),color var(--d1) var(--e)}
+.drawer a:hover{background:rgba(255,255,255,.07);color:#EAF3F1}
+.drawer a.on{background:rgba(23,179,163,.20);color:#fff;font-weight:600}
+.drawer a .cnt{margin-left:auto;font-size:12px;background:rgba(255,255,255,.12);border-radius:var(--rf);padding:1px 7px}
+.drawer .dfoot{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 4px 4px;border-top:1px solid rgba(255,255,255,.10);color:#CFE2DD}
+.drawer .dfoot .av{width:34px;height:34px;border-radius:50%;background:#D9E6E1;color:#0A2F29;display:grid;place-items:center;font-weight:600;font-size:13px}
+.drawer .dfoot .nm{font-size:13px;font-weight:600;line-height:1.2}
+.drawer .dfoot .rl{font-size:11px;color:#8FB0A9}
+.overlay{position:fixed;inset:0;background:rgba(4,32,30,.42);z-index:55;opacity:0;pointer-events:none;
+      transition:opacity var(--d2) var(--e)}
+.overlay.on{opacity:1;pointer-events:auto}
+
+/* три рабочих колонки: вспомогательная зона — центр — объект
+   ширина вспомогательной зоны = ширине развёрнутого меню (252 px):
+   миниатюры заканчиваются ровно там, где заканчивается выехавшее меню */
+.body3{display:grid;grid-template-columns:252px minmax(0,1fr) 356px;align-items:stretch;background:#F1F4F2}
+@media (max-width:1360px){.body3{grid-template-columns:232px minmax(0,1fr) 322px}}
+@media (max-width:1240px){.body3{grid-template-columns:minmax(0,1fr) 322px}.aux{display:none}}
+.aux{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.aux .scroll{overflow:auto;flex:1;padding:0 var(--s2) var(--s3)}
+.aux .foot{padding:var(--s3);border-top:1px solid var(--line);background:#FAFCFB}
+/* рабочая зона: имя намеренно не совпадает со статусом «в работе» (.st.work) —
+   иначе стили зоны утекают в чип статуса */
+.workspace{min-width:0;padding:var(--s4);display:flex;flex-direction:column;gap:var(--s3);background:#F1F4F2}
+.vars{background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.vars .scroll{overflow:auto;flex:1;padding:0 var(--s3) var(--s4)}
+.vars .foot{padding:var(--s3);border-top:1px solid var(--line);display:flex;gap:var(--s2);background:#FAFCFB}
+
+/* компактный список этапов (внизу вспомогательной зоны) */
+.stages{display:flex;flex-direction:column;gap:6px}
+.stages .s{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut)}
+.stages .s .d{width:16px;height:16px;border-radius:50%;background:#EDF1F0;color:var(--mut);display:grid;place-items:center;font-size:9px;flex:0 0 auto}
+.stages .s.done{color:var(--ink2)}
+.stages .s.done .d{background:var(--ok-bg);color:var(--ok)}
+.stages .s.now{color:var(--ink);font-weight:600}
+.stages .s.now .d{background:#fff;color:var(--warn);box-shadow:inset 0 0 0 2px var(--gold)}
+
+/* ============================================================================
+   Поправки для узких зон (вспомогательная колонка 236 px и лист документа).
+   Узкая колонка не терпит «резиновых» строк: чип статуса уезжает вниз,
+   а подсветка поля в документе идёт по размеру текста, а не во всю ширину.
+   ========================================================================== */
+.aux .row{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"thumb text" "thumb status";
+      align-items:center;gap:2px 10px;padding:9px 8px}
+.aux .row>.thumb{grid-area:thumb;align-self:center}
+.aux .row>span:nth-child(2){grid-area:text;min-width:0}
+.aux .row>.grow{grid-area:status;margin:0;justify-self:start}
+.aux .row .l1{font-size:13px;line-height:1.3}
+.aux .row .l2{display:block}
+.aux .row .st{font-size:10px;padding:1px 7px;margin-top:3px}
+.aux .seg button{font-size:12px;white-space:nowrap;padding:0 8px;flex:1}
+.aux .seg{width:100%}
+
+.mk{width:fit-content;max-width:100%}
+
+/* ============================================================================
+   Предохранители адаптива. Ни один блок не имеет права «вылезать» за край:
+   grid/flex-дети получают min-width:0 (иначе min-content не даёт сжиматься),
+   ряды кнопок переносятся, плашка может стать выше одной строки.
+   ========================================================================== */
+.workspace,.vars,.aux,.card2,.card2-body,.docstage,.sheetview,.head-top,.meta,.top,.head-actions{min-width:0}
+.head-top{flex-wrap:wrap;gap:var(--s3)}
+.head-actions{flex-wrap:wrap;justify-content:flex-end}
+.top{flex-wrap:wrap;row-gap:8px;height:auto;min-height:60px;padding-top:9px;padding-bottom:9px}
+.search{min-width:0}
+.stage-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.stage-tools{margin-left:auto}
+
+/* заглушка раздела: показывается, когда раздел ещё не собран */
+.stub{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+      padding:96px 24px;text-align:center;color:var(--mut);min-height:420px}
+.stub .ic{width:58px;height:58px;border-radius:var(--r5);background:var(--brand-tint);color:var(--brand-700);
+      display:grid;place-items:center;margin-bottom:6px}
+.stub b{font-size:19px;color:var(--ink);font-weight:700;letter-spacing:-.01em}
+.stub span{font-size:14px;max-width:420px;line-height:1.5}
+
+/* ---------------------------------------------------------------------------
+   Адаптив каркаса — ОБЯЗАТЕЛЬНО в конце файла: правила показа/скрытия зон
+   должны идти после их собственных определений, иначе display:flex выше
+   по файлу перебивает display:none из медиазапроса (и колонки ломаются).
+   --------------------------------------------------------------------------- */
+@media (max-width:1240px){
+  .body3{grid-template-columns:minmax(0,1fr) 322px}
+  .body3 .aux{display:none}          /* вспомогательная зона уходит первой */
+}
+@media (max-width:1040px){
+  .body3{grid-template-columns:minmax(0,1fr) 300px}
+  .head-actions .btn:not(.p):not(.ic){display:none}   /* на узком экране остаются главное действие и «…» */
+}
+@media (max-width:860px){
+  .app6{grid-template-columns:56px minmax(0,1fr)}
+  .rail .rbtn{width:40px;height:40px}
+}
+
+/* ============================================================================
+   МИНИАТЮРЫ ДОКУМЕНТОВ — отдельный блок (не внутри окна просмотра).
+   У каждой миниатюры свой функционал:
+     • скан с Google Диска — квадратик подтверждения «скачано»;
+       пока идёт загрузка — полоса прогресса и янтарный статус;
+     • наш документ — квадратик «проверено».
+   ========================================================================== */
+.mini{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;
+      padding:8px;border:1px solid transparent;border-radius:var(--r3);cursor:pointer;position:relative;
+      transition:background var(--d1) var(--e),border-color var(--d1) var(--e)}
+.mini:hover{background:var(--hover)}
+.mini.on{background:var(--brand-tint-2);border-color:rgba(23,179,163,.24)}
+.mini.on::before{content:"";position:absolute;left:-1px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--brand-b)}
+.mini.busy{background:#FFFCF6}
+.mini .sheet{width:34px;height:44px;border-radius:var(--r1);background:#fff;border:1px solid var(--line2);
+      position:relative;box-shadow:var(--sh0)}
+.mini .sheet::before{content:"";position:absolute;left:5px;right:5px;top:8px;height:2px;border-radius:2px;
+      background:rgba(15,29,27,.14);box-shadow:0 5px 0 rgba(15,29,27,.10),0 10px 0 rgba(15,29,27,.10)}
+.mini .nm{font-size:13px;font-weight:500;line-height:1.3;overflow:hidden;text-overflow:ellipsis}
+.mini .sub{font-size:11px;color:var(--mut);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mini .chk{width:22px;height:22px;border-radius:var(--r2);border:1px solid var(--line2);background:#fff;
+      display:grid;place-items:center;color:transparent;
+      transition:background var(--d2) var(--e),border-color var(--d2) var(--e),color var(--d2) var(--e),transform var(--d2) var(--e-out)}
+.mini .chk:hover{border-color:var(--brand-b);transform:scale(1.08)}
+.mini .chk.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.mini .chk.wait{background:var(--warn-bg);border-color:rgba(169,99,10,.35);color:var(--warn)}
+.mini .bar{grid-column:2 / 4;height:3px;border-radius:var(--rf);background:rgba(15,29,27,.08);overflow:hidden}
+.mini .bar>i{display:block;height:100%;background:var(--warn);animation:barIn var(--d4) var(--e-out) both}
+
+/* группы в развёрнутом меню: работа · библиотека · система */
+.dgrp{font-size:10px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:#7E9C97;
+      padding:16px 12px 6px}
+.dgrp:first-of-type{padding-top:6px}
+
+/* ============================================================================
+   ОКНО ПРОСМОТРА: две вкладки как в браузере — «Документы клиента» и «Рабочие формы»
+   Активная вкладка белая, приподнята тенью; полоса вкладок отбрасывает тень на тело.
+   ========================================================================== */
+.btabs{display:flex;align-items:flex-end;gap:3px;padding:7px 12px 0;background:#EDF1EF;
+       border-bottom:1px solid var(--line);position:relative}
+.btab{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 14px;font-size:13px;font-weight:500;
+      color:var(--ink2);background:#E3E9E6;border:1px solid var(--line);border-bottom:0;
+      border-radius:9px 9px 0 0;cursor:pointer;position:relative;top:1px;
+      box-shadow:inset 0 -7px 9px -9px rgba(15,29,27,.22);
+      transition:background var(--d1) var(--e),color var(--d1) var(--e),box-shadow var(--d1) var(--e)}
+.btab:hover{background:#EEF3F1;color:var(--ink)}
+.btab.on{background:#fff;color:var(--ink);font-weight:600;z-index:2;
+      box-shadow:0 -3px 10px rgba(15,29,27,.12),0 1px 0 0 #fff,inset 0 1px 0 0 #fff}
+.btab.on::after{content:"";position:absolute;left:0;right:0;bottom:-2px;height:3px;background:#fff}
+.btab .i{opacity:.7}
+.btab.on .i{opacity:1;color:var(--brand-700)}
+.btab .dotn{width:6px;height:6px;border-radius:50%;background:var(--warn);box-shadow:0 0 0 3px rgba(169,99,10,.14)}
+.btabs-tools{margin-left:auto;display:flex;align-items:center;gap:4px;padding-bottom:7px}
+.btab-body{background:#fff;box-shadow:0 16px 26px -24px rgba(15,29,27,.45)}
+.dv-pane{display:none}
+.dv-pane.on{display:block;animation:paneIn var(--d3) var(--e-out) both}
+
+/* рабочая форма: поля, связанные с переменными справа */
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px 18px;padding:16px 18px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld label{font-size:11.5px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.fld input{height:38px;padding:0 11px;font-size:14px;color:var(--ink);background:#fff;
+      border:1px solid var(--line2);border-radius:var(--r2);outline:0;width:100%;
+      transition:border-color var(--d2) var(--e),box-shadow var(--d2) var(--e),background var(--d2) var(--e)}
+.fld input:focus{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.16)}
+.fld.wide{grid-column:1 / -1}
+.fld.hint input{border-color:rgba(169,99,10,.45);background:#FFFCF6}
+.fld .note{font-size:11px;color:var(--warn);display:flex;align-items:center;gap:5px}
+.fld.flash input{animation:fldPulse var(--d4) var(--e-out) 1}
+@keyframes fldPulse{0%{box-shadow:0 0 0 0 rgba(23,179,163,.35)}100%{box-shadow:0 0 0 14px rgba(23,179,163,0)}}
+
+/* «показать распознанные поля» в режиме скана */
+.sheetview.no-fields .mk{background:transparent;box-shadow:none;color:var(--ink)}
+
+/* ============================================================================
+   ВКЛАДКИ ВНУТРИ ЗАЯВКИ: Основное · Документы · Переменные · История · Комментарии
+   «Документы» — три зоны (миниатюры | просмотр | переменные документа).
+   Остальные вкладки занимают центр целиком, поэтому читаются как отдельные экраны.
+   ========================================================================== */
+.vpage{display:none}
+.vpage.on{display:block;animation:pageIn var(--d3) var(--e-out) both}
+@keyframes pageIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;padding:16px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r4);box-shadow:var(--sh1);
+       padding:14px 16px;min-width:0}
+.pcard.wide{grid-column:1 / -1}
+.pcard .h{font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.prow{display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+.prow:last-child{border-bottom:0}
+.prow .k{color:var(--mut);flex:0 0 45%;font-size:12.5px}
+.prow .v{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* этапы заявки — одна строка */
+.steps5{display:flex;align-items:flex-start}
+.steps5 .st5{flex:1;position:relative;padding-right:16px;min-width:0}
+.steps5 .st5 .dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600;
+       background:#E4EAE7;color:var(--ink2);border:1px solid var(--line)}
+.steps5 .st5.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.steps5 .st5.now .dot{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 0 4px rgba(23,179,163,.16)}
+.steps5 .st5 .t{margin-top:8px;font-size:12.5px;font-weight:600}
+.steps5 .st5 .d{margin-top:2px;font-size:11px;color:var(--mut)}
+.steps5 .st5::after{content:"";position:absolute;left:30px;right:8px;top:11px;height:2px;background:var(--line)}
+.steps5 .st5:last-child::after{display:none}
+.steps5 .st5.done::after{background:var(--ok)}
+
+/* список переменных заявки */
+.ptable{padding:0 16px 16px}
+.ptrow{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.6fr) 132px 96px;gap:12px;align-items:center;
+       padding:9px 10px;border-radius:var(--r2);font-size:13px}
+.ptrow.head{font-size:11.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;
+       border-bottom:1px solid var(--line);border-radius:0}
+.ptrow:not(.head):hover{background:#FAFCFB}
+.ptrow .nm{color:var(--ink2)}
+.ptrow .vl{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptbar{display:flex;align-items:center;gap:10px;padding:14px 16px 6px;flex-wrap:wrap}
+
+/* история изменений */
+.tline{padding:6px 16px 16px}
+.titem{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:11px 0;border-bottom:1px dashed var(--line)}
+.titem:last-child{border-bottom:0}
+.titem .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600;
+       background:var(--brand-tint);color:var(--brand-700)}
+.titem .who{font-weight:600;font-size:13.5px}
+.titem .wh{font-size:11.5px;color:var(--mut);margin-left:8px}
+.titem .what{font-size:13.5px;margin-top:3px}
+.titem .tag{font-size:11px;color:var(--mut);margin-top:5px;display:inline-flex;align-items:center;gap:6px}
+.titem .old{text-decoration:line-through;color:var(--mut)}
+.titem .new{font-weight:600;color:var(--brand-700)}
+
+/* комментарии */
+.cmts{display:flex;flex-direction:column;min-height:0}
+.cmt{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;padding:12px 16px;border-bottom:1px dashed var(--line)}
+.cmt .bub{flex:1}
+.cmt .txt{font-size:13.5px;margin-top:4px;line-height:1.5}
+.cmt .pin{margin-top:7px;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink2);
+       background:var(--brand-tint-2);border:1px solid rgba(23,179,163,.22);border-radius:var(--rf);padding:3px 9px}
+.cbox{display:flex;gap:10px;align-items:flex-end;padding:14px 16px;border-top:1px solid var(--line);background:#FBFDFC}
+.cbox textarea{flex:1;min-height:46px;max-height:120px;resize:vertical;padding:10px 12px;font:inherit;font-size:13.5px;
+       border:1px solid var(--line2);border-radius:var(--r2);outline:0;background:#fff}
+.cbox textarea:focus{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.16)}

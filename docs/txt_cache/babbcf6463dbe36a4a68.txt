@@ -1,0 +1,607 @@
+Account Statement
+Account Owner:
+Account No:
+
+POTAPOV CLIENT
+GE10BG0000000538130634
+
+Print Date:
+
+11/08/2026
+
+Statement Period:
+Card:
+
+01/08/2025 - 02/08/2026
+MC Standard Tbilisi Sky (6421)
+MC Standard Tbilisi Sky (3344)
+
+GEL
+
+USD
+
+EUR
+
+GBP
+
+01/05/2025
+
+Start Balance:
+
+63
+
+25 826.97
+
+0
+
+0.00
+
+02/08/2026
+
+End Balance:
+
+105.27
+
+65 327.24
+
+0
+
+0.00
+
+Date
+
+Details
+
+GEL
+
+USD
+
+EUR
+
+GBP
+
+01/08/2025
+
+Payment - Amount: AMD48,568.00; Merchant: BUY-FLY.COM, Armenia;
+MCC:4722; Date: 31/07/2025 22:00; Card No: ****3344; Payment
+transaction amount and currency: 129.62 USD; Bank conversion
+commission fee: 2.54 USD; Card scheme conversion rate (USD-AMD):
+382.1845
+
+-129.62
+
+01/08/2025
+
+Payment - Amount: BYN180.00; Merchant: PROSEBYA, Belarus;
+MCC:7298; Date: 31/07/2025 15:07; Card No: ****6421; Payment
+transaction amount and currency: 60.73 USD; Bank conversion
+commission fee: 1.19 USD; Card scheme conversion rate (USD-BYN):
+3.0232
+
+-60.73
+
+01/08/2025
+
+Payment - Amount: BYN23.80; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 31/07/2025 14:12; Card No: ****3344; Payment
+transaction amount and currency: 8.03 USD; Bank conversion
+commission fee: 0.16 USD; Card scheme conversion rate (USD-BYN):
+3.0241
+
+-8.03
+
+01/08/2025
+
+Payment - Amount: BYN16.30; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 31/07/2025 13:01; Card No: ****3344; Payment
+transaction amount and currency: 5.50 USD; Bank conversion
+commission fee: 0.11 USD; Card scheme conversion rate (USD-BYN):
+3.0241
+
+-5.5
+
+01/08/2025
+
+Payment - Amount: BYN4,242.00; Merchant: TOUR AG-VO BSB,
+Belarus; MCC:4722; Date: 31/07/2025 12:53; Card No: ****6421;
+Payment transaction amount and currency: 1,431.30 USD; Bank
+conversion commission fee: 28.06 USD; Card scheme conversion rate
+(USD-BYN): 3.023
+
+-1431.3
+
+0.00
+
+0
+
+Balance
+
+63.00
+
+91.79
+
+02/08/2025
+
+Payment - Amount: BYN26.20; Merchant: RBO BURGER KING, Belarus;
+MCC:5812; Date: 01/08/2025 16:43; Card No: ****3344; Payment
+transaction amount and currency: 8.93 USD; Bank conversion
+commission fee: 0.18 USD; Card scheme conversion rate (USD-BYN):
+2.9943
+
+-8.93
+
+02/08/2025
+
+Payment - Amount: BYN14.40; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 01/08/2025 00:09; Card No: ****3344; Payment
+transaction amount and currency: 4.91 USD; Bank conversion
+commission fee: 0.10 USD; Card scheme conversion rate (USD-BYN):
+
+-4.91
+
+pg. 1 (Total 184 pg.)
+
+-Confidential-
+
+Date
+
+Details
+
+GEL
+
+USD
+
+EUR
+
+GBP
+
+77.95
+
+0.00
+
+0
+
+0.00
+
+0
+
+0.00
+
+0
+
+0.00
+
+0
+
+2.9938
+02/08/2025
+
+Payment - Amount: GEL19.00; Merchant: GOOGLE *Direct Cursus,
+United States of America; MCC:5816; Date: 01/08/2025 00:00; Card No:
+****3344; Payment transaction amount and currency: 19.00 GEL; Card
+scheme conversion rate (USD-GEL): 2.6761; Bank conversion rate
+(USD-GEL): 2.705
+
+Balance
+
+-19.0
+
+44.00
+
+03/08/2025
+
+Incoming Transfer - Amount: USD100.00; Sender: INDIVIDUAL
+ENTREPRENEUR CLIENT POTAPOV; Account:
+GE43BG0000000538134405USD; Bank: Bank Of Georgia BAGAGE22;
+Details: Transfer to personal account
+
+100.0
+
+03/08/2025
+
+Payment - Amount: BYN20.14; Merchant: SHOP N39"ZAV.RAYPISCHE,
+Belarus; MCC:5411; Date: 02/08/2025 14:33; Card No: ****6421;
+Payment transaction amount and currency: 6.85 USD; Bank conversion
+commission fee: 0.13 USD; Card scheme conversion rate (USD-BYN):
+2.997
+
+-6.85
+
+Balance
+
+44.00
+
+171.10
+
+04/08/2025
+
+Payment - Amount: AMD22,830.00; Merchant: BUY-FLY LLC, Armenia;
+MCC:4511; Date: 03/08/2025 22:00; Card No: ****3344; Payment
+transaction amount and currency: 60.98 USD; Bank conversion
+commission fee: 1.20 USD; Card scheme conversion rate (USD-AMD):
+381.9003
+
+-60.98
+
+04/08/2025
+
+Payment - Amount: BYN8.00; Merchant: SHOP PRODUKTY, Belarus;
+MCC:5411; Date: 03/08/2025 21:42; Card No: ****6421; Payment
+transaction amount and currency: 2.72 USD; Bank conversion
+commission fee: 0.05 USD; Card scheme conversion rate (USD-BYN):
+2.9963
+
+-2.72
+
+04/08/2025
+
+Payment - Amount: BYN66.84; Merchant: SUPERMARKET "GREEN" BA,
+Belarus; MCC:5411; Date: 03/08/2025 19:13; Card No: ****6421;
+Payment transaction amount and currency: 22.77 USD; Bank
+conversion commission fee: 0.45 USD; Card scheme conversion rate
+(USD-BYN): 2.9946
+
+-22.77
+
+Balance
+
+44.00
+
+84.63
+
+05/08/2025
+
+Incoming Transfer - Amount: USD100.00; Sender: INDIVIDUAL
+ENTREPRENEUR CLIENT POTAPOV; Account:
+GE43BG0000000538134405USD; Bank: Bank Of Georgia BAGAGE22;
+Details: Transfer to personal account
+
+100.0
+
+05/08/2025
+
+Payment - Amount: BYN10.90; Merchant: SHOP N241, Belarus;
+MCC:5411; Date: 04/08/2025 20:14; Card No: ****3344; Payment
+transaction amount and currency: 3.71 USD; Bank conversion
+commission fee: 0.07 USD; Card scheme conversion rate (USD-BYN):
+2.9945
+
+-3.71
+
+Balance
+
+44.00
+
+180.92
+
+06/08/2025
+
+Payment - Amount: BYN15.10; Merchant: SHOP N241, Belarus;
+MCC:5411; Date: 05/08/2025 22:39; Card No: ****3344; Payment
+transaction amount and currency: 5.14 USD; Bank conversion
+commission fee: 0.10 USD; Card scheme conversion rate (USD-BYN):
+2.996
+
+-5.14
+
+06/08/2025
+
+Payment - Amount: BYN95.25; Merchant: I.-SHOP "EVROOPT", Belarus;
+MCC:5411; Date: 05/08/2025 21:47; Card No: ****3344; Payment
+transaction amount and currency: 32.47 USD; Bank conversion
+commission fee: 0.64 USD; Card scheme conversion rate (USD-BYN):
+2.9925
+
+-32.47
+
+06/08/2025
+
+Payment - Amount: BYN62.00; Merchant: OOO NUDLS, Belarus; MCC:
+
+-21.13
+
+pg. 2 (Total 184 pg.)
+
+-Confidential-
+
+Date
+
+Details
+
+GEL
+
+USD
+
+EUR
+
+GBP
+
+0.00
+
+0
+
+0.00
+
+0
+
+0.00
+
+0
+
+5812; Date: 05/08/2025 21:12; Card No: ****3344; Payment
+transaction amount and currency: 21.13 USD; Bank conversion
+commission fee: 0.41 USD; Card scheme conversion rate (USD-BYN):
+2.9923
+06/08/2025
+
+Payment - Amount: BYN13.90; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 05/08/2025 21:08; Card No: ****3344; Payment
+transaction amount and currency: 4.73 USD; Bank conversion
+commission fee: 0.09 USD; Card scheme conversion rate (USD-BYN):
+2.9957
+
+-4.73
+
+06/08/2025
+
+Payment - Amount: BYN6.50; Merchant: COFFEE VIBE, Belarus;
+MCC:5812; Date: 05/08/2025 09:42; Card No: ****3344; Payment
+transaction amount and currency: 2.21 USD; Bank conversion
+commission fee: 0.04 USD; Card scheme conversion rate (USD-BYN):
+2.9954
+
+-2.21
+
+06/08/2025
+
+Payment - Amount: BYN24.60; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 05/08/2025 01:02; Card No: ****3344; Payment
+transaction amount and currency: 8.38 USD; Bank conversion
+commission fee: 0.16 USD; Card scheme conversion rate (USD-BYN):
+2.9927
+
+-8.38
+
+Balance
+
+44.00
+
+106.86
+
+07/08/2025
+
+Payment - Amount: BYN1.50; Merchant: YANDEX.GO_SCOOTER,
+Belarus; MCC:7999; Date: 06/08/2025 23:19; Card No: ****3344;
+Payment transaction amount and currency: 0.51 USD; Bank conversion
+commission fee: 0.01 USD; Card scheme conversion rate (USD-BYN): 3
+
+-0.51
+
+07/08/2025
+
+Payment - Amount: BYN25.10; Merchant: Pitstsa Lisitstsa, Belarus;
+MCC:5812; Date: 06/08/2025 15:36; Card No: ****3344; Payment
+transaction amount and currency: 8.54 USD; Bank conversion
+commission fee: 0.17 USD; Card scheme conversion rate (USD-BYN):
+2.9988
+
+-8.54
+
+07/08/2025
+
+Payment - Amount: BYN7.00; Merchant: COFFEE VIBE, Belarus;
+MCC:5812; Date: 06/08/2025 10:13; Card No: ****3344; Payment
+transaction amount and currency: 2.38 USD; Bank conversion
+commission fee: 0.05 USD; Card scheme conversion rate (USD-BYN):
+3.0043
+
+-2.38
+
+Balance
+
+44.00
+
+95.43
+
+09/08/2025
+
+Payment - Amount: BYN35.30; Merchant: Pitstsa Lisitstsa, Belarus;
+MCC:5812; Date: 08/08/2025 23:25; Card No: ****3344; Payment
+transaction amount and currency: 12.06 USD; Bank conversion
+commission fee: 0.24 USD; Card scheme conversion rate (USD-BYN):
+2.9865
+
+-12.06
+
+09/08/2025
+
+Payment - Amount: USD7.99; Merchant: Spotify P3957FEEF9, Sweden;
+MCC:5815; Date: 08/08/2025 14:59; Card No: ****3344; Payment
+transaction amount and currency: 7.99 USD
+
+-7.99
+
+09/08/2025
+
+Payment - Amount: BYN5.00; Merchant: www.A1.by, Belarus;
+MCC:4814; Date: 08/08/2025 14:01; Card No: ****3344; Payment
+transaction amount and currency: 1.70 USD; Bank conversion
+commission fee: 0.03 USD; Card scheme conversion rate (USD-BYN):
+2.994
+
+-1.7
+
+Balance
+
+44.00
+
+73.68
+
+10/08/2025
+
+Incoming Transfer - Amount: USD100.00; Sender: INDIVIDUAL
+ENTREPRENEUR CLIENT POTAPOV; Account:
+GE43BG0000000538134405USD; Bank: Bank Of Georgia BAGAGE22;
+Details: Transfer to personal account
+
+100.0
+
+10/08/2025
+
+Payment - Amount: BYN1.60; Merchant: YANDEX.GO_SCOOTER,
+Belarus; MCC:7999; Date: 09/08/2025 13:11; Card No: ****3344;
+Payment transaction amount and currency: 0.55 USD; Bank conversion
+
+-0.55
+
+pg. 3 (Total 184 pg.)
+
+-Confidential-
+
+Date
+
+Details
+
+GEL
+
+USD
+
+EUR
+
+GBP
+
+0.00
+
+0
+
+0.00
+
+0
+
+commission fee: 0.01 USD; Card scheme conversion rate (USD-BYN):
+2.963
+10/08/2025
+
+Payment - Amount: BYN6.50; Merchant: OSTROVOK PODARKOV,
+Belarus; MCC:5947; Date: 09/08/2025 12:59; Card No: ****3344;
+Payment transaction amount and currency: 2.22 USD; Bank conversion
+commission fee: 0.04 USD; Card scheme conversion rate (USD-BYN):
+2.9817
+
+-2.22
+
+10/08/2025
+
+Payment - Amount: BYN4.30; Merchant: Eleven (mob prilozheni,
+Belarus; MCC:7999; Date: 09/08/2025 12:52; Card No: ****3344;
+Payment transaction amount and currency: 1.47 USD; Bank conversion
+commission fee: 0.03 USD; Card scheme conversion rate (USD-BYN):
+2.9861
+
+-1.47
+
+10/08/2025
+
+Payment - Amount: BYN4.81; Merchant: SHOP N241, Belarus;
+MCC:5411; Date: 09/08/2025 12:40; Card No: ****3344; Payment
+transaction amount and currency: 1.64 USD; Bank conversion
+commission fee: 0.03 USD; Card scheme conversion rate (USD-BYN):
+2.9876
+
+-1.64
+
+10/08/2025
+
+Payment - Amount: BYN13.81; Merchant: SUPERMARKET "GREEN" BA,
+Belarus; MCC:5411; Date: 08/08/2025 19:48; Card No: ****3344;
+Payment transaction amount and currency: 4.71 USD; Bank conversion
+commission fee: 0.09 USD; Card scheme conversion rate (USD-BYN):
+2.9892
+
+-4.71
+
+Balance
+
+44.00
+
+163.09
+
+11/08/2025
+
+Payment - Amount: BYN1.30; Merchant: YANDEX.GO_SCOOTER,
+Belarus; MCC:7999; Date: 10/08/2025 21:22; Card No: ****3344;
+Payment transaction amount and currency: 0.45 USD; Bank conversion
+commission fee: 0.01 USD; Card scheme conversion rate (USD-BYN):
+2.9545
+
+-0.45
+
+11/08/2025
+
+Payment - Amount: BYN12.40; Merchant: YANDEX.GO, Belarus;
+MCC:4121; Date: 10/08/2025 20:54; Card No: ****3344; Payment
+transaction amount and currency: 4.23 USD; Bank conversion
+commission fee: 0.08 USD; Card scheme conversion rate (USD-BYN):
+2.988
+
+-4.23
+
+11/08/2025
+
+Payment - Amount: BYN156.50; Merchant: RESTORAN "101", Belarus;
+MCC:5812; Date: 10/08/2025 20:31; Card No: ****3344; Payment
+transaction amount and currency: 53.43 USD; Bank conversion
+commission fee: 1.05 USD; Card scheme conversion rate (USD-BYN):
+2.9878
+
+-53.43
+
+11/08/2025
+
+Payment - Amount: BYN7.80; Merchant: SHOP N241, Belarus;
+MCC:5411; Date: 10/08/2025 12:16; Card No: ****3344; Payment
+transaction amount and currency: 2.66 USD; Bank conversion
+commission fee: 0.05 USD; Card scheme conversion rate (USD-BYN):
+2.9885
+
+-2.66
+
+11/08/2025
+
+Payment - Amount: BYN7.80; Merchant: GIPPO, Belarus; MCC:5411;
+Date: 09/08/2025 13:02; Card No: ****3344; Payment transaction
+amount and currency: 2.66 USD; Bank conversion commission fee:
+0.05 USD; Card scheme conversion rate (USD-BYN): 2.9885
+
+-2.66
+
+Balance
+
+44.00
+
+99.66
+
+12/08/2025
+
+Incoming Transfer - Amount: USD188.00; Sender: INDIVIDUAL
+ENTREPRENEUR CLIENT POTAPOV; Account:
+GE43BG0000000538134405USD; Bank: Bank Of Georgia BAGAGE22;
+Details: Transfer to personal account
+
+188.0
+
+12/08/2025
+
+Payment - Amount: BYN44.96; Merchant: YANDEX.EDA, Belarus;
+MCC:5812; Date: 11/08/2025 21:43; Card No: ****3344; Payment
+transaction amount and currency: 15.35 USD; Bank conversion
+commission fee: 0.30 USD; Card scheme conversion rate (USD-BYN):
+2.9874
+
+-15.35
+
+pg. 4 (Total 184 pg.)
+
+-Confidential-
+
+

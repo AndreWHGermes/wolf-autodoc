@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Wolf AutoDoc — каркас по правилам (v2)</title>
+<link rel="stylesheet" href="/static/proto/css/tokens.css">
+<style>
+/* мостик: имена токенов, которые уже использовались на этом экране */
+:root{--brand-deep:var(--brand-900)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+/* ===== плашка: логотип и гамбургер слева, поиск и профиль справа ===== */
+.topbar{height:56px;background:var(--brand-deep);color:#EAF3F1;display:flex;align-items:center;gap:16px;padding:0 16px;position:sticky;top:0;z-index:40}
+.burger{width:40px;height:40px;border-radius:var(--r3);display:grid;place-items:center;gap:3px}
+.burger:hover{background:rgba(255,255,255,.08)}
+.burger i{display:block;width:18px;height:2px;background:#EAF3F1;border-radius:2px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;letter-spacing:-.2px}
+.logo b{width:24px;height:24px;border-radius:var(--r3);background:var(--brand-b);display:grid;place-items:center;color:#04201E;font-size:13px}
+.tbsearch{margin-left:24px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:var(--r3);padding:8px 12px;width:320px;color:#B9CFCB;font-size:14px}
+.tbright{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tbtn{width:36px;height:36px;border-radius:var(--r3);display:grid;place-items:center;color:#CFE2DF;font-size:15px}
+.tbtn:hover{background:rgba(255,255,255,.08)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand-b);color:#04201E;display:grid;place-items:center;font-size:13px;font-weight:600}
+.dot{position:relative}
+.dot::after{content:"";position:absolute;top:7px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--gold)}
+
+/* ===== крошки: где я — читаются до содержимого ===== */
+.crumb{background:#0A302C;color:#8FB3AE;font-size:13px;padding:8px 16px;display:flex;gap:8px;align-items:center}
+.crumb b{color:#E7F1EF;font-weight:500}
+.crumb span{opacity:.5}
+
+/* ===== выезжающее меню разделов ===== */
+.menu{position:fixed;top:0;left:0;bottom:0;width:264px;background:var(--brand-deep);color:#EAF3F1;z-index:60;transform:translateX(-100%);transition:transform .18s ease-out;display:flex;flex-direction:column;padding:16px 12px}
+.menu.open{transform:translateX(0)}
+.menu .mh{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;padding:8px 8px 20px}
+.menu .mh b{width:24px;height:24px;border-radius:var(--r3);background:var(--brand-b);color:#04201E;display:grid;place-items:center;font-size:13px}
+.mitem{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r3);font-size:15px;color:#CFE2DF;text-align:left;width:100%}
+.mitem:hover{background:rgba(255,255,255,.07)}
+.mitem.on{background:var(--brand);color:#fff}
+.mitem .ic{width:20px;text-align:center;opacity:.9}
+.mitem .cnt{margin-left:auto;font-size:12px;opacity:.7}
+.msep{height:1px;background:rgba(255,255,255,.10);margin:12px 8px}
+.mfoot{margin-top:auto;font-size:13px;color:#7E9C97;padding:12px}
+.overlay{position:fixed;inset:0;background:rgba(4,32,30,.45);z-index:50;opacity:0;pointer-events:none;transition:opacity .18s}
+.overlay.on{opacity:1;pointer-events:auto}
+
+/* ===== сетка экрана: слева контекст (1), центр работа (5), справа объект (2) ===== */
+.body{display:grid;grid-template-columns:200px 1fr 380px;height:calc(100vh - 88px)}
+.aux{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.work{background:var(--work);display:flex;flex-direction:column;overflow:hidden}
+.rail{background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;transition:width .18s}
+.rail.min{width:52px}
+.rail.min .rin{display:none}
+.pane{display:none;flex:1;min-height:0;flex-direction:column}
+.pane.on{display:flex}
+.h{padding:14px 16px;font-size:13px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line)}
+.h .cnt{margin-left:auto;font-size:12px;color:var(--mut);font-weight:500;letter-spacing:0;text-transform:none}
+.scroll{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.scroll.plain{padding:16px}
+
+/* строки списков */
+.row{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r3);text-align:left;width:100%;border:1px solid transparent}
+.row:hover{background:var(--hover)}
+.row.on{background:rgba(15,110,99,.08);border-color:rgba(15,110,99,.22)}
+.row .l1{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500}
+.row .l2{font-size:12px;color:var(--mut);display:flex;gap:8px;align-items:center}
+.grp{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r3);font-size:14px;color:var(--ink2);width:100%;text-align:left}
+.grp:hover{background:var(--hover)}
+.grp.on{background:rgba(15,110,99,.08);font-weight:600;color:var(--ink)}
+.grp .n{margin-left:auto;font-size:12px;color:var(--mut)}
+
+/* статусы: цвет не единственный признак — есть точка и текст */
+.st{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 8px;border-radius:999px;background:rgba(18,33,31,.06);color:var(--ink2);white-space:nowrap}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st.new{background:rgba(212,175,55,.16);color:#8A6A12}
+.st.work{background:rgba(15,110,99,.12);color:var(--brand)}
+.st.done{background:rgba(31,122,77,.12);color:var(--ok)}
+.st.wait{background:rgba(178,106,0,.12);color:var(--warn)}
+.st.err{background:rgba(192,57,43,.12);color:var(--err)}
+
+/* ===== кнопки: одна основная на поверхность ===== */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r2);font-size:14px;font-weight:500;border:1px solid transparent;background:rgba(18,33,31,.05);color:var(--ink2);white-space:nowrap}
+.btn:hover{background:rgba(18,33,31,.09)}
+.btn.p{background:var(--brand);color:#fff}
+.btn.p:hover{background:#0C5A51}
+.btn.o{border-color:var(--line2);background:#fff}
+.btn.ghost{background:none;color:var(--mut)}
+.btn.ghost:hover{background:var(--hover);color:var(--ink)}
+.btn.d{color:var(--err)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.ic{width:32px;height:32px;padding:0;justify-content:center}
+
+/* ===== полоса шагов процесса: над рабочей областью, ≤5 кнопок ===== */
+.steps{background:#fff;border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:8px}
+.steps .sep{width:1px;height:22px;background:var(--line2);margin:0 4px}
+.steps .right{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mut)}
+
+/* над окном просмотра: вкладки + зум */
+.vtabs{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:4px;padding:0 12px}
+.vtab{padding:12px 14px;font-size:14px;color:var(--mut);border-bottom:2px solid transparent;font-weight:500}
+.vtab:hover{color:var(--ink)}
+.vtab.on{color:var(--brand);border-color:var(--brand);font-weight:600}
+.vtb-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.canvas{flex:1;overflow:auto;padding:24px;display:flex;justify-content:center;align-items:flex-start;background:var(--work)}
+.sheet{width:760px;background:#fff;border:1px solid var(--line);border-radius:var(--r2);box-shadow:var(--sh2);padding:56px 64px;font-size:14px;line-height:1.7;color:var(--ink2);position:relative}
+.sheet h3{font-size:20px;color:var(--ink);margin-bottom:20px;letter-spacing:-.4px}
+.sheet p{margin-bottom:12px}
+.sheet .ph{border-bottom:1px dashed rgba(15,110,99,.5);color:var(--brand);font-weight:500;padding:0 3px}
+.sheet .ph.hl{background:rgba(23,179,163,.18);border-bottom:1px solid var(--brand-b);border-radius:var(--r1)}
+.sheet .stamp{position:absolute;top:32px;right:40px;font-size:11px;color:var(--mut);border:1px solid var(--line2);border-radius:var(--r2);padding:4px 8px}
+
+/* ===== правая зона: объект и его действия ===== */
+.rhead{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;min-height:52px}
+.rhead .t{font-size:15px;font-weight:600;letter-spacing:-.2px}
+.rcols{padding:14px 16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.kv{display:flex;flex-direction:column;gap:3px}
+.kv .k{font-size:12px;color:var(--mut)}
+.kv .v{font-size:14px}
+.sect{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;margin-top:6px}
+.ract{margin-top:auto;padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:#FCFDFD}
+.ract .grow{margin-left:auto}
+
+/* поле переменной: подпись над полем, источник значения, состояние */
+.fld{display:flex;flex-direction:column;gap:5px;padding:10px;border:1px solid var(--line);border-radius:var(--r3);background:#fff}
+.fld:focus-within{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.18)}
+.fld .lb{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.fld .lb .src{margin-left:auto;font-size:11px;color:var(--brand);background:rgba(15,110,99,.08);padding:1px 6px;border-radius:999px}
+.fld .lb .ok{color:var(--ok)}
+.fld .lb .miss{color:var(--warn)}
+.fld input{border:0;outline:0;font:inherit;font-size:14px;color:var(--ink);background:none;width:100%}
+.fld .hint{font-size:11px;color:var(--mut)}
+.fld.err{border-color:rgba(192,57,43,.4)}
+.fld.err .hint{color:var(--err)}
+.fld.filled{background:rgba(23,179,163,.04)}
+
+/* настройки: форма одной колонкой */
+.form{display:flex;flex-direction:column;gap:20px;max-width:560px}
+.fgrp{display:flex;flex-direction:column;gap:12px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.fgrp .gt{font-size:14px;font-weight:600}
+.fgrp .gd{font-size:13px;color:var(--mut);margin-top:-6px}
+.chk{display:flex;align-items:center;gap:10px;font-size:14px}
+.chk i{width:18px;height:18px;border-radius:var(--r2);border:1px solid var(--line2);display:grid;place-items:center;font-size:11px;color:#fff}
+.chk.on i{background:var(--brand);border-color:var(--brand)}
+
+/* состояние загрузки и пустое */
+.loading{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{padding:40px 24px;text-align:center;color:var(--mut);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.empty .eb{width:44px;height:44px;border-radius:var(--r4);background:rgba(15,110,99,.08);display:grid;place-items:center;color:var(--brand);font-size:20px}
+.footnote{padding:10px 16px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);background:#FCFDFD}
+.tabs2{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tabs2 .t{padding:5px 10px;border-radius:999px;font-size:12px;border:1px solid var(--line2);color:var(--ink2)}
+.tabs2 .t.on{background:var(--brand);border-color:var(--brand);color:#fff}
+/* миниатюры документов: лист, нарисованный средствами CSS */
+.rowm{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r3);border:1px solid transparent;width:100%;text-align:left}
+.rowm:hover{background:var(--hover)}
+.rowm.on{background:rgba(15,110,99,.08);border-color:rgba(15,110,99,.22)}
+.rowm .txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.thumb{width:30px;height:38px;border-radius:2px;border:1px solid var(--line2);background:#fff;position:relative;flex:0 0 auto;overflow:hidden}
+.thumb::before{content:"";position:absolute;left:5px;right:5px;top:7px;height:2px;background:rgba(18,33,31,.16);box-shadow:0 5px 0 rgba(18,33,31,.12),0 10px 0 rgba(18,33,31,.12),0 15px 0 rgba(18,33,31,.09)}
+.thumb .pgn{position:absolute;bottom:1px;right:3px;font-size:8px;color:var(--mut)}
+.sheet mark{background:rgba(212,175,55,.28);border-radius:2px;padding:0 2px}
+.hidden{display:none!important}
+/* доступность: фокус виден всегда, не только мышью */
+:focus-visible{outline:2px solid var(--brand-b);outline-offset:2px}
+.btn:focus-visible,.grp:focus-visible,.row:focus-visible,.vtab:focus-visible{outline-offset:1px}
+input:focus-visible{outline:none}
+/* каркасы будущих строк вместо пустого экрана со спиннером */
+.skel{height:46px;border-radius:var(--r3);background:linear-gradient(90deg,rgba(18,33,31,.06),rgba(18,33,31,.03),rgba(18,33,31,.06));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+/* смена состояния кнопки: обычная → сохраняю → сохранено */
+.btn.done{background:rgba(31,122,77,.12);color:var(--ok)}
+/* пометка нового: показывается один раз, исчезает после действия */
+.newdot{position:relative}
+.newdot::after{content:"";position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--brand-b);box-shadow:0 0 0 0 rgba(23,179,163,.5);animation:pl 1.6s ease-out infinite}
+@keyframes pl{70%{box-shadow:0 0 0 8px rgba(23,179,163,0)}100%{box-shadow:0 0 0 0 rgba(23,179,163,0)}}
+@media (max-width:1500px){.body{grid-template-columns:180px 1fr 340px}}
+</style>
+</head>
+<body>
+
+<!-- ПЛАШКА -->
+<header class="topbar">
+  <button class="burger" id="burger" aria-label="Меню разделов"><i></i><i></i><i></i></button>
+  <button class="logo" data-go="applications" title="На главную"><b>W</b>Wolf AutoDoc</button>
+  <div class="tbsearch">Поиск: клиент, номер заявки, документ…</div>
+  <div class="tbright">
+    <button class="tbtn dot" title="Уведомления" aria-label="Уведомления">◔</button>
+    <div class="avatar" title="Профиль: Андрей">АВ</div>
+    <button class="tbtn" title="Ещё">⋯</button>
+  </div>
+</header>
+
+<!-- КРОШКИ -->
+<div class="crumb" id="crumb"><span>Раздел</span><span>›</span><b>Заявки</b></div>
+
+<!-- МЕНЮ РАЗДЕЛОВ -->
+<nav class="menu" id="menu">
+  <div class="mh"><b>W</b>Wolf AutoDoc</div>
+  <button class="mitem on" data-go="applications"><span class="ic">▤</span>Заявки<span class="cnt num">12</span></button>
+  <button class="mitem" data-go="clients"><span class="ic">◍</span>Клиенты<span class="cnt num">148</span></button>
+  <button class="mitem" data-go="templates"><span class="ic">▧</span>Шаблоны<span class="cnt num">9</span></button>
+  <div class="msep" style="margin-top:auto"></div>
+  <button class="mitem" data-go="settings"><span class="ic">⚙</span>Настройки</button>
+  <button class="mitem" data-go="profile"><span class="ic">◐</span>Личный кабинет</button>
+  <div class="mfoot">Андрей Вишня · менеджер<br>Wolf AutoDoc · 2026</div>
+</nav>
+<div class="overlay" id="overlay"></div>
+
+<!-- ТЕЛО -->
+<div class="body">
+
+  <!-- ЛЕВАЯ ЗОНА: контекст экрана (группы, фильтры, миниатюры, разделы) -->
+  <aside class="aux" id="aux">
+
+    <div class="pane on" data-for="applications">
+      <div class="h">Группы<span class="cnt">12</span></div>
+      <div class="scroll">
+        <button class="grp on">Входящие<span class="n num">4</span></button>
+        <button class="grp">В работе<span class="n num">3</span></button>
+        <button class="grp">Готовы<span class="n num">2</span></button>
+        <button class="grp">Отправлены<span class="n num">3</span></button>
+        <button class="grp" data-grp="empty">Черновики<span class="n num">0</span></button>
+      </div>
+      <div class="h" style="border-top:1px solid var(--line)">Фильтры</div>
+      <div class="scroll" style="flex:0 0 auto">
+        <button class="grp">Продукт: продление C1<span class="n">▾</span></button>
+        <button class="grp">Менеджер: любой<span class="n">▾</span></button>
+        <button class="grp">Период: 30 дней<span class="n">▾</span></button>
+      </div>
+    </div>
+
+    <div class="pane" data-for="clients">
+      <div class="h">Фильтры</div>
+      <div class="scroll">
+        <button class="grp on">Все клиенты<span class="n num">148</span></button>
+        <button class="grp">С активной заявкой<span class="n num">23</span></button>
+        <button class="grp">Документы не собраны<span class="n num">7</span></button>
+        <button class="grp">Архив<span class="n num">41</span></button>
+      </div>
+      <div class="h" style="border-top:1px solid var(--line)">Сортировка</div>
+      <div class="scroll" style="flex:0 0 auto">
+        <button class="grp on">По дате заявки<span class="n">↓</span></button>
+        <button class="grp">По имени<span class="n">A→Я</span></button>
+      </div>
+    </div>
+
+    <div class="pane" data-for="templates">
+      <div class="h">Типы документов<span class="cnt">9</span></div>
+      <div class="scroll">
+        <button class="grp on">Пакет: продление C1<span class="n num">6</span></button>
+        <button class="grp">Пакет: E33G новый<span class="n num">7</span></button>
+        <button class="grp">Пакет: KITAS<span class="n num">5</span></button>
+      </div>
+    </div>
+
+    <!-- редактор шаблона: список переменных -->
+    <div class="pane" data-for="tpledit">
+      <div class="h">Переменные шаблона<span class="cnt num">14</span></div>
+      <div class="scroll">
+        <button class="row on" data-var="ФИО"><span class="l1">ФИО <span class="st done">из паспорта</span></span><span class="l2">обязательная</span></button>
+        <button class="row" data-var="Гражданство"><span class="l1">Гражданство <span class="st done">из паспорта</span></span><span class="l2">обязательная</span></button>
+        <button class="row" data-var="Дата рождения"><span class="l1">Дата рождения <span class="st done">из паспорта</span></span><span class="l2">обязательная</span></button>
+        <button class="row" data-var="Адрес"><span class="l1">Адрес <span class="st work">вручную</span></span><span class="l2">необязательная</span></button>
+        <button class="row" data-var="Цель"><span class="l1">Цель пребывания <span class="st done">из продукта</span></span><span class="l2">обязательная</span></button>
+        <button class="row" data-var="Спонсор"><span class="l1">Спонсор <span class="st wait">нет правила</span></span><span class="l2">обязательная · правило не задано</span></button>
+      </div>
+      <div class="footnote">Клик по переменной — подсветится в документе</div>
+    </div>
+
+    <!-- миниатюры: зависят от вкладки — реальные или наши -->
+    <div class="pane" data-for="review">
+      <div class="h" id="auxTitle">Реальные документы<span class="cnt num">4</span></div>
+      <div class="scroll" data-tabpane="real">
+        <button class="row on" data-doc="Паспорт, стр. 1"><span class="l1">Паспорт, стр. 1 <span class="st done">разобран</span></span><span class="l2">PETROV SERGEY · Диск · 12.09</span></button>
+        <button class="row" data-doc="Паспорт, стр. 2"><span class="l1">Паспорт, стр. 2 <span class="st done">разобран</span></span><span class="l2">PETROV SERGEY · Диск · 12.09</span></button>
+        <button class="row" data-doc="KITAS, стр. 1"><span class="l1">KITAS, стр. 1 <span class="st work">в работе</span></span><span class="l2">PETROV SERGEY · Диск · 12.09</span></button>
+        <button class="row" data-doc="Спонсорское письмо"><span class="l1">Спонсорское письмо <span class="st err">не читается</span></span><span class="l2">PETROV SERGEY · Диск · 12.09</span></button>
+      </div>
+      <div class="scroll hidden" data-tabpane="ours">
+        <button class="row on" data-doc="Письмо иммиграции"><span class="l1">Письмо иммиграции <span class="st done">сохранён</span></span><span class="l2">готов к отправке · 5 полей</span></button>
+        <button class="row" data-doc="Спонсорское письмо"><span class="l1">Спонсорское письмо <span class="st wait">не хватает 2 полей</span></span><span class="l2">черновик · 6 полей</span></button>
+        <button class="row" data-doc="Банковская справка"><span class="l1">Банковская справка <span class="st done">сохранён</span></span><span class="l2">Сбербанк · 4 поля</span></button>
+        <button class="row" data-doc="Заявление"><span class="l1">Заявление <span class="st wait">черновик</span></span><span class="l2">3 поля</span></button>
+        <button class="row" data-doc="Договор RWA"><span class="l1">Договор RWA <span class="st">ещё не создан</span></span><span class="l2">создать из шаблона</span></button>
+      </div>
+      <div class="footnote" id="auxNote">Выберите документ — он откроется в центре</div>
+    </div>
+
+    <div class="pane" data-for="docview">
+      <div class="h">Страницы<span class="cnt num">4</span></div>
+      <div class="scroll">
+        <button class="grp on">Стр. 1<span class="n">1/4</span></button>
+        <button class="grp">Стр. 2<span class="n">2/4</span></button>
+        <button class="grp">Стр. 3<span class="n">3/4</span></button>
+        <button class="grp">Стр. 4<span class="n">4/4</span></button>
+      </div>
+    </div>
+
+    <div class="pane" data-for="settings">
+      <div class="h">Разделы</div>
+      <div class="scroll">
+        <button class="grp on">Общие</button>
+        <button class="grp">Продукты и пакеты</button>
+        <button class="grp">Переменные</button>
+        <button class="grp">Google Диск</button>
+        <button class="grp">Пользователи</button>
+        <button class="grp">Журнал действий</button>
+      </div>
+    </div>
+
+    <!-- личный кабинет: разделы -->
+    <div class="pane" data-for="profile">
+      <div class="h">Личный кабинет</div>
+      <div class="scroll">
+        <button class="grp on">Профиль и контакты</button>
+        <button class="grp">Уведомления</button>
+        <button class="grp">Безопасность</button>
+        <button class="grp">Мои действия<span class="n num">18</span></button>
+      </div>
+      <div class="h" style="border-top:1px solid var(--line)">Смена</div>
+      <div class="scroll" style="flex:0 0 auto">
+        <button class="grp">Менеджер: Андрей В.<span class="n">▾</span></button>
+      </div>
+      <div class="footnote">Выход — внизу правой панели</div>
+    </div>
+  </aside>
+
+  <!-- ЦЕНТР: рабочая область -->
+  <main class="work" id="work">
+
+    <!-- Э1 ЗАЯВКИ: список -->
+    <div class="pane on" data-for="applications">
+      <div class="steps">
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Заявки</span>
+        <span class="st new">4 ждут действия</span>
+        <div class="right">
+          <button class="btn sm o">Список</button><button class="btn sm ghost">Плитки</button>
+          <span class="sep" style="width:1px;height:20px;background:var(--line2)"></span>
+          <button class="btn sm ghost">Сортировка: по дате ▾</button>
+        </div>
+      </div>
+      <div class="scroll" style="padding:12px;gap:4px">
+        <button class="row on" data-sel="#76"><span class="l1"><span class="num">#76</span> PETROV SERGEY <span class="st new">проверка данных</span></span><span class="l2">Продление C1 · от А. Смирновой · 28.09 · <span class="num">450 000 ₽</span></span></button>
+        <button class="row" data-sel="#75"><span class="l1"><span class="num">#75</span> SIDOROVA ANNA <span class="st work">в работе</span></span><span class="l2">E33G новый · от А. Смирновой · 27.09 · <span class="num">620 000 ₽</span></span></button>
+        <button class="row" data-sel="#74"><span class="l1"><span class="num">#74</span> IVANOV PETR <span class="st done">готовы документы</span></span><span class="l2">Продление C1 · от М. Ким · 26.09 · <span class="num">450 000 ₽</span></span></button>
+        <button class="row" data-sel="#73"><span class="l1"><span class="num">#73</span> KIM OLGA <span class="st wait">ждём документы</span></span><span class="l2">KITAS · от М. Ким · 25.09 · <span class="num">380 000 ₽</span></span></button>
+        <button class="row" data-sel="#72"><span class="l1"><span class="num">#72</span> ORLOV DENIS <span class="st work">в работе</span></span><span class="l2">E33G новый · от А. Смирновой · 24.09 · <span class="num">620 000 ₽</span></span></button>
+      </div>
+      <div class="empty hidden">
+        <span class="eb">＋</span>
+        <div><b>В этой группе пока пусто</b><br>Черновиков нет. Создайте первую заявку — данные клиента подтянутся из документов на Диске.</div>
+        <button class="btn p" data-act="Создать заявку">Создать заявку</button>
+      </div>
+      <div class="footnote">Показано 5 из 12 · сортировка по дате заявки</div>
+    </div>
+
+    <!-- Э2 КАРТОЧКА ЗАЯВКИ: два режима, документ в центре -->
+    <div class="pane" data-for="review">
+      <div class="steps">
+        <button class="btn ghost" style="padding:6px 8px" title="Назад к списку" data-go="applications">←</button>
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Заявка <span class="num">#76</span></span>
+        <span class="st new">проверка данных</span>
+        <span class="sep"></span>
+        <!-- шаги процесса по порядку -->
+        <button class="btn sm done" data-act="Распознать документы">✓ Распознано</button>
+        <button class="btn sm" data-act="Заполнить поля">Заполнить поля</button>
+        <button class="btn sm" data-act="Выгрузить с Диска">Выгрузить с Диска</button>
+        <div class="right"><span id="rvCount" class="num">готово 1 из 5</span></div>
+      </div>
+      <div class="vtabs">
+        <button class="vtab on" data-tab="real">Реальные документы</button>
+        <button class="vtab" data-tab="ours">Наши документы</button>
+        <div class="vtb-right">
+          <span style="font-size:13px;color:var(--mut)" id="rvDocName">Паспорт, стр. 1</span>
+          <button class="btn ic ghost" title="Уменьшить">−</button>
+          <button class="btn ic ghost" title="Увеличить">+</button>
+          <button class="btn sm ghost">Вписать</button>
+          <button class="btn ic ghost" title="Ещё">⋯</button>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="sheet" data-stage="real">
+          <div class="stamp">Оригинал · Google Диск</div>
+          <h3>Паспорт гражданина РФ</h3>
+          <p>Фамилия: <span class="ph hl">PETROV</span></p>
+          <p>Имя: <span class="ph hl">SERGEY</span></p>
+          <p>Дата рождения: <span class="ph hl">12.03.1987</span></p>
+          <p>Серия и номер: <span class="ph">4519 123456</span></p>
+          <p>Кем выдан: <span class="ph">ОВД Кировского района</span></p>
+          <p style="margin-top:24px;font-size:12px;color:var(--mut)">Подсвечены поля, которые уже разобраны и подставлены в наши документы.</p>
+        </div>
+        <div class="sheet hidden" data-stage="ours">
+          <div class="stamp">Наш документ · шаблон продления C1</div>
+          <h3>ПИСЬМО-ХОДАТАЙСТВО В ИММИГРАЦИОННУЮ СЛУЖБУ</h3>
+          <p>Настоящим подтверждаем, что <span class="ph hl" data-var="ФИО">PETROV SERGEY</span>, гражданство <span class="ph" data-var="Гражданство">РФ</span>, дата рождения <span class="ph" data-var="Дата рождения">12.03.1987</span>, проживает в Индонезии по адресу <span class="ph" data-var="Адрес">Jl. Raya Kuta No. 12, Badung</span>.</p>
+          <p>Цель пребывания — <span class="ph" data-var="Цель">продление разрешения на пребывание C1</span>. Спонсор — <span class="ph" data-var="Спонсор">PT ALAM INVEST</span>.</p>
+          <p style="margin-top:24px;font-size:12px;color:var(--mut)">Зелёным подсвечено поле, которое открыто справа. Сверяйте его с реальным документом.</p>
+        </div>
+      </div>
+      <div class="footnote" id="rvNote">Режим сверки: слева миниатюры реальных документов, в центре — оригинал, справа — что мы из него взяли</div>
+    </div>
+
+    <!-- Э3 КЛИЕНТЫ -->
+    <div class="pane" data-for="clients">
+      <div class="steps">
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Клиенты</span>
+        <span class="st">148 записей</span>
+        <span class="sep"></span>
+        <button class="btn sm p" data-act="Новый клиент">Новый клиент</button>
+        <div class="right"><button class="btn sm ghost">⋯</button></div>
+      </div>
+      <div class="scroll" style="padding:12px;gap:4px">
+        <button class="row on" data-sel="PETROV SERGEY"><span class="l1">PETROV SERGEY</span><span class="l2">Индонезия · <span class="num">+62 812 3456</span> · заявка <span class="num">#76</span></span></button>
+        <button class="row" data-sel="SIDOROVA ANNA"><span class="l1">SIDOROVA ANNA</span><span class="l2">Индонезия · заявка <span class="num">#75</span></span></button>
+        <button class="row" data-sel="IVANOV PETR"><span class="l1">IVANOV PETR</span><span class="l2">РФ · заявка <span class="num">#74</span></span></button>
+        <button class="row" data-sel="KIM OLGA"><span class="l1">KIM OLGA</span><span class="l2">Индонезия · заявка <span class="num">#73</span></span></button>
+      </div>
+      <div class="footnote">Клик по строке — карточка справа · клик по документу в карточке — просмотр</div>
+    </div>
+
+    <!-- Э4 ШАБЛОНЫ -->
+    <div class="pane" data-for="templates">
+      <div class="steps">
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Шаблоны документов</span>
+        <span class="st">пакет: продление C1</span>
+        <div class="right"><button class="btn sm p" data-act="Новый шаблон">Новый шаблон</button></div>
+      </div>
+      <div class="scroll" style="padding:12px;gap:4px">
+        <button class="row on" data-sel="Письмо иммиграции"><span class="l1">Письмо иммиграции <span class="st done">14 полей</span></span><span class="l2">обязательный · используется в 12 заявках</span></button>
+        <button class="row" data-sel="Спонсорское письмо"><span class="l1">Спонсорское письмо <span class="st done">11 полей</span></span><span class="l2">обязательный · 9 заявок</span></button>
+        <button class="row" data-sel="Банковская справка"><span class="l1">Банковская справка <span class="st done">8 полей</span></span><span class="l2">обязательный · 11 заявок</span></button>
+        <button class="row" data-sel="Заявление"><span class="l1">Заявление <span class="st wait">черновик правил</span></span><span class="l2">обязательный · правила не подтверждены</span></button>
+        <button class="row" data-sel="Договор RWA"><span class="l1">Договор RWA <span class="st">не настроен</span></span><span class="l2">дополнительный</span></button>
+      </div>
+      <div class="footnote">Слева — пакеты документов по продукту. Клик по строке — правая панель</div>
+    </div>
+
+    <!-- Э5 ПРОСМОТР ДОКУМЕНТА -->
+    <div class="pane" data-for="docview">
+      <div class="steps">
+        <button class="btn ghost" style="padding:6px 8px" title="Назад" data-go="clients">←</button>
+        <span style="font-size:15px;font-weight:600" id="dvName">Паспорт, стр. 1</span>
+        <span class="st">реальный документ · Диск</span>
+        <div class="right">
+          <button class="btn sm ghost">Открыть оригинал</button>
+          <button class="btn sm o">Скачать файл</button>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="sheet">
+          <div class="stamp">Google Диск · PETROV SERGEY</div>
+          <h3>Паспорт гражданина РФ · страница 1</h3>
+          <p>Фамилия: PETROV<br>Имя: SERGEY<br>Дата рождения: 12.03.1987</p>
+          <p style="margin-top:20px;font-size:12px;color:var(--mut)">Просмотр без правки. Чтобы править — откройте заявку.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Э6 НАСТРОЙКИ: форма, подписи над полями, одна колонка -->
+    <div class="pane" data-for="settings">
+      <div class="steps">
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Настройки · Общие</span>
+        <div class="right"><span style="font-size:13px;color:var(--mut)">Изменения сохраняются по кнопке</span></div>
+      </div>
+      <div class="scroll plain">
+        <div class="form">
+          <div class="fgrp">
+            <div class="gt">Организация</div>
+            <label class="fld"><span class="lb">Название</span><input value="LLC PANTEON"><span class="hint">Печатается в документах как заказчик</span></label>
+            <label class="fld"><span class="lb">ИНН</span><input value="7701234567"><span class="hint">10 цифр, без пробелов</span></label>
+          </div>
+          <div class="fgrp">
+            <div class="gt">Google Диск</div>
+            <label class="fld filled"><span class="lb">Сервисный аккаунт<span class="ok">подключён</span></span><input value="wolf-drive@wolf-autodoc.iam.gserviceaccount.com" readonly></label>
+            <div class="chk on"><i>✓</i>Скачивать документы клиентов автоматически</div>
+            <div class="chk on"><i>✓</i>Отправлять готовые документы в папку клиента</div>
+          </div>
+          <div class="fgrp" style="border:0;padding:0">
+            <div class="gt">Работа с документами</div>
+            <label class="fld err"><span class="lb">Адрес для банковских справок<span class="miss">нужна проверка</span></span><input value="г. Москва, ул. Тверская, 1"><span class="hint">Укажите реальный адрес организации в РФ</span></label>
+          </div>
+        </div>
+      </div>
+      <div class="footnote">Форма в одну колонку, подписи над полями, ошибка рядом с полем</div>
+    </div>
+
+    <!-- Э7 РЕДАКТОР ШАБЛОНА: центр — образец и HTML, справа — переменные -->
+    <div class="pane" data-for="tpledit">
+      <div class="steps">
+        <button class="btn ghost" style="padding:6px 8px" title="Назад к шаблонам" data-go="templates">←</button>
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Письмо иммиграции</span>
+        <span class="st done">пакет: продление C1</span>
+        <span class="sep"></span>
+        <button class="btn sm" data-act="Проверить поля">Проверить поля</button>
+        <button class="btn p sm" data-act="Сформировать PDF">Сформировать PDF</button>
+        <div class="right"><span class="num">14 переменных · 11 из документов</span></div>
+      </div>
+      <div class="vtabs">
+        <button class="vtab on" data-tab2="pdf">Оригинальный пример</button>
+        <button class="vtab" data-tab2="html">HTML-шаблон</button>
+        <div class="vtb-right">
+          <span style="font-size:13px;color:var(--mut)">образец клиента · 1 из 1</span>
+          <button class="btn ic ghost" title="Уменьшить">−</button>
+          <button class="btn ic ghost" title="Увеличить">+</button>
+          <button class="btn sm ghost">Вписать</button>
+          <button class="btn ic ghost" title="Ещё">⋯</button>
+        </div>
+      </div>
+      <div class="canvas">
+        <div class="sheet" data-stage2="pdf">
+          <div class="stamp">Оригинальный пример · PDF</div>
+          <h3>ПИСЬМО-ХОДАТАЙСТВО (образец)</h3>
+          <p>Настоящим подтверждаем, что <mark>Петров Сергей Иванович</mark>, гражданство <mark>РФ</mark>, проживает по адресу <mark>...</mark>.</p>
+          <p>Цель пребывания — <mark>продление C1</mark>. Спонсор — <mark>PT ALAM INVEST</mark>.</p>
+          <p style="margin-top:24px;font-size:12px;color:var(--mut)">Выделено то, что система распознала как переменные. Слева — их полный список.</p>
+        </div>
+        <div class="sheet hidden" data-stage2="html">
+          <div class="stamp">HTML-шаблон · наш документ</div>
+          <h3>ПИСЬМО-ХОДАТАЙСТВО В ИММИГРАЦИОННУЮ СЛУЖБУ</h3>
+          <p>Настоящим подтверждаем, что <span class="ph" data-var="ФИО">{{ФИО}}</span>, гражданство <span class="ph" data-var="Гражданство">{{ГРАЖДАНСТВО}}</span>, дата рождения <span class="ph" data-var="Дата рождения">{{ДАТА_РОЖДЕНИЯ}}</span>, проживает по адресу <span class="ph" data-var="Адрес">{{АДРЕС}}</span>.</p>
+          <p>Цель пребывания — <span class="ph" data-var="Цель">{{ЦЕЛЬ}}</span>. Спонсор — <span class="ph" data-var="Спонсор">{{СПОНСОР}}</span>.</p>
+          <p style="margin-top:24px;font-size:12px;color:var(--mut)">Нажмите на переменную слева — она подсветится здесь. Правило подстановки — справа.</p>
+        </div>
+      </div>
+      <div class="footnote">Режим редактора: образец слева в центре, HTML-шаблон во второй вкладке, правила — справа</div>
+    </div>
+
+    <!-- Э8 ЛИЧНЫЙ КАБИНЕТ -->
+    <div class="pane" data-for="profile">
+      <div class="steps">
+        <span style="font-size:15px;font-weight:600;letter-spacing:-.2px">Личный кабинет</span>
+        <span class="st work">менеджер</span>
+        <div class="right"><span style="font-size:13px;color:var(--mut)">Изменения сохраняются по кнопке</span></div>
+      </div>
+      <div class="scroll plain">
+        <div class="form">
+          <div class="fgrp">
+            <div class="gt">Личные данные</div>
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="avatar" style="width:56px;height:56px;font-size:20px">АВ</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn sm o" data-act="Загрузить фото">Загрузить фото</button>
+                <span style="font-size:12px;color:var(--mut)">JPG или PNG, до 2 МБ</span>
+              </div>
+            </div>
+            <label class="fld filled"><span class="lb">Имя и фамилия</span><input value="Андрей Вишня"></label>
+            <label class="fld filled"><span class="lb">Должность</span><input value="Старший менеджер по визам"></label>
+            <label class="fld filled"><span class="lb">Телефон</span><input value="+62 812 3456 7890"><span class="hint">Формат: +код страны номер</span></label>
+            <label class="fld filled"><span class="lb">Telegram</span><input value="@mrAndrez"><span class="hint">Здесь приходят уведомления о заявках</span></label>
+            <label class="fld filled"><span class="lb">Электронная почта</span><input value="andrey@wolf-autodoc.com"></label>
+          </div>
+          <div class="fgrp">
+            <div class="gt">Что показывать в уведомлениях</div>
+            <div class="chk on"><i>✓</i>Новая заявка от партнёра</div>
+            <div class="chk on"><i>✓</i>Документы клиента загружены на Диск</div>
+            <div class="chk on"><i>✓</i>Наш документ готов к проверке</div>
+            <div class="chk"><i></i>Клиент не отвечает больше 3 дней</div>
+            <div class="chk on"><i>✓</i>Итог отправки документов в консульство</div>
+          </div>
+          <div class="fgrp" style="border:0;padding:0">
+            <div class="gt">Мои действия за сегодня</div>
+            <button class="row" style="padding:8px 10px"><span class="l1">Заявка #76 · сохранил письмо иммиграции</span><span class="l2 num">09:42 · из панели переменных</span></button>
+            <button class="row" style="padding:8px 10px"><span class="l1">Паспорт клиента PETROV SERGEY · распознан</span><span class="l2 num">09:31 · 5 полей</span></button>
+            <button class="row" style="padding:8px 10px"><span class="l1">Отправлено в консульство по заявке #74</span><span class="l2 num">08:55 · 3 документа</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="footnote">Личный кабинет: контакты, уведомления и журнал действий — слева разделы</div>
+    </div>
+  </main>
+
+  <!-- ПРАВАЯ ЗОНА: выбранный объект и его действия -->
+  <aside class="rail" id="rail">
+
+    <div class="pane on" data-for="applications">
+      <div class="rhead"><span class="t">Заявка <span class="num">#76</span></span><span class="st new">проверка данных</span><button class="btn ic ghost" style="margin-left:auto" title="Свернуть панель" data-rail="min">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Клиент</span><span class="v">PETROV SERGEY</span></div>
+        <div class="kv"><span class="k">Продукт</span><span class="v">Продление C1</span></div>
+        <div class="kv"><span class="k">От кого</span><span class="v">А. Смирнова (партнёр)</span></div>
+        <div class="kv"><span class="k">Стоимость</span><span class="v num">450 000 ₽</span></div>
+        <div class="kv"><span class="k">Дата заявки</span><span class="v num">28.09.2026</span></div>
+        <div class="sect">Документы · 5</div>
+        <div class="kv"><span class="v"><span class="st done">3 сохранены</span> <span class="st wait">1 черновик</span> <span class="st">1 не создан</span></span></div>
+        <div class="sect">Комментарий менеджера</div>
+        <div class="kv"><span class="v" style="color:var(--ink2)">Спонсорское письмо без печати — уточнить у клиента.</span></div>
+      </div>
+      <div class="ract">
+        <button class="btn p" data-go="review">Открыть заявку</button>
+        <button class="btn ghost grow" data-act="Взять в работу">Взять в работу</button>
+      </div>
+    </div>
+
+    <div class="pane" data-for="review">
+      <div class="rhead"><span class="t">Переменные документа</span><span class="st">4 из 6</span><button class="btn ic ghost" style="margin-left:auto" title="Свернуть панель" data-rail="min">›</button></div>
+      <div class="rcols">
+        <label class="fld filled"><span class="lb">ФИО<span class="src">из паспорта</span><span class="ok">✓</span></span><input value="PETROV SERGEY"></label>
+        <label class="fld filled"><span class="lb">Гражданство<span class="src">из паспорта</span><span class="ok">✓</span></span><input value="РФ"></label>
+        <label class="fld filled"><span class="lb">Дата рождения<span class="src">из паспорта</span><span class="ok">✓</span></span><input value="12.03.1987"><span class="hint">Формат ДД.ММ.ГГГГ</span></label>
+        <label class="fld"><span class="lb">Адрес в Индонезии<span class="src">введён вручную</span><span class="ok">✓</span></span><input value="Jl. Raya Kuta No. 12, Badung"></label>
+        <label class="fld"><span class="lb">Спонсор<span class="miss">не заполнено</span></span><input placeholder="Из спонсорского письма" data-hint="Поле обязательно: возьмите из спонсорского письма"><span class="hint">Проверим, когда заполните</span></label>
+        <label class="fld"><span class="lb">Номер заявления<span class="src">введён вручную</span><span class="miss">проверить</span></span><input value="C1-2026-0912"></label>
+      </div>
+      <div class="ract">
+        <button class="btn p" data-act="Сохранить документ">Сохранить документ</button>
+        <button class="btn ghost grow" data-act="Режим сверки">Режим сверки</button>
+      </div>
+    </div>
+
+    <div class="pane" data-for="clients">
+      <div class="rhead"><span class="t">PETROV SERGEY</span><span class="st done">активный</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Гражданство</span><span class="v">РФ</span></div>
+        <div class="kv"><span class="k">Телефон</span><span class="v num">+62 812 3456</span></div>
+        <div class="kv"><span class="k">Заявка</span><span class="v">#76 · продление C1</span></div>
+        <div class="sect">Документы на Диске · 4</div>
+        <button class="row" data-doc="Паспорт, стр. 1" style="padding:8px 10px"><span class="l1">Паспорт, стр. 1</span><span class="l2">разобран · 12.09</span></button>
+        <button class="row" data-doc="Паспорт, стр. 2" style="padding:8px 10px"><span class="l1">Паспорт, стр. 2</span><span class="l2">разобран · 12.09</span></button>
+        <button class="row" data-doc="KITAS, стр. 1" style="padding:8px 10px"><span class="l1">KITAS, стр. 1</span><span class="l2">в работе · 12.09</span></button>
+        <button class="row" data-doc="Спонсорское письмо" style="padding:8px 10px"><span class="l1">Спонсорское письмо</span><span class="l2">не читается</span></button>
+        <div class="sect">Наши документы · 5</div>
+        <div class="kv"><span class="v"><span class="st done">2 готовы</span> <span class="st wait">2 черновика</span> <span class="st">1 не создан</span></span></div>
+      </div>
+      <div class="ract"><button class="btn p" data-go="review">Открыть заявку</button><button class="btn ghost grow" data-act="Написать">Написать</button></div>
+    </div>
+
+    <div class="pane" data-for="templates">
+      <div class="rhead"><span class="t">Письмо иммиграции</span><span class="st done">14 полей</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Назначение</span><span class="v">Основной документ заявления: подтверждает пребывание и спонсора</span></div>
+        <div class="kv"><span class="k">Пакет</span><span class="v">Продление C1 (обязательный)</span></div>
+        <div class="kv"><span class="k">Откуда данные</span><span class="v">Паспорт, KITAS, спонсорское письмо</span></div>
+        <div class="sect">Состояние</div>
+        <div class="kv"><span class="v"><span class="st done">правила подтверждены</span></span></div>
+        <div class="kv"><span class="v" style="color:var(--ink2);font-size:13px">Переменных: 14 · из них из документов: 11, вручную: 3</span></div>
+      </div>
+      <div class="ract"><button class="btn p" data-go="tpledit">Открыть редактор</button><button class="btn ghost grow" data-act="Дублировать">Дублировать</button></div>
+    </div>
+
+    <div class="pane" data-for="tpledit">
+      <div class="rhead"><span class="t">Переменные шаблона</span><span class="st">9 из 14</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <label class="fld filled"><span class="lb">ФИО<span class="src">из паспорта</span><span class="ok">✓</span></span><input value="PETROV SERGEY"></label>
+        <label class="fld filled"><span class="lb">Гражданство<span class="src">из паспорта</span><span class="ok">✓</span></span><input value="РФ"></label>
+        <label class="fld err"><span class="lb">Спонсор<span class="miss">нет правила</span></span><input placeholder="Откуда брать"><span class="hint">Правило не задано: выберите источник</span></label>
+        <label class="fld"><span class="lb">Дата подачи<span class="src">системная</span><span class="ok">✓</span></span><input value="28.09.2026"></label>
+      </div>
+      <div class="ract"><button class="btn p" data-act="Сохранить правила">Сохранить правила</button><button class="btn ghost grow" data-act="Спросить у ИИ">Спросить у ИИ</button></div>
+    </div>
+
+    <div class="pane" data-for="docview">
+      <div class="rhead"><span class="t">О документе</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Источник</span><span class="v">Google Диск · папка клиента</span></div>
+        <div class="kv"><span class="k">Тип</span><span class="v">Паспорт, страница 1</span></div>
+        <div class="kv"><span class="k">Загружен</span><span class="v num">12.09.2026</span></div>
+        <div class="kv"><span class="k">Разобран</span><span class="v">да, 5 полей</span></div>
+      </div>
+      <div class="ract"><button class="btn p" data-go="review">Открыть заявку</button><button class="btn ghost grow" data-act="Скачать файл">Скачать</button></div>
+    </div>
+
+    <div class="pane" data-for="settings">
+      <div class="rhead"><span class="t">Справка по разделу</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Что здесь настраивается</span><span class="v">Данные организации, которые печатаются в наших документах</span></div>
+        <div class="sect">Важно</div>
+        <div class="kv"><span class="v" style="font-size:13px;color:var(--ink2)">Банковские справки — только реальный адрес организации в РФ. Адрес из прописки клиента не подставляется.</span></div>
+        <div class="kv"><span class="v" style="font-size:13px;color:var(--ink2)">Письма иммиграции и KITAS — только реальный индонезийский адрес, без генерации.</span></div>
+      </div>
+      <div class="ract"><button class="btn p" data-act="Сохранить настройки">Сохранить настройки</button><button class="btn ghost grow" data-act="Отменить">Отменить</button></div>
+    </div>
+
+    <!-- личный кабинет: справа — сохранение и выход -->
+    <div class="pane" data-for="profile">
+      <div class="rhead"><span class="t">Андрей Вишня</span><span class="st work">менеджер</span><button class="btn ic ghost" style="margin-left:auto" data-rail="min" title="Свернуть панель">›</button></div>
+      <div class="rcols">
+        <div class="kv"><span class="k">Учётная запись</span><span class="v">Создана 12.08.2026</span></div>
+        <div class="kv"><span class="k">Последний вход</span><span class="v num">сегодня, 08:51</span></div>
+        <div class="kv"><span class="k">Вход по Telegram</span><span class="v"><span class="st done">подключён</span></span></div>
+        <div class="sect">Права</div>
+        <div class="kv"><span class="v" style="font-size:13px;color:var(--ink2)">Заявки: полный доступ · Шаблоны: правка · Настройки: только Google Диск</span></div>
+      </div>
+      <div class="ract">
+        <button class="btn p" data-act="Сохранить профиль">Сохранить профиль</button>
+        <button class="btn ghost d grow" data-act="Выйти из системы">Выйти</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- Э7 РЕДАКТОР ШАБЛОНА (отдельный режим: центр — документ, справа — переменные) -->
+<!-- (экран редактора шаблона перенесён внутрь рабочей области) -->
+
+<script>
+const TITLES={
+  applications:['Работа','Заявки'],
+  review:['Заявки','Заявка #76 PETROV SERGEY'],
+  clients:['База','Клиенты'],
+  templates:['Настройка','Шаблоны документов'],
+  docview:['Клиенты','PETROV SERGEY › Паспорт, стр. 1'],
+  settings:['Система','Настройки'],
+  profile:['Личный кабинет','Андрей Вишня · менеджер'],
+  tpledit:['Шаблоны','Редактор шаблона: Письмо иммиграции']
+};
+let cur='applications';
+
+function show(s){
+  cur=s;
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.dataset.for===s));
+  const t=TITLES[s]||['',''];
+  const cb=document.getElementById('crumb');cb.textContent=''; /* безопасно: узлы и текст, без innerHTML */
+  const s1=document.createElement('span');s1.textContent=t[0];
+  const s2=document.createElement('span');s2.textContent='›';
+  const b1=document.createElement('b');b1.textContent=t[1];
+  cb.append(s1,s2,b1);
+  document.querySelectorAll('.mitem').forEach(m=>m.classList.toggle('on',m.dataset.go===s));
+  closeMenu();
+}
+function openMenu(){document.getElementById('menu').classList.add('open');document.getElementById('overlay').classList.add('on');}
+function closeMenu(){document.getElementById('menu').classList.remove('open');document.getElementById('overlay').classList.remove('on');}
+
+document.getElementById('burger').onclick=openMenu;
+document.getElementById('overlay').onclick=closeMenu;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu();});
+
+/* переходы */
+document.addEventListener('click',e=>{
+  const g=e.target.closest('[data-go]');
+  if(g){show(g.dataset.go);if(g.dataset.go==='tpledit')showTpl();return;}
+  const r=e.target.closest('[data-rail]');
+  if(r){document.getElementById('rail').classList.toggle('min');
+        r.textContent=document.getElementById('rail').classList.contains('min')?'‹':'›';return;}
+  const sel=e.target.closest('[data-sel]');
+  if(sel){sel.parentElement.querySelectorAll('.row').forEach(x=>x.classList.remove('on'));sel.classList.add('on');return;}
+  const grp=e.target.closest('.grp');
+  if(grp){
+    grp.parentElement.querySelectorAll('.grp').forEach(x=>x.classList.remove('on'));grp.classList.add('on');
+    /* пустая группа → призыв с кнопкой, а не пустой список (тест пустого состояния) */
+    if(cur==='applications'){
+      const pane=document.querySelector('#work .pane[data-for="applications"]'); /* именно рабочая область, не левая колонка */
+      const list=pane.querySelector('.scroll'), emp=pane.querySelector('.empty'), ft=pane.querySelector('.footnote');
+      const isEmpty=grp.dataset.grp==='empty';
+      list.classList.toggle('hidden',isEmpty);emp.classList.toggle('hidden',!isEmpty);
+      ft.textContent=isEmpty?'0 заявок · создайте первую':'Показано 5 из 12 · сортировка по дате заявки';
+    }
+    return;
+  }
+  const doc=e.target.closest('[data-doc]');
+  if(doc){
+    if(cur==='review'){ /* в заявке документ меняется в центре, не уводит */
+      const nm=doc.querySelector('.l1').textContent.trim();
+      document.getElementById('rvDocName').textContent=nm;
+      doc.parentElement.querySelectorAll('.row').forEach(x=>x.classList.remove('on'));doc.classList.add('on');return;
+    }
+    document.getElementById('dvName').textContent=doc.dataset.doc;show('docview');return;
+  }
+  const tab=e.target.closest('[data-tab]');
+  if(tab&&tab.classList.contains('vtab')){
+    const t=tab.dataset.tab;
+    tab.parentElement.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on',x===tab));
+    document.querySelectorAll('[data-tabpane]').forEach(p=>p.classList.toggle('hidden',p.dataset.tabpane!==t));
+    document.querySelectorAll('[data-stage]').forEach(p=>p.classList.toggle('hidden',p.dataset.stage!==t));
+    const at=document.getElementById('auxTitle');at.textContent=(t==='real'?'Реальные документы':'Наши документы');
+    const cn=document.createElement('span');cn.className='cnt num';cn.textContent=(t==='real'?'4':'5');at.append(cn);
+    document.getElementById('rvCount').textContent=(t==='real'?'разобрано 2 из 4':'готово 1 из 5');
+    document.getElementById('rvNote').textContent=(t==='real'
+      ?'Режим сверки: слева миниатюры реальных документов, в центре — оригинал, справа — что мы из него взяли'
+      :'Режим сборки: слева наши документы, в центре HTML нашего документа, справа переменные');
+    return;
+  }
+  /* личный кабинет: аватар ведёт в кабинет */
+  const av=e.target.closest('.avatar');
+  if(av){show('profile');return;}
+  /* переключатели (уведомления, согласия) */
+  const ck=e.target.closest('.chk');
+  if(ck){ck.classList.toggle('on');const i=ck.querySelector('i');if(i)i.textContent=ck.classList.contains('on')?'✓':'';return;}
+  /* вкладки редактора шаблона: образец ↔ HTML */
+  const t2=e.target.closest('[data-tab2]');
+  if(t2){
+    t2.parentElement.querySelectorAll('.vtab').forEach(x=>x.classList.toggle('on',x===t2));
+    document.querySelectorAll('[data-stage2]').forEach(p=>p.classList.toggle('hidden',p.dataset.stage2!==t2.dataset.tab2));
+    return;
+  }
+  /* клик по переменной — подсветка её места в документе */
+  const vr=e.target.closest('[data-var]');
+  if(vr){
+    document.querySelectorAll('[data-var]').forEach(x=>x.classList.remove('hl'));
+    document.querySelectorAll('.sheet [data-var="'+vr.dataset.var+'"]').forEach(x=>x.classList.add('hl'));
+    document.querySelectorAll('[data-doc]').forEach(x=>x.classList.remove('on'));
+    if(vr.classList.contains('row'))vr.classList.add('on');
+    return;
+  }
+  /* основное действие кнопки: состояние загрузки */
+  const a=e.target.closest('.btn.p[data-act],.btn[data-act]');
+  if(a&&!a.disabled){
+    const old=a.textContent;a.textContent='';a.disabled=true;
+    const sp=document.createElement('span');sp.className='loading';
+    a.append(sp,document.createTextNode(' Сохраняю…'));
+    setTimeout(()=>{ /* отклик виден всегда: молчание после клика — признак поломки */
+      a.textContent='✓ Сохранено';a.classList.add('done');
+      setTimeout(()=>{a.textContent=old;a.classList.remove('done');a.disabled=false;},1200);
+    },900);
+  }
+});
+/* проверка полей тихая до взаимодействия: ошибка — только после ухода из поля */
+document.addEventListener('focusout',e=>{
+  const inp=e.target.closest('.fld input');
+  if(!inp||inp.readOnly)return;
+  const fld=inp.closest('.fld');
+  const bad=inp.value.trim()==='';
+  fld.classList.toggle('err',bad);
+  let h=fld.querySelector('.hint');if(!h){h=document.createElement('span');h.className='hint';fld.append(h);}
+  h.textContent=bad?'Поле обязательно: заполните или возьмите из документа':(inp.dataset.hint||'');
+});
+function showTpl(){show('tpledit');}
+/* миниатюры-превью у документов: маленький лист слева от названия */
+document.querySelectorAll('[data-doc]').forEach(r=>{
+  if(r.querySelector('.thumb'))return;
+  const box=document.createElement('span');box.className='txt';
+  while(r.firstChild)box.append(r.firstChild);
+  const t=document.createElement('span');t.className='thumb';
+  const n=document.createElement('span');n.className='pgn';n.textContent='A4';t.append(n);
+  r.append(box);r.prepend(t);r.classList.add('rowm');r.classList.remove('row');
+});
+/* прямой вход: shell_v3.html#review!ours — экран и вкладка */
+const _h=location.hash.slice(1).split('!');
+show(_h[0]==='menu'?'applications':(_h[0]||'applications'));
+if(_h[0]==='menu')openMenu(); /* #menu — показать меню открытым */
+if(_h[1]==='ours'||_h[1]==='real'){const tb=document.querySelector('.vtab[data-tab="'+_h[1]+'"]');if(tb)tb.click();}
+if(_h[1]==='html'||_h[1]==='pdf'){const t2=document.querySelector('[data-tab2="'+_h[1]+'"]');if(t2)t2.click();} /* #tpledit!html — вкладка шаблона */
+if(_h[1]==='empty'){const g=document.querySelector('[data-grp="empty"]');if(g)g.click();} /* #applications!empty — пустое состояние */
+</script>
+</body>
+</html>

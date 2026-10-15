@@ -1,0 +1,32 @@
+[
+ {
+  "name": "cv_education_years",
+  "examples_json": "[\"2005 — 2010\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_education_note",
+  "examples_json": "[\"Faculty of Business Informatics / Management\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_hard",
+  "examples_json": "[\"Strategic HR Management; Technical Administration; Distributed Team Leadership\", \"B2B Sales, Contract Negotiation, Client Relations\", \"Recruitment, Payroll, HR Documentation\", \"Financial Reporting, Reconciliation, Tax Reporting\", \"IT Support, Network Administration, System Monitoring\", \"Marketing Strategy, SMM, Campaign Analytics\", \"Kitchen Operations, Inventory Management, Food Safety\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_soft",
+  "examples_json": "[\"Team Leadership, Time Management, Problem Solving\", \"Communication, Adaptability, Attention to Detail\", \"Multitasking, Stress Resistance, Decision Making\", \"Team Leadership, Communication, Negotiation\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_tools",
+  "examples_json": "[\"Huntflow, Experium, Jira, Confluence, Notion, Google Workspace, Slack, GitLab\", \"Microsoft Office Suite, Google Workspace, Excel (advanced)\", \"CRM (Bitrix24 / amoCRM), Jira, Confluence\", \"1C, Microsoft Office Suite, Google Workspace\", \"Salesforce, Excel (advanced), Google Workspace\", \"Adobe Photoshop, Adobe Illustrator, Figma\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_languages",
+  "examples_json": "[\"Russian (Native), English (Upper-Intermediate)\", \"Russian (Native), English (Upper-Intermediate / B2)\", \"Russian (Native), English (Advanced / C1)\", \"Russian (Native), English (Intermediate / B1)\", \"Russian (Native), English (Upper-Intermediate / B2), Indonesian (Basic)\", \"Russian (Native), English (Advanced / C1), Chinese (HSK 4)\"]",
+  "default_value": ""
+ }
+]

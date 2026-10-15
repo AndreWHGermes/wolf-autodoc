@@ -1,0 +1,1366 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ 79455d4a
+
+11.09.2026
+
+CLIENT_016 Igorevna
+Home address: 105120, Moscow, Ul Sergiya Radonezhskogo , D. 6, Kv. 69
+
+About the product
+Date of conclusion of the contract: 06.12.2018
+Contract number: 5107943853
+Personal account number: 40817810500007560565
+
+Movement of funds for the period from 11.09.2025 to 11.09.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+05.08.2026
+23:03
+
+05.08.2026
+23:03
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+05.08.2026
+22:46
+
+05.08.2026
+22:46
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+27.07.2026
+00:01
+
+27.07.2026
+04:34
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+05.07.2026
+23:03
+
+05.07.2026
+23:03
+
+-99.00 ₽
+
+-99.00 ₽
+
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.07.2026
+22:45
+
+05.07.2026
+22:45
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+02.07.2026
+15:30
+
+02.07.2026
+15:30
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+27.06.2026
+00:01
+
+27.06.2026
+03:57
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+23.06.2026
+10:29
+
+23.06.2026
+10:30
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+Replenishment by phone
+4666
+number SBP.100000000273
+RU
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+External transfer by phone
+4666
+number +79782912388
+
+10.06.2026
+16:19
+
+11.06.2026
+16:52
+
+-4 400.00 ₽
+
+-4 400.00 ₽
+
+Payment in wildhumans
+MOSKVA RU
+
+05.06.2026
+23:05
+
+05.06.2026
+23:05
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.06.2026
+22:47
+
+05.06.2026
+22:47
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+01.06.2026
+23:39
+
+02.06.2026
+03:17
+
++3 600.00 ₽
+
++3 600.00 ₽
+
+Refund transaction in
+wildhumans MOSKVA RU
+
+4666
+
+01.06.2026
+12:39
+
+01.06.2026
+12:49
+
+-3 600.00 ₽
+
+-3 600.00 ₽
+
+Payment in wildhumans
+MOSKVA RU
+
+4666
+
+31.05.2026
+16:08
+
+31.05.2026
+16:08
+
+-25 000.00 ₽
+
+-25 000.00 ₽
+
+External transfer by phone
+number +79782912388
+
+4666
+
+4666
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+31.05.2026
+15:49
+
+31.05.2026
+15:49
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+28.05.2026
+09:09
+
+28.05.2026
+09:10
+
+-15 000.00 ₽
+
+-15 000.00 ₽
+
+Replenishment by phone
+4666
+number SBP.100000000111
+RU
+Transfer to mBank.perevod 4666
+
+28.05.2026
+00:02
+
+28.05.2026
+04:07
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+20.05.2026
+01:17
+
+20.05.2026
+03:45
+
++1 500.00 ₽
+
++1 500.00 ₽
+
+09.05.2026
+21:33
+
+11.05.2026
+03:01
+
+-2 640.00 ₽
+
+-2 640.00 ₽
+
+05.05.2026
+23:04
+
+05.05.2026
+23:04
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.05.2026
+22:49
+
+05.05.2026
+22:49
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+28.04.2026
+00:01
+
+28.04.2026
+03:34
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+3411
+
+27.04.2026
+18:35
+
+27.04.2026
+18:36
+
+-1 100.00 ₽
+
+-1 100.00 ₽
+
+Payment in Sistema
+Getcourse TER SKOLKOVO
+RU
+Payment in MegaFon
+MOSCOW RU
+
+23.04.2026
+22:55
+
+24.04.2026
+03:16
+
+-14 690.00 ₽
+
+-14 690.00 ₽
+
+Payment in GetCourseSBP
+MOSCOW RU
+
+4666
+
+05.04.2026
+23:02
+
+05.04.2026
+23:02
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.04.2026
+22:46
+
+05.04.2026
+22:46
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+01.04.2026
+16:32
+
+01.04.2026
+17:23
+
+-3 500.00 ₽
+
+-3 500.00 ₽
+
+Payment in olgakutuzova
+Sankt-Peterbu RU
+
+4666
+
+28.03.2026
+00:02
+
+28.03.2026
+03:49
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+3411
+
+26.03.2026
+21:34
+
+28.03.2026
+03:41
+
+-3 600.00 ₽
+
+-3 600.00 ₽
+
+Payment in Sistema
+Getcourse TER SKOLKOVO
+RU
+Payment in wildhumans
+MOSKVA RU
+
+09.03.2026
+18:48
+
+09.03.2026
+18:48
+
+-1 500.00 ₽
+
+-1 500.00 ₽
+
+External transfer by phone
+number +79268209165
+
+4666
+
+09.03.2026
+15:41
+
+09.03.2026
+15:56
+
+-2 800.00 ₽
+
+-2 800.00 ₽
+
+Payment in VKUSVILL
+Moskva RUS
+
+4666
+
+09.03.2026
+13:31
+
+09.03.2026
+13:32
+
++50 000.00 ₽
+
++50 000.00 ₽
+
+09.03.2026
+11:25
+
+09.03.2026
+11:26
+
+-1 170.00 ₽
+
+-1 170.00 ₽
+
+Replenishment by phone
+4666
+number SBP.100000000273
+RU
+Payment in FAST-FUD KAFE 4666
+MOSCOW RU
+
+09.03.2026
+10:55
+
+09.03.2026
+10:55
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+08.03.2026
+18:10
+
+08.03.2026
+18:11
+
+-210.00 ₽
+
+-210.00 ₽
+
+06.03.2026
+14:49
+
+06.03.2026
+14:50
+
+-300.00 ₽
+
+-300.00 ₽
+
+Payment in mBank.Troyka
+
+06.03.2026
+11:22
+
+06.03.2026
+11:23
+
+-387.34 ₽
+
+-387.34 ₽
+
+Payment in OOO "Aptechnaya 4666
+set Oz MOSCOW RU
+
+06.03.2026
+10:06
+
+06.03.2026
+10:07
+
+-80.00 ₽
+
+-80.00 ₽
+
+Payment in GadirovPQR
+MOSCOW RU
+
+06.03.2026
+09:58
+
+06.03.2026
+09:59
+
+-548.99 ₽
+
+-548.99 ₽
+
+Payment in Magnit MOSCOW 4666
+RU
+
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+Replenishment by phone
+4666
+number SBP.100000000111
+RU
+Payment in wildhumans
+4666
+MOSKVA RU
+
+4666
+
+4666
+
+Replenishment by phone
+4666
+number SBP.100000000273
+RU
+Payment in EVOZERNO
+4666
+COFFEE. MOSCOW RU
+4666
+
+4666
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+05.03.2026
+23:03
+
+05.03.2026
+23:03
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.03.2026
+22:47
+
+05.03.2026
+22:47
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+05.03.2026
+19:44
+
+05.03.2026
+19:45
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External transfer by phone
+number +79269766047
+
+4666
+
+05.03.2026
+01:00
+
+05.03.2026
+03:07
+
+-420.00 ₽
+
+-420.00 ₽
+
+Payment in Magazin
+ProduktyPQR MOSCOW RU
+
+4666
+
+04.03.2026
+22:27
+
+05.03.2026
+02:53
+
+-420.00 ₽
+
+-420.00 ₽
+
+Payment in MAGAZIN
+PRODUKTY MOSCOW RU
+
+4666
+
+04.03.2026
+21:45
+
+04.03.2026
+21:46
+
+-433.89 ₽
+
+-433.89 ₽
+
+Payment in Diksi 77086
+MOSCOW RU
+
+4666
+
+04.03.2026
+19:08
+
+04.03.2026
+19:35
+
+-1 869.10 ₽
+
+-1 869.10 ₽
+
+Payment in wildhumans
+MOSKVA RU
+
+4666
+
+04.03.2026
+14:49
+
+04.03.2026
+14:50
+
+-413.00 ₽
+
+-413.00 ₽
+
+Payment in OOO "Aptechnaya 4666
+set Oz MOSCOW RU
+
+02.03.2026
+15:55
+
+02.03.2026
+15:56
+
+-2 580.00 ₽
+
+-2 580.00 ₽
+
+4666
+
+02.03.2026
+15:37
+
+02.03.2026
+15:38
+
+-430.00 ₽
+
+-430.00 ₽
+
+Payment in Magazin
+Krymskaya Kosm MOSCOW
+RU
+Payment in SPKERAMIKA
+KAFY MOSCOW RU
+
+02.03.2026
+15:16
+
+02.03.2026
+15:17
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External transfer by phone
+number +79782912388
+
+4666
+
+02.03.2026
+10:26
+
+02.03.2026
+10:26
+
+-120.00 ₽
+
+-120.00 ₽
+
+Payment in Ivan-ChayPQR
+MOSCOW RU
+
+4666
+
+02.03.2026
+10:22
+
+02.03.2026
+10:22
+
+-670.00 ₽
+
+-670.00 ₽
+
+Payment in IVAN-CHAJ
+MOSCOW RU
+
+4666
+
+01.03.2026
+15:26
+
+01.03.2026
+15:27
+
+-2 200.00 ₽
+
+-2 200.00 ₽
+
+Internal transfer to contract
+5544706693
+
+4666
+
+01.03.2026
+11:01
+
+01.03.2026
+11:02
+
+-600.00 ₽
+
+-600.00 ₽
+
+External transfer by phone
+number +79782912388
+
+4666
+
+01.03.2026
+10:55
+
+01.03.2026
+10:55
+
+-400.00 ₽
+
+-400.00 ₽
+
+Payment in MegaFon
+MOSCOW RU
+
+4666
+
+28.02.2026
+11:00
+
+28.02.2026
+11:00
+
+-150.00 ₽
+
+-150.00 ₽
+
+External transfer by phone
+number +79782912388
+
+4666
+
+27.02.2026
+00:03
+
+27.02.2026
+03:40
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+3411
+
+25.02.2026
+14:59
+
+25.02.2026
+15:00
+
+-1 500.00 ₽
+
+-1 500.00 ₽
+
+Payment in Sistema
+Getcourse TER SKOLKOVO
+RU
+External transfer by phone
+number +79782912388
+
+25.02.2026
+12:43
+
+25.02.2026
+12:44
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79782912388
+
+4666
+
+24.02.2026
+20:39
+
+24.02.2026
+20:39
+
+-1 111.00 ₽
+
+-1 111.00 ₽
+
+External transfer by phone
+number +79268209165
+
+4666
+
+24.02.2026
+13:04
+
+24.02.2026
+13:04
+
+-200.00 ₽
+
+-200.00 ₽
+
+External transfer by phone
+number +79155230947
+
+4666
+
+24.02.2026
+11:36
+
+24.02.2026
+11:36
+
+-6 000.00 ₽
+
+-6 000.00 ₽
+
+External transfer by phone
+number +79268209165
+
+4666
+
+23.02.2026
+14:05
+
+23.02.2026
+14:06
+
+-2 300.00 ₽
+
+-2 300.00 ₽
+
+External transfer by phone
+number +79780207473
+
+4666
+
+21.02.2026
+22:07
+
+22.02.2026
+03:37
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+Transfer to mBank.perevod
+
+4666
+
+21.02.2026
+18:28
+
+21.02.2026
+18:28
+
++45 000.00 ₽
+
++45 000.00 ₽
+
+Replenishment by phone
+4666
+number SBP.100000000111
+RU
+
+4666
+
+4666
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+21.02.2026
+18:17
+
+21.02.2026
+18:17
+
++10.00 ₽
+
++10.00 ₽
+
+21.02.2026
+16:22
+
+21.02.2026
+16:23
+
+-300.00 ₽
+
+-300.00 ₽
+
+Replenishment by phone
+4666
+number SBP.100000000111
+RU
+Payment in mBank.Troyka
+4666
+
+21.02.2026
+13:34
+
+21.02.2026
+13:35
+
+-300.00 ₽
+
+-300.00 ₽
+
+Payment in MegaFon
+MOSCOW RU
+
+4666
+
+21.02.2026
+10:59
+
+21.02.2026
+11:00
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Payment in MegaFon
+MOSCOW RU
+
+4666
+
+17.02.2026
+13:53
+
+17.02.2026
+13:54
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+External transfer by phone
+number +79268209165
+
+4666
+
+16.02.2026
+20:41
+
+16.02.2026
+20:41
+
+-500.00 ₽
+
+-500.00 ₽
+
+Internal transfer to contract
+5034156462
+
+4666
+
+16.02.2026
+19:53
+
+16.02.2026
+19:54
+
+-500.00 ₽
+
+-500.00 ₽
+
+Internal transfer to contract
+5034156462
+
+4666
+
+16.02.2026
+18:50
+
+16.02.2026
+18:50
+
+-6 666.00 ₽
+
+-6 666.00 ₽
+
+Internal transfer to contract
+5034156462
+
+4666
+
+06.02.2026
+16:12
+
+06.02.2026
+16:13
+
+-9 150.40 ₽
+
+-9 150.40 ₽
+
+Payment in AO TK "Grand
+Servis Ek MOSCOW RU
+
+4666
+
+05.02.2026
+23:06
+
+05.02.2026
+23:06
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.02.2026
+22:49
+
+05.02.2026
+22:49
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+29.01.2026
+18:20
+
+29.01.2026
+18:21
+
++10 000.00 ₽
+
++10 000.00 ₽
+
+Intrabank transfer from
+contract 5656183067
+
+24.01.2026
+00:36
+
+24.01.2026
+03:25
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+05.01.2026
+23:00
+
+05.01.2026
+23:00
+
+-99.00 ₽
+
+-99.00 ₽
+
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+05.01.2026
+22:43
+
+05.01.2026
+22:43
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+05.01.2026
+01:08
+
+05.01.2026
+03:05
+
+-290.00 ₽
+
+-290.00 ₽
+
+28.12.2025
+23:45
+
+29.12.2025
+03:41
+
+-2 800.00 ₽
+
+-2 800.00 ₽
+
+Payment in
+4666
+ASLANDANCEBOT g Samara
+RU
+External transfer by phone
+4666
+number +79812644724
+
+25.12.2025
+00:37
+
+25.12.2025
+04:45
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+13.12.2025
+20:53
+
+13.12.2025
+20:53
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+05.12.2025
+23:10
+
+05.12.2025
+23:10
+
+-99.00 ₽
+
+-99.00 ₽
+
+05.12.2025
+22:54
+
+05.12.2025
+22:54
+
++525 000.00 ₽
+
++525 000.00 ₽
+
+LLC "Unit Five Visual Effects" 4666
+
+30.11.2025
+15:44
+
+01.12.2025
+16:18
+
+-900.00 ₽
+
+-900.00 ₽
+
+Payment in wildhumans
+MOSKVA RU
+
+4666
+
+30.11.2025
+15:37
+
+01.12.2025
+16:18
+
+-900.00 ₽
+
+-900.00 ₽
+
+Payment in wildhumans
+MOSKVA RU
+
+4666
+
+25.11.2025
+02:33
+
+25.11.2025
+03:33
+
+-3 124.00 ₽
+
+-3 124.00 ₽
+
+05.11.2025
+23:11
+
+05.11.2025
+23:11
+
+-99.00 ₽
+
+-99.00 ₽
+
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+4666
+
+Payment in Sistema
+3411
+Getcourse TER SKOLKOVO
+RU
+Replenishment by phone
+4666
+number SBP.100000000111
+RU
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Wolf AutoDoc — работа с документами заявки</title>
+<style>
+:root{--brand:#0F6E63;--brand-b:#17B3A3;--brand-deep:#04201E;--gold:#D4AF37;--ink:#12211F;--ink2:#3D4F4C;--mut:#6B7C79;--line:rgba(18,33,31,.10);--line2:rgba(18,33,31,.16);--bg:#F4F7F6;--card:#fff;--work:#EDF2F1;--hover:rgba(15,110,99,.06);--ok:#1F7A4D;--warn:#B26A00;--err:#C0392B;--r2:4px;--r3:6px;--r5:12px;--sh2:0 2px 8px rgba(18,33,31,.08);--f:"Inter","Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--f);color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+/* плашка */
+.topbar{height:56px;background:var(--brand-deep);color:#EAF3F1;display:flex;align-items:center;gap:16px;padding:0 16px;position:sticky;top:0;z-index:40}
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px}
+.logo b{width:24px;height:24px;border-radius:var(--r3);background:var(--brand-b);color:#04201E;display:grid;place-items:center;font-size:13px}
+.tbsearch{margin-left:24px;background:rgba(255,255,255,.08);border-radius:var(--r3);padding:8px 12px;width:300px;color:#B9CFCB;font-size:14px}
+.tbright{margin-left:auto;display:flex;gap:8px;align-items:center}
+.crumb{background:#0A302C;color:#8FB3AE;font-size:13px;padding:8px 16px;display:flex;gap:8px}
+.crumb b{color:#E7F1EF;font-weight:500}
+/* сетка */
+.body{display:grid;grid-template-columns:230px 1fr 392px;height:calc(100vh - 88px)}
+.aux{background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.work{background:var(--work);display:flex;flex-direction:column;overflow:hidden}
+.rail{background:var(--card);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.h{padding:11px 14px;font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.h .cnt{margin-left:auto;letter-spacing:0;text-transform:none;font-size:12px;font-weight:500}
+.scroll{overflow:auto;padding:8px;display:flex;flex-direction:column;gap:2px}
+.scroll.plain{padding:16px}
+/* степпер этапов: где мы в работе с документами */
+.steps{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;padding:9px 14px;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--mut);padding:5px 9px;border-radius:999px}
+.step .n{width:17px;height:17px;border-radius:50%;border:1px solid var(--line2);display:grid;place-items:center;font-size:10px;color:var(--mut)}
+.step.done{color:var(--ok)}.step.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.step.on{background:rgba(15,110,99,.08);color:var(--brand);font-weight:600}.step.on .n{background:var(--brand);border-color:var(--brand);color:#fff}
+.step .arr{color:var(--line2)}
+.steps .right{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* вкладки над документом */
+.vtabs{background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:4px;padding:0 12px}
+.vtab{padding:11px 13px;font-size:14px;color:var(--mut);border-bottom:2px solid transparent;font-weight:500}
+.vtab:hover{color:var(--ink)}.vtab.on{color:var(--brand);border-color:var(--brand);font-weight:600}
+.vtb-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+.canvas{flex:1;overflow:auto;padding:22px;display:flex;justify-content:center;align-items:flex-start}
+.sheet{width:740px;background:#fff;border:1px solid var(--line);box-shadow:var(--sh2);padding:52px 60px;font-size:14px;line-height:1.7;color:var(--ink2);position:relative}
+.sheet h3{font-size:20px;color:var(--ink);margin-bottom:18px;letter-spacing:-.4px}
+.sheet p{margin-bottom:11px}
+.sheet .ph{border-bottom:1px dashed rgba(15,110,99,.5);color:var(--brand);font-weight:500;padding:0 3px}
+.ph.hl{background:rgba(23,179,163,.2);border-bottom:1px solid var(--brand-b);border-radius:2px}
+.sheet mark{background:rgba(212,175,55,.3);border-radius:2px;padding:0 2px}
+.sheet .stamp{position:absolute;top:26px;right:34px;font-size:11px;color:var(--mut);border:1px solid var(--line2);border-radius:var(--r2);padding:4px 8px}
+.sheet .emptyfield{background:rgba(178,106,0,.14);border-bottom:1px dashed var(--warn);color:var(--warn);padding:0 3px;font-weight:500}
+.footnote{padding:9px 14px;font-size:12px;color:var(--mut);border-top:1px solid var(--line);background:#FCFDFD}
+/* строки со миниатюрами */
+.rowm{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r3);border:1px solid transparent;width:100%;text-align:left}
+.rowm:hover{background:var(--hover)}.rowm.on{background:rgba(15,110,99,.08);border-color:rgba(15,110,99,.22)}
+.rowm .txt{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rowm .l1{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500}
+.rowm .l2{font-size:11px;color:var(--mut)}
+.thumb{width:28px;height:36px;border-radius:2px;border:1px solid var(--line2);background:#fff;position:relative;flex:0 0 auto;overflow:hidden}
+.thumb::before{content:"";position:absolute;left:5px;right:5px;top:7px;height:2px;background:rgba(18,33,31,.16);box-shadow:0 5px 0 rgba(18,33,31,.12),0 10px 0 rgba(18,33,31,.12),0 15px 0 rgba(18,33,31,.09)}
+.thumb .pgn{position:absolute;bottom:1px;right:3px;font-size:8px;color:var(--mut)}
+.st{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(18,33,31,.06);color:var(--ink2);white-space:nowrap}
+.st::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor}
+.st.done{background:rgba(31,122,77,.12);color:var(--ok)}.st.work{background:rgba(15,110,99,.12);color:var(--brand)}
+.st.wait{background:rgba(178,106,0,.12);color:var(--warn)}.st.err{background:rgba(192,57,43,.12);color:var(--err)}
+.st.gen{background:rgba(212,175,55,.18);color:#8A6A12}
+/* кнопки */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:var(--r2);font-size:14px;font-weight:500;border:1px solid transparent;background:rgba(18,33,31,.05);color:var(--ink2);white-space:nowrap}
+.btn:hover{background:rgba(18,33,31,.09)}
+.btn.p{background:var(--brand);color:#fff}.btn.p:hover{background:#0C5A51}
+.btn.o{border-color:var(--line2);background:#fff}
+.btn.ghost{background:none;color:var(--mut)}.btn.ghost:hover{background:var(--hover);color:var(--ink)}
+.btn.sm{padding:6px 10px;font-size:13px}.btn.ic{width:30px;height:30px;padding:0;justify-content:center}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.done{background:rgba(31,122,77,.12);color:var(--ok)}
+:focus-visible{outline:2px solid var(--brand-b);outline-offset:2px}
+/* правая панель */
+.rhead{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;min-height:50px}
+.rhead .t{font-size:15px;font-weight:600}
+.rcols{padding:12px 14px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.kv{display:flex;flex-direction:column;gap:2px}.kv .k{font-size:11px;color:var(--mut)}.kv .v{font-size:13px}
+.sect{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut);font-weight:600;margin-top:4px}
+.ract{margin-top:auto;padding:11px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:#FCFDFD}
+.ract .grow{margin-left:auto}
+.fld{display:flex;flex-direction:column;gap:4px;padding:9px 10px;border:1px solid var(--line);border-radius:var(--r3);background:#fff}
+.fld:focus-within{border-color:var(--brand-b);box-shadow:0 0 0 3px rgba(23,179,163,.18)}
+.fld .lb{font-size:11px;color:var(--mut);display:flex;align-items:center;gap:6px}
+.fld .src{margin-left:auto;font-size:10px;color:var(--brand);background:rgba(15,110,99,.08);padding:1px 6px;border-radius:999px}
+.fld input{border:0;outline:0;font:inherit;font-size:13px;color:var(--ink);background:none;width:100%}
+.fld .hint{font-size:11px;color:var(--mut)}
+.fld.filled{background:rgba(23,179,163,.04)}
+.fld.err{border-color:rgba(192,57,43,.45)}.fld.err .hint{color:var(--err)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:9px 10px;border-radius:var(--r3);border:1px solid var(--line)}
+.check.warn{border-color:rgba(178,106,0,.4);background:rgba(178,106,0,.06)}
+.check.ok{border-color:rgba(31,122,77,.35);background:rgba(31,122,77,.05)}
+.check .ic{font-size:13px}
+/* окно отправки на Диск */
+.modal{position:fixed;inset:0;background:rgba(4,32,30,.45);display:none;place-items:center;z-index:70}
+.modal.on{display:grid}
+.dlg{width:560px;max-height:80vh;background:#fff;border-radius:var(--r5);box-shadow:0 12px 40px rgba(4,32,30,.28);display:flex;flex-direction:column;overflow:hidden}
+.dlg .dh{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.dlg .dh .t{font-size:16px;font-weight:600}
+.dlg .db{padding:14px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.dlg .df{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;background:#FCFDFD}
+.frow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r3);font-size:13px}
+.frow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .prog{width:120px;height:4px;border-radius:2px;background:rgba(18,33,31,.08);overflow:hidden}
+.frow .prog i{display:block;height:100%;width:0;background:var(--brand-b);transition:width .4s}
+.folder{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg);border-radius:var(--r3)}
+.cbx{width:16px;height:16px;border-radius:3px;border:1px solid var(--line2);display:grid;place-items:center;font-size:11px;color:#fff;flex:0 0 auto}
+.cbx.on{background:var(--brand);border-color:var(--brand)}
+.loading{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="logo" title="На главную"><b>W</b>Wolf AutoDoc</button>
+  <div class="tbsearch">Поиск: клиент, номер заявки, документ…</div>
+  <div class="tbright"><span style="font-size:15px">◔</span><span style="width:32px;height:32px;border-radius:50%;background:#17B3A3;color:#04201E;display:grid;place-items:center;font-size:13px;font-weight:600">АВ</span></div>
+</header>
+<div class="crumb"><span>Заявки</span><span>›</span><b>Заявка #76 · PETROV SERGEY · продление C1</b></div>
+
+<div class="body">
+
+  <!-- ЛЕВАЯ ЗОНА: сканы клиента и наши документы -->
+  <aside class="aux">
+    <div class="h">Сканы клиента · Диск<span class="cnt num">4</span></div>
+    <div class="scroll">
+      <button class="rowm on" data-src="Паспорт, стр. 1" data-tab="real"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Паспорт, стр. 1 <span class="st done">разобран</span></span><span class="l2">5 полей · 12.09</span></span></button>
+      <button class="rowm" data-src="Паспорт, стр. 2" data-tab="real"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Паспорт, стр. 2 <span class="st done">разобран</span></span><span class="l2">3 поля · 12.09</span></span></button>
+      <button class="rowm" data-src="KITAS, стр. 1" data-tab="real"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">KITAS, стр. 1 <span class="st work">разобран частично</span></span><span class="l2">2 поля · 12.09</span></span></button>
+      <button class="rowm" data-src="Спонсорское письмо" data-tab="real"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Спонсорское письмо <span class="st err">не читается</span></span><span class="l2">загрузить заново · 12.09</span></span></button>
+    </div>
+
+    <div class="h" style="border-top:1px solid var(--line)">Наши документы · пакет C1<span class="cnt num">5</span></div>
+    <div class="scroll">
+      <button class="rowm on" data-our="Письмо иммиграции" data-tab="ours"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Письмо иммиграции <span class="st gen">PDF готов</span></span><span class="l2">1 поле не заполнено</span></span></button>
+      <button class="rowm" data-our="Спонсорское письмо" data-tab="ours"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Спонсорское письмо <span class="st wait">черновик</span></span><span class="l2">ждём скан от клиента</span></span></button>
+      <button class="rowm" data-our="Банковская справка" data-tab="ours"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Банковская справка <span class="st done">готов</span></span><span class="l2">отправлен 12.09</span></span></button>
+      <button class="rowm" data-our="Заявление" data-tab="ours"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Заявление <span class="st wait">черновик</span></span><span class="l2">3 поля из 6</span></span></button>
+      <button class="rowm" data-our="Договор RWA" data-tab="ours"><span class="thumb"><span class="pgn">A4</span></span><span class="txt"><span class="l1">Договор RWA <span class="st">не создан</span></span><span class="l2">создать из шаблона</span></span></button>
+    </div>
+    <div class="footnote">Клик — документ откроется в центре. Мы не уходим со страницы заявки.</div>
+  </aside>
+
+  <!-- ЦЕНТР: этапы + документ -->
+  <main class="work">
+    <div class="steps">
+      <span class="step done"><span class="n">✓</span>Сканы разобраны</span><span class="arr">›</span>
+      <span class="step done"><span class="n">✓</span>Сверка полей</span><span class="arr">›</span>
+      <span class="step done"><span class="n">✓</span>Сборка документов</span><span class="arr">›</span>
+      <span class="step on" id="stGen"><span class="n">4</span>PDF</span><span class="arr">›</span>
+      <span class="step" id="stSend"><span class="n">5</span>Отправка на Диск</span>
+      <div class="right">
+        <button class="btn sm p" id="mainAct">Сгенерировать PDF</button>
+        <button class="btn ic ghost" title="Ещё">⋯</button>
+      </div>
+    </div>
+
+    <div class="vtabs">
+      <button class="vtab on" data-tab="real">Реальный документ</button>
+      <button class="vtab" data-tab="ours">Наш документ</button>
+      <div class="vtb-right">
+        <span style="font-size:13px;color:var(--mut)" id="docName">Паспорт, стр. 1</span>
+        <button class="btn ic ghost" title="Уменьшить">−</button><button class="btn ic ghost" title="Увеличить">+</button>
+        <button class="btn sm ghost">Вписать</button>
+        <button class="btn ic ghost" title="Ещё">⋯</button>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="sheet" data-stage="real">
+        <div class="stamp">Скан клиента · Google Диск</div>
+        <h3>Паспорт гражданина РФ</h3>
+        <p>Фамилия: <span class="ph hl" data-var="ФИО">PETROV</span></p>
+        <p>Имя: <span class="ph hl" data-var="ФИО">SERGEY</span></p>
+        <p>Дата рождения: <span class="ph hl" data-var="Дата рождения">12.03.1987</span></p>
+        <p>Серия и номер: <span class="ph" data-var="Паспорт">4519 123456</span></p>
+        <p>Кем выдан: <span class="ph" data-var="Паспорт">ОВД Кировского района</span></p>
+        <p style="margin-top:22px;font-size:12px;color:var(--mut)">Зелёным — то, что система взяла в наши документы. Наведите на поле справа, чтобы увидеть его здесь.</p>
+      </div>
+
+      <div class="sheet hidden" data-stage="ours">
+        <div class="stamp">Наш документ · шаблон продления C1</div>
+        <h3>ПИСЬМО-ХОДАТАЙСТВО В ИММИГРАЦИОННУЮ СЛУЖБУ</h3>
+        <p>Настоящим подтверждаем, что <span class="ph hl" data-var="ФИО">PETROV SERGEY</span>, гражданство <span class="ph" data-var="Гражданство">РФ</span>, дата рождения <span class="ph" data-var="Дата рождения">12.03.1987</span>, проживает в Индонезии по адресу <span class="ph" data-var="Адрес">Jl. Raya Kuta No. 12, Badung</span>.</p>
+        <p>Цель пребывания — <span class="ph" data-var="Цель">продление разрешения на пребывание C1</span>. Спонсор — <span class="emptyfield" data-var="Спонсор">не заполнено</span>.</p>
+        <p style="margin-top:22px;font-size:12px;color:var(--mut)">Пустое обязательное поле помечено прямо в документе — его не отправить, пока не заполните.</p>
+      </div>
+    </div>
+    <div class="footnote" id="workNote">Сверка: слева сканы клиента, в центре оригинал, справа — что из него взято и что ещё нужно заполнить</div>
+  </main>
+
+  <!-- ПРАВАЯ ЗОНА: поля документа и действия -->
+  <aside class="rail">
+    <div class="rhead"><span class="t" id="railTitle">Письмо иммиграции</span><span class="st work" id="railState">поля заполнены</span><button class="btn ic ghost" style="margin-left:auto" title="Свернуть">›</button></div>
+    <div class="rcols">
+      <div class="sect">Поля документа · 6 полей</div>
+      <label class="fld filled"><span class="lb">ФИО<span class="src">из паспорта</span></span><input value="PETROV SERGEY" readonly></label>
+      <label class="fld filled"><span class="lb">Гражданство<span class="src">из паспорта</span></span><input value="РФ" readonly></label>
+      <label class="fld filled"><span class="lb">Дата рождения<span class="src">из паспорта</span></span><input value="12.03.1987" readonly></label>
+      <label class="fld"><span class="lb">Адрес в Индонезии<span class="src">введено вручную</span></span><input value="Jl. Raya Kuta No. 12, Badung" data-var="Адрес"></label>
+      <label class="fld filled" id="fldSponsor"><span class="lb">Спонсор<span class="src">из спонсорского письма</span></span><input value="PT ALAM INVEST" data-var="Спонсор" data-hint="Это поле печатается в письме — без него документ не отправить"></label>
+
+      <div class="sect">Проверка перед отправкой</div>
+      <div class="check warn" id="chkWarn"><span class="ic">⚠</span><span>Не хватает 1 обязательного поля: <b>Спонсор</b>.<br>Документ можно сохранить, но не отправить на Диск.</span></div>
+      <div class="check ok hidden" id="chkOk"><span class="ic">✓</span><span>Все обязательные поля заполнены. Документ готов к PDF и отправке.</span></div>
+
+      <div class="sect">Файл на Диске</div>
+      <div class="kv" id="fileState"><span class="k">Название</span><span class="v">Письмо_иммиграции_76.pdf</span><span class="k" style="margin-top:4px">Состояние</span><span class="v"><span class="st" id="fileSt">PDF ещё не сформирован</span></span></div>
+    </div>
+    <div class="ract">
+      <button class="btn p" id="sendBtn" disabled>Отправить на Диск</button>
+      <button class="btn ghost grow" id="saveBtn">Сохранить документ</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ОКНО ОТПРАВКИ НА ДИСК -->
+<div class="modal" id="modal">
+  <div class="dlg">
+    <div class="dh">
+      <span class="t">Отправить на Google Диск</span>
+      <button class="btn ic ghost" style="margin-left:auto" id="modalX" title="Закрыть">✕</button>
+    </div>
+    <div class="db">
+      <div class="folder">📁 Диск › Клиенты › <b>PETROV SERGEY</b> › Документы по заявке #76</div>
+      <div id="fileList">
+        <div class="frow"><span class="cbx on">✓</span><span class="nm">Письмо_иммиграции_76.pdf</span><span class="st gen">готов к отправке</span><span class="prog"><i></i></span></div>
+        <div class="frow"><span class="cbx on">✓</span><span class="nm">Банковская_справка_76.pdf</span><span class="st done">отправлен ранее</span><span class="prog"><i></i></span></div>
+        <div class="frow"><span class="cbx"> </span><span class="nm">Заявление_76.pdf</span><span class="st wait">черновик — не отправляем</span><span class="prog"><i></i></span></div>
+      </div>
+      <div class="kv"><span class="k">Что произойдёт</span><span class="v" style="font-size:12px;color:var(--ink2)">Файлы появятся в папке клиента. Существующий файл с тем же именем будет обновлён, дубликат не создастся.</span></div>
+    </div>
+    <div class="df">
+      <span style="font-size:12px;color:var(--mut)" id="sendInfo">Выбрано 2 файла</span>
+      <button class="btn p grow" style="margin-left:auto" id="sendGo">Отправить 2 файла</button>
+      <button class="btn ghost" id="modalCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+let cur='Письмо иммиграции', gen=false, sent=false;
+
+/* вкладки: реальный ↔ наш */
+$$('.vtab').forEach(t=>t.onclick=()=>{
+  $$('.vtab').forEach(x=>x.classList.toggle('on',x===t));
+  $$('[data-stage]').forEach(p=>p.classList.toggle('hidden',p.dataset.stage!==t.dataset.tab));
+  $('#workNote').textContent = t.dataset.tab==='real'
+    ? 'Сверка: слева сканы клиента, в центре оригинал, справа — что из него взято и что ещё нужно заполнить'
+    : 'Наш документ: слева список пакета, в центре что получилось, справа поля и проверка перед отправкой';
+});
+
+/* выбор документа слева — меняется центр, мы не уходим со страницы */
+$$('[data-src],[data-our]').forEach(r=>r.onclick=()=>{
+  const name=r.dataset.src||r.dataset.our;
+  $$('[data-src],[data-our]').forEach(x=>x.classList.remove('on')); r.classList.add('on');
+  $('#docName').textContent=name; $('#railTitle').textContent=name;
+  const tab=r.dataset.tab; const t=$('.vtab[data-tab="'+tab+'"]'); if(t)t.click();
+});
+
+/* подсветка поля в документе при работе с полем справа */
+$$('.fld input').forEach(inp=>{
+  inp.addEventListener('focus',()=>{
+    $$('.ph').forEach(p=>p.classList.remove('hl'));
+    $$('[data-var="'+inp.dataset.var+'"]').forEach(p=>p.classList.add('hl'));
+  });
+  inp.addEventListener('input',checkFields);
+  inp.addEventListener('focusout',checkFields);
+});
+
+/* проверка полноты: реальное правило, а не просто картинка */
+function checkFields(){
+  const sp=$('#fldSponsor input'), empty=sp.value.trim()==='';
+  $('#fldSponsor').classList.toggle('err',empty);
+  $('#chkWarn').classList.toggle('hidden',!empty);
+  $('#chkOk').classList.toggle('hidden',empty);
+  $('#sendBtn').disabled=empty||!gen;
+  return empty;
+}
+
+/* основное действие по этапам: Сгенерировать PDF → Отправить на Диск */
+$('#mainAct').onclick=()=>{
+  if(!gen){
+    const b=$('#mainAct'); b.disabled=true; b.textContent='';
+    const sp=document.createElement('span');sp.className='loading';
+    b.append(sp,document.createTextNode(' Генерирую…'));
+    setTimeout(()=>{
+      gen=true; b.textContent='Отправить на Диск'; b.disabled=false;
+      $('#stGen').classList.replace('on','done')||$('#stGen').classList.add('done');
+      $('#stSend').classList.add('on');
+      $('#railState').textContent='PDF готов'; $('#fileSt').textContent='PDF готов, ещё не отправлен';
+      $('#workNote').textContent='PDF собран из шаблона. Проверьте документ и отправьте на Диск в папку клиента.';
+      checkFields();
+    },1100);
+    return;
+  }
+  openModal();
+};
+
+$('#saveBtn').onclick=()=>{const b=$('#saveBtn'),o=b.textContent;b.disabled=true;b.textContent='Сохраняю…';
+  setTimeout(()=>{b.textContent='✓ Сохранено';b.classList.add('done');setTimeout(()=>{b.textContent=o;b.classList.remove('done');b.disabled=false;},1100);},700);};
+
+/* окно отправки */
+function openModal(){$('#modal').classList.add('on');}
+$('#modalX').onclick=$('#modalCancel').onclick=()=>$('#modal').classList.remove('on');
+document.addEventListener('keydown',e=>{if(e.key==='Escape')$('#modal').classList.remove('on');});
+$$('#fileList .cbx').forEach(c=>c.onclick=()=>{
+  c.classList.toggle('on'); c.textContent=c.classList.contains('on')?'✓':' ';
+  const n=$$('#fileList .cbx.on').length;
+  $('#sendInfo').textContent='Выбрано '+n+(n===1?' файл':(n>1&&n<5?' файла':' файлов'));
+  $('#sendGo').textContent='Отправить '+n;
+});
+
+/* отправка с прогрессом по каждому файлу */
+$('#sendGo').onclick=()=>{
+  const rows=[...$$('#fileList .frow')].filter(r=>r.querySelector('.cbx.on'));
+  $('#sendGo').disabled=true; $('#sendInfo').textContent='Отправляю…';
+  rows.forEach((r,i)=>{
+    const bar=r.querySelector('.prog i'), st=r.querySelector('.st');
+    let p=0; const t=setInterval(()=>{
+      p+=12+(i*4); bar.style.width=Math.min(p,100)+'%';
+      if(p>=100){clearInterval(t); st.className='st done'; st.textContent='загружен';}
+    },90+i*30);
+  });
+  setTimeout(()=>{
+    $('#sendInfo').textContent='✅ 2 файла отправлены в папку клиента';
+    $('#sendGo').textContent='Открыть папку на Диске'; $('#sendGo').disabled=false;
+    sent=true;
+    $('#stSend').classList.replace('on','done')||$('#stSend').classList.add('done');
+    $('#fileSt').textContent=''; /* безопасно: узлы и текст, без innerHTML */
+    const fs=document.createElement('span');fs.className='st done';fs.textContent='отправлен на Диск · только что';
+    $('#fileSt').append(fs);
+    $('#railState').textContent='Отправлен';
+  },1800);
+};
+checkFields();
+/* прямой вход для показа состояний: #modal — окно отправки, #empty — незаполненное поле */
+if(location.hash==='#modal')openModal();
+if(location.hash==='#empty'){$('#fldSponsor').querySelector('input').value='';checkFields();}
+</script>
+</body>
+</html>

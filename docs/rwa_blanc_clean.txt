@@ -1,0 +1,70 @@
+================ СТРАНИЦА 1 ================
+[y=63.45 x=216.96] Name of the company
+[y=105.84 x=190.01] REMOTE WORK AGREEMENT
+[y=127.77 x=182.26] For E33G Visa / Remote Worker KITAS Support
+[y=154.32 x=57.06] This Remote Work Agreement ("Agreement") is made on this{{ agreement_date }}.
+[y=191.43 x=57.81] BETWEEN
+[y=214.56 x=57.81] {{ company_name_in_quotes }}{{ nationality }}
+[y=228.96 x=57.81] {{ inn_kpp_ogrn }}
+[y=247.68 x=287.46] AND
+[y=265.92 x=57.81] {{ full_name_latin }}, {{ passport_number }}assport No: {{ date_of_birth }}ate of Birth: , {{ nationality }}ationa{{ place_of_birth }}ace of Birth:, (hereinafter referred to as the
+[y=279.84 x=57.81] "Contractor")
+[y=317.19 x=57.81] 1. NATURE OF ENGAGEMENT
+[y=338.16 x=46.56] The Company engages the Contractor as {{ position_title }} to provide the following services:
+[y=359 x=64.56] {{ services_list }}
+[y=426.72 x=57.06] The Contractor shall perform all duties remotely and independently, including while temporarily residing in
+[y=440.88 x=57.06] Indonesia. The Contractor shall not provide services to any Indonesian individual, company, or entity, and
+[y=454.80 x=57.06] shall not derive income from Indonesian sources under this Agreement. All services rendered under this
+[y=468.96 x=57.06] Agreement are provided exclusively for the Company and its operations.
+[y=506.31 x=57.06] 2. TERM
+[y=528.96 x=57.06] This Agreement has been in effect since {{ term_start_date }} (incorporating five years of service) and shall
+[y=543.12 x=57.06] remain valid until date {{ term_end_date }}, unless terminated earlier by either party with 30 days written notice. This
+[y=557.28 x=57.06] Agreement may be renewed by mutual written agreement between the parties.
+[y=606.63 x=57.06] 3. COMPENSATION
+[y=629.28 x=57.06] The Company agrees to pay the Contractor:
+[y=647.76 x=57.81] • RUB {{ annual_amount_numeric }} ({{ annual_amount_words }}) per annum,
+[y=672.00 x=57.81] ● which is RUB {{ monthly_amount_numeric }} ({{ monthly_amount_words }}) per month.
+================ СТРАНИЦА 2 ================
+[y=52.08 x=57.63] Payments shall be made via international bank transfer to the Contractor's nominated bank account. The
+[y=66.24 x=57.63] Contractor shall be solely responsible for any personal tax obligations arising in their country of tax
+[y=80.16 x=57.63] residence. The Company shall not be responsible for any Indonesian tax obligations, if any arise under
+[y=94.08 x=57.63] applicable Indonesian regulations.
+[y=108.15 x=56.88] 4. {{the_company_confirms_that}}
+[y=130.80 x=56.88] The Company confirms that:
+[y=149.04 x=68.88] — The Contractor performs services exclusively for the Company.
+[y=166.08 x=68.88] — The Company is not incorporated, registered, or operating in Indonesia.
+[y=183.36 x=68.88] — The Contractor does not conduct business activities within Indonesia on behalf of the Company.
+[y=200.40 x=68.88] — The Contractor's work is location-independent and fully remote.
+[y=237.27 x=56.88] 5. INDEPENDENT STATUS
+[y=260.40 x=56.88] The Contractor acts as an independent contractor/remote employee under the laws of the Company's
+[y=274.80 x=56.88] jurisdiction, and shall not be considered an employee of any Indonesian entity. Nothing in this Agreement
+[y=288.96 x=56.88] shall be interpreted as establishing:
+[y=307.92 x=68.88] — an Indonesian employment relationship
+[y=324.96 x=68.88] — a permanent establishment in Indonesia
+[y=342.24 x=68.88] — or any form of Indonesian commercial activity.
+[y=377.91 x=56.88] 6. GOVERNING LAW
+[y=400.56 x=57.08] This Agreement shall be governed by and interpreted in accordance with the laws of the{{ nationality }}ussian Federation.
+[y=437.43 x=56.88] 7. COMPANY DECLARATION FOR INDONESIAN REMOTE WORKER VISA
+[y=460.56 x=57.63] For the purpose of supporting the Contractor's E33G Remote Worker Visa / KITAS application in Indonesia,
+[y=474.96 x=56.88] the Company formally confirms that:
+[y=493.68 x=68.88] — {{ contractor_full_name }} is engaged by the Company as a {{ position_title }} since {{ term_start_date }}.
+[y=511.68 x=68.88] — The Contractor performs services solely for the Company's operations.
+[y=528.96 x=68.88] — The Contractor does not work for any Indonesian company, client, or entity.
+[y=546.24 x=68.88] — The Contractor does not receive income from Indonesian sources.
+[y=563.52 x=68.88] — The Company is not incorporated, registered, or conducting business in Indonesia.
+[y=580.80 x=68.88] — The Contractor's work is fully remote and location-independent, and may be carried out while
+[y=594.96 x=68.88] temporarily residing in Indonesia.
+[y=612.96 x=68.88] — This Agreement does not establish any employment relationship or commercial activity within
+[y=627.12 x=69.63] Indonesia.
+[y=650.64 x=56.88] This declaration forms an integral part of this Agreement.
+================ СТРАНИЦА 3 ================
+[y=75.51 x=57.81] SIGNATURES
+[y=101.76 x=28.56] Signed on behalf of the Company Contractor
+[y=122.16 x=29.31] Title: {{ position_title }}
+[y=142.32 x=28.56] Name: {{ contractor_full_name }}
+[y=191.28 x=29.31] Signature: ___________________________
+[y=221.04 x=29.31] Name: …
+[y=241.20 x=28.56] Passport: …
+[y=284.88 x=28.56] Signature: ___________________________
+[y=304.80 x=29.31] Date: {{ agreement_date }}
+[y=739.23 x=192.77] {{ company_name_in_quotes }} | {{ company_registered_address }} | INN: {{ company_inn }} | KPP: {{ company_kpp }} | OGRN: {{ company_ogrn }}

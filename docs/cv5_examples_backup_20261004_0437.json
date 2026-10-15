@@ -1,0 +1,147 @@
+[
+ {
+  "name": "client_photo_url",
+  "examples_json": null,
+  "default_value": ""
+ },
+ {
+  "name": "cv_date_of_birth",
+  "examples_json": "[\"October 26, 1987\", \"November 3, 1990\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_place_of_birth",
+  "examples_json": "[\"Moscow, Russia\", \"Yakutsk, Yakutskaya ASSR, USSR\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_nationality",
+  "examples_json": "[\"Russian Federation\", \"Republic of Kazakhstan\", \"Republic of Belarus\", \"Republic of Uzbekistan\", \"Republic of Kyrgyzstan\", \"Republic of Armenia\", \"Republic of Turkey\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_passport_no",
+  "examples_json": "[\"77 1234567\", \"77 9937194\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_passport_issue",
+  "examples_json": "[\"15 March 2024\", \"August 14, 2026\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_passport_expiry",
+  "examples_json": "[\"15 March 2034\", \"August 14, 2036\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_summary",
+  "examples_json": "[\"Strategic HR leader and technical administrator with 15+ years of experience building HR processes from scratch and managing internal IT infrastructure for distributed remote teams.\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job1_title",
+  "examples_json": "[\"Head of HR & Technical Administrator\", \"Senior Sales Manager\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job1_period",
+  "examples_json": "[\"January 2024 — Present\", \"March 2018 – Present\", \"June 2020 – Present\", \"September 2021 – Present\", \"January 2022 – Present\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job1_company",
+  "examples_json": "[\"L-TECH LLC\", \"TechSolutions LLC, Moscow, Russia\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job1_bullets",
+  "examples_json": "[\"Developing and executing HR strategy; administering IT infrastructure; coordinating remote workflows; ensuring compliance.\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job2_title",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job2_period",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job2_company",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job2_bullets",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job3_title",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job3_period",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job3_company",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_job3_bullets",
+  "examples_json": "[]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_education_degree",
+  "examples_json": "[\"Human Resources Management / Business Informatics\", \"Bachelor of Economics\", \"Bachelor of Management\", \"Master of Business Administration\", \"Bachelor of Engineering\", \"Specialist / Diploma in Finance\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_education_school",
+  "examples_json": "[\"HSE University\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_education_years",
+  "examples_json": "[\"2005 — 2010\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_education_note",
+  "examples_json": "[\"Faculty of Business Informatics / Management\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_hard",
+  "examples_json": "[\"Strategic HR Management; Technical Administration; Distributed Team Leadership\", \"B2B Sales, Contract Negotiation, Client Relations\", \"Recruitment, Payroll, HR Documentation\", \"Financial Reporting, Reconciliation, Tax Reporting\", \"IT Support, Network Administration, System Monitoring\", \"Marketing Strategy, SMM, Campaign Analytics\", \"Kitchen Operations, Inventory Management, Food Safety\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_soft",
+  "examples_json": "[\"Team Leadership, Time Management, Problem Solving\", \"Communication, Adaptability, Attention to Detail\", \"Multitasking, Stress Resistance, Decision Making\", \"Team Leadership, Communication, Negotiation\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_skills_tools",
+  "examples_json": "[\"Huntflow, Experium, Jira, Confluence, Notion, Google Workspace, Slack, GitLab\", \"Microsoft Office Suite, Google Workspace, Excel (advanced)\", \"CRM (Bitrix24 / amoCRM), Jira, Confluence\", \"1C, Microsoft Office Suite, Google Workspace\", \"Salesforce, Excel (advanced), Google Workspace\", \"Adobe Photoshop, Adobe Illustrator, Figma\"]",
+  "default_value": ""
+ },
+ {
+  "name": "cv_languages",
+  "examples_json": "[\"Russian (Native), English (Upper-Intermediate)\", \"Russian (Native), English (Upper-Intermediate / B2)\", \"Russian (Native), English (Advanced / C1)\", \"Russian (Native), English (Intermediate / B1)\", \"Russian (Native), English (Upper-Intermediate / B2), Indonesian (Basic)\", \"Russian (Native), English (Advanced / C1), Chinese (HSK 4)\"]",
+  "default_value": ""
+ },
+ {
+  "name": "full_name_latin",
+  "examples_json": "[\"CLIENT CLIENT\"]",
+  "default_value": ""
+ }
+]

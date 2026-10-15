@@ -1,0 +1,25 @@
+# Данные клиентов, ключи и рабочие копии в репозиторий не попадают
+data/
+logs/
+backups/
+reports/
+tmp/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.bak
+*.bak_*
+*.jsonl
+.env
+.env.*
+*service_account*
+*oauth_token*
+.venv/
+.venv_docs/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log

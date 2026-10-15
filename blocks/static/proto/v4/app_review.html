@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wolf AutoDoc — Заявка · Документы</title>
+<link rel="stylesheet" href="/static/proto/css/tokens.css">
+<style>
+/* ---- только этот экран: макет листа документа ---- */
+.sheetview{display:flex;flex-direction:column;align-items:center}
+.passport{width:100%;max-width:460px;border:1px solid var(--line2);border-radius:var(--r2);
+  background:linear-gradient(180deg,#FBF6F4 0%,#F7EFEA 100%);box-shadow:var(--sh2);overflow:hidden}
+.pp-top{padding:14px 18px 10px;text-align:center;border-bottom:1px solid rgba(15,29,27,.10)}
+.pp-top .em{font-size:11px;color:#8A6A5E;letter-spacing:.08em}
+.pp-top .nm{font-size:15px;font-weight:700;letter-spacing:.06em;margin-top:3px;color:#4A3A33}
+.pp-top .sub{font-size:11px;color:#8A6A5E;letter-spacing:.12em;margin-top:2px}
+.pp-body{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:14px;padding:14px 18px}
+.pp-row{display:flex;flex-direction:column;align-items:flex-start;gap:1px;margin-bottom:10px}
+.pp-row .k{font-size:9px;letter-spacing:.08em;color:#8A6A5E;text-transform:uppercase}
+.pp-row .v{font-size:13px;font-weight:600;color:#3A2C26}
+.pp-photo{width:112px;height:144px;border-radius:2px;background:#DCD4CF;border:1px solid rgba(15,29,27,.14);
+  display:grid;place-items:center;color:#7A6A62}
+.pp-mrz{border-top:1px dashed rgba(15,29,27,.18);padding:10px 14px;background:#F3F0EE;
+  font:600 10px/1.6 var(--fmono);letter-spacing:.02em;color:#4A3A33;word-break:break-all;overflow:hidden}
+</style>
+</head>
+<body>
+
+<!-- иконки: SVG-спрайт, чтобы нигде не появлялись пустые квадраты -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 15V10a6 6 0 10-12 0v5l-1.5 2.2h15L18 15z"/><path d="M10 20.2a2 2 0 004 0"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+<symbol id="i-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5"/></symbol>
+<symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5z"/><path d="M14 3v5h5M9 13h6M9 16.5h4"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M4 7a2 2 0 012-2h3l2 2h7a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M3 20c0-3.2 2.7-5 6-5s6 1.8 6 5"/><path d="M16 6.5a3 3 0 010 5.6"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.6v2.2M12 18.2v2.2M3.6 12h2.2M18.2 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M5 5a2 2 0 012-2h11v18H7a2 2 0 01-2-2V5z"/><path d="M8 3v18"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="12" cy="18.5" r="1.3"/></symbol>
+<symbol id="i-zin" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6M11 8.2v5.6M8.2 11h5.6"/></symbol>
+<symbol id="i-zout" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6M8.2 11h5.6"/></symbol>
+<symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 12a8 8 0 11-2.4-5.7"/><path d="M20 4.2v4.6h-4.6"/></symbol>
+<symbol id="i-split" viewBox="0 0 24 24"><rect x="3.5" y="5" width="7.5" height="14" rx="1.5"/><rect x="13" y="5" width="7.5" height="14" rx="1.5"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3.5v11"/><path d="M7.5 10.5l4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></symbol>
+<symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9.5V4h5.5M20 14.5V20h-5.5M4 4l6 6M20 20l-6-6"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.4l1.9 5.3 5.3 1.9-5.3 1.9L12 17.8l-1.9-5.3L4.8 10.6l5.3-1.9L12 3.4z"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5.5 15.5V6a2 2 0 012-2h6"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></symbol>
+<symbol id="i-cake" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="8" rx="2"/><path d="M4 15h16M12 11V7M12 5.4v.6M8.5 11V8.6M15.5 11V8.6"/></symbol>
+<symbol id="i-hash" viewBox="0 0 24 24"><path d="M8.5 3.5L6.5 20.5M17.5 3.5l-2 17M4 9h16M3 15h16"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.3 3.6 8.5S14.4 18.1 12 20.5c-2.4-2.4-3.6-5.3-3.6-8.5S9.6 5.9 12 3.5z"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-5.6 6.5-10.4A6.5 6.5 0 005.5 10.6C5.5 15.4 12 21 12 21z"/><circle cx="12" cy="10.4" r="2.4"/></symbol>
+<symbol id="i-flag" viewBox="0 0 24 24"><rect x="4" y="6.5" width="16" height="11" rx="2"/><path d="M4 12h16"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10.5h16M9 4.5v4M15 4.5v4"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4.2l8.4 15H3.6l8.4-15z"/><path d="M12 10v4M12 16.8h.01"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.2l7 2.8v6c0 4-3 7.2-7 8.8-4-1.6-7-4.8-7-8.8v-6l7-2.8z"/><path d="M9.2 12.2l2 2 3.6-3.8"/></symbol>
+</defs></svg>
+
+<div class="app6">
+
+  <!-- ================= МЕНЮ-ПОЛОСКА (наш каркас): иконки, при развороте закрывает вспомогательную зону ================= -->
+  <aside class="rail">
+    <button class="rbtn on" title="Заявки"><svg class="i"><use href="#i-grid"/></svg><span class="badge">12</span></button>
+    <button class="rbtn" title="Поля и переменные"><svg class="i"><use href="#i-hash"/></svg></button>
+    <button class="rbtn" title="Настройки"><svg class="i"><use href="#i-gear"/></svg></button>
+  </aside>
+
+  <!-- развёрнутое меню: уезжает поверх вспомогательной зоны -->
+  <nav class="drawer" id="drawer">
+    <div class="dhead">
+      <span class="mark">W</span>
+      <span><b style="display:block;font-size:15px">Wolf AutoDoc</b><span style="font-size:11px;color:#8FB0A9">Visa Automation System</span></span>
+      <button class="iconbtn x" id="drawerX" style="color:#CFE2DF"><svg class="i s"><use href="#i-back"/></svg></button>
+    </div>
+    <div class="dgrp">Работа</div>
+    <a href="#" class="on" data-sec="Заявки"><svg class="i s"><use href="#i-grid"/></svg>Заявки<span class="cnt num">12</span></a>
+    <div class="dgrp">Настройка</div>
+    <a href="#" data-sec="Поля и переменные"><svg class="i s"><use href="#i-hash"/></svg>Поля и переменные</a>
+    <a href="#" data-sec="Настройки"><svg class="i s"><use href="#i-gear"/></svg>Настройки</a>
+  </nav>
+  <div class="overlay" id="ovl"></div>
+
+  <div class="main">
+
+    <!-- ================= ПЛАШКА: бургер и лого слева, поиск, уведомления, время справа ================= -->
+    <header class="top">
+      <button class="iconbtn" id="burger" title="Меню"><svg class="i"><use href="#i-menu"/></svg></button>
+      <span style="font-weight:600;font-size:15px;letter-spacing:-.01em">Wolf AutoDoc</span>
+      <label class="search" style="margin-left:16px">
+        <svg class="i s"><use href="#i-search"/></svg>
+        <input placeholder="Поиск по заявкам, клиентам, документам…">
+        <span class="kbd">⌘K</span>
+      </label>
+      <div class="top-right">
+        <button class="iconbtn bell" title="Уведомления"><svg class="i"><use href="#i-bell"/></svg></button>
+        <div class="clock"><b>12 августа 2025</b>14:32</div>
+        <button class="iconbtn" title="Тема"><svg class="i"><use href="#i-sun"/></svg></button>
+      </div>
+    </header>
+
+    <!-- ================= ШАПКА ЗАЯВКИ ================= -->
+    <div class="head">
+      <div class="head-top">
+        <button class="back" title="Назад"><svg class="i"><use href="#i-back"/></svg></button>
+        <div style="flex:1;min-width:0">
+          <h1>Заявка #76 <span class="chip brand">Проверка данных</span></h1>
+          <div class="meta">
+            <span><svg class="i s"><use href="#i-user"/></svg>PETROV SERGEY</span>
+            <span><svg class="i s"><use href="#i-doc"/></svg>КИТАС · 6 месяцев</span>
+            <span><svg class="i s"><use href="#i-cal"/></svg>12.08.2025</span>
+            <span><svg class="i s"><use href="#i-flag"/></svg>Индонезия</span>
+          </div>
+        </div>
+        <div class="head-actions">
+          <button class="btn"><svg class="i s"><use href="#i-down"/></svg>Отправить на Диск</button>
+          <button class="btn p"><svg class="i s"><use href="#i-spark"/></svg>Пересобрать документы</button>
+          <button class="btn ic ghost" title="Ещё"><svg class="i s"><use href="#i-dots"/></svg></button>
+        </div>
+      </div>
+    <!-- вкладки внутри заявки: каждый пункт — свой экран -->
+    <div class="head-tabs">
+      <div class="vtabs" style="border-bottom:0;flex:1" id="appTabs">
+        <button class="vtab" data-tab="Заявка">Заявка</button>
+        <button class="vtab on" data-tab="Документы">Документы</button>
+        <button class="vtab" data-tab="Журнал">Журнал системы</button>
+      </div>
+    </div>
+    </div>
+
+    <!-- ================= ЭКРАНЫ ВКЛАДОК ЗАЯВКИ ================= -->
+    <div class="vpages">
+
+    <!-- Документы: три рабочие зоны -->
+    <div class="vpage on" data-tab="Документы">
+    <div class="body3">
+
+      <!-- слева: вспомогательное (группирует работу) — скрывается под развёрнутым меню -->
+      <aside class="aux">
+        <div class="h">Документы заявки<span class="cnt num" id="auxCount">4</span></div>
+        <div style="padding:0 8px 8px">
+          <div class="seg" style="width:100%" id="srcSeg">
+            <button class="on" style="flex:1" data-pane="real">Сканы</button>
+            <button style="flex:1" data-pane="ours">Наши</button>
+          </div>
+        </div>
+
+        <div class="scroll">
+          <div class="pane-in" data-pane="real">
+            <div class="mini on" data-doc="Паспорт, стр. 1">
+              <span class="sheet"></span>
+              <span><span class="nm">Паспорт, стр. 1</span><span class="sub">Диск · 12.08 · 5 полей</span></span>
+              <button class="chk on" title="Скачано с Google Диска"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini" data-doc="Паспорт, стр. 2">
+              <span class="sheet"></span>
+              <span><span class="nm">Паспорт, стр. 2</span><span class="sub">Диск · 12.08 · 3 поля</span></span>
+              <button class="chk on" title="Скачано с Google Диска"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini busy" data-doc="KITAS, стр. 1">
+              <span class="sheet"></span>
+              <span><span class="nm">KITAS, стр. 1</span><span class="sub">Качается с Диска · 62%</span></span>
+              <button class="chk wait" title="Идёт загрузка"><svg class="i" style="width:13px;height:13px"><use href="#i-clock"/></svg></button>
+              <span class="bar"><i style="width:62%"></i></span>
+            </div>
+            <div class="mini" data-doc="Спонсорское письмо">
+              <span class="sheet"></span>
+              <span><span class="nm">Спонсорское письмо</span><span class="sub">не читается · загрузить заново</span></span>
+              <button class="chk" title="Не подтверждено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+          </div>
+
+          <div class="pane-in hidden" data-pane="ours">
+            <div class="mini on" data-doc="Письмо иммиграции">
+              <span class="sheet"></span>
+              <span><span class="nm">Письмо иммиграции</span><span class="sub">PDF готов · 12.08</span></span>
+              <button class="chk on" title="Проверено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini" data-doc="Спонсорское письмо">
+              <span class="sheet"></span>
+              <span><span class="nm">Спонсорское письмо</span><span class="sub">черновик · ждём скан</span></span>
+              <button class="chk" title="Не проверено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini" data-doc="Банковская справка">
+              <span class="sheet"></span>
+              <span><span class="nm">Банковская справка</span><span class="sub">отправлен 12.08</span></span>
+              <button class="chk on" title="Проверено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini" data-doc="Заявление">
+              <span class="sheet"></span>
+              <span><span class="nm">Заявление</span><span class="sub">3 поля из 6</span></span>
+              <button class="chk" title="Не проверено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+            <div class="mini" data-doc="Договор RWA">
+              <span class="sheet"></span>
+              <span><span class="nm">Договор RWA</span><span class="sub">не создан · из шаблона</span></span>
+              <button class="chk" title="Не проверено"><svg class="i" style="width:13px;height:13px"><use href="#i-check"/></svg></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <div class="sect" style="padding:0 0 8px">Этапы заявки</div>
+          <div class="stages">
+            <div class="s done"><span class="d"><svg class="i" style="width:10px;height:10px"><use href="#i-check"/></svg></span>Документы собраны</div>
+            <div class="s done"><span class="d"><svg class="i" style="width:10px;height:10px"><use href="#i-check"/></svg></span>Данные распознаны</div>
+            <div class="s now"><span class="d">3</span>Проверка полей</div>
+            <div class="s"><span class="d">4</span>Генерация PDF</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- центр: рабочее поле -->
+      <main class="workspace">
+        <section class="card2">
+          <div class="card2-head">
+            <span class="t" style="white-space:nowrap">Паспорт, стр. 1</span>
+            <span class="src" style="white-space:nowrap"><svg class="i s"><use href="#i-folder"/></svg>Папка клиента</span>
+            <span class="pg">
+              <button class="iconbtn" style="width:28px;height:28px"><svg class="i s"><use href="#i-back"/></svg></button>
+              <span class="num">1 / 4</span>
+              <button class="iconbtn" style="width:28px;height:28px"><svg class="i s"><use href="#i-next"/></svg></button>
+            </span>
+          </div>
+
+          <div class="card2-body">
+            <!-- окно просмотра: две вкладки как в браузере -->
+            <div class="btabs" id="docTabs">
+              <button class="btab on" data-view="client">
+                <svg class="i s"><use href="#i-folder"/></svg>Документы клиента<span class="dotn"></span>
+              </button>
+              <button class="btab" data-view="forms">
+                <svg class="i s"><use href="#i-pdf"/></svg>Рабочие формы
+              </button>
+              <span class="btabs-tools">
+                <button class="iconbtn" title="Распознанные поля" id="toggleFields"><svg class="i s"><use href="#i-eye"/></svg></button>
+                <button class="iconbtn" title="Увеличить"><svg class="i s"><use href="#i-zin"/></svg></button>
+                <button class="iconbtn" title="Уменьшить"><svg class="i s"><use href="#i-zout"/></svg></button>
+                <button class="iconbtn" title="Повернуть"><svg class="i s"><use href="#i-rotate"/></svg></button>
+                <button class="iconbtn" title="Сравнить"><svg class="i s"><use href="#i-split"/></svg></button>
+                <button class="iconbtn" title="Скачать"><svg class="i s"><use href="#i-down"/></svg></button>
+                <button class="iconbtn" title="Во весь экран"><svg class="i s"><use href="#i-expand"/></svg></button>
+              </span>
+            </div>
+
+            <div class="btab-body">
+              <!-- вкладка 1: документы клиента — скан и распознанные поля -->
+              <div class="dv-pane on" data-view="client">
+                <div class="stage-row" style="padding:10px 14px 0">
+                  <span class="st done">Скан клиента</span>
+                  <span style="font-size:12px;color:var(--mut)">Файл из папки клиента на Google Диске · 12.08.2025</span>
+                </div>
+                <div class="docstage" style="grid-template-columns:minmax(0,1fr)">
+                  <div class="sheetview" id="sheetView">
+                    <div class="passport anim">
+                      <div class="pp-top">
+                        <div class="em">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div>
+                        <div class="nm">RUSSIAN FEDERATION</div>
+                        <div class="sub">ПАСПОРТ · PASSPORT</div>
+                      </div>
+                      <div class="pp-body">
+                        <div>
+                          <div class="pp-row"><span class="k">Фамилия / Surname</span><span class="v mk" data-var="surname">PETROV</span></div>
+                          <div class="pp-row"><span class="k">Имя / Name</span><span class="v mk" data-var="name">SERGEY</span></div>
+                          <div class="pp-row"><span class="k">Дата рождения</span><span class="v mk" data-var="birth">12.03.1987</span></div>
+                          <div class="pp-row"><span class="k">Место рождения</span><span class="v mk" data-var="birthplace">МОСКВА / MOSCOW</span></div>
+                          <div class="pp-row"><span class="k">Номер паспорта</span><span class="v mk" data-var="passport">4519 123456</span></div>
+                          <div class="pp-row" style="margin-bottom:0"><span class="k">Выдан</span><span class="v mk" data-var="issued">ОВД ЖУКОВСКОГО РАЙОНА</span></div>
+                        </div>
+                        <div class="pp-photo"><svg class="i l"><use href="#i-user"/></svg></div>
+                      </div>
+                      <div class="pp-mrz">
+                        P&lt;RUSPETROV&lt;&lt;SERGEY&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br>
+                        4519123456RUS8703129M2503155&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;06
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="banner" style="margin:0 14px 14px">
+                  <span class="bl"><svg class="i s"><use href="#i-check"/></svg></span>
+                  <span><span class="b">Документ распознан</span><span class="d">Данные извлечены · 12.08.2025 14:21 · 6 полей</span></span>
+                  <button class="btn sm"><svg class="i s"><use href="#i-down"/></svg>Скачать оригинал</button>
+                </div>
+              </div>
+
+              <!-- вкладка 2: рабочие формы — заполняем сами, поля связаны с переменными -->
+              <div class="dv-pane" data-view="forms">
+                <div class="stage-row" style="padding:10px 14px 0">
+                  <span class="st wait">Черновик</span>
+                  <span style="font-size:12px;color:var(--mut)">Заполняется из переменных справа · связанные поля подсвечиваются</span>
+                </div>
+                <div class="form-grid">
+                  <div class="fld" data-var="surname"><label>Фамилия (латиницей)</label><input value="PETROV"></div>
+                  <div class="fld" data-var="name"><label>Имя (латиницей)</label><input value="SERGEY"></div>
+                  <div class="fld" data-var="birth"><label>Дата рождения</label><input value="12.03.1987"></div>
+                  <div class="fld hint" data-var="birthplace">
+                    <label>Место рождения<svg class="i" style="width:13px;height:13px;color:#C8952A"><use href="#i-warn"/></svg></label>
+                    <input value="МОСКВА / MOSCOW">
+                    <span class="note">Не совпадает с анкетой клиента</span>
+                  </div>
+                  <div class="fld" data-var="passport"><label>Номер паспорта</label><input value="4519 123456"></div>
+                  <div class="fld" data-var="issued"><label>Кем выдан</label><input value="ОВД ЖУКОВСКОГО РАЙОНА"></div>
+                  <div class="fld" data-var="phone"><label>Телефон</label><input value="+7 916 555-12-34"></div>
+                  <div class="fld" data-var="email"><label>Электронная почта</label><input value="s.petrov@mail.ru"></div>
+                  <div class="fld wide" data-var="address"><label>Адрес регистрации</label><input value="г. Москва, ул. Ленина, д. 12, кв. 45"></div>
+                  <div class="fld" data-var="job"><label>Место работы</label><input value="ООО «Ромашка»"></div>
+                  <div class="fld" data-var="position"><label>Должность</label><input value="инженер"></div>
+                </div>
+                <div class="banner" style="margin:0 14px 14px">
+                  <span class="bl"><svg class="i s"><use href="#i-spark"/></svg></span>
+                  <span><span class="b">Форма готова к проверке</span><span class="d">11 полей · 4 подставлены из сканов клиента</span></span>
+                  <button class="btn sm"><svg class="i s"><use href="#i-check"/></svg>Проверить и собрать PDF</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- справа: объект — переменные этого документа -->
+      <aside class="vars">
+        <div class="h">Переменные документа
+          <span class="chip ok no" style="margin-left:auto;height:22px"><svg class="i" style="width:13px;height:13px"><use href="#i-spark"/></svg>Авто</span>
+        </div>
+        <div style="padding:0 12px 8px">
+          <label class="search" style="width:100%;flex:none">
+            <svg class="i s"><use href="#i-search"/></svg>
+            <input placeholder="Поиск переменной…">
+          </label>
+        </div>
+
+        <div class="scroll">
+          <div class="varlist">
+            <div class="varcard anim" style="--i:0" data-var="surname">
+              <span class="ic"><svg class="i s"><use href="#i-user"/></svg></span>
+              <span><span class="nm">Фамилия (латиницей)</span><span class="vl">PETROV</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim" style="--i:1" data-var="name">
+              <span class="ic"><svg class="i s"><use href="#i-user"/></svg></span>
+              <span><span class="nm">Имя (латиницей)</span><span class="vl">SERGEY</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim" style="--i:2" data-var="birth">
+              <span class="ic"><svg class="i s"><use href="#i-cake"/></svg></span>
+              <span><span class="nm">Дата рождения</span><span class="vl">12.03.1987</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim" style="--i:3" data-var="passport">
+              <span class="ic"><svg class="i s"><use href="#i-hash"/></svg></span>
+              <span><span class="nm">Номер паспорта</span><span class="vl">4519 123456</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim" style="--i:4" data-var="citizenship">
+              <span class="ic"><svg class="i s"><use href="#i-globe"/></svg></span>
+              <span><span class="nm">Гражданство</span><span class="vl">RUS</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim" style="--i:5" data-var="issued">
+              <span class="ic"><svg class="i s"><use href="#i-doc"/></svg></span>
+              <span><span class="nm">Кем выдан</span><span class="vl">ОВД Жуковского района</span></span>
+              <span class="right"><span class="chip ok no">Паспорт</span><button class="tick on"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+            <div class="varcard anim miss" style="--i:6" data-var="birthplace">
+              <span class="ic"><svg class="i s"><use href="#i-pin"/></svg></span>
+              <span><span class="nm">Место рождения</span><span class="vl">МОСКВА</span></span>
+              <span class="right"><span class="chip warn no">проверить</span><button class="tick"><svg class="i s"><use href="#i-check"/></svg></button></span>
+            </div>
+          </div>
+
+          <div class="warnbox" style="margin-top:12px">
+            <svg class="i" style="color:#C8952A;flex:0 0 auto"><use href="#i-warn"/></svg>
+            <div>
+              <div class="t">Требует внимания</div>
+              <div class="d">Место рождения в паспорте и анкете не совпадает.</div>
+              <a href="#">Проверить и исправить <svg class="i s"><use href="#i-next"/></svg></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <button class="btn p" style="flex:1"><svg class="i s"><use href="#i-check"/></svg>Сохранить документ</button>
+          <button class="btn ic ghost" title="Отправить на Диск"><svg class="i s"><use href="#i-down"/></svg></button>
+        </div>
+      </aside>
+    </div>
+    </div><!-- /vpage Документы -->
+
+    <!-- Основное: клиент, заявка, участники, этапы -->
+    <div class="vpage" data-tab="Заявка">
+      <div class="pgrid">
+        <section class="pcard">
+          <div class="h"><svg class="i s"><use href="#i-user"/></svg>Клиент</div>
+          <div class="prow"><span class="k">ФИО (латиницей)</span><span class="v">PETROV SERGEY</span></div>
+          <div class="prow"><span class="k">Дата рождения</span><span class="v">12.03.1987</span></div>
+          <div class="prow"><span class="k">Гражданство</span><span class="v">Россия</span></div>
+          <div class="prow"><span class="k">Паспорт</span><span class="v">4519 123456</span></div>
+          <div class="prow"><span class="k">Телефон</span><span class="v">+7 916 555-12-34</span></div>
+          <div class="prow"><span class="k">Электронная почта</span><span class="v">s.petrov@mail.ru</span></div>
+        </section>
+        <section class="pcard">
+          <div class="h"><svg class="i s"><use href="#i-doc"/></svg>Заявка</div>
+          <div class="prow"><span class="k">Продукт</span><span class="v">КИТАС · 6 месяцев</span></div>
+          <div class="prow"><span class="k">Тип</span><span class="v">E33G · удалённый</span></div>
+          <div class="prow"><span class="k">Страна</span><span class="v">Индонезия</span></div>
+          <div class="prow"><span class="k">Дата создания</span><span class="v">12.08.2025</span></div>
+          <div class="prow"><span class="k">Срок подачи</span><span class="v">до 26.08.2025 · 14 дней</span></div>
+          <div class="prow"><span class="k">Статус</span><span class="v"><span class="chip brand">Проверка данных</span></span></div>
+        </section>
+        <section class="pcard">
+          <div class="h"><svg class="i s"><use href="#i-spark"/></svg>Что делает система</div>
+          <div class="prow"><span class="k">Текущий этап</span><span class="v">Рабочие формы · 3 из 5</span></div>
+          <div class="prow"><span class="k">Последний шаг</span><span class="v">распознано 19 полей из 4 файлов</span></div>
+          <div class="prow"><span class="k">Следующий шаг</span><span class="v">сборка заявления E33G</span></div>
+          <div class="prow"><span class="k">Требует решения</span><span class="v"><span class="chip warn no">1 поле</span></span></div>
+          <div class="prow"><span class="k">Пакет продукта</span><span class="v">E33G · готово 7 из 12</span></div>
+        </section>
+        <section class="pcard wide">
+          <div class="h"><svg class="i s"><use href="#i-check"/></svg>Этапы заявки</div>
+          <div class="steps5">
+            <div class="st5 done"><span class="dot">✓</span><div class="t">Документы клиента</div><div class="d">4 файла · 12.08</div></div>
+            <div class="st5 done"><span class="dot">✓</span><div class="t">Распознавание</div><div class="d">19 переменных · 12.08</div></div>
+            <div class="st5 now"><span class="dot">3</span><div class="t">Рабочие формы</div><div class="d">11 полей · черновик</div></div>
+            <div class="st5"><span class="dot">4</span><div class="t">Проверка</div><div class="d">ждёт формы</div></div>
+            <div class="st5"><span class="dot">5</span><div class="t">PDF и отправка</div><div class="d">—</div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Журнал системы: общие события без персоналий — только «что сделала система» -->
+    <div class="vpage" data-tab="Журнал">
+      <div class="ptbar">
+        <div class="seg"><button class="on">Все события</button><button>Ошибки</button><button>Google Диск</button></div>
+        <span style="margin-left:auto;font-size:12px;color:var(--mut)">Хранится 90 дней</span>
+      </div>
+      <div class="tline">
+        <div class="titem"><span class="av" style="background:#E9EFF6;color:#3A5A80">СИ</span><div>
+          <span class="who">Система</span><span class="wh">сегодня, 14:21</span>
+          <div class="what">Распознала 19 переменных из 4 файлов клиента</div>
+          <span class="tag"><svg class="i s"><use href="#i-doc"/></svg>Паспорт, стр. 1 · стр. 2 · KITAS</span>
+        </div></div>
+        <div class="titem"><span class="av" style="background:#FFF3E0;color:#A9630A">!</span><div>
+          <span class="who">Проверка полей</span><span class="wh">сегодня, 14:21</span>
+          <div class="what">Расхождение: «Место рождения» — паспорт <span class="old">МОСКВА</span> ↔ анкета <span class="new">MOSCOW</span></div>
+          <span class="tag"><svg class="i s"><use href="#i-warn"/></svg>Требуется решение администратора</span>
+        </div></div>
+        <div class="titem"><span class="av" style="background:#E9EFF6;color:#3A5A80">СИ</span><div>
+          <span class="who">Система</span><span class="wh">сегодня, 13:40</span>
+          <div class="what">Скачала 3 файла из папки клиента на Google Диске</div>
+          <span class="tag"><svg class="i s"><use href="#i-folder"/></svg>Папка клиента · PETROV SERGEY</span>
+        </div></div>
+        <div class="titem"><span class="av" style="background:#E9EFF6;color:#3A5A80">СИ</span><div>
+          <span class="who">Система</span><span class="wh">сегодня, 13:12</span>
+          <div class="what">Собрала пакет E33G: 12 документов, заполнено 11</div>
+          <span class="tag"><svg class="i s"><use href="#i-pdf"/></svg>Шаблон: заявление E33G</span>
+        </div></div>
+        <div class="titem"><span class="av" style="background:#EAF6F3;color:#0F6E63">✓</span><div>
+          <span class="who">Отправка на Диск</span><span class="wh">сегодня, 12:58</span>
+          <div class="what">Ссылка на папку отправлена в Telegram администратору</div>
+          <span class="tag"><svg class="i s"><use href="#i-globe"/></svg>Google Диск · папка клиента</span>
+        </div></div>
+      </div>
+    </div>
+    </div><!-- /vpages -->
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+
+/* ---------- разделы: кнопки меню должны работать ---------- */
+const SECS = ['Заявки','Поля и переменные','Настройки'];
+const stub = document.createElement('section');
+stub.className = 'stub hidden';
+stub.innerHTML = '<span class="ic"><svg class="i l"><use href="#i-folder"/></svg></span>' +
+                 '<b id="stubTitle">Раздел</b>' +
+                 '<span>Экран готовим: каркас и стиль уже согласованы, наполняем по очереди.</span>';
+$('.main').appendChild(stub);
+
+function showSection(name){
+  const isApps = (name === 'Заявки');
+  $('.head').classList.toggle('hidden', !isApps);
+  $('.body3').classList.toggle('hidden', !isApps);
+  stub.classList.toggle('hidden', isApps);
+  if (!isApps) $('#stubTitle').textContent = name;
+  document.title = 'Wolf AutoDoc · ' + name;
+}
+/* активный раздел подсвечивается и в полоске, и в развёрнутом меню */
+function activate(name){
+  $$('.rail .rbtn').forEach(b => b.classList.toggle('on', b.dataset.sec === name));
+  $$('.drawer a').forEach(a => a.classList.toggle('on', a.dataset.sec === name));
+  showSection(name);
+}
+$$('.rail .rbtn').forEach((b, i) => {
+  b.dataset.sec = SECS[i] || '';
+  b.title = SECS[i] || '';
+  b.onclick = () => activate(b.dataset.sec);
+});
+$$('.drawer a').forEach(a => a.onclick = e => { e.preventDefault(); activate(a.dataset.sec); openMenu(false); });
+
+/* меню: разворот закрывает вспомогательную зону */
+const drawer = $('#drawer'), ovl = $('#ovl');
+const openMenu = v => { drawer.classList.toggle('open', v); ovl.classList.toggle('on', v); };
+$('#burger').onclick = () => openMenu(true);
+$('#drawerX').onclick = () => openMenu(false);
+ovl.onclick = () => openMenu(false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') openMenu(false); });
+
+/* левая зона: сканы клиента ↔ наши документы (с движением, а не мгновенной подменой) */
+$$('#srcSeg button').forEach(b => b.onclick = () => {
+  $$('#srcSeg button').forEach(x => x.classList.toggle('on', x === b));
+  const pane = b.dataset.pane;
+  $$('.aux [data-pane]').forEach(p => {
+    if (p.dataset.pane === pane) {
+      p.classList.remove('hidden','pane-out'); void p.offsetWidth; p.classList.add('pane-in');
+    } else { p.classList.add('hidden'); }
+  });
+  $('#auxCount').textContent = pane === 'real' ? 4 : 5;
+});
+
+/* --- миниатюры документов: выбор миниатюры открывает документ в центре --- */
+$$('.mini').forEach(m => m.onclick = e => {
+  if (e.target.closest('.chk')) return;                  /* клик по галочке не выбирает документ */
+  $$('.mini').forEach(x => x.classList.toggle('on', x === m));
+  const t = document.querySelector('.card2-head .t');
+  if (t && m.dataset.doc) t.textContent = m.dataset.doc;
+  const v = $('#sheetView .passport');
+  if (v){ v.classList.remove('anim'); void v.offsetWidth; v.classList.add('anim'); }
+});
+
+/* --- галочка на миниатюре: у скана с Диска = «скачано», у нашего документа = «проверено» ---
+   признак берём из вкладки (data-pane), а не из текста подписи: текст меняется при клике */
+$$('.mini .chk').forEach(c => c.onclick = e => {
+  e.stopPropagation();
+  const box = c.closest('.mini');
+  const pane = box.closest('[data-pane]');
+  const disk = !pane || pane.dataset.pane === 'real';
+  const on = c.classList.toggle('on');
+  c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+  box.classList.remove('busy');
+  const bar = box.querySelector('.bar'); if (bar) bar.remove();
+  c.title = on ? (disk ? 'Скачано с Google Диска' : 'Проверено') : 'Не подтверждено';
+  const sub = box.querySelector('.sub');
+  if (sub) sub.textContent = on ? (disk ? 'Скачано с Диска · 12.08' : 'Проверено')
+                               : (disk ? 'не подтверждено' : 'не проверено');
+});
+
+/* подтверждение переменной */
+$$('.tick').forEach(t => t.onclick = e => {
+  e.stopPropagation();
+  t.classList.toggle('on');
+  t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');
+});
+
+/* связь «поле в документе ↔ переменная справа» в обе стороны */
+function flash(el){ if(!el) return; el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); }
+$$('.mk').forEach(m => m.onclick = () => {
+  const card = document.querySelector('.varcard[data-var="' + m.dataset.var + '"]');
+  if (card){ card.scrollIntoView({block:'center', behavior:'smooth'}); flash(card); }
+});
+$$('.varcard').forEach(c => c.onclick = () => {
+  flash(document.querySelector('.mk[data-var="' + c.dataset.var + '"]'));
+  const fld = document.querySelector('.fld[data-var="' + c.dataset.var + '"]');
+  if (fld && fld.offsetParent){
+    fld.scrollIntoView({block:'center', behavior:'smooth'});
+    fld.classList.remove('flash'); void fld.offsetWidth; fld.classList.add('flash');
+  }
+});
+
+/* --- окно просмотра: вкладки «Документы клиента» / «Рабочие формы» --- */
+$$('#docTabs .btab').forEach(t => t.onclick = () => {
+  $$('#docTabs .btab').forEach(x => x.classList.toggle('on', x === t));
+  const v = t.dataset.view;
+  $$('.btab-body .dv-pane').forEach(p => p.classList.toggle('on', p.dataset.view === v));
+  const tools = document.querySelector('.btabs-tools');
+  if (tools) tools.style.display = (v === 'client') ? '' : 'none';   /* зум и поворот нужны только скану */
+});
+
+/* глаз в полосе вкладок: подсветка распознанных полей на скане */
+if ($('#toggleFields')) $('#toggleFields').onclick = e => {
+  const b = e.currentTarget;
+  const off = $('#sheetView').classList.toggle('no-fields');
+  b.classList.toggle('on', !off);
+  b.title = off ? 'Показать распознанные поля' : 'Скрыть распознанные поля';
+};
+
+/* поле рабочей формы → переменная справа */
+$$('.fld input').forEach(inp => inp.addEventListener('focus', () => {
+  const f = inp.closest('.fld');
+  const card = document.querySelector('.varcard[data-var="' + f.dataset.var + '"]');
+  if (card){ card.scrollIntoView({block:'center', behavior:'smooth'}); flash(card); }
+}));
+
+/* страницы документа */
+$$('.pgbtn').forEach(p => p.onclick = () => {
+  $$('.pgbtn').forEach(x => x.classList.toggle('on', x === p));
+  const v = $('#sheetView .passport');
+  v.classList.remove('anim'); void v.offsetWidth; v.classList.add('anim');
+});
+
+/* вкладки внутри заявки: каждый пункт — отдельный экран */
+$$('#appTabs .vtab').forEach(t => t.onclick = () => {
+  $$('#appTabs .vtab').forEach(x => x.classList.toggle('on', x === t));
+  const name = t.dataset.tab;
+  $$('.vpages .vpage').forEach(p => p.classList.toggle('on', p.dataset.tab === name));
+});
+
+/* вкладки и сегменты */
+$$('.seg').forEach(s => {
+  if (s.id === 'srcSeg') return;          /* у левого сегмента своя логика — не перетираем обработчик */
+  s.querySelectorAll('button').forEach(b => b.onclick = () =>
+    s.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)));
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1372 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ 0426258f
+
+13.08.2026
+
+CLIENT_055
+Home address: 111395,125319, ROSSIIA, MOSKVA G, G MOSKVA, PROEZD, KOCHNOVSKII, D 4, KORP 1 KV 41
+
+About the product
+Date of conclusion of the contract: 27.09.2018
+Contract number: 5093475902
+Personal account number: 40817810200006654853
+
+Movement of funds for the period from 13.08.2025 to 13.08.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+08.08.2026
+18:41
+
+08.08.2026
+18:41
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+08.08.2026
+12:34
+
+08.08.2026
+12:34
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000273
+RU
+Intrabank transfer from
+6901
+contract 5322990812
+
+07.08.2026
+06:27
+
+07.08.2026
+06:28
+
+-3 457.39 ₽
+
+-3 457.39 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+07.08.2026
+06:27
+
+07.08.2026
+06:27
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+07.08.2026
+06:24
+
+07.08.2026
+06:25
+
+-2 869.15 ₽
+
+-2 869.15 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+07.08.2026
+05:54
+
+07.08.2026
+05:55
+
+-1 272.51 ₽
+
+-1 272.51 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+07.08.2026
+05:54
+
+07.08.2026
+05:54
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Intrabank transfer from
+contract 8168066705
+
+6901
+
+06.08.2026
+15:12
+
+06.08.2026
+15:13
+
+-10 805.03 ₽
+
+-10 805.03 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+06.08.2026
+15:01
+
+06.08.2026
+15:02
+
++11 000.00 ₽
+
++11 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+05.08.2026
+17:17
+
+05.08.2026
+17:18
+
+-39 000.00 ₽
+
+-39 000.00 ₽
+
+Internal transfer to contract
+8168066705
+
+6901
+
+05.08.2026
+17:15
+
+05.08.2026
+17:16
+
++600 000.00 ₽
+
++600 000.00 ₽
+
+Intrabank transfer from
+LLC OFA
+
+6901
+
+05.08.2026
+10:00
+
+05.08.2026
+10:00
+
+-59 250.00 ₽
+
+-59 250.00 ₽
+
+External transfer by phone
+number +79029727174
+
+6901
+
+04.08.2026
+09:25
+
+04.08.2026
+09:25
+
++70 000.00 ₽
+
++70 000.00 ₽
+
+Intrabank transfer
+
+6901
+
+03.08.2026
+17:08
+
+03.08.2026
+17:08
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+Intrabank transfer from
+contract 5322990812
+
+6901
+
+03.08.2026
+06:33
+
+03.08.2026
+06:34
+
+-9 814.23 ₽
+
+-9 814.23 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+03.08.2026
+06:33
+
+03.08.2026
+06:33
+
++10 000.00 ₽
+
++10 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+03.08.2026
+06:15
+
+03.08.2026
+06:16
+
+-1 760.73 ₽
+
+-1 760.73 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+03.08.2026
+06:14
+
+03.08.2026
+06:14
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Intrabank transfer from
+contract 8168066705
+
+6901
+
+03.08.2026
+05:55
+
+03.08.2026
+05:55
+
+-4 500.00 ₽
+
+-4 500.00 ₽
+
+Internal transfer to contract
+8168066705
+
+6901
+
+03.08.2026
+05:54
+
+03.08.2026
+05:54
+
+-2 188.89 ₽
+
+-2 188.89 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+02.08.2026
+15:37
+
+02.08.2026
+15:37
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+Intrabank transfer from
+contract 5307644123
+
+6901
+
+01.08.2026
+14:21
+
+01.08.2026
+14:22
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+01.08.2026
+08:04
+
+01.08.2026
+08:04
+
+-19 000.00 ₽
+
+-19 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000273
+RU
+Internal transfer to contract 6901
+8198038138
+
+01.08.2026
+07:55
+
+01.08.2026
+07:55
+
+-4 772.43 ₽
+
+-4 772.43 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+01.08.2026
+07:47
+
+01.08.2026
+07:47
+
+-3 907.68 ₽
+
+-3 907.68 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+01.08.2026
+07:40
+
+01.08.2026
+07:41
+
+-6 628.61 ₽
+
+-6 628.61 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6901
+
+01.08.2026
+07:37
+
+01.08.2026
+07:38
+
+-500.00 ₽
+
+-500.00 ₽
+
+Transfer
+
+6901
+
+01.08.2026
+07:35
+
+01.08.2026
+07:36
+
++35 000.00 ₽
+
++35 000.00 ₽
+
+Intrabank transfer from
+contract 7044929276
+
+6901
+
+27.07.2026
+15:18
+
+27.07.2026
+15:18
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+Internal transfer to contract
+8168066705
+
+6901
+
+26.07.2026
+22:47
+
+26.07.2026
+22:47
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+25.07.2026
+12:40
+
+25.07.2026
+12:40
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+23.07.2026
+13:48
+
+23.07.2026
+13:48
+
+-19 000.00 ₽
+
+-19 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+Internal transfer to contract 6901
+8198038138
+
+23.07.2026
+13:25
+
+23.07.2026
+13:25
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+23.07.2026
+13:04
+
+23.07.2026
+13:05
+
+-9 441.00 ₽
+
+-9 441.00 ₽
+
+23.07.2026
+12:20
+
+23.07.2026
+12:21
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Intrabank transfer from
+contract 5260881403
+
+22.07.2026
+14:10
+
+22.07.2026
+14:11
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+20.07.2026
+13:45
+
+20.07.2026
+13:46
+
+-12 900.00 ₽
+
+-12 900.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000005
+RU
+Internal transfer to contract 6901
+8198038138
+
+19.07.2026
+15:38
+
+19.07.2026
+15:39
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+19.07.2026
+11:35
+
+19.07.2026
+11:35
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+18.07.2026
+10:13
+
+18.07.2026
+10:14
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+Transfer
+6901
+6901
+
+Replenishment by phone
+6901
+number SBP.100000000018
+RU
+Intrabank transfer from
+6901
+contract 5322990812
+Replenishment by phone
+6901
+number SBP.100000000273
+RU
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+17.07.2026
+16:18
+
+17.07.2026
+16:18
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+15.07.2026
+14:04
+
+15.07.2026
+14:06
+
+-12 000.00 ₽
+
+-12 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+Internal transfer to contract 6901
+0398913418
+
+13.07.2026
+15:54
+
+13.07.2026
+15:55
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+Internal transfer to contract
+5785621320
+
+6901
+
+12.07.2026
+15:38
+
+12.07.2026
+15:38
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+6901
+
+11.07.2026
+08:52
+
+11.07.2026
+08:52
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+09.07.2026
+15:14
+
+09.07.2026
+15:14
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+08.07.2026
+10:12
+
+08.07.2026
+10:13
+
+-1 650.00 ₽
+
+-1 650.00 ₽
+
+Replenishment by phone
+number SBP.100000000018
+RU
+Replenishment by phone
+number SBP.100000000022
+RU
+Replenishment by phone
+number SBP.100000000022
+RU
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+08.07.2026
+04:41
+
+08.07.2026
+04:41
+
+-4 500.00 ₽
+
+-4 500.00 ₽
+
+Transfer to mBank.perevod
+
+6901
+
+05.07.2026
+15:33
+
+05.07.2026
+15:34
+
++600 000.00 ₽
+
++600 000.00 ₽
+
+Intrabank transfer from
+LLC OFA
+
+6901
+
+05.07.2026
+11:32
+
+05.07.2026
+11:32
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+Intrabank transfer from
+contract 8166458916
+
+6901
+
+05.07.2026
+06:30
+
+05.07.2026
+06:30
+
+-1 500.00 ₽
+
+-1 500.00 ₽
+
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+6901
+
+03.07.2026
+11:24
+
+03.07.2026
+11:25
+
+-600.00 ₽
+
+-600.00 ₽
+
+External transfer by phone
+number +79313345486
+
+6901
+
+02.07.2026
+13:29
+
+02.07.2026
+13:30
+
++750.00 ₽
+
++750.00 ₽
+
+6901
+
+02.07.2026
+13:28
+
+02.07.2026
+13:29
+
++750.00 ₽
+
++750.00 ₽
+
+02.07.2026
+11:23
+
+02.07.2026
+11:24
+
++1 500.00 ₽
+
++1 500.00 ₽
+
+01.07.2026
+09:37
+
+01.07.2026
+09:38
+
+-1 875.00 ₽
+
+-1 875.00 ₽
+
+Replenishment by phone
+number SBP.100000000001
+RU
+Replenishment by phone
+number SBP.100000000111
+RU
+Replenishment by phone
+number SBP.100000000022
+RU
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+30.06.2026
+13:56
+
+30.06.2026
+13:57
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+Internal transfer to contract
+5320373797
+
+6901
+
+30.06.2026
+09:37
+
+30.06.2026
+09:37
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+Intrabank transfer from
+contract 5511512179
+
+6901
+
+30.06.2026
+07:42
+
+30.06.2026
+07:42
+
+-72 324.00 ₽
+
+-72 324.00 ₽
+
+Internal transfer to contract
+5495851122
+
+6901
+
+30.06.2026
+07:40
+
+30.06.2026
+07:40
+
++69 000.00 ₽
+
++69 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+30.06.2026
+07:36
+
+30.06.2026
+07:36
+
+-80 000.00 ₽
+
+-80 000.00 ₽
+
+External transfer by phone
+number +79241570666
+
+6901
+
+30.06.2026
+07:35
+
+30.06.2026
+07:36
+
++80 000.00 ₽
+
++80 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+28.06.2026
+19:54
+
+28.06.2026
+19:55
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+
+6901
+
+6901
+
+6901
+
+6901
+
+6901
+
+6901
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+28.06.2026
+15:30
+
+28.06.2026
+15:31
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+28.06.2026
+11:35
+
+28.06.2026
+11:36
+
++3 500.00 ₽
+
++3 500.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000018
+RU
+Intrabank transfer from
+6901
+contract 0243041518
+
+28.06.2026
+09:35
+
+28.06.2026
+09:36
+
+-1 050.00 ₽
+
+-1 050.00 ₽
+
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+6901
+
+28.06.2026
+09:35
+
+28.06.2026
+09:36
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 8168066705
+
+6901
+
+27.06.2026
+16:10
+
+27.06.2026
+16:11
+
+-71 000.00 ₽
+
+-71 000.00 ₽
+
+Internal transfer to contract
+8168066705
+
+6901
+
+27.06.2026
+08:11
+
+27.06.2026
+08:11
+
++6 500.00 ₽
+
++6 500.00 ₽
+
+Intrabank transfer from
+contract 5342420554
+
+6901
+
+26.06.2026
+22:57
+
+26.06.2026
+22:57
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+26.06.2026
+12:30
+
+26.06.2026
+12:32
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+25.06.2026
+15:42
+
+25.06.2026
+15:43
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+25.06.2026
+14:01
+
+25.06.2026
+14:01
+
++59 000.00 ₽
+
++59 000.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+Replenishment by phone
+6901
+number SBP.100000000022
+RU
+Intrabank transfer from
+6901
+contract 5319946678
+
+23.06.2026
+15:36
+
+23.06.2026
+15:37
+
+-5 900.00 ₽
+
+-5 900.00 ₽
+
+Internal transfer to contract
+8168066705
+
+6901
+
+23.06.2026
+13:31
+
+23.06.2026
+13:32
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+Intrabank transfer from
+contract 5511512179
+
+6901
+
+23.06.2026
+11:36
+
+23.06.2026
+11:36
+
+-3 375.00 ₽
+
+-3 375.00 ₽
+
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+6901
+
+23.06.2026
+11:35
+
+23.06.2026
+11:35
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+22.06.2026
+11:44
+
+22.06.2026
+11:45
+
+-9 000.00 ₽
+
+-9 000.00 ₽
+
+External transfer by phone
+number +79858541690
+
+6901
+
+22.06.2026
+11:44
+
+22.06.2026
+11:44
+
++4 000.00 ₽
+
++4 000.00 ₽
+
+Intrabank transfer from
+contract 8168066705
+
+6901
+
+21.06.2026
+15:40
+
+21.06.2026
+15:41
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+21.06.2026
+14:10
+
+21.06.2026
+14:10
+
+-2 466.00 ₽
+
+-2 466.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000018
+RU
+Payment in b17.ru - oplata
+6901
+uslug MOSCOW RU
+
+21.06.2026
+14:09
+
+21.06.2026
+14:10
+
++2 500.00 ₽
+
++2 500.00 ₽
+
+Intrabank transfer from
+contract 8168066705
+
+6901
+
+20.06.2026
+16:27
+
+20.06.2026
+16:27
+
+-1 485.00 ₽
+
+-1 485.00 ₽
+
+Payment in b17.ru - oplata
+uslug MOSCOW RU
+
+6901
+
+20.06.2026
+16:27
+
+20.06.2026
+16:27
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+6901
+
+20.06.2026
+11:54
+
+20.06.2026
+11:54
+
+-300.00 ₽
+
+-300.00 ₽
+
+Payment in Ozon MOSCOW
+RU
+
+6901
+
+18.06.2026
+14:55
+
+18.06.2026
+14:56
+
++750.00 ₽
+
++750.00 ₽
+
+16.06.2026
+07:31
+
+16.06.2026
+07:32
+
+-2 565.00 ₽
+
+-2 565.00 ₽
+
+Replenishment by phone
+6901
+number SBP.100000000111
+RU
+Payment in b17.ru - oplata
+6901
+uslug MOSCOW RU
+
+16.06.2026
+07:31
+
+16.06.2026
+07:31
+
++2 600.00 ₽
+
++2 600.00 ₽
+
+Intrabank transfer from
+contract 8198038138
+
+Card
+number
+
+6901
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

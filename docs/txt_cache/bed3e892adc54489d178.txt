@@ -1,0 +1,1211 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ 930d652892
+
+09.08.2026
+
+KOCHEGAROVA MARGARITA
+Home address: 117587, Moscow, Sh Gagarina , D. 10, Kv. 55
+Registration address: 117587, Moscow, Sh Gagarina , D. 10, Kv. 55
+
+About the product
+Date of conclusion of the contract: 03.08.2021
+Contract number: 5156671256
+Personal account number: 40817810900011955164
+Amount of available balance as 09.08.2026: 2 352 190.00 ₽
+
+Movement of funds for the period from 09.08.2025 to 09.08.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+04.07.2026
+12:16
+
+04.07.2026
+12:16
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+30.06.2026
+11:03
+
+30.06.2026
+11:04
+
++10 815.00 ₽
+
++10 815.00 ₽
+
+Intrabank transfer from
+contract 5547787779
+
+3977
+
+04.06.2026
+11:20
+
+04.06.2026
+11:20
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+03.06.2026
+09:04
+
+03.06.2026
+09:04
+
++41 000.00 ₽
+
++41 000.00 ₽
+
+Intrabank transfer from
+contract 8147321886
+
+3977
+
+27.05.2026
+14:07
+
+27.05.2026
+14:08
+
++18 000.00 ₽
+
++18 000.00 ₽
+
+Intrabank transfer from
+contract 0005303371
+
+3977
+
+12.05.2026
+13:22
+
+12.05.2026
+13:23
+
++5 075.00 ₽
+
++5 075.00 ₽
+
+Intrabank transfer from
+contract 8087816580
+
+3977
+
+10.05.2026
+16:48
+
+10.05.2026
+16:49
+
++6 402.00 ₽
+
++6 402.00 ₽
+
+Intrabank transfer from
+contract 5468084503
+
+3977
+
+05.05.2026
+17:57
+
+05.05.2026
+17:57
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+04.05.2026
+15:46
+
+04.05.2026
+15:47
+
++9 120.00 ₽
+
++9 120.00 ₽
+
+Intrabank transfer from
+contract 8087816580
+
+3977
+
+04.05.2026
+12:54
+
+04.05.2026
+12:55
+
++19 100.00 ₽
+
++19 100.00 ₽
+
+Intrabank transfer from
+contract 0005303371
+
+3977
+
+04.05.2026
+10:12
+
+04.05.2026
+10:13
+
++30 238.00 ₽
+
++30 238.00 ₽
+
+Intrabank transfer from
+contract 8155549853
+
+3977
+
+03.05.2026
+20:27
+
+03.05.2026
+20:27
+
++21 000.00 ₽
+
++21 000.00 ₽
+
+Intrabank transfer from
+contract 8024181397
+
+3977
+
+29.04.2026
+15:28
+
+29.04.2026
+15:29
+
++4 150.00 ₽
+
++4 150.00 ₽
+
+Intrabank transfer from
+contract 8411229161
+
+3977
+
+06.04.2026
+09:36
+
+06.04.2026
+09:36
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+04.03.2026
+08:38
+
+04.03.2026
+08:38
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+25.02.2026
+18:07
+
+25.02.2026
+18:08
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 5700465874
+
+3977
+
+23.02.2026
+05:50
+
+23.02.2026
+05:50
+
++16 000.00 ₽
+
++16 000.00 ₽
+
+Intrabank transfer from
+contract 5700465874
+
+3977
+
+20.02.2026
+15:49
+
+20.02.2026
+15:50
+
++11 000.00 ₽
+
++11 000.00 ₽
+
+Intrabank transfer from
+contract 8309394275
+
+3977
+
+20.02.2026
+13:09
+
+20.02.2026
+13:11
+
++5 500.00 ₽
+
++5 500.00 ₽
+
+Intrabank transfer from
+contract 5383196515
+
+3977
+
+11.02.2026
+13:43
+
+11.02.2026
+13:44
+
++5 600.00 ₽
+
++5 600.00 ₽
+
+10.02.2026
+15:23
+
+10.02.2026
+15:24
+
++37 300.00 ₽
+
++37 300.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000008
+RU
+Intrabank transfer from
+3977
+contract 5646438969
+
+10.02.2026
+12:16
+
+10.02.2026
+12:17
+
++8 200.00 ₽
+
++8 200.00 ₽
+
+Intrabank transfer from
+contract 5044332301
+
+07.02.2026
+18:44
+
+07.02.2026
+18:44
+
++6 380.00 ₽
+
++6 380.00 ₽
+
+06.02.2026
+13:19
+
+06.02.2026
+13:20
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+05.02.2026
+07:16
+
+05.02.2026
+07:16
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000008
+RU
+Replenishment by phone
+3977
+number SBP.100000000008
+RU
+Intrabank transfer from
+3977
+contract ELEMENT
+
+03.02.2026
+12:35
+
+03.02.2026
+12:35
+
++500.00 ₽
+
++500.00 ₽
+
+28.01.2026
+12:35
+
+28.01.2026
+12:35
+
++4 750.00 ₽
+
++4 750.00 ₽
+
+27.01.2026
+09:06
+
+27.01.2026
+09:06
+
++26 850.00 ₽
+
++26 850.00 ₽
+
+Intrabank transfer from
+contract 5556675907
+
+3977
+
+26.01.2026
+06:57
+
+26.01.2026
+06:57
+
++4 750.00 ₽
+
++4 750.00 ₽
+
+Intrabank transfer from
+contract 5021297659
+
+3977
+
+25.01.2026
+15:15
+
+25.01.2026
+15:16
+
++1 600.00 ₽
+
++1 600.00 ₽
+
+Intrabank transfer from
+contract 5638941347
+
+3977
+
+24.01.2026
+08:42
+
+24.01.2026
+08:42
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Intrabank transfer from
+contract 5327417803
+
+3977
+
+22.01.2026
+13:10
+
+22.01.2026
+13:11
+
++4 800.00 ₽
+
++4 800.00 ₽
+
+22.01.2026
+12:31
+
+22.01.2026
+12:32
+
++5 550.00 ₽
+
++5 550.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000005
+RU
+Intrabank transfer from
+3977
+contract 5383196515
+
+16.01.2026
+18:22
+
+16.01.2026
+18:23
+
++4 050.00 ₽
+
++4 050.00 ₽
+
+Intrabank transfer from
+contract 5099790845
+
+16.01.2026
+08:59
+
+16.01.2026
+08:59
+
++37 150.00 ₽
+
++37 150.00 ₽
+
+15.01.2026
+07:32
+
+15.01.2026
+07:33
+
++200.00 ₽
+
++200.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000007
+RU
+Intrabank transfer from
+3977
+contract 8147321886
+
+15.01.2026
+07:24
+
+15.01.2026
+07:24
+
++12 000.00 ₽
+
++12 000.00 ₽
+
+Replenishment by phone
+number SBOL RU
+
+11.01.2026
+18:28
+
+11.01.2026
+18:28
+
++1 500.00 ₽
+
++1 500.00 ₽
+
+09.01.2026
+23:14
+
+10.01.2026
+03:13
+
++4 050.00 ₽
+
++4 050.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000008
+RU
+Intrabank transfer from
+3977
+contract 5307495829
+
+3977
+
+Replenishment by phone
+3977
+number SBP.100000000150
+RU
+Intrabank transfer from
+3977
+contract 8427390734
+
+3977
+
+3977
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+09.01.2026
+13:07
+
+09.01.2026
+13:07
+
++4 930.00 ₽
+
++4 930.00 ₽
+
+09.01.2026
+12:47
+
+09.01.2026
+12:47
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000007
+RU
+Intrabank transfer from
+3977
+contract ELEMENT
+
+29.12.2025
+10:57
+
+29.12.2025
+10:58
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+26.12.2025
+17:10
+
+26.12.2025
+17:11
+
++1 700.00 ₽
+
++1 700.00 ₽
+
+26.12.2025
+13:08
+
+26.12.2025
+13:11
+
++4 100.00 ₽
+
++4 100.00 ₽
+
+22.12.2025
+17:04
+
+22.12.2025
+17:05
+
++4 000.00 ₽
+
++4 000.00 ₽
+
+17.12.2025
+13:30
+
+17.12.2025
+13:31
+
++11 600.00 ₽
+
++11 600.00 ₽
+
+11.12.2025
+15:24
+
+11.12.2025
+15:25
+
++1 200.00 ₽
+
++1 200.00 ₽
+
+11.12.2025
+13:55
+
+11.12.2025
+13:55
+
++6 000.00 ₽
+
++6 000.00 ₽
+
+11.12.2025
+10:39
+
+11.12.2025
+10:40
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+01.12.2025
+05:03
+
+01.12.2025
+05:04
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Intrabank transfer from
+contract 5021297659
+
+27.11.2025
+12:12
+
+27.11.2025
+12:12
+
++16 920.00 ₽
+
++16 920.00 ₽
+
+24.11.2025
+12:08
+
+24.11.2025
+12:09
+
++22 850.00 ₽
+
++22 850.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000111
+RU
+Intrabank transfer from
+3977
+contract 5556675907
+
+07.11.2025
+16:32
+
+07.11.2025
+16:33
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+01.11.2025
+11:18
+
+01.11.2025
+11:19
+
++63 800.00 ₽
+
++63 800.00 ₽
+
+Intrabank transfer from
+contract 5758722135
+
+3977
+
+29.10.2025
+02:13
+
+29.10.2025
+03:35
+
++37 750.00 ₽
+
++37 750.00 ₽
+
+Intrabank transfer from
+contract 5113624380
+
+3977
+
+24.10.2025
+10:34
+
+24.10.2025
+10:35
+
++64 200.00 ₽
+
++64 200.00 ₽
+
+Intrabank transfer from
+contract 5134942381
+
+3977
+
+22.10.2025
+13:57
+
+22.10.2025
+13:58
+
++38 750.00 ₽
+
++38 750.00 ₽
+
+Intrabank transfer from
+contract 5317268570
+
+3977
+
+20.10.2025
+10:58
+
+20.10.2025
+10:59
+
++11 850.00 ₽
+
++11 850.00 ₽
+
+Intrabank transfer from
+contract 5155617664
+
+3977
+
+17.10.2025
+15:25
+
+17.10.2025
+15:26
+
++62 200.00 ₽
+
++62 200.00 ₽
+
+Intrabank transfer from
+contract 0120611116
+
+3977
+
+17.10.2025
+05:16
+
+17.10.2025
+05:17
+
++1 400.00 ₽
+
++1 400.00 ₽
+
+15.10.2025
+15:07
+
+15.10.2025
+15:07
+
++6 610.00 ₽
+
++6 610.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000111
+RU
+Intrabank transfer from
+3977
+contract 8147321886
+
+02.10.2025
+15:54
+
+02.10.2025
+15:54
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Replenishment by phone
+number SBP.100000000111
+RU
+Replenishment by phone
+number SBP.100000000008
+RU
+Replenishment by phone
+number SBP.100000000008
+RU
+Replenishment by phone
+number SBP.100000000007
+RU
+Replenishment by phone
+number SBP.100000000005
+RU
+Intrabank transfer from
+contract 8147321886
+
+Card
+number
+
+3977
+
+3977
+
+3977
+
+3977
+
+3977
+
+3977
+
+Replenishment by phone
+3977
+number SBP.100000000111
+RU
+Intrabank transfer from
+3977
+contract ELEMENT
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+3977
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+02.10.2025
+11:00
+
+02.10.2025
+11:01
+
++36 700.00 ₽
+
++36 700.00 ₽
+
+01.10.2025
+14:24
+
+01.10.2025
+14:25
+
++10 300.00 ₽
+
++10 300.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000005
+RU
+Intrabank transfer from
+3977
+contract 5021297659
+
+17.09.2025
+10:38
+
+17.09.2025
+10:38
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+16.09.2025
+22:05
+
+17.09.2025
+03:25
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+31.08.2025
+13:50
+
+31.08.2025
+13:51
+
++16 600.00 ₽
+
++16 600.00 ₽
+
+Intrabank transfer from
+contract 5668749533
+
+3977
+
+27.08.2025
+10:55
+
+27.08.2025
+10:55
+
++2 950.00 ₽
+
++2 950.00 ₽
+
+Intrabank transfer from
+contract 8382263439
+
+3977
+
+15.08.2025
+12:02
+
+15.08.2025
+12:04
+
++14 400.00 ₽
+
++14 400.00 ₽
+
+14.08.2025
+13:53
+
+14.08.2025
+13:53
+
++38 000.00 ₽
+
++38 000.00 ₽
+
+Replenishment by phone
+3977
+number SBP.100000000111
+RU
+Intrabank transfer from
+3977
+contract 5208332048
+
+12.08.2025
+10:34
+
+12.08.2025
+10:35
+
++7 700.00 ₽
+
++7 700.00 ₽
+
+Intrabank transfer from
+contract 5341858727
+
+3977
+
+12.08.2025
+10:31
+
+12.08.2025
+10:31
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+26.07.2025
+09:13
+
+26.07.2025
+09:14
+
++5 100.00 ₽
+
++5 100.00 ₽
+
+Intrabank transfer from
+contract 8180079029
+
+3977
+
+15.07.2025
+17:53
+
+15.07.2025
+17:53
+
++4 050.00 ₽
+
++4 050.00 ₽
+
+Intrabank transfer from
+contract 8180079029
+
+3977
+
+14.07.2025
+05:30
+
+14.07.2025
+05:31
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 8147321886
+
+3977
+
+09.07.2025
+15:04
+
+09.07.2025
+15:04
+
++415 000.00 ₽
+
++415 000.00 ₽
+
+Intrabank transfer from
+contract ELEMENT
+
+3977
+
+Replenishment by phone
+3977
+number SBP.100000000111
+RU
+Intrabank transfer from
+3977
+contract ELEMENT
+
+Replenishment: 6 342 590,00 ₽
+Expenses:
+3 990 400,00 ₽
+
+Best regards,
+Head of Back-office Department
+
+E.S. Shadrina
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

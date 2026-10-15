@@ -1,0 +1,1341 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ 0f2d447d
+
+29.07.2026
+
+CLIENT_009 Alekseevna
+Home address: 117447, Moscow, Ul Dmitriya Ul'yanova , D. 33, Korp. 10, Kv. 6
+Series: 4524
+
+Number: 479395
+
+Date of issue: 01.10.2024
+
+Code: 770-047
+
+Passport issued by: Gu Mvd Rossii Po G Moskve
+Registration address: 355003, Stavropol'skii Krai, G Stavropol', Ul Mira , D. 367/20, Kv. 4
+
+About the product
+Date of conclusion of the contract: 16.06.2023
+Contract number: 0127324709
+Personal account number: 45815810100018086273
+Amount of available balance as 2 .07.2026: 3 406 488.85 ₽
+
+Movement of funds for the period from 29.07.2025 to 29.07.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+14.07.2026
+09:16
+
+14.07.2026
+09:16
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L-TECH LLC
+
+8002
+
+06.07.2026
+18:45
+
+06.07.2026
+18:45
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+01.07.2026
+10:12
+
+01.07.2026
+10:12
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+30.06.2026
+22:20
+
+01.07.2026
+03:47
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+30.06.2026
+13:29
+
+30.06.2026
+13:30
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+28.06.2026
+15:53
+
+28.06.2026
+15:53
+
++100 000.00 ₽
+
++100 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+21.06.2026
+22:29
+
+21.06.2026
+22:29
+
+-30 905.49 ₽
+
+-30 905.49 ₽
+
+Loan interest and overdraft
+
+—
+
+17.06.2026
+18:20
+
+17.06.2026
+18:20
+
++48 100.00 ₽
+
++48 100.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+14.06.2026
+17:29
+
+14.06.2026
+17:30
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L-TECH LLC
+
+8002
+
+13.06.2026
+14:10
+
+13.06.2026
+14:11
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+12.06.2026
+19:19
+
+12.06.2026
+19:19
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+12.06.2026
+11:57
+
+12.06.2026
+11:57
+
+-109 000.00 ₽
+
+-109 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+11.06.2026
+19:14
+
+11.06.2026
+19:15
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+11.06.2026
+00:36
+
+11.06.2026
+03:52
+
++25 000.00 ₽
+
++25 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+10.06.2026
+17:46
+
+10.06.2026
+17:47
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+08.06.2026
+13:44
+
+08.06.2026
+13:44
+
++52 000.00 ₽
+
++52 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+08.06.2026
+00:25
+
+08.06.2026
+04:32
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+03.06.2026
+19:21
+
+03.06.2026
+19:22
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+01.06.2026
+18:19
+
+01.06.2026
+18:19
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+30.05.2026
+15:42
+
+30.05.2026
+15:42
+
+-7 000.00 ₽
+
+-7 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+29.05.2026
+16:40
+
+29.05.2026
+16:40
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+28.05.2026
+05:17
+
+28.05.2026
+05:18
+
+-15 000.00 ₽
+
+-15 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+26.05.2026
+23:24
+
+27.05.2026
+03:46
+
+-8 000.00 ₽
+
+-8 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+21.05.2026
+22:29
+
+21.05.2026
+22:29
+
+-4 010.54 ₽
+
+-4 010.54 ₽
+
+Loan interest and overdraft
+
+—
+
+14.05.2026
+12:33
+
+14.05.2026
+12:34
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+06.05.2026
+03:10
+
+06.05.2026
+03:55
+
++25 500.00 ₽
+
++25 500.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+25.04.2026
+11:23
+
+25.04.2026
+11:23
+
+-4 000.00 ₽
+
+-4 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+25.04.2026
+05:18
+
+25.04.2026
+05:18
+
+-5 500.00 ₽
+
+-5 500.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+24.04.2026
+08:19
+
+24.04.2026
+08:19
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+21.04.2026
+22:28
+
+21.04.2026
+22:28
+
+-50 094.60 ₽
+
+-50 094.60 ₽
+
+Loan interest and overdraft
+
+—
+
+17.04.2026
+07:15
+
+17.04.2026
+07:15
+
+-580.00 ₽
+
+-580.00 ₽
+
+Transfer fee
+
+8002
+
+14.04.2026
+07:15
+
+14.04.2026
+07:15
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+09.04.2026
+10:46
+
+09.04.2026
+10:47
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+06.04.2026
+08:48
+
+06.04.2026
+08:48
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+02.04.2026
+16:38
+
+02.04.2026
+16:39
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+25.03.2026
+07:17
+
+25.03.2026
+07:17
+
++16 000.00 ₽
+
++16 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+15.03.2026
+04:08
+
+15.03.2026
+04:08
+
+-4 000.00 ₽
+
+-4 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+14.03.2026
+10:50
+
+14.03.2026
+10:50
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+12.03.2026
+08:51
+
+12.03.2026
+08:51
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+12.03.2026
+08:49
+
+12.03.2026
+08:50
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+02.03.2026
+23:05
+
+03.03.2026
+03:25
+
++120 000.00 ₽
+
++120 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+17.02.2026
+09:28
+
+17.02.2026
+09:28
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+15.02.2026
+01:13
+
+15.02.2026
+03:46
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+24.01.2026
+00:30
+
+24.01.2026
+03:38
+
++50 000.00 ₽
+
++50 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+23.01.2026
+02:43
+
+23.01.2026
+03:31
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+23.01.2026
+02:42
+
+23.01.2026
+03:31
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+23.01.2026
+02:24
+
+23.01.2026
+03:31
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+20.01.2026
+02:20
+
+20.01.2026
+03:30
+
++21 000.00 ₽
+
++21 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+15.01.2026
+16:27
+
+15.01.2026
+16:28
+
+-6 000.00 ₽
+
+-6 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+14.01.2026
+02:41
+
+14.01.2026
+03:37
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+13.01.2026
+16:34
+
+13.01.2026
+16:34
+
+-14 000.00 ₽
+
+-14 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+13.01.2026
+04:25
+
+13.01.2026
+04:25
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+09.01.2026
+11:38
+
+09.01.2026
+11:38
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+
+8002
+
+30.12.2025
+09:31
+
+30.12.2025
+09:32
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+25.12.2025
+01:47
+
+25.12.2025
+05:09
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+14.12.2025
+01:45
+
+14.12.2025
+05:09
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+06.12.2025
+04:28
+
+06.12.2025
+04:28
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Internal transfer to contract
+5192189457
+
+8002
+
+13.11.2025
+22:31
+
+14.11.2025
+22:31
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L TECH LLC
+
+8002
+
+14.10.2025
+21:28
+
+14.10.2025
+21:29
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L-TECH LLC
+
+8002
+
+10.10.2025
+17:40
+
+10.10.2025
+17:42
+
++139 777.44 ₽
+
++139 777.44 ₽
+
+Intrabank transfer from
+contract 5634858768
+
+8002
+
+21.09.2025
+22:29
+
+21.09.2025
+22:29
+
+-0.38 ₽
+
+-0.38 ₽
+
+Late fee
+
+—
+
+21.09.2025
+22:29
+
+21.09.2025
+22:29
+
+-7 062.14 ₽
+
+-7 062.14 ₽
+
+Loan interest and overdraft
+
+—
+
+18.09.2025
+10:48
+
+18.09.2025
+10:49
+
++500.00 ₽
+
++500.00 ₽
+
+17.09.2025
+04:42
+
+17.09.2025
+04:42
+
++98.14 ₽
+
++98.14 ₽
+
+Replenishment by phone
+8002
+number SBP.100000000111
+RU
+nullnull MOSCOW RUS
+—
+
+14.09.2025
+13:46
+
+14.09.2025
+13:47
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract L-TECH LLC
+
+8002
+
+29.08.2025
+18:33
+
+29.08.2025
+18:34
+
+-12 000.00 ₽
+
+-12 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+29.08.2025
+13:22
+
+29.08.2025
+13:22
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+25.08.2025
+21:13
+
+25.08.2025
+21:14
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+24.08.2025
+14:44
+
+24.08.2025
+14:44
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+21.08.2025
+23:26
+
+21.08.2025
+23:26
+
+-5 639.19 ₽
+
+-5 639.19 ₽
+
+Loan interest and overdraft
+
+—
+
+18.08.2025
+17:38
+
+18.08.2025
+17:39
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+18.08.2025
+17:38
+
+18.08.2025
+17:39
+
+-580.00 ₽
+
+-580.00 ₽
+
+Transfer fee
+
+8002
+
+17.08.2025
+17:33
+
+17.08.2025
+17:33
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+8002
+
+14.08.2025
+19:11
+
+14.08.2025
+19:11
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+contract 5192189457
+Intrabank transfer from
+contract L-TECH LLC
+
+08.08.2025
+19:11
+
+08.08.2025
+19:11
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+06.08.2025
+19:32
+
+06.08.2025
+19:32
+
+-580.00 ₽
+
+-580.00 ₽
+
+Transfer fee
+
+8002
+
+06.08.2025
+19:32
+
+06.08.2025
+19:32
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+05.08.2025
+21:50
+
+05.08.2025
+21:51
+
+-30 000.00 ₽
+
+-30 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+05.08.2025
+21:50
+
+05.08.2025
+21:51
+
+-435.00 ₽
+
+-435.00 ₽
+
+Transfer fee
+
+8002
+
+05.08.2025
+20:27
+
+05.08.2025
+20:28
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+05.08.2025
+16:31
+
+05.08.2025
+16:32
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79298584355
+
+8002
+
+04.08.2025
+17:59
+
+04.08.2025
+17:59
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+04.08.2025
+17:58
+
+04.08.2025
+17:58
+
++85 000.00 ₽
+
++85 000.00 ₽
+
+04.08.2025
+14:37
+
+04.08.2025
+14:38
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+Replenishment by phone
+8002
+number SBP.100000000111
+RU
+Replenishment by phone
+8002
+number SBP.100000000111
+RU
+External transfer by phone
+8002
+number +79298584355
+
+8002
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

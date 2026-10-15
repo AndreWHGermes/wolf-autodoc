@@ -1,0 +1,56 @@
+{
+ "91": {
+  "product": "BRIDGING",
+  "client": "CLIENT ANNA",
+  "docs": 5,
+  "conflicts": {
+   "nationality": {
+    "statement_letter_e02__default": "RUSIA",
+    "remote_work_agreement__default": "Russian Federation",
+    "employment_contract__default": "Russian Federation"
+   }
+  }
+ },
+ "92": {
+  "product": "C1",
+  "client": "CLIENT ANNA",
+  "docs": 2,
+  "conflicts": {}
+ },
+ "93": {
+  "product": "C1-EXT",
+  "client": "CLIENT ANNA",
+  "docs": 2,
+  "conflicts": {}
+ },
+ "94": {
+  "product": "CONV",
+  "client": "CLIENT ANNA",
+  "docs": 5,
+  "conflicts": {
+   "nationality": {
+    "statement_letter_e02__default": "RUSIA",
+    "remote_work_agreement__default": "Russian Federation",
+    "employment_contract__default": "Russian Federation"
+   }
+  }
+ },
+ "95": {
+  "product": "D12",
+  "client": "CLIENT ANNA",
+  "docs": 5,
+  "conflicts": {}
+ },
+ "96": {
+  "product": "E33G-EXT",
+  "client": "CLIENT ANNA",
+  "docs": 5,
+  "conflicts": {}
+ },
+ "97": {
+  "product": "E33G-NEW",
+  "client": "CLIENT ANNA",
+  "docs": 5,
+  "conflicts": {}
+ }
+}

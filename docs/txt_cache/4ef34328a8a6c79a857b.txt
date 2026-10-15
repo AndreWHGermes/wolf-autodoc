@@ -1,0 +1,1411 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ c9802ff5
+
+03.08.2026
+
+Mischenenko CLIENT Vladimirovich
+Home address:
+
+About the product
+Date of conclusion of the contract: 25.07.2025
+Contract number: 5775478129
+Personal account number: 40817810800139310833
+Amount of available balance as 03.08.2026: 1 160 338.28 ₽
+
+Movement of funds for the period from 03.08.2025 to 03.08.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+03.08.2026
+12:01
+
+03.08.2026
+12:02
+
+-58 500.00 ₽
+
+-58 500.00 ₽
+
+Internal transfer to contract
+5580274180
+
+8662
+
+03.08.2026
+12:00
+
+03.08.2026
+12:01
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+Intrabank transfer from
+LLC "AI"
+
+8662
+
+03.08.2026
+11:09
+
+03.08.2026
+11:10
+
+-690.00 ₽
+
+-690.00 ₽
+
+Payment in IS74.RU
+MOSCOW RU
+
+8662
+
+03.08.2026
+07:48
+
+03.08.2026
+07:48
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+02.08.2026
+16:42
+
+02.08.2026
+16:57
+
+-1 080.90 ₽
+
+-1 080.90 ₽
+
+Payment in LENTA-969
+Chelyabinsk RUS
+
+8662
+
+02.08.2026
+16:32
+
+02.08.2026
+16:47
+
+-5 400.00 ₽
+
+-5 400.00 ₽
+
+Payment in SUDAR
+Chelyabinsk RUS
+
+8662
+
+02.08.2026
+16:24
+
+02.08.2026
+16:39
+
+-2 499.00 ₽
+
+-2 499.00 ₽
+
+Payment in OOO KOTON
+TEKSTIL Chelyabinsk RUS
+
+8662
+
+02.08.2026
+16:01
+
+02.08.2026
+16:17
+
+-3 197.00 ₽
+
+-3 197.00 ₽
+
+Payment in FAKTOR.
+Chelyabinsk RUS
+
+8662
+
+02.08.2026
+15:20
+
+02.08.2026
+15:35
+
+-948.00 ₽
+
+-948.00 ₽
+
+Payment in GLORIA JEANS
+Chelyabinsk RUS
+
+8662
+
+02.08.2026
+15:08
+
+02.08.2026
+15:23
+
+-4 921.00 ₽
+
+-4 921.00 ₽
+
+Payment in COLINS
+Chelyabinsk RUS
+
+8662
+
+02.08.2026
+15:04
+
+02.08.2026
+15:04
+
++31.90 ₽
+
++31.90 ₽
+
+02.08.2026
+14:10
+
+02.08.2026
+14:25
+
+-160.00 ₽
+
+-160.00 ₽
+
+Refund transaction in
+8662
+DOSTAVKA IZ PYATEROCHK
+MOSCOW RUS
+Payment in KONFILEND
+8662
+CHELJABINSK RUS
+
+02.08.2026
+11:37
+
+02.08.2026
+11:37
+
+-5 300.00 ₽
+
+-5 300.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+02.08.2026
+11:04
+
+02.08.2026
+11:04
+
++50 000.00 ₽
+
++50 000.00 ₽
+
+Intrabank transfer from
+contract 8459019102
+
+8662
+
+02.08.2026
+08:11
+
+02.08.2026
+08:26
+
+-586.95 ₽
+
+-586.95 ₽
+
+Payment in DOSTAVKA IZ
+PYATEROCHK MOSCOW
+RUS
+
+8662
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+01.08.2026
+22:19
+
+02.08.2026
+03:10
+
+-208.00 ₽
+
+-208.00 ₽
+
+8662
+
+01.08.2026
+21:10
+
+01.08.2026
+21:25
+
+-780.00 ₽
+
+-780.00 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Payment in RADIO
+Chelyabinsk RUS
+
+01.08.2026
+20:29
+
+01.08.2026
+20:45
+
+-780.00 ₽
+
+-780.00 ₽
+
+Payment in RADIO
+Chelyabinsk RUS
+
+8662
+
+01.08.2026
+20:00
+
+01.08.2026
+20:15
+
+-1 070.00 ₽
+
+-1 070.00 ₽
+
+Payment in RADIO
+Chelyabinsk RUS
+
+8662
+
+01.08.2026
+19:13
+
+01.08.2026
+20:21
+
+-196.00 ₽
+
+-196.00 ₽
+
+8662
+
+01.08.2026
+19:01
+
+01.08.2026
+19:01
+
++1 500.00 ₽
+
++1 500.00 ₽
+
+01.08.2026
+13:23
+
+02.08.2026
+13:54
+
+-935.21 ₽
+
+-935.21 ₽
+
+01.08.2026
+13:05
+
+01.08.2026
+13:11
+
+-123.87 ₽
+
+-123.87 ₽
+
+31.07.2026
+18:57
+
+31.07.2026
+19:12
+
+-212.97 ₽
+
+-212.97 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Replenishment by phone
+number SBP.100000000008
+RU
+Payment in GAZPROMNEFT
+AZS 261 EMANZHELINSK
+RUS
+Payment in
+KRASNOE&BELOE
+Emanzhelinsk RUS
+Payment in PYATEROCHKA
+27316 Emanzhelinsk RUS
+
+31.07.2026
+14:04
+
+31.07.2026
+14:19
+
+-769.98 ₽
+
+-769.98 ₽
+
+8662
+
+31.07.2026
+13:20
+
+01.08.2026
+15:53
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+Payment in MAGNIT GM
+EMANZHELINSK
+Emanzhelinsk RUS
+Payment in EKC MOSCOW
+RUS
+
+31.07.2026
+13:08
+
+01.08.2026
+14:19
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+Payment in EPGU MOSKVA
+RUS
+
+8662
+
+31.07.2026
+08:30
+
+31.07.2026
+08:46
+
+-1 223.91 ₽
+
+-1 223.91 ₽
+
+8662
+
+31.07.2026
+06:25
+
+31.07.2026
+06:25
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Payment in DOSTAVKA IZ
+PYATEROCHK MOSCOW
+RUS
+External transfer by phone
+number +79080445894
+
+30.07.2026
+19:13
+
+30.07.2026
+19:28
+
+-242.26 ₽
+
+-242.26 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+30.07.2026
+13:19
+
+30.07.2026
+13:20
+
+-500.00 ₽
+
+-500.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+29.07.2026
+18:05
+
+29.07.2026
+18:20
+
+-1 811.91 ₽
+
+-1 811.91 ₽
+
+Payment in PYATEROCHKA
+4472 Chelyabinsk RUS
+
+8662
+
+29.07.2026
+17:25
+
+29.07.2026
+17:41
+
+-2 576.00 ₽
+
+-2 576.00 ₽
+
+Payment in CHIKHO
+Chelyabinsk RUS
+
+8662
+
+29.07.2026
+15:19
+
+29.07.2026
+15:19
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+28.07.2026
+18:48
+
+28.07.2026
+19:03
+
+-227.96 ₽
+
+-227.96 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+28.07.2026
+11:02
+
+28.07.2026
+12:12
+
+-249.00 ₽
+
+-249.00 ₽
+
+Payment in
+PK*ZENMONEY.RU Sankt-
+
+8662
+
+28.07.2026
+09:06
+
+29.07.2026
+14:15
+
+-2 768.00 ₽
+
+-2 768.00 ₽
+
+Payment in 74415 AZS 415
+Chelyabinsk RUS
+
+8662
+
+27.07.2026
+17:41
+
+27.07.2026
+17:56
+
+-943.93 ₽
+
+-943.93 ₽
+
+8662
+
+27.07.2026
+15:00
+
+27.07.2026
+15:16
+
+-1 684.44 ₽
+
+-1 684.44 ₽
+
+Payment in MAGNIT MM
+UAYTMARSH Chelyabinsk
+RUS
+Payment in MAGNIT MM
+UAYTMARSH Chelyabinsk
+RUS
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+27.07.2026
+13:57
+
+27.07.2026
+13:58
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+27.07.2026
+13:32
+
+27.07.2026
+13:37
+
+-302.00 ₽
+
+-302.00 ₽
+
+Payment in ZHIZNMART
+Chelyabinsk RUS
+
+8662
+
+26.07.2026
+12:49
+
+26.07.2026
+13:04
+
+-129.99 ₽
+
+-129.99 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+26.07.2026
+09:42
+
+26.07.2026
+09:57
+
+-1 148.91 ₽
+
+-1 148.91 ₽
+
+8662
+
+25.07.2026
+19:39
+
+25.07.2026
+19:54
+
+-950.87 ₽
+
+-950.87 ₽
+
+Payment in MAGNIT MM
+UAYTMARSH Chelyabinsk
+RUS
+Payment in MONETKA
+Chelyabinsk RUS
+
+25.07.2026
+18:41
+
+25.07.2026
+18:56
+
+-279.97 ₽
+
+-279.97 ₽
+
+8662
+
+24.07.2026
+14:25
+
+24.07.2026
+14:40
+
+-2 626.20 ₽
+
+-2 626.20 ₽
+
+24.07.2026
+14:14
+
+25.07.2026
+14:39
+
+-299.00 ₽
+
+-299.00 ₽
+
+Payment in MAGNIT MM
+UAYTMARSH Chelyabinsk
+RUS
+Payment in MAGNIT GM
+CHELYABINSK Chelyabinsk
+RUS
+Payment in W1*Getcontact
+Moskva RU
+
+24.07.2026
+14:09
+
+24.07.2026
+14:10
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Replenishment with a partner 8662
+ATM T-Bank Chelyabinsk RU
+
+24.07.2026
+12:14
+
+24.07.2026
+12:15
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+23.07.2026
+17:42
+
+23.07.2026
+17:42
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+23.07.2026
+17:26
+
+23.07.2026
+17:26
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 5097614252
+
+8662
+
+23.07.2026
+15:08
+
+23.07.2026
+15:14
+
+-4 317.84 ₽
+
+-4 317.84 ₽
+
+8662
+
+23.07.2026
+14:51
+
+23.07.2026
+15:06
+
+-1 490.00 ₽
+
+-1 490.00 ₽
+
+Payment in
+KRASNOE&BELOE
+Chelyabinsk RUS
+Payment in MUZHIKIPRO
+Chelyabinsk RUS
+
+23.07.2026
+12:18
+
+23.07.2026
+12:19
+
+-2 700.00 ₽
+
+-2 700.00 ₽
+
+Internal transfer to contract
+5606888645
+
+8662
+
+22.07.2026
+20:43
+
+22.07.2026
+20:58
+
+-191.46 ₽
+
+-191.46 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+22.07.2026
+19:21
+
+22.07.2026
+19:36
+
+-36.99 ₽
+
+-36.99 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+22.07.2026
+19:11
+
+22.07.2026
+19:26
+
+-47.99 ₽
+
+-47.99 ₽
+
+Payment in PYATEROCHKA
+28052 Chelyabinsk RUS
+
+8662
+
+22.07.2026
+14:45
+
+22.07.2026
+14:45
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+Internal transfer to contract
+5004850074
+
+8662
+
+22.07.2026
+14:29
+
+22.07.2026
+14:29
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+22.07.2026
+14:16
+
+22.07.2026
+14:17
+
+-2 500.00 ₽
+
+-2 500.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+22.07.2026
+08:20
+
+22.07.2026
+08:35
+
+-200.00 ₽
+
+-200.00 ₽
+
+Payment in APTEKA 562
+Chelyabinsk RUS
+
+8662
+
+21.07.2026
+18:49
+
+21.07.2026
+19:04
+
+-2 523.55 ₽
+
+-2 523.55 ₽
+
+8662
+
+21.07.2026
+12:31
+
+21.07.2026
+12:32
+
+-800.00 ₽
+
+-800.00 ₽
+
+Payment in AUCHAN
+CHELYABINSK Chelyabinsk
+RUS
+Internal transfer to contract
+5337404197
+
+20.07.2026
+21:12
+
+20.07.2026
+21:27
+
+-143.00 ₽
+
+-143.00 ₽
+
+Payment in
+AptekaFarmlend980
+Chelyabinsk RUS
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+8662
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+20.07.2026
+20:40
+
+20.07.2026
+20:40
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Replenishment with a partner 8662
+ATM T-Bank Chelyabinsk RU
+
+20.07.2026
+09:35
+
+20.07.2026
+09:35
+
+-1 480.00 ₽
+
+-1 480.00 ₽
+
+External transfer by phone
+number +79507403032
+
+8662
+
+20.07.2026
+09:26
+
+20.07.2026
+09:27
+
+-1 100.00 ₽
+
+-1 100.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+19.07.2026
+23:10
+
+19.07.2026
+23:10
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+19.07.2026
+22:52
+
+19.07.2026
+22:52
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+19.07.2026
+22:33
+
+19.07.2026
+22:33
+
++776.00 ₽
+
++776.00 ₽
+
+Cashback
+
+19.07.2026
+17:55
+
+21.07.2026
+13:12
+
+-2 429.64 ₽
+
+-2 429.64 ₽
+
+Payment in GAZPROMNEFT 8662
+AZS 265 CHELYABINSK RUS
+
+19.07.2026
+17:43
+
+19.07.2026
+17:43
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Intrabank transfer from
+contract 5656316311
+
+8662
+
+19.07.2026
+09:08
+
+19.07.2026
+09:09
+
+-2 700.00 ₽
+
+-2 700.00 ₽
+
+Internal transfer to contract
+5606888645
+
+8662
+
+18.07.2026
+18:36
+
+18.07.2026
+18:36
+
+-5 400.00 ₽
+
+-5 400.00 ₽
+
+External transfer by phone
+number +79080445894
+
+8662
+
+18.07.2026
+17:07
+
+18.07.2026
+17:22
+
+-680.00 ₽
+
+-680.00 ₽
+
+8662
+
+18.07.2026
+17:02
+
+18.07.2026
+17:17
+
+-440.00 ₽
+
+-440.00 ₽
+
+18.07.2026
+16:34
+
+18.07.2026
+16:49
+
+-49.99 ₽
+
+-49.99 ₽
+
+Payment in KAFE
+MAKARONNIKI Chelyabinsk
+RUS
+Payment in KAFE
+POKEMANIYA Chelyabinsk
+RUS
+Payment in LENTA-991
+Chelyabinsk RUS
+
+18.07.2026
+14:34
+
+18.07.2026
+15:49
+
+-285.00 ₽
+
+-285.00 ₽
+
+8662
+
+18.07.2026
+12:14
+
+18.07.2026
+12:30
+
+-294.97 ₽
+
+-294.97 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Payment in MONETKA
+Chelyabinsk RUS
+
+17.07.2026
+19:33
+
+17.07.2026
+19:38
+
+-483.00 ₽
+
+-483.00 ₽
+
+Payment in EVO_FRUKTY I
+OVOSHHI Chelyabinsk RUS
+
+8662
+
+17.07.2026
+19:32
+
+17.07.2026
+19:47
+
+-453.95 ₽
+
+-453.95 ₽
+
+8662
+
+17.07.2026
+18:47
+
+17.07.2026
+19:02
+
+-477.00 ₽
+
+-477.00 ₽
+
+Payment in MAGNIT MM
+UAYTMARSH Chelyabinsk
+RUS
+Payment in 210695 KARI
+Chelyabinsk RUS
+
+17.07.2026
+14:27
+
+17.07.2026
+15:11
+
+-449.00 ₽
+
+-449.00 ₽
+
+17.07.2026
+13:49
+
+17.07.2026
+14:04
+
+-1 160.81 ₽
+
+-1 160.81 ₽
+
+17.07.2026
+13:36
+
+17.07.2026
+13:37
+
+-3 500.00 ₽
+
+-3 500.00 ₽
+
+17.07.2026
+07:25
+
+17.07.2026
+07:40
+
+-839.92 ₽
+
+-839.92 ₽
+
+16.07.2026
+23:28
+
+17.07.2026
+03:32
+
+-176.98 ₽
+
+-176.98 ₽
+
+16.07.2026
+23:06
+
+17.07.2026
+03:32
+
+-250.00 ₽
+
+16.07.2026
+22:45
+
+17.07.2026
+04:02
+
+-1 000.00 ₽
+
+—
+
+8662
+
+8662
+
+8662
+
+8662
+
+Payment in
+8662
+YANDEX*5815*PLUS
+Moskva RU
+Payment in MAGNIT MM
+8662
+UAYTMARSH Chelyabinsk
+RUS
+Payment in Notarius
+8662
+Buzykaeva T.Q MOSCOW RU
+Payment in DOSTAVKA IZ
+PYATEROCHK MOSCOW
+RUS
+Payment in PYATEROCHKA
+4472 Chelyabinsk RUS
+
+8662
+
+-250.00 ₽
+
+Payment in RADIO.
+Chelyabinsk RUS
+
+8662
+
+-1 000.00 ₽
+
+Internal transfer to contract
+5656829610
+
+8662
+
+8662
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

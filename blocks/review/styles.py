@@ -1,0 +1,879 @@
+"""Стили экрана проверки заявки.
+
+Палитра берётся из общих переменных сайта (--card, --line, --ink, --accent),
+поэтому экран выглядит в одном стиле с остальными страницами.
+"""
+
+CSS = """
+/* Стиль нового экрана повторяет общий стиль сайта: та же палитра и те же
+   переменные цветов, чтобы экран не выглядел чужеродно. */
+.rv-wrap { display:flex; flex-direction:column; gap:8px;
+            /* Карточка заявки исторически зелёная, остальной сайт — синий.
+               Меняем палитру только внутри этого экрана. */
+            --accent:#15803D; --accent-dark:#14663A; --line:#DCEEE2; }
+.rv-head { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:8px 12px;
+           display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap;
+           box-shadow:0 1px 2px rgba(17,24,39,.05); }
+.rv-head .rv-title { font-size:18px; font-weight:700; color:var(--ink); letter-spacing:-.2px; }
+.rv-head .rv-sub { font-size:13.5px; color:var(--muted); margin-top:4px; }
+.rv-head .rv-tools { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.rv-chip { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;
+           background:#DCFCE7; color:#15803D; border:1px solid #BFE0CB; }
+.rv-cols { display:grid; grid-template-columns:minmax(260px,310px) minmax(0,1fr) minmax(300px,340px);
+           gap:12px; align-items:start; }
+
+/* Левая полоска миниатюр: прокручивается отдельно, чтобы окно просмотра не уезжало */
+.rv-rail { max-height:calc(100vh - 210px); overflow:auto; padding-right:2px; }
+.rv-rail .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; gap:8px; padding:8px; }
+.rv-rail .rv-thumb-frame { height:132px; }
+.rv-rail .rv-thumb-cap { font-size:11.5px; }
+.rv-tabs-panel { margin-bottom:10px; }
+
+/* Центральное окно просмотра: шапка с кнопками + лист документа */
+.rv-view { display:flex; flex-direction:column; gap:8px; min-width:0; }
+.rv-view-head { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#fff;
+                border:1px solid var(--line); border-radius:10px; }
+.rv-view-title { font-weight:600; font-size:13.5px; color:#14663A; }
+.rv-view .zp-preview { min-height:520px; overflow:auto; }
+.rv-view .zp-preview .sheet { max-width:100%; }
+/* Режимы с PDF-страницами (оригинал клиента, примеры): окно визора растягивается,
+   страницы тянутся по ширине — документ виден целиком, без обрезки. */
+.rv-view .zp-preview.is-pdfmode,
+.rv-view .zp-preview:has(.pdf-page-img),
+.rv-view.is-orig .zp-preview { min-height:calc(100vh - 250px); overflow:auto; }
+.rv-wrap { overflow-x:hidden; }
+.rv-cols > * { min-width:0; }
+.rv-view-empty { padding:26px 14px; text-align:center; color:var(--muted); font-size:13px;
+                 border:1px dashed var(--line); border-radius:10px; background:#fff; }
+.rv-left { display:flex; flex-direction:column; gap:10px; min-width:0; }
+.rv-panel { background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+            display:flex; flex-direction:column; box-shadow:0 1px 2px rgba(17,24,39,.05); }
+.rv-panel.rv-right { position:sticky; top:8px; max-height:none;
+                       height:calc(100vh - 20px); }
+.rv-right .rv-body { overflow-y:auto; padding:8px 10px 12px; }
+.rv-tabs { display:flex; gap:6px; padding:6px 10px 0; border-bottom:2px solid var(--line); background:#F4FAF6; }
+.rv-tab { padding:7px 13px; border:1px solid transparent; border-bottom:none; border-radius:10px 10px 0 0;
+          background:transparent; font-size:14px; color:var(--muted); cursor:pointer; font-family:inherit;
+          font-weight:600; }
+.rv-tab:hover { background:#E5F2EA; color:var(--ink); }
+.rv-tab.is-on { background:var(--card); border-color:var(--line); border-bottom-color:var(--card);
+                color:#15803D; margin-bottom:-2px; box-shadow:inset 0 3px 0 var(--accent); }
+.rv-tab .rv-num { display:inline-block; min-width:19px; height:19px; line-height:19px; text-align:center;
+                  border-radius:6px; background:#DCFCE7; color:#15803D; font-size:12px; font-weight:700;
+                  margin-right:7px; }
+.rv-tab.is-on .rv-num { background:var(--accent); color:#fff; }
+.rv-pane { padding:0; display:none; }
+.rv-pane.is-on { display:block; }
+.rv-body { padding:10px 12px; }
+.rv-sec { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#6B7C70;
+          font-weight:700; margin:0 0 9px; }
+.rv-row { display:flex; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #EAF4EE;
+          font-size:14px; }
+.rv-row:last-child { border-bottom:none; }
+.rv-row .rv-k { color:var(--muted); min-width:172px; }
+.rv-row .rv-v { color:var(--ink); font-weight:500; }
+.rv-empty { color:#6B7C70; font-size:13.5px; padding:10px 0; }
+.rv-note { background:#F4FAF6; border:1px solid #DCEEE2; border-radius:11px; padding:11px 13px;
+           font-size:13px; color:#38455C; line-height:1.5; }
+.rv-file { display:flex; align-items:center; gap:10px; padding:9px 11px; border:1px solid var(--line);
+           border-radius:10px; margin-bottom:8px; font-size:13.5px; background:#FBFDFC; }
+.rv-file .rv-fname { color:var(--ink); }
+.rv-file .rv-fsize { color:var(--muted); font-size:12.5px; margin-left:auto; }
+
+/* плитки-миниатюры документов и файлов */
+.rv-thumbs { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; padding:11px; }
+.rv-thumb { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff;
+            cursor:pointer; transition:border-color .15s, box-shadow .15s; }
+.rv-thumb:hover { border-color:var(--accent); box-shadow:0 2px 8px rgba(21,128,61,.14); }
+.rv-thumb.is-on { border-color:var(--accent); box-shadow:0 0 0 2px rgba(21,128,61,.24); }
+.rv-thumb-frame { height:158px; overflow:hidden; position:relative; background:#E7EBEE; }
+.rv-thumb-frame iframe { width:900px; height:1270px; border:0; transform:scale(.28);
+                         transform-origin:top left; pointer-events:none; display:block; }
+.rv-thumb-frame img { width:100%; height:100%; object-fit:cover; display:block; }
+.rv-thumb-frame.is-loading::after { content:''; position:absolute; inset:0; margin:auto;
+                         width:26px; height:26px; border-radius:50%; border:3px solid #DCEEE2;
+                         border-top-color:#15803D; animation:rv-spin .9s linear infinite; }
+.rv-thumb-frame.is-loading::before { content:'загружаю…'; position:absolute; left:0; right:0; bottom:10px;
+                         text-align:center; color:#6B7C70; font-size:12px; }
+.rv-thumb-frame.is-ready::after { content:none; }
+.rv-thumb-cap { padding:8px 10px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:3px; }
+.rv-thumb-name { font-size:12px; color:var(--ink); font-weight:600; display:flex;
+                align-items:center; gap:6px; }
+.rv-thumb-name .rv-tile-dot { margin-left:auto; flex:0 0 auto; }
+.rv-thumb-status { font-size:11.5px; color:var(--muted); }
+.rv-thumbs-bar { padding:0 13px 11px; font-size:12.5px; color:var(--muted); }
+
+/* окно просмотра: лист по центру поля, без «съехавших» краёв */
+.rv-stage-wrap { padding:13px; }
+.rv-stage-wrap .zp-host { background:#E7EBEE; }
+.rv-stage-wrap .zp-canvas { display:flex; justify-content:center; }
+.rv-stage-wrap .html-stage { margin:0 auto; }
+.rv-stage-wrap .html-stage .sheet { margin:0 auto !important; }
+
+/* поля переменных: ввод, кнопки действий, варианты */
+.rv-field { border-bottom:1px solid #EAF4EE; padding:9px 0; cursor:pointer; }
+.rv-field:last-child { border-bottom:none; }
+.rv-field:hover { background:#F8FAFF; }
+.rv-field .rv-flabel { font-size:12.5px; color:var(--muted); font-weight:600; }
+.rv-field .rv-fmeta { font-size:11.5px; color:#9AA3B2; margin-top:3px; }
+.rv-fedit { display:flex; gap:5px; margin-top:5px; }
+.rv-input { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:9px;
+            font-size:13.5px; font-family:inherit; color:var(--ink); background:#fff; font-weight:500; }
+.rv-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(31,107,255,.14); }
+.rv-input.is-empty { border-color:#E8D9A8; background:#FFFCF2; }
+.rv-input.is-saved { border-color:#0E9F6E; background:#F2FDF8; }
+.rv-act { flex:0 0 auto; width:32px; height:33px; border:1px solid var(--line); background:#fff;
+          border-radius:9px; cursor:pointer; font-size:13.5px; color:#38455C; font-family:inherit; }
+.rv-act:hover { border-color:var(--accent); background:#F0F5FF; color:var(--accent); }
+.rv-act:disabled { opacity:.45; cursor:default; }
+.rv-optlist { border:1px solid var(--line); border-radius:10px; background:#fff; margin-top:6px;
+              max-height:180px; overflow-y:auto; box-shadow:0 3px 10px rgba(17,24,39,.08); }
+.rv-optlist button { display:block; width:100%; text-align:left; padding:8px 11px; border:none;
+                     border-bottom:1px solid #F4F6FA; background:#fff; font-size:13px;
+                     color:var(--ink); cursor:pointer; font-family:inherit; }
+.rv-optlist button:last-child { border-bottom:none; }
+.rv-optlist button:hover { background:#F4FAF6; }
+.rv-field.var-active { background:#FFF7E6 !important; box-shadow:inset 3px 0 0 #F59E0B; }
+.rv-field.var-flash { outline:3px solid #F59E0B; outline-offset:2px; background:#FEF3C7; border-radius:8px; }
+.rv-grp { border:1px solid var(--line); border-radius:12px; padding:11px 13px; margin-bottom:11px; }
+
+/* низ: согласование и отправка */
+.rv-foot { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 16px;
+           display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+           box-shadow:0 1px 2px rgba(17,24,39,.05); }
+.rv-state { font-size:13.5px; font-weight:700; }
+.rv-state.ok { color:#0E9F6E; }
+.rv-state.warn { color:#E11D48; }
+.rv-send { margin-left:auto; }
+
+/* кнопка вызова панели переменных — для телефона */
+.rv-mobile-bar { display:none; position:fixed; left:12px; right:12px; bottom:12px; z-index:70;
+                 align-items:center; gap:10px; padding:11px 14px; border-radius:13px;
+                 background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+                 border:none; font-family:inherit; font-size:14.5px; font-weight:600;
+                 box-shadow:0 6px 18px rgba(31,107,255,.32); cursor:pointer; }
+.rv-backdrop { display:none; position:fixed; inset:0; background:rgba(17,24,39,.35); z-index:65; }
+.rv-close-mobile { display:none; }
+
+/* Телефон и планшет: документ и переменные рядом не помещаются, поэтому
+   переменные выезжают поверх экрана по кнопке снизу. */
+@media (max-width:1000px) {
+  .rv-cols { grid-template-columns:1fr; }
+  .rv-panel.rv-right { display:none; }
+  .rv-panel.rv-right.is-open { display:flex; position:fixed; left:0; right:0; bottom:0; top:auto;
+                               max-height:84vh; z-index:66; border-radius:16px 16px 0 0;
+                               box-shadow:0 -6px 24px rgba(17,24,39,.22); }
+  .rv-panel.rv-right.is-open .rv-body { overflow-y:auto; }
+  .rv-close-mobile { display:inline-flex; align-items:center; gap:6px; margin-left:auto;
+                     border:1px solid var(--line); background:#fff; border-radius:9px;
+                     padding:6px 11px; font-size:13px; font-family:inherit; cursor:pointer; }
+  .rv-mobile-bar { display:flex; }
+  .rv-backdrop.is-on { display:block; }
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .rv-row .rv-k { min-width:120px; }
+}
+
+/* Всплывающее окно просмотра: занимает 2/3 слева, правую треть с переменными
+   не перекрывает — править значения можно, не закрывая документ. */
+.rv-modal { display:none; position:fixed; left:0; top:0; bottom:0; width:calc(66.667% - 18px);
+            z-index:60; background:rgba(17,24,39,.28); }
+.rv-modal.is-on { display:flex; flex-direction:column; padding:14px; }
+.rv-modal-win { background:var(--card); border:0; border-radius:16px;
+                display:flex; flex-direction:column; overflow:hidden; flex:1;
+                box-shadow:0 24px 70px rgba(16,24,32,.34), 0 6px 20px rgba(16,24,32,.18); }
+.rv-modal-head { display:flex; align-items:center; gap:9px; padding:11px 13px;
+                 border-bottom:1px solid var(--line); background:#F4FAF6; flex-wrap:wrap; }
+.rv-modal-title { font-size:14.5px; font-weight:700; color:var(--ink); }
+.rv-modal-tools { margin-left:auto; display:flex; gap:7px; align-items:center; }
+.rv-modal-tools button { padding:7px 12px; border-radius:9px; border:1px solid var(--line);
+                         background:#fff; font-family:inherit; font-size:13px; cursor:pointer;
+                         color:#38455C; font-weight:600; }
+.rv-modal-tools button:hover { border-color:var(--accent); color:var(--accent); background:#F0F5FF; }
+.rv-modal-tools .rv-ok.is-on { background:#0E9F6E; border-color:#0E9F6E; color:#fff; }
+.rv-modal-tools .rv-no.is-on { background:#E11D48; border-color:#E11D48; color:#fff; }
+.rv-modal-body { flex:1; overflow:hidden; padding:12px; display:flex; }
+.rv-modal-body .zp-preview { flex:1; min-width:0; }
+.rv-modal-note { padding:8px 13px; border-top:1px solid var(--line); font-size:12.5px;
+                 color:var(--muted); background:#FBFDFC; }
+.rv-thumb-tools { display:flex; gap:5px; margin-top:5px; }
+.rv-thumb-tools button { flex:1; padding:5px 6px; border:1px solid var(--line); background:#fff;
+                         border-radius:8px; font-size:12px; font-family:inherit; cursor:pointer;
+                         color:#38455C; }
+.rv-thumb-tools button:hover { border-color:var(--accent); color:var(--accent); }
+.rv-thumb-tools button.rv-on-ok { background:#0E9F6E; border-color:#0E9F6E; color:#fff; }
+.rv-thumb-tools button.rv-on-no { background:#E11D48; border-color:#E11D48; color:#fff; }
+@media (max-width:1000px) {
+  .rv-modal { width:100%; padding:8px; }
+  .rv-modal-head { padding:9px 10px; }
+  .rv-modal-tools button { padding:6px 9px; font-size:12.5px; }
+  .rv-modal-body { padding:8px; }
+}
+
+/* Файлы приходят разного размера — фото, сканы, выгрузки банка. Вписываем любой
+   в окно целиком (contain), поэтому окно не «прыгает» от файла к файлу. */
+.rv-modal-vars { display:none; }
+@media (max-width:1000px) {
+  /* На телефоне окно на весь экран, но панель переменных открывается поверх него —
+     видно и файл, и значения, можно сравнивать, не закрывая просмотр. */
+  .rv-right.is-open { z-index:80; }
+  .rv-modal-vars { display:inline-block; }
+}
+
+/* Заголовки этапов работы — один вид: номер в квадрате и название. */
+.rv-stage { display:flex; align-items:center; gap:7px; font-size:14px; font-weight:700;
+            color:#14663A; padding:11px 14px; border-bottom:2px solid var(--line);
+            background:#F4FAF6; }
+.rv-stage .rv-num { display:inline-block; min-width:19px; height:19px; line-height:19px;
+                    text-align:center; border-radius:6px; background:#15803D; color:#fff;
+                    font-size:12px; font-weight:700; }
+.rv-tabs { border-bottom:2px solid var(--line); }
+.rv-tabs .rv-tab.is-on { color:#14663A; }
+.rv-tabs .rv-num { background:#DCFCE7; color:#14663A; }
+.rv-tabs .rv-tab.is-on .rv-num { background:#15803D; color:#fff; }
+.rv-chip { background:#DCFCE7 !important; color:#14663A !important; border-color:#BFE0CB !important; }
+.rv-state.ok { background:#DCFCE7; border-color:#BFE0CB; color:#14663A; }
+.rv-state.warn { background:#FEF3C7; border-color:#FDE68A; color:#78350F; }
+
+/* Окно просмотра. Обвязка — та, при которой документ виден целиком по ширине. */
+@keyframes rv-spin { to { transform: rotate(360deg); } }
+.rv-spinner { display:inline-block; width:26px; height:26px; border-radius:50%;
+              border:3px solid #DCEEE2; border-top-color:#15803D; animation:rv-spin .9s linear infinite; }
+.rv-loading { display:flex; flex-direction:column; align-items:center; justify-content:center;
+              gap:10px; height:100%; min-height:180px; color:#6B7C70; font-size:13px; }
+.rv-modal-win { height:100%; min-height:0; }
+.rv-modal-body { flex:1 1 auto; min-height:0; overflow:hidden; padding:12px; display:flex; }
+.rv-modal-body .zp-preview { flex:1 1 auto; min-width:0; width:100%; }
+.rv-modal-body .zp-shell { width:100%; display:flex; flex-direction:column; }
+.rv-modal-body .zp-host { width:100% !important; }
+.rv-modal-body .zp-canvas { margin:0 auto; }
+.rv-modal-body .html-stage { width:794.5px; margin:0 !important; padding:0 !important;
+                             border:0 !important; background:#fff !important; }
+.rv-modal-body .html-stage > div,
+.rv-modal-body .html-stage > section { margin:0; }
+/* Входящий файл-картинка: показываем снимок целиком, без полей листа */
+.rv-modal-body .html-stage.is-image { display:flex; align-items:center; justify-content:center; }
+.rv-modal-body .html-stage.is-image > img { max-width:100%; max-height:100%; width:auto; height:auto;
+                                            object-fit:contain; display:block; margin:auto; }
+.rv-modal-body .html-stage.is-image > iframe { flex:1 1 auto; width:100%; height:100%; border:0; background:#fff; }
+.rv-modal-note { flex:0 0 auto; }
+
+/* Переменные открытого документа: подсвечены и подняты наверх списка */
+.rv-field.is-doc { background:#F1FBF4; border-color:#86EFAC !important; }
+.rv-field.is-doc .rv-flabel::after { content:' · этот документ'; color:#15803D; font-weight:600; }
+
+/* Правило переменной: подпись источника и переключатель фильтра */
+.rv-rule { display:inline-block; margin-left:7px; padding:1px 7px; border-radius:999px;
+           font-size:10.5px; font-weight:600; vertical-align:middle; }
+.rv-rule-client { background:#EAF4EE; color:#14663A; border:1px solid #BFE0CB; }
+.rv-rule-doc { background:#EEF2F6; color:#38455C; border:1px solid #D8DEE6; }
+.rv-rule-gen { background:#DCFCE7; color:#14663A; border:1px solid #86EFAC; }
+.rv-rule-formula { background:#FEF3C7; color:#78350F; border:1px solid #FDE68A; }
+.rv-filter { margin-left:auto; display:flex; gap:5px; }
+.rv-filter button { padding:4px 10px; border:1px solid var(--line); background:#fff; border-radius:8px;
+                    font-family:inherit; font-size:12px; cursor:pointer; color:#38455C; }
+.rv-filter button.is-on { background:#15803D; border-color:#15803D; color:#fff; font-weight:600; }
+.rv-filter-note { font-size:11.5px; color:#6B7C70; font-weight:500; margin-left:8px; }
+.rv-field.is-doc { background:#F1FBF4; border-color:#86EFAC !important; }
+
+/* Внутри окна никаких обводок: объём даёт тень самого окна */
+.rv-modal-body .zp-host,
+.rv-modal-body .zp-preview,
+.rv-modal-body .zp-canvas > * { border:0 !important; outline:0 !important; }
+
+/* Жёлтый маркер подставленных значений прямо в документе: видно, что заполнено машиной */
+.rv-modal-body .html-stage [data-var] { background:rgba(254,243,199,.92); border-radius:2px;
+                                        box-shadow:0 0 0 1px rgba(234,179,8,.35); }
+.rv-modal-body .html-stage [data-var=""] { background:none; box-shadow:none; }
+
+/* Связь переменная ↔ документ. Выбранная переменная остаётся подсвеченной,
+   пока работаешь с ней: и в панели, и на своём месте в документе. */
+.rv-field.is-active { border-color:#F59E0B !important; background:#FFFCF2 !important;
+                      box-shadow:0 0 0 3px rgba(245,158,11,.18); }
+.rv-field.is-active .rv-flabel { color:#92400E; }
+.rv-field.is-linked .rv-flabel::after { content:' ← в документе'; font-size:10.5px;
+                                        font-weight:600; color:#B45309; }
+.rv-modal-body .html-stage [data-var].is-picked { background:#FDE68A !important;
+      box-shadow:0 0 0 2px #F59E0B, 0 0 12px rgba(245,158,11,.45) !important; border-radius:3px; }
+.rv-modal-body .html-stage [data-var] { cursor:pointer; }
+
+/* Колёсико загрузки в плитках: видно, пока миниатюра не отрисована */
+.rv-thumb-frame { position:relative; }
+.rv-thumb-frame .rv-spinner { position:absolute; top:50%; left:50%; margin:-13px 0 0 -13px;
+                              z-index:3; display:none; }
+.rv-thumb-frame:not(.is-ready) .rv-spinner { display:inline-block; }
+.rv-thumb-frame.is-ready .rv-spinner { display:none; }
+.rv-thumb-frame:not(.is-ready) { background:#F1F4F7; }
+
+/* Блок №2 тянется вместе с блоком 1 до конца колонки, а не прилипает к экрану */
+.rv-panel.rv-right { position:static; top:auto; height:auto; align-self:stretch;
+                     min-height:420px; }
+
+/* Пока открыт документ, окно визора занимает экран до самого верха. Панель
+   переменных в этот момент тоже поднимается к верху: белого куска шапки справа
+   быть не должно, работать нужно с документом и его переменными. */
+body.rv-viewing .rv-panel.rv-right { position:fixed; top:0; right:0; height:100vh;
+      width:calc(33.333% - 4px); z-index:65; border-radius:0; margin:0;
+      box-shadow:-18px 0 40px rgba(16,24,32,.16); }
+body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
+
+/* Ссылка на папку заявки на Google Drive в шапке карточки */
+.rv-drive { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:9px;
+            padding:8px 11px; background:#F7FBF8; border:1px solid #E3EFE6; border-radius:10px; }
+.rv-drive-k { font-size:12px; font-weight:600; color:#5B6B60; text-transform:uppercase;
+              letter-spacing:.03em; }
+.rv-drive input { flex:1; min-width:220px; padding:6px 9px; border:1px solid var(--line);
+                  border-radius:8px; font-family:inherit; font-size:12.5px; }
+.rv-drive-edit { border:0; background:none; color:#15803D; font-family:inherit; font-size:11.5px;
+                 cursor:pointer; text-decoration:underline; padding:0; }
+
+/* Индикатор у плитки: рядом с именем файла и весом. Крутится, пока миниатюра
+   не легла в кэш браузера; после загрузки становится зелёной галочкой —
+   значит документ откроется сразу. */
+.rv-tile-dot { display:inline-block; width:13px; height:13px; border-radius:50%;
+               margin-left:7px; vertical-align:-2px; border:2px solid #DCEEE2;
+               border-top-color:#15803D; animation:rv-spin .9s linear infinite;
+               position:relative; }
+.rv-tile-dot.is-cached { border:0; background:#16A34A; animation:none; }
+.rv-tile-dot.is-cached::after { content:'✓'; position:absolute; left:2px; top:-2px;
+               color:#fff; font-size:10px; font-weight:700; line-height:13px; }
+.rv-tile-dot.is-failed { border:0; background:#FCA5A5; animation:none; }
+.rv-tile-dot.is-failed::after { content:'!'; position:absolute; left:4.5px; top:-2px;
+               color:#fff; font-size:10px; font-weight:700; line-height:13px; }
+
+/* Разделы панели: данные клиента, общее для документов, затем каждый документ.
+   Тонкая рамка показывает, какие переменные относятся к какому банку. */
+/* Шапка панели: название, счётчик заполнения, кнопка «свернуть блоки» */
+.rv-phead { position:sticky; top:0; z-index:6; background:#fff; border:1px solid #E4EDE7;
+            border-radius:14px; box-shadow:0 6px 16px rgba(16,24,32,.07);
+            padding:10px 12px 9px; margin-bottom:10px; }
+.rv-phead-top { display:flex; align-items:center; gap:8px; }
+.rv-phead .rv-stage { font-size:14.5px; font-weight:700; letter-spacing:0; }
+.rv-progress { display:flex; align-items:center; gap:8px; margin-top:6px;
+               font-size:11.5px; font-weight:600; letter-spacing:0; }
+.rv-progress.is-urgent #rv-progress-text { color:#C0342B; }
+.rv-progress.is-done #rv-progress-text { color:#15803D; }
+.rv-progress.is-done #rv-progress-text::after { content:' ✓'; font-weight:700; }
+.rv-collapse-all { margin-left:auto; border:1px solid #DCE7E0; background:#F7FBF8;
+                   color:#5C6B62; font-size:10.5px; border-radius:999px; padding:3px 9px;
+                   cursor:pointer; }
+.rv-collapse-all:hover { background:#EEF6F1; }
+
+/* Раздел: рамка с тенью, тело раскрывается и закрывается нажатием на заголовок */
+.rv-blk { border:1px solid #E4EDE7; border-radius:14px; background:#fff;
+          margin-bottom:10px; overflow:hidden; box-shadow:0 3px 10px rgba(16,24,32,.05); }
+.rv-blk-head { display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+               border:0; border-bottom:1px solid #EDF4EF; background:#FBFDFC;
+               padding:10px 12px; cursor:pointer;
+               box-shadow:0 2px 6px rgba(16,24,32,.05); }
+.rv-blk-head:hover { background:#F5FAF7; }
+.rv-blk-t { font-size:12.5px; font-weight:700; color:#243027; letter-spacing:0;
+            text-transform:none; }
+.rv-blk-n { font-size:10.5px; font-weight:700; color:#6B7C70; background:#EFF5F1;
+            border-radius:999px; padding:1px 7px; text-transform:none; letter-spacing:0; }
+.rv-blk-arrow { margin-left:auto; color:#8C9A91; font-size:11px; transition:transform .15s; }
+.rv-sec.is-closed .rv-blk-arrow { transform:rotate(-90deg); }
+.rv-blk.is-closed .rv-blk-body { display:none; }
+.rv-sec.is-closed .rv-blk-head { border-bottom:0; }
+.rv-blk-body { padding:4px 12px 10px; }
+
+/* Поле переменной: название сверху, значение, под ним источник — у всех одинаково */
+.rv-fname { font-size:12.5px; font-weight:600; color:#2B3A31; margin-bottom:6px; }
+.rv-input { flex:1; min-width:0; font:inherit; font-size:13px; color:#1F2A24;
+            border:1px solid #DFE8E3; border-radius:10px; background:#fff;
+            padding:7px 9px; line-height:1.4; resize:none; overflow:hidden;
+            min-height:34px; }
+.rv-input:focus { outline:none; border-color:#9CC7AE; box-shadow:0 0 0 3px #E8F4EC; }
+.rv-input.is-empty { border-color:#EBC7C2; }
+.rv-fsrc { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:10.5px; }
+.rv-fsrc .rv-src { color:#6E7D74; }
+.rv-fsrc .rv-docs { color:#9AA69D; margin-left:auto; }
+.rv-act-off { color:#C7D3CB; border-color:#EAF1EC; background:#FBFDFC; cursor:default; }
+.rv-rule-shared { background:#EEF2F6; color:#38455C; border:1px solid #D8DEE6; }
+
+/* Подпись переменной и её правило: название, бейдж-правило, кнопка кубика */
+.rv-flabel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.rv-frule { font-size:11px; color:#7A8A80; line-height:1.35; margin-top:3px; }
+
+/* Кружочек «i» у переменной: инструкция показывается окном поверх страницы */
+/* Справа от поля — две ячейки по высоте: сверху информация, снизу кубик */
+.rv-fedit { display:flex; align-items:stretch; gap:6px; }
+.rv-fedit .rv-input { flex:1; min-width:0; }
+.rv-acts { display:grid; grid-template-rows:1fr 1fr; gap:3px; flex:0 0 auto; width:30px; }
+.rv-info, .rv-acts .rv-act { width:100%; height:100%; min-height:16px; border-radius:9px;
+           border:1px solid #BFD9C8; background:#EFF7F1; color:#15803D; cursor:pointer;
+           font-size:11px; font-weight:700; line-height:1; padding:0;
+           display:flex; align-items:center; justify-content:center; }
+.rv-info { font-family:Georgia, serif; font-style:italic; }
+.rv-info:hover, .rv-acts .rv-act:hover { background:#DFF0E5; }
+.rv-instr-back { position:fixed; inset:0; background:rgba(17,24,39,.45); z-index:88;
+                 display:none; align-items:center; justify-content:center; padding:16px; }
+.rv-instr-back.is-on { display:flex; }
+.rv-instr-win { background:#fff; border-radius:14px; max-width:620px; width:100%;
+                max-height:70vh; overflow:auto; box-shadow:0 24px 70px rgba(16,24,32,.35); }
+.rv-instr-head { display:flex; align-items:center; gap:10px; padding:12px 14px;
+                 border-bottom:1px solid #E9F1EC; font-weight:700; color:#14663A; }
+.rv-instr-head button { margin-left:auto; border:0; background:none; font-size:20px; line-height:1;
+                        color:#6B7C70; cursor:pointer; }
+.rv-instr-body { padding:14px; font-size:13px; line-height:1.55; color:#27303F; white-space:pre-wrap; }
+.rv-instr-meta { padding:0 14px 14px; font-size:11.5px; color:#7A8A80; }
+
+/* Кнопки шага: работают сами, значок сообщает, выполнено ли действие */
+.rv-auto { display:inline-flex; align-items:center; gap:7px; }
+.rv-auto-dot { width:13px; height:13px; border-radius:50%; border:2px solid rgba(255,255,255,.85);
+               background:transparent; display:inline-block; position:relative; flex:0 0 auto; }
+.rv-auto[data-done="1"] .rv-auto-dot { border-color:#7BF0A8; background:#22C55E;
+               border-width:0; }
+.rv-auto[data-done="1"] .rv-auto-dot::after { content:'✓'; position:absolute; inset:0;
+               color:#fff; font-size:9px; font-weight:700; line-height:13px; text-align:center; }
+.rv-auto.is-busy .rv-auto-dot { border-color:rgba(255,255,255,.9); border-top-color:transparent;
+               animation:rv-spin .8s linear infinite; }
+@keyframes rv-spin { to { transform:rotate(360deg); } }
+.rv-auto-fill { background:#6D4AC4 !important; border-color:#6D4AC4 !important; }
+.rv-auto-fill:hover { background:#5E3EB0 !important; }
+.rv-auto-fill[data-done="1"] { box-shadow:0 0 0 2px #D9CDF5 inset; }
+
+/* Тип продукта заявки: видно, какой нужен клиенту, и можно поменять */
+/* Тип продукта — своей строкой сверху, список широкий */
+.rv-prod-top { display:flex; align-items:center; gap:9px; margin-top:10px; flex-wrap:wrap; }
+.rv-prod-k { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:#8C9A91; }
+.rv-select { position:relative; }
+.rv-select-btn { display:flex; align-items:center; gap:10px; font:inherit; font-size:13px;
+                 font-weight:700; color:#1F2A24; border:1px solid #D7E3DB; background:#fff;
+                 border-radius:10px; padding:7px 11px; min-width:420px; max-width:620px;
+                 cursor:pointer; text-align:left; }
+.rv-select-btn:hover { background:#F7FBF9; }
+.rv-select-caret { margin-left:auto; color:#8C9A91; font-size:11px; }
+.rv-select-list { position:absolute; z-index:40; top:calc(100% + 6px); left:0;
+                  min-width:100%; max-width:min(720px, 92vw); max-height:320px; overflow:auto;
+                  background:#fff; border:1px solid #E1EAE4; border-radius:12px;
+                  box-shadow:0 16px 40px rgba(16,24,32,.16); padding:6px; }
+.rv-opt { display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+          border:0; background:none; box-shadow:none; outline:none; border-radius:8px;
+          padding:8px 10px; cursor:pointer; font:inherit; font-size:12.5px; color:#243027; }
+.rv-opt:hover { background:#F2F8F4; }
+/* Исключённый документ: остаётся в списке, но затемнён и перечёркнут крестом —
+   администратор видит, что система его отсеяла, и почему. */
+/* Метка на миниатюре = отражение нажатой кнопки: крестик или галочка по центру
+   листа. Живёт внутри рамки миниатюры, поэтому всегда в середине документа. */
+.rv-thumb-mark { position:absolute; inset:0; display:none; place-items:center; z-index:4;
+                 font-size:46px; font-weight:700; pointer-events:none;
+                 text-shadow:0 2px 10px rgba(255,255,255,.9); }
+.rv-thumb.is-off .rv-thumb-mark { display:grid; }
+.rv-thumb.is-off .rv-thumb-mark::after { content:'✕'; color:#B42318; }
+.rv-thumb.is-ok .rv-thumb-mark { display:grid; }
+.rv-thumb.is-ok .rv-thumb-mark::after { content:'✓'; color:#15803D; }
+.rv-thumb.is-off .rv-thumb-frame { border-color:#F3C4BE; }
+.rv-thumb.is-off .rv-thumb-frame img { filter:grayscale(1) brightness(.95); opacity:.5; }
+.rv-thumb.is-ok .rv-thumb-frame { box-shadow:inset 0 0 0 2px rgba(21,128,61,.35); }
+.rv-thumb.is-off .rv-thumb-name { color:#8C9A91; }
+.rv-thumb-status.is-off { color:#B42318; font-weight:600; }
+.rv-thumb-status.is-ok { color:#15803D; font-weight:600; }
+.rv-thumb-why { display:block; font-size:10.5px; line-height:1.25; color:#B42318; margin-top:3px; }
+
+.rv-opt-name { flex:1; min-width:0; }
+.rv-opt-docs { font-size:11px; color:#8C9A91; white-space:nowrap; }
+.rv-opt-tag.is-cur { background:#E8EEF7; color:#33507A; border-color:#C6D4E8; }
+.rv-opt-tag { font-size:10.5px; font-weight:700; color:#8A6A00; white-space:nowrap;
+              background:none; border:0; }
+/* Продукт, который стоит в заявке, подсвечен внутри списка */
+.rv-opt.is-picked { background:#EEF4FB; }
+.rv-opt.is-current { background:#FFF6D6; }
+.rv-opt.is-current:hover { background:#FFF0BE; }
+.rv-prod-note { font-size:11px; color:#7C8A80; }
+/* Символ нейросети на кнопке заполнения */
+.rv-nn { display:inline-flex; align-items:center; }
+.rv-drive-btn { display:inline-flex; align-items:center; gap:7px; background:#fff;
+                border:1px solid #D7E3DB !important; color:#243027 !important; }
+.rv-drive-btn:hover { background:#F5FAF7; }
+/* Компактная кнопка перехода на Диск: в шапке заявки она занимала полстроки */
+.rv-tools .rv-drive-box .rv-drive-btn-sm { width:auto; height:24px; min-height:24px; padding:0 9px;
+  gap:5px; font-size:11px; font-weight:600; border-radius:8px; }
+.rv-tools .rv-drive-btn-sm svg { width:12px; height:10px; }
+.rv-drive-input { font:inherit; font-size:12px; border:1px solid #DFE8E3; border-radius:9px;
+                  padding:6px 9px; min-width:300px; }
+
+/* Жёлтый маркер: чем именно является заявка и что просил менеджер */
+.rv-mark-yellow { background:#FFF3B0; border-radius:4px; padding:1px 6px; color:#5A4A00;
+                  box-shadow:0 0 0 1px #F0DE86 inset; }
+
+/* Ряд шагов: кнопки одного размера, вместе с кнопкой Google Диска */
+.rv-tools { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+/* Кнопки шапки в одну строку, по размеру содержимого — без растягивания на три колонки */
+.rv-head .rv-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:9px; margin-left:0; }
+.rv-tools .rv-drive-box { display:inline-flex; align-items:center; width:auto; }
+.rv-tools .rv-drive-box .rv-drive-btn { width:100%; }
+.rv-tools .rv-auto, .rv-tools .rv-drive-btn { width:auto; min-width:0 !important;
+  max-width:none !important; height:42px; justify-content:flex-start; white-space:nowrap;
+  padding:0 8px; box-sizing:border-box; font-size:11.5px; }
+.rv-tools .rv-auto .rv-nn svg, .rv-tools .rv-drive-btn svg { flex:0 0 auto; }
+.rv-tools .rv-drive-btn { justify-content:center; }
+.rv-tools .rv-auto-t { flex:1; text-align:left; }
+.rv-tools .rv-auto .rv-auto-dot { margin-left:auto; }
+.rv-tools .rv-drive-box { display:inline-flex; align-items:center; }
+
+/* Состояние разбора документов: что реально произошло с Google Диском */
+.rv-scan-note { margin-top:7px; font-size:11.5px; color:#6E7D74; }
+.rv-scan-note.is-warn { color:#B45309; }
+
+/* ── Шапка заявки: две строки — заявка и рабочая строка действий ───────────── */
+.rv-head { display:flex; flex-direction:column; gap:6px; padding:8px 12px; }
+/* Обе строки шапки стоят на одной опоре --rv-split: её считает скрипт по правому
+   краю выпадающего списка продуктов плюс небольшой отступ. Комментарий сверху и
+   «Google Диск» снизу начинаются ровно с этого места. Опорный элемент — левая
+   группа второй строки, она от опоры не зависит, поэтому «качелей» нет. */
+.rv-h1 { position:relative; display:flex; align-items:center; gap:10px; min-height:34px; min-width:0; }
+.rv-h1 .rv-lead { display:flex; align-items:center; gap:10px; min-width:0; }
+.rv-h2 { position:relative; display:flex; align-items:center; gap:10px; min-width:0; min-height:34px; }
+.rv-h2-left { display:flex; align-items:center; gap:10px; min-width:0; flex:0 0 auto; }
+.rv-h2-right { position:absolute; left:var(--rv-split, 50%); right:0; top:0; bottom:0;
+  display:flex; align-items:center; gap:10px; min-width:0; }
+/* Кнопки второй строки одинаковой ширины и высоты, как выпадающий список:
+   «Текст заявки», «Фоторедактор» и «Google Диск» — все три по 110 px. */
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-drive-btn, .rv-h2 .rv-ready-btn,
+.rv-h2 .rv-drive-box { height:34px; min-height:34px; box-sizing:border-box; }
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-photo-btn, .rv-h2 .rv-drive-btn, .rv-h2 .rv-ready-btn {
+  min-width:110px; max-width:110px; flex:0 0 110px; justify-content:center;
+  padding:0 10px; font-size:12.5px; white-space:nowrap; }
+.rv-h2 .rv-drive-box { display:inline-flex; align-items:center; }
+.rv-h2 .rv-drive-box .rv-drive-btn { width:110px; }
+.rv-h2 .rv-who { align-self:center; }
+/* Плашка комментария («Ускорение…») — в первой строке шапки: начинается ровно от
+   середины экрана и тянется вправо до конца. Что не влезло — обрезается многоточием. */
+.rv-h1 .rv-cmt { position:absolute; left:var(--rv-split, 50%); right:0; top:50%;
+  transform:translateY(-50%); margin:0;
+  min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Кнопки действий шапки — у самой нижней границы поля, с небольшим отступом */
+.rv-tools { align-items:flex-end; }
+.rv-tools-right { margin-left:auto; display:inline-flex; align-items:flex-end; gap:8px;
+  padding-bottom:2px; flex-wrap:nowrap; }
+.rv-head .rv-title { font-size:20px; font-weight:800; color:var(--accent); white-space:nowrap; }
+.rv-when { font-size:12.5px; color:var(--muted); white-space:nowrap; }
+.rv-client { font-size:13.5px; font-weight:700; color:var(--ink); white-space:nowrap; }
+.rv-who { font-size:12.5px; font-weight:600; color:#33505E; background:#F4FAF6;
+  border:1px solid #DCEEE2; border-radius:999px; padding:3px 10px; white-space:nowrap; }
+/* «От кого заявка» стоит в левом нижнем углу шапки — под типом продукта */
+.rv-tools .rv-who { margin:0; align-self:center; order:-1; }
+.rv-h2 .rv-prod-k { flex:0 0 auto; }
+/* Кнопка «Текст заявки» стоит вместо надписи «Тип продукта» — вровень с выпадающим списком */
+.rv-h2 .rv-tg-btn, .rv-h2 .rv-select-btn { height:34px; min-height:34px; box-sizing:border-box; }
+.rv-h2 .rv-tg-btn { flex:0 0 auto; align-self:center; }
+/* Выпадающий список продукта не уезжает за правый край экрана */
+.rv-h2 .rv-select { max-width:min(420px, 60vw); }
+.rv-h2 .rv-select-btn { max-width:100%; }
+.rv-h2 .rv-select-btn span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rv-h2 .rv-select-list { left:0; right:auto; min-width:100%; max-width:min(560px, 92vw); }
+.rv-prod-info { font-size:12.5px; color:var(--muted); white-space:nowrap; }
+/* Комментарий менеджера: жёлтая плашка, клик открывает панель с полным текстом */
+.rv-cmt { display:inline-flex; align-items:center; gap:7px;
+  border-radius:8px; padding:6px 10px; font-size:12.5px; font-weight:600; cursor:pointer;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+/* Во второй строке шапки комментарий идёт после типа продукта и тянется до правого края,
+   высота меньше обычной плашки — блок в шапке должен быть узким */
+.rv-h2 .rv-cmt { margin-left:auto; max-width:46%; min-width:0; height:26px; padding:0 10px; font-size:12px; }
+/* Верхняя строка шапки: «Текст заявки» после даты, «Google Диск клиента» — в правом углу.
+   Обе кнопки одной высоты, чтобы строка читалась ровно. */
+.rv-h1 .rv-tg-btn { height:28px; min-height:28px; padding:0 12px; font-size:12px; border-radius:8px; }
+.rv-h1 .rv-drive-top { margin-left:auto; display:inline-flex; align-items:center; }
+.rv-h1 .rv-drive-top .rv-drive-btn-sm { height:28px; min-height:28px; padding:0 11px; font-size:12px;
+  border-radius:8px; }
+.rv-h1 .rv-drive-top .rv-drive-btn-sm svg { width:14px; height:12px; }
+.rv-cmt.is-urgent { background:#FEF3C7; border:1px solid #FCD34D; color:#7A4A05; }
+.rv-cmt.is-plain { background:#F1F5F3; border:1px solid var(--line); color:#3B4B44; }
+.rv-cmt:hover { filter:brightness(.98); }
+.rv-tg-btn { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+.rv-tg-btn:hover { background:var(--accent-dark); border-color:var(--accent-dark); }
+/* Панель «текст заявки»: слева, поверх всех окон, раскладку не сдвигает */
+.rv-tg-back { position:fixed; inset:0; background:rgba(4,32,30,.28); z-index:2999; }
+.rv-tg-panel { position:fixed; left:12px; top:86px; width:420px; max-width:92vw;
+  max-height:calc(100vh - 120px); overflow:auto; background:#fff; border:1px solid var(--line);
+  border-radius:12px; box-shadow:0 14px 40px rgba(4,32,30,.28); z-index:3000; }
+.rv-tg-panel[hidden] { display:none; }
+.rv-tg-head { display:flex; align-items:center; gap:8px; padding:11px 12px;
+  border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; }
+.rv-tg-head b { font-size:13px; }
+.rv-tg-x { margin-left:auto; border:0; background:transparent; font-size:15px; cursor:pointer;
+  color:var(--muted); line-height:1; padding:4px 6px; border-radius:6px; }
+.rv-tg-x:hover { background:#F1F5F3; color:var(--ink); }
+.rv-tg-body { padding:12px; }
+.rv-tg-cmt { background:#FEF3C7; border-left:3px solid #FCD34D; border-radius:0 8px 8px 0;
+  padding:9px 11px; font-size:13px; color:#4A3B12; margin-bottom:12px; }
+.rv-tg-q { display:block; font-size:10.5px; font-weight:700; letter-spacing:.05em;
+  text-transform:uppercase; color:#8A6D1F; margin-bottom:4px; }
+.rv-tg-cap { font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:6px; }
+.rv-tg-table { border-collapse:collapse; width:100%; font-size:12.5px; }
+.rv-tg-table td { padding:5px 0; border-bottom:1px solid #F1F5F3; vertical-align:top; }
+.rv-tg-table td:first-child { color:var(--muted); width:42%; }
+/* Комментарий для сборки документов: правка на лету, сразу пересобирает заявку */
+.rv-tg-brief { margin-top:14px; padding-top:12px; border-top:1px dashed #D8DEDA; }
+.rv-tg-brief textarea { width:100%; box-sizing:border-box; margin-top:6px; padding:9px 10px;
+  font-family:inherit; font-size:12.5px; line-height:1.45; color:#1F2937; border:1px solid #CBD5D1;
+  border-radius:8px; background:#FBFDFC; resize:vertical; min-height:66px; }
+.rv-tg-brief textarea:focus { outline:none; border-color:#1F4E79; background:#fff; }
+.rv-tg-briefrow { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+.rv-tg-briefnote { font-size:12px; color:var(--muted); }
+.rv-tg-briefnote.ok { color:#15803D; font-weight:600; }
+.rv-tg-briefnote.err { color:#B91C1C; font-weight:600; }
+/* Крутящееся колесо: пересборка документов заявки занимает несколько секунд.
+   Анимация — общая rv-spin, объявлена выше по файлу. */
+.rv-spin { display:inline-block; width:15px; height:15px; box-sizing:border-box; vertical-align:-3px;
+  border:2px solid #CBD5D1; border-top-color:#1F4E79; border-radius:50%;
+  animation:rv-spin .75s linear infinite; }
+.rv-spin[hidden] { display:none; }
+/* Таймер пересборки и выход из окна, не дожидаясь конца сборки */
+.rv-brief-timer { font-size:12px; font-weight:600; color:#1F4E79; font-variant-numeric:tabular-nums;
+  min-width:52px; }
+.rv-brief-timer[hidden] { display:none; }
+.rv-brief-close { font:inherit; font-size:12px; padding:3px 9px; border:1px solid #CBD5D1;
+  border-radius:7px; background:#fff; color:#4B5563; cursor:pointer; }
+.rv-brief-close:hover { border-color:#1F4E79; color:#1F4E79; }
+.rv-brief-close[hidden] { display:none; }
+@media (max-width:720px) {
+  .rv-tg-panel { left:8px; right:8px; width:auto; top:74px; }
+  .rv-cmt { margin-left:0; max-width:100%; }
+}
+
+/* ── Телефон: кнопки шагов в столбик, вкладки в строку, миниатюры в два ряда ── */
+.rv-vars-btn { display:none; }
+@media (max-width:720px) {
+  .rv-head { padding:12px 12px 14px; }
+  /* на десктопе кнопки стоят сеткой — на телефоне это перебиваем и ставим столбиком */
+  .rv-head .rv-tools { display:flex; grid-template-columns:none; margin-left:0; width:100%;
+    flex-direction:column; gap:8px; align-items:stretch; }
+  .rv-tools .rv-auto, .rv-tools .rv-drive-box, .rv-tools .rv-drive-btn {
+    width:100%; min-width:0; max-width:none; height:auto; min-height:42px; padding:10px 12px; }
+  .rv-tools .rv-auto { justify-content:flex-start; }
+  .rv-auto-t { white-space:normal; text-align:left; font-size:13px; }
+  .rv-drive-btn span { white-space:normal; text-align:left; }
+  .rv-scan-note { margin-top:6px; font-size:12px; }
+  /* переменные значения — отдельной кнопкой, чтобы были доступны без открытия файла */
+  .rv-vars-btn { display:inline-flex; width:100%; justify-content:center; }
+  .rv-tabs { padding:8px 8px 0; gap:4px; overflow-x:auto; }
+  .rv-tabs .rv-tab { font-size:12.5px; padding:7px 9px; white-space:nowrap; }
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .rv-blk { padding:10px 10px 12px; }
+  .rv-row { gap:6px; }
+  .rv-k { font-size:12px; }
+  .rv-v { font-size:13px; }
+  .rv-panel .rv-h { font-size:14px; }
+  .rv-filter-note { font-size:12px; }
+  /* панель переменных на телефоне: строго по ширине экрана, заголовок без обрезки */
+  .rv-panel.rv-right.is-open { max-width:100vw; box-sizing:border-box; }
+  .rv-right .rv-h { display:flex; align-items:center; gap:8px; font-size:14px; padding-right:10px; }
+  .rv-close-mobile { padding:7px 12px; font-size:12.5px; flex:0 0 auto; }
+  /* выбор продукта: на телефоне во всю ширину, список не вылезает за экран */
+  .rv-select-btn { min-width:0; width:100%; max-width:none; }
+  .rv-select { width:100%; }
+  .rv-select-list { min-width:0; width:100%; max-width:calc(100vw - 20px); }
+  .rv-opt-name { white-space:normal; }
+  /* плавающая кнопка переменных: строго по ширине экрана */
+  .rv-mobile-bar { box-sizing:border-box; max-width:calc(100vw - 24px); justify-content:center;
+                   font-size:14px; padding:11px 12px; }
+  /* Кнопки в окне просмотра документа: одна высота, ровно по ширине экрана */
+  .rv-modal-tools { display:flex; flex-wrap:wrap; gap:6px; width:100%; max-width:100%; }
+  .rv-modal-tools > * { flex:1 1 auto; min-width:0; }
+  .rv-modal-tools button, .rv-modal-tools .btn, .rv-modal-tools a {
+    min-height:46px; height:auto; padding:5px 8px; font-size:12px; line-height:1.15;
+    white-space:normal; text-align:center; justify-content:center; align-items:center; }
+  /* плавающая кнопка переменных не должна накрывать подпись под документом */
+  .rv-modal-note { padding-bottom:72px; }
+  .rv-modal-body { padding-bottom:16px; }
+}
+@media (max-width:420px) {
+  .rv-thumbs { grid-template-columns:repeat(2, minmax(0,1fr)) !important; }
+  .rv-tabs .rv-tab { font-size:12px; padding:6px 7px; }
+}
+
+/* Расхождение: значение в документе и в анкете разное — подсвечиваем и даём выбор */
+.rv-field.is-conflict { background:#FFFBEF; border-color:#F2C75C; }
+.rv-field.is-conflict .rv-fname { color:#8A6100; }
+.rv-conflict { margin-top:7px; }
+.rv-conflict-head { font-size:11px; font-weight:700; color:#B45309; margin-bottom:4px; }
+.rv-conflict-sel { width:100%; font:inherit; font-size:12px; line-height:1.3; padding:6px 8px;
+  border:1px solid #F0C878; border-radius:9px; background:#fff; color:#1F2A24; cursor:pointer; }
+
+.rv-cvgen { display:flex; gap:6px; margin-top:7px; flex-wrap:wrap; }
+.rv-cvprof { flex:1 1 150px; min-width:0; font:inherit; font-size:12px; padding:6px 8px;
+  border:1px solid #D6DEE7; border-radius:9px; background:#fff; color:#1F2A24; }
+.rv-cvbtn { flex:0 0 auto; font:inherit; font-size:12px; font-weight:600; padding:6px 10px;
+  border:1px solid #B9CBE0; border-radius:9px; background:linear-gradient(#FFFFFF,#EEF4FA);
+  color:#1F2A44; cursor:pointer; }
+.rv-cvbtn:hover { background:linear-gradient(#FFFFFF,#E3EDF7); }
+.rv-cvbtn:disabled { opacity:.6; cursor:default; }
+
+.rv-conflict-sel:focus { outline:2px solid #F2C75C; outline-offset:1px; }
+
+.rv-cvpieces, .rv-cvscratch { flex:0 0 auto; font:inherit; font-size:12px; padding:6px 10px;
+  border:1px solid #C9D6E4; border-radius:9px; background:linear-gradient(#FFFFFF,#F4F7FB);
+  color:#1F2A44; cursor:pointer; }
+.rv-cvpieces:hover, .rv-cvscratch:hover { background:linear-gradient(#FFFFFF,#E9F0F8); }
+.rv-piece-modal { position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+  justify-content:center; background:rgba(20,28,36,.42); padding:16px; }
+.rv-piece-box { background:#fff; border-radius:14px; width:min(680px,100%); max-height:82vh;
+  display:flex; flex-direction:column; box-shadow:0 18px 50px rgba(16,24,32,.28); }
+.rv-piece-head { padding:14px 16px; border-bottom:1px solid #E5EAEF; font-weight:600;
+  color:#1F2A44; font-size:14px; }
+.rv-piece-list { padding:8px 16px; overflow:auto; flex:1 1 auto; }
+.rv-piece-row { display:flex; gap:9px; align-items:flex-start; padding:7px 0;
+  border-bottom:1px dashed #EDF1F5; font-size:13px; color:#22333F; cursor:pointer; }
+.rv-piece-row input { margin-top:3px; flex:0 0 auto; }
+.rv-piece-foot { padding:12px 16px; border-top:1px solid #E5EAEF; display:flex; gap:8px;
+  justify-content:flex-end; flex-wrap:wrap; }
+.rv-piece-foot button { font:inherit; font-size:13px; padding:8px 14px; border-radius:10px;
+  border:1px solid #C9D6E4; background:#fff; cursor:pointer; }
+.rv-piece-foot .rv-piece-ok { background:linear-gradient(#3E8E6E,#2F7A5C); color:#fff;
+  border-color:#2F7A5C; font-weight:600; }
+
+
+/* Кнопка «Готовые доки»: яркая красная, в шапке конструктора */
+/* !important — общий слой скина (wolf-skin.css) подключается после этих стилей
+   и иначе перебивает фон кнопки. */
+.rv-h2 button#rv-ready-btn, .rv-h2 .rv-ready-btn {
+  background:#C81E1E !important; border:1px solid #A81616 !important; color:#fff !important;
+  font-weight:600; min-width:110px; max-width:110px; flex:0 0 110px; justify-content:center;
+  padding:0 10px; font-size:12.5px; white-space:nowrap;
+}
+.rv-h2 button#rv-ready-btn:hover { background:#B01818 !important; border-color:#8F1212 !important; }
+.rv-h2 button#rv-ready-btn:active { background:#9E1414 !important; }
+
+/* ── Окно «Просмотр документов и отправка на Google Диск» ──────────────────── */
+.ready-modal { position:fixed; inset:0; z-index:9500; background:rgba(4,32,30,.58);
+  display:none; align-items:center; justify-content:center; padding:16px; }
+.ready-window { background:#F4F7F5; border-radius:14px; width:min(1240px, 98vw);
+  height:min(94vh, 1200px); display:flex; flex-direction:column;
+  box-shadow:0 22px 70px rgba(0,0,0,.42); overflow:hidden; }
+.ready-head { display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 16px; background:#fff; border-bottom:1px solid #DCE7E1; flex:0 0 auto; }
+.ready-title { font-size:15.5px; color:#12372F; }
+.ready-head-actions { display:inline-flex; align-items:center; gap:8px; }
+.ready-send { height:36px; padding:0 16px; border-radius:9px; border:1px solid #A81616;
+  background:#C81E1E; color:#fff; font-size:13px; font-weight:600; cursor:pointer; }
+.ready-send:hover { background:#B01818; }
+.ready-send:disabled { opacity:.6; cursor:default; }
+/* Карточки по центру окна: подтверждение отправки, ожидание, результат */
+.rv-card { position:absolute; inset:0; z-index:70; display:flex; align-items:center;
+  justify-content:center; background:rgba(4,32,30,.5); }
+.rv-card.is-hidden { display:none; }
+.rv-card-box { width:min(470px, 88vw); background:#fff; border-radius:16px; padding:26px 24px 20px;
+  text-align:center; box-shadow:0 26px 70px rgba(0,0,0,.4); }
+.rv-card-ico { width:66px; height:66px; margin:0 auto 14px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:700; }
+.rv-card.confirm .rv-card-ico { background:#EAF3EE; color:#12372F; }
+.rv-card.done .rv-card-ico { background:#DCFCE7; color:#15803D; }
+.rv-card.error .rv-card-ico { background:#FEE2E2; color:#A81616; }
+.rv-card-title { font-size:18px; font-weight:700; color:#12372F; margin-bottom:8px; }
+.rv-card-text { font-size:13.5px; color:#41564F; margin-bottom:16px; word-break:break-word; }
+.rv-card-lines { text-align:left; margin:0 0 16px; max-height:46vh; overflow:auto; }
+.rv-card-line { font-size:12.5px; line-height:1.45; color:#33443E; padding:7px 10px; border-radius:8px;
+  background:#F4F7F5; margin-bottom:6px; word-break:break-word; }
+.rv-card.error .rv-card-line { background:#FDF1F1; color:#7A1414; }
+.rv-card-btns { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.rv-card-btn { height:40px; padding:0 20px; border-radius:10px; border:1px solid #C9D8D0;
+  background:#fff; color:#12372F; font-size:13.5px; font-weight:600; cursor:pointer;
+  display:inline-flex; align-items:center; text-decoration:none; }
+.rv-card-btn:hover { background:#EEF4F0; }
+.rv-card-btn.primary { background:#A81616; border-color:#8F1212; color:#fff; }
+.rv-card-btn.primary:hover { background:#B01818; }
+.rv-spin-lg { width:52px; height:52px; margin:4px auto 16px; border-radius:50%;
+  border:5px solid rgba(18,55,47,.16); border-top-color:#12372F;
+  animation: rv-spin-lg .9s linear infinite; }
+@keyframes rv-spin-lg { to { transform: rotate(360deg); } }
+.ready-close { height:36px; padding:0 16px; border-radius:9px; border:1px solid #C9D6CF;
+  background:#fff; color:#243F38; font-size:13px; cursor:pointer; }
+.ready-close:hover { background:#EEF4F0; }
+.ready-hint { flex:0 0 auto; padding:8px 16px; font-size:12.5px; color:#42574A;
+  background:#EDF4F0; border-bottom:1px solid #DCE7E1; }
+.ready-body { flex:1 1 auto; overflow:auto; padding:14px 16px 20px; display:flex;
+  flex-direction:column; gap:16px; }
+.ready-doc { background:#fff; border:1px solid #DCE7E1; border-radius:12px; overflow:hidden; }
+.ready-doc-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 12px; border-bottom:1px solid #E7EFEA; flex-wrap:wrap; }
+.ready-doc-name { font-size:13.5px; font-weight:600; color:#12372F; word-break:break-word; }
+.ready-doc-meta { font-size:12px; color:#6B7C70; }
+.ready-frame { display:block; width:100%; height:min(78vh, 1000px); border:0; background:#fff; }
+.ready-empty { padding:26px; text-align:center; color:#42574A; font-size:13.5px; }
+.ready-toast { position:absolute; left:50%; bottom:22px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:11px;
+  background:#12372F; color:#fff; font-size:13px; box-shadow:0 12px 34px rgba(0,0,0,.35);
+  max-width:min(900px, 92vw); flex-wrap:wrap; }
+.ready-toast.ok { background:#14683F; }
+.ready-toast.err { background:#8F1212; }
+.ready-toast-link { color:#EAF6EF; text-decoration:underline; font-size:12.5px; }
+.ready-toast-x { border:0; background:transparent; color:#fff; cursor:pointer; font-size:14px; }
+.ready-window { position:relative; }
+
+/* ── Перечень документов сверху + один визор со всеми PDF снизу ───────────── */
+.ready-list { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:8px; padding:10px 16px;
+  background:#fff; border-bottom:1px solid #DCE7E1; max-height:136px; overflow:auto; }
+.ready-list-item .rli-spin { width:13px; height:13px; flex:0 0 auto; display:none;
+  border:2px solid #CFE0D6; border-top-color:#15803D; border-radius:50%;
+  animation: rv-spin .8s linear infinite; }
+.ready-list-item .rli-spin.is-on { display:inline-block; }
+.ready-list-item .rli-done { display:none; flex:0 0 auto; color:#15803D; font-weight:700; }
+.ready-list-item .rli-done.is-on { display:inline-block; }
+.ready-list-item .rli-dl { flex:0 0 auto; color:#4B5563; opacity:.6; cursor:pointer; font-size:14px;
+  line-height:1; padding:2px 5px; margin-left:2px; border-radius:6px; }
+.ready-list-item .rli-dl:hover { opacity:1; background:#E7EBEE; color:#1F4E79; }
+.ready-pages:empty::after { content:'⏳ загружаю документ…'; display:block;
+  padding:18px 14px; color:#6B7280; font-size:13px; }
+@keyframes rv-spin { to { transform: rotate(360deg); } }
+.ready-list-item { display:inline-flex; align-items:center; gap:8px; padding:7px 11px;
+  border:1px solid #C9D6CF; border-radius:999px; background:#F7FAF8; color:#12372F;
+  font-size:12.5px; cursor:pointer; text-align:left; }
+.ready-list-item:hover { background:#EAF3EE; }
+.ready-list-item.is-on { background:#12372F; border-color:#12372F; color:#fff; }
+.rli-num { font-weight:700; opacity:.8; }
+.rli-meta { color:#6B7C70; font-size:11.5px; }
+.ready-list-item.is-on .rli-meta { color:#D8E8DF; }
+.ready-view { flex:1 1 auto; overflow:auto; padding:14px 16px 20px; background:#EDF2EF; }
+.ready-sec { background:#fff; border:1px solid #DCE7E1; border-radius:12px; overflow:hidden;
+  margin-bottom:16px; scroll-margin-top:8px; }
+.ready-sec-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+  padding:9px 12px; border-bottom:1px solid #E7EFEA; background:#FBFDFC; flex-wrap:wrap; }
+.ready-sec-name { font-size:13.5px; font-weight:600; color:#12372F; word-break:break-word; }
+.ready-sec-meta { font-size:12px; color:#6B7C70; }
+/* Кнопка отправки: в обычном состоянии красная, при наведении темнее. */
+#ready-send, .ready-send {
+  background:#C81E1E !important; border:1px solid #A81616 !important; color:#fff !important;
+}
+#ready-send:hover, .ready-send:hover { background:#A81616 !important; border-color:#8F1212 !important; }
+#ready-send:disabled { opacity:.65 !important; }
+
+/* ── Компактная шапка: зелёная строка убрана, перечень столбиком, визор во всю высоту ── */
+.ready-hint { display:none !important; }
+.ready-head { padding:6px 12px; }
+.ready-title { font-size:13px; }
+.ready-head-actions { gap:6px; }
+#ready-send, #ready-close, .ready-send, .ready-close {
+  height:29px !important; padding:0 12px !important; font-size:12px !important; border-radius:8px !important;
+}
+.ready-body2 { flex:1 1 auto; display:flex; min-height:0; background:#EDF2EF; }
+.ready-list { flex:0 0 258px; display:flex; flex-direction:column; gap:5px; padding:8px;
+  background:#fff; border-bottom:0; border-right:1px solid #DCE7E1; max-height:none; overflow:auto; }
+.ready-list-item { display:flex; align-items:flex-start; gap:6px; padding:5px 7px;
+  border:1px solid #E2EBE6; border-radius:8px; background:#F8FBFA; color:#12372F;
+  font-size:11px; line-height:1.25; text-align:left; cursor:pointer; }
+.ready-list-item:hover { background:#EDF4F0; }
+.ready-list-item.is-on { background:#12372F; border-color:#12372F; color:#fff; }
+.rli-num { font-weight:700; opacity:.8; font-size:11px; flex:0 0 auto; }
+.rli-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.rli-name { font-size:11px; font-weight:600; word-break:break-word; }
+.rli-meta { font-size:10px; color:#6B7C70; }
+.ready-list-item.is-on .rli-meta { color:#CFE2D8; }
+.ready-view { flex:1 1 auto; padding:10px 12px 14px; background:#EDF2EF; }
+.ready-sec-head { padding:5px 10px; }
+.ready-sec-name { font-size:11.5px; }
+.ready-sec-meta { font-size:10px; }
+.ready-frame { height:min(88vh, 1500px); }
+
+/* ── Одна полоса: страницы документов подряд, одна прокрутка на всё ─────────── */
+.ready-sec { background:transparent; border:0; border-radius:0; margin:0 0 6px; }
+.ready-sec-head { background:#E4EDE8; border:1px solid #D3E0D9; border-radius:7px;
+  padding:4px 9px; margin:2px 0 6px; }
+.ready-pages { display:flex; flex-direction:column; align-items:center; gap:8px; }
+.ready-pages img.ready-page { display:block; width:100%; max-width:1040px; height:auto;
+  background:#fff; border:1px solid #E2EBE6; border-radius:4px;
+  box-shadow:0 2px 8px rgba(18,55,47,.08); }
+"""
+
+

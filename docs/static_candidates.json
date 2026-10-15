@@ -1,0 +1,164 @@
+{
+ "bank_statement_12m__sber": [
+  "19 VAVILOVA ST., MOSCOW, 117312, SBERBANK"
+ ],
+ "bank_statement_12m__tbank": [
+  "38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287,",
+  "RUSSIA TEL.: +7 495 648-10-00, TBANK.RU"
+ ],
+ "bank_statement_3m__sber": [
+  "19 VAVILOVA ST., MOSCOW, 117312, SBERBANK"
+ ],
+ "bank_statement_3m__tbank": [
+  "38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287,",
+  "RUSSIA TEL.: +7 495 648-10-00, TBANK.RU"
+ ],
+ "bridging_jaminan_letter__denpasar": [
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "bridging_jaminan_letter__ngurahrai": [
+  "Badung, 16 September 2026",
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "Badung, 16 September 2026",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "bridging_request_letter__denpasar": [
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "bridging_request_letter__ngurahrai": [
+  "Badung, 16 September 2026",
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "Badung, 16 September 2026",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "bridging_surat_kuasa__denpasar": [
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "bridging_surat_kuasa__ngurahrai": [
+  "Badung, 16 September 2026",
+  "SURAT PERMINTAAN DAN JAMINAN",
+  "Badung, 16 September 2026",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_jaminan_letter__denpasar": [
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_jaminan_letter__ngurahrai": [
+  "PT ALPHA PRIME BALI",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan ini kami mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan hormat mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT KUASA",
+  "kepada pihak II untuk mewakili PT ALPHA PRIME BALI dalam mengajukan permohonan",
+  "Khusus TPI Ngurah Rai, untuk orang asing atas nama ARTUR BALABAEV (Paspor No.",
+  "Badung, 24 Agustus 2026",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_request_letter__denpasar": [
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_request_letter__ngurahrai": [
+  "PT ALPHA PRIME BALI",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan ini kami mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan hormat mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT KUASA",
+  "kepada pihak II untuk mewakili PT ALPHA PRIME BALI dalam mengajukan permohonan",
+  "Khusus TPI Ngurah Rai, untuk orang asing atas nama ARTUR BALABAEV (Paspor No.",
+  "Badung, 24 Agustus 2026",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_surat_kuasa__denpasar": [
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "SURAT KUASA",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "conversion_surat_kuasa__ngurahrai": [
+  "PT ALPHA PRIME BALI",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan ini kami mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT PERNYATAAN DAN JAMINAN",
+  "selaku penerima kuasa dari PT ALPHA PRIME BALI, dengan hormat mengajukan permohonan",
+  "Badung, 24 Agustus 2026",
+  "PT ALPHA PRIME BALI",
+  "SURAT KUASA",
+  "kepada pihak II untuk mewakili PT ALPHA PRIME BALI dalam mengajukan permohonan",
+  "Khusus TPI Ngurah Rai, untuk orang asing atas nama ARTUR BALABAEV (Paspor No.",
+  "Badung, 24 Agustus 2026",
+  "PIHAK PERTAMA,",
+  "PENERIMA KUASA,"
+ ],
+ "cv__format_detailed": [
+  "CURRICULUM VITAE",
+  "PERSONAL INFORMATION",
+  "PROFESSIONAL SUMMARY",
+  "WORK EXPERIENCE"
+ ],
+ "cv__format_short": [
+  "PROFESSIONAL EXPERIENCE"
+ ],
+ "cv__format_CLIENT": [
+  "PROFESSIONAL SUMMARY",
+  "WORK EXPERIENCE"
+ ],
+ "d12_cover_letter__default": [
+  "SURAT PERNYATAAN PENJAMIN"
+ ],
+ "d12_statement_letter__default": [
+  "SURAT PERNYATAAN PENJAMIN"
+ ],
+ "remote_work_agreement__default": [
+  "REMOTE WORK AGREEMENT",
+  "1. NATURE OF ENGAGEMENT",
+  "5. INDEPENDENT STATUS",
+  "6. GOVERNING LAW",
+  "7. COMPANY DECLARATION FOR INDONESIAN REMOTE WORKER VISA",
+  "LLC \" \" | “post index”, Moscow, adress | INN: | KPP: | OGRN:"
+ ],
+ "statement_letter_e02__bridging": [
+  "STATEMENT LETTER"
+ ],
+ "statement_letter_e02__conversion": [
+  "STATEMENT LETTER"
+ ],
+ "test_sber": [
+  "REMOTE WORK AGREEMENT",
+  "1. NATURE OF ENGAGEMENT",
+  "5. INDEPENDENT STATUS",
+  "6. GOVERNING LAW",
+  "7. COMPANY DECLARATION FOR INDONESIAN REMOTE WORKER VISA"
+ ]
+}

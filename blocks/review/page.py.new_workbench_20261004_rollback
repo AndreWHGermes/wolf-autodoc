@@ -1,0 +1,1473 @@
+"""Экран проверки заявки — новый интерфейс администратора.
+
+Раскладка (по требованиям Андрея):
+  шапка заявки
+  ┌── левая часть, 2/3 ширины ─────────────┬── правая часть, 1/3 ──┐
+  │ вкладка 1 «Исходные данные»            │ 2. Переменные значения │
+  │ вкладка 3 «Готовые документы» + визор  │    (значения из полей) │
+  └────────────────────────────────────────┴────────────────────────┘
+  внизу — согласование и отправка на Google Диск
+
+Работа администратора: сверить исходники (1) с переменными (2), затем посмотреть
+готовые документы (3), при расхождении поправить значение справа, если всё
+верно — согласовать и отправить.
+
+Старый экран (/applications/<id>/view) не меняется. Визор готовых документов —
+зафиксированный движок из blocks/shared/layout.py: контейнер с data-zoom-pan
+и .html-stage внутри, тулбар движок строит сам.
+"""
+import html as _html
+import json
+from pathlib import Path
+
+from flask import Blueprint, request, redirect, url_for, flash, jsonify
+from urllib.parse import quote as url_quote
+
+from core import db
+from blocks.review import pool
+from blocks.review.scripts import js_for
+
+bp = Blueprint("review", __name__)
+
+
+# Стили каркаса отдельной строкой (не f-строкой): в CSS фигурные скобки,
+# внутри f-строки Python принял бы их за подстановку.
+from blocks.review.styles import CSS     # стили вынесены отдельным модулем
+
+
+
+def _status_label(code: str) -> str:
+    return {
+        "new": "входящая",
+        "in_progress": "в работе",
+        "ready": "готова",
+        "sent": "отправлена",
+        "closed": "закрыта",
+    }.get((code or "").strip(), code or "—")
+
+
+def _doc_status_label(code: str) -> str:
+    """Подпись состояния документа во вкладке «Наши» (правило UI_THUMBNAILS_RULE)."""
+    return {
+        "verified": "Проверено",
+        "sent": "Проверено",
+        "rejected": "не нужен",
+        "rendered": "собран · не проверено",
+        "filled": "заполнен · не проверено",
+        "draft": "черновик · ждём скан",
+        "pending": "не создан · из шаблона",
+        "error": "ошибка сборки",
+    }.get((code or "").strip().lower(), "не проверено")
+
+
+def _client_display(a, client) -> str:
+    if client:
+        name = (client.get("full_name_latin") or client.get("full_name")
+                or " ".join(x for x in (client.get("surname"), client.get("name")) if x))
+        if name:
+            return name
+    return " ".join(x for x in (a.get("surname"), a.get("name")) if x) or "без имени"
+
+
+# Сигнатуры файлов: у выгрузок с Google Drive расширения иногда нет вовсе,
+# и сервер отдавал их как поток байтов — браузер такие картинки не рисует.
+_SIGS = ((b"%PDF", ".pdf"), (b"\xff\xd8\xff", ".jpg"), (b"\x89PNG", ".png"),
+         (b"GIF8", ".gif"), (b"RIFF", ".webp"), (b"II*\x00", ".tif"), (b"MM\x00*", ".tif"))
+
+
+def _sniff_ext(path) -> str:
+    """Расширение по содержимому файла."""
+    try:
+        with open(path, "rb") as fh:
+            head = fh.read(16)
+    except OSError:
+        return ""
+    for sig, ext in _SIGS:
+        if head.startswith(sig):
+            return ext
+    if head[4:8] == b"ftyp":
+        return ".heic"
+    return ""
+
+
+def _mime_of(path, ext: str = "") -> str:
+    """Тип содержимого для браузера."""
+    ext = ext or _sniff_ext(path)
+    return {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp",
+            ".heic": "image/heic", ".tif": "image/tiff", ".tiff": "image/tiff",
+            ".mp4": "video/mp4", ".webm": "video/webm"}.get(ext, "application/octet-stream")
+
+
+def _client_files(client_id):
+    """Файлы клиента из локального кэша Google Drive."""
+    root = Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % client_id)
+    out = []
+    if root.exists():
+        for p in sorted(root.rglob("*")):
+            if p.is_file() and not p.name.startswith("."):
+                try:
+                    size = p.stat().st_size
+                except OSError:
+                    size = 0
+                ext = p.suffix.lower() or _sniff_ext(p)
+                out.append({"name": p.name, "size": size, "ext": ext})
+    return out
+
+
+def _human_size(n: int) -> str:
+    val = float(n)
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if val < 1024 or unit == "ГБ":
+            return ("%d %s" % (int(val), unit)) if unit == "Б" else ("%.1f %s" % (val, unit))
+        val /= 1024.0
+    return str(n)
+
+
+def _doc_values_by_template(app_id: int) -> dict:
+    """Значения по каждому документу заявки: {template_id: {имя: значение}}."""
+    out = {}
+    for r in db.q(
+        "SELECT template_id, values_json FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
+        (app_id,),
+    ) or []:
+        try:
+            vals = json.loads(r.get("values_json") or "{}")
+        except Exception:
+            vals = {}
+        if vals:
+            out[r.get("template_id")] = vals
+    return out
+
+
+def _template_meta(template_id: int) -> list:
+    """Описания переменных шаблона: подпись, тип, откуда берётся."""
+    return db.q(
+        "SELECT name, label, vtype, source_kind, sort_order FROM template_variables "
+        "WHERE template_id=? ORDER BY sort_order, id",
+        (template_id,),
+    ) or []
+
+
+def _template_name(template_id) -> str:
+    if not template_id:
+        return "—"
+    row = db.q1("SELECT code, title FROM templates WHERE id=?", (template_id,))
+    if isinstance(row, dict):
+        return row.get("title") or row.get("code") or ("шаблон %s" % template_id)
+    return "шаблон %s" % template_id
+
+
+
+
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/thumb")
+def app_doc_thumb(app_id: int, template_id: int):
+    """Миниатюра готового документа картинкой (WebP).
+
+    В полоске показываем картинку, а не живой HTML: иначе страница рендерит
+    несколько полных документов сразу и заметно тормозит. Картинка собирается
+    один раз (в фоне при подготовке заявки или при первом обращении).
+    """
+    from flask import Response as _R
+    from services import previews
+    out = previews.doc_thumb(app_id, template_id, 220)
+    if not out:
+        return _R("", status=404)
+    from flask import send_file
+    resp = send_file(str(out), mimetype="image/webp", conditional=True)
+    resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
+
+
+@bp.route("/applications/<int:app_id>/file-page")
+def app_file_page(app_id):
+    """Первая страница PDF клиента картинкой.
+
+    Встроенный просмотрщик PDF в браузере показывает файл не всегда, а страница
+    картинкой открывается везде одинаково. Отрисовка кладётся в кэш.
+    """
+    from flask import send_file, abort
+    import subprocess
+    import hashlib
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        abort(404)
+    a = db.application_get(app_id)
+    if not a or not a.get("client_id"):
+        abort(404)
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).startswith(str(root)) or not target.is_file():
+        abort(404)
+    if _mime_of(target) != "application/pdf":
+        abort(404)
+    from services import previews
+    try:
+        width = int(request.args.get("w") or 0)
+    except Exception:
+        width = 0
+    out = previews.ensure(target, max(0, min(width, 1600)))
+    if not out:
+        abort(500)
+    resp = send_file(str(out), mimetype="image/png", conditional=True)
+    resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
+
+
+@bp.route("/applications/<int:app_id>/file")
+def app_file(app_id):
+    """Отдаёт входящий файл клиента из локального кэша Google Drive.
+
+    Нужен для предпросмотра: администратор должен видеть реальный документ
+    рядом с переменными. Путь проверяем, чтобы нельзя было выйти за каталог.
+    """
+    from flask import send_file, abort
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        abort(404)
+    a = db.application_get(app_id)
+    if not a or not a.get("client_id"):
+        abort(404)
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).startswith(str(root)) or not target.is_file():
+        abort(404)
+    # Фото с телефона весят 3–6 МБ: для полоски миниатюр и окна просмотра
+    # отдаём уменьшенную копию, иначе страница грузится десятки секунд.
+    try:
+        _w = int(request.args.get("w") or 0)
+    except Exception:
+        _w = 0
+    if _w and str(_mime_of(target)).startswith("image/"):
+        from services import previews
+        small = previews.ensure_image(target, max(0, min(_w, 1600)))
+        if small:
+            _mime = ("image/webp" if str(small).lower().endswith(".webp")
+                     else ("image/jpeg" if str(small).lower().endswith((".jpg", ".jpeg")) else "image/png"))
+            resp = send_file(str(small), mimetype=_mime, conditional=True)
+            resp.headers["Cache-Control"] = "private, max-age=86400"
+            return resp
+    resp = send_file(str(target), as_attachment=False, conditional=True,
+                     mimetype=_mime_of(target))
+    # Файл клиента не меняется: браузер держит его в кэше, и повторный просмотр
+    # открывается сразу, без повторной загрузки с сервера.
+    resp.headers["Cache-Control"] = "private, max-age=86400"
+    return resp
+
+
+@bp.route("/applications/<int:app_id>/review/value", methods=["POST"])
+def app_review_value(app_id):
+    """Сохранить значение: пишется во все документы, где есть эта величина."""
+    key = (request.form.get("key") or "").strip()
+    value = request.form.get("value")
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    res = pool.set_value(app_id, key, value or "")
+    res["docs_updated"] = len(res.get("touched") or [])
+    # Если администратор выбрал значение из документа или из анкеты — запоминаем
+    # выбор, чтобы разбор документов больше не перебивал его своим значением.
+    source = (request.form.get("source") or "").strip()
+    if source in ("doc", "card"):
+        try:
+            pool.mark_choice(app_id, key, source, value or "")
+            res["chosen"] = source
+        except Exception:
+            pass
+    # Автозапоминание описаний: администратор выбрал профессию и подтвердил
+    # описание в документе — формулировка уходит в память парой RU/EN и дальше
+    # предлагается из «кусочков» уже без модели.
+    try:
+        from services import cv_gen as _cv
+        _key = key.lower()
+        _txt = (value or "").strip()
+        if (_key.startswith("cv_") and _txt and len(_txt) >= 20
+                and any(k in _key for k in ("summary", "profile", "about",
+                                            "duties", "responsib", "skills", "descript"))):
+            _code = ""
+            try:
+                _row = db.q1("SELECT client_id FROM applications WHERE id=?", (app_id,)) or {}
+                _client = db.client_get(_row.get("client_id")) or {}
+                _code = (_cv.resolve_profession(_client) or {}).get("code") or ""
+            except Exception:
+                _code = ""
+            if not _code:
+                try:
+                    _code = _cv.code_by_title(_cv.value_of(app_id, "cv_profession"))
+                except Exception:
+                    _code = ""
+            _ru = _txt if re.search(r"[А-Яа-яЁё]", _txt) else (_cv.translate_en_to_ru(_txt) or "")
+            _en = _txt
+            if re.search(r"[А-Яа-яЁё]", _txt):
+                _en = _cv.translate_ru_to_en(_txt) or _txt
+            _cv.remember_phrase(_code or "_common", _en, _ru)
+    except Exception:
+        pass
+    return jsonify(res)
+
+
+@bp.route("/applications/<int:app_id>/review/product", methods=["POST"])
+def app_review_product(app_id):
+    """Сменить тип продукта заявки.
+
+    Меняется вся цепочка: под новый продукт подставляется свой пакет документов,
+    а переменные пересобираются — на экране сразу видно, что документов и полей
+    стало другое количество. Документы прежнего продукта, которые ещё не выпущены,
+    убираются, чтобы не мешались в панели; выпущенные (проверенные, отправленные)
+    остаются как есть.
+    """
+    pid = (request.form.get("product_id") or "").strip()
+    row = db.q1("SELECT id, name FROM products WHERE id=?", (pid,))
+    if not row:
+        return jsonify({"ok": False, "error": "продукт не найден"}), 400
+
+    db.exec_sql("UPDATE applications SET product_id=? WHERE id=?", (row["id"], app_id))
+
+    # Свои документы нового продукта заводим сразу — на них смотрит панель переменных
+    keep, added = set(), 0
+    for t in db.q("SELECT template_id FROM product_documents WHERE product_id=? "
+                  "ORDER BY sort_order, id", (row["id"],)) or []:
+        keep.add(t.get("template_id"))
+        try:
+            db.application_doc_create(app_id, t.get("template_id"))
+            added += 1
+        except Exception:
+            pass
+
+    # Убираем черновики прежнего продукта: выпущенные документы не трогаем
+    removed = 0
+    for d in db.application_documents(app_id) or []:
+        if d.get("template_id") in keep:
+            continue
+        # Отправленные документы не трогаем — они уже ушли клиенту.
+        # Собранные ранее черновики убираем: они от прежнего продукта.
+        if (d.get("status") or "") == "sent":
+            continue
+        try:
+            db.exec_sql("DELETE FROM application_documents WHERE id=?", (d.get("id"),))
+            removed += 1
+        except Exception:
+            pass
+
+    return jsonify({"ok": True, "product": row.get("name"), "documents": added,
+                    "removed": removed})
+
+
+@bp.route("/applications/<int:app_id>/review/scan-status")
+def app_review_scan_status(app_id):
+    """Состояние разбора документов: по нему понятно, можно ли ставить галочку.
+
+    Галочка ставится, когда разбор действительно прошёл и документы скачаны.
+    Пока идёт — на кнопке крутится индикатор; если не удалось — показываем причину.
+    """
+    from services import drive as _drive
+    a = db.application_get(app_id) or {}
+    st = _drive.status(app_id) or {}
+    files = len(_drive.docs_for_client(a.get("client_id"))) if a.get("client_id") else 0
+    ok = ((st.get("status") or "") == "ok" and (st.get("total") or 0) > 0
+          and (st.get("done") or 0) >= (st.get("total") or 0))
+    return jsonify({"status": st.get("status") or "none", "done": st.get("done") or 0,
+                    "total": st.get("total") or 0, "note": st.get("note") or "",
+                    "files": files, "ok": bool(ok)})
+
+
+@bp.route("/applications/<int:app_id>/review/regen", methods=["POST"])
+def app_review_regen(app_id):
+    """Сгенерировать значение заново по правилам."""
+    key = (request.form.get("key") or "").strip()
+    profession = (request.form.get("profession") or "").strip()
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    return jsonify(pool.regenerate(app_id, key, profession=profession))
+
+
+@bp.route("/applications/<int:app_id>/review/professions")
+def app_review_professions(app_id):
+    """Справочник профессий для резюме: из него администратор выбирает профессию."""
+    from services import cv_gen
+    items = [{"code": p["code"], "ru": p.get("ru", ""), "en": p.get("en", "")}
+             for p in cv_gen.load_positions()]
+    return jsonify({"ok": True, "items": items})
+
+
+@bp.route("/applications/<int:app_id>/review/phrases")
+def app_review_phrases(app_id):
+    """Готовые фразы («кусочки») для поля резюме: администратор отмечает нужные."""
+    key = (request.args.get("key") or "").strip()
+    profession = (request.args.get("profession") or "").strip()
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    return jsonify(pool.phrases(app_id, key, profession=profession))
+
+
+@bp.route("/applications/<int:app_id>/review/scratch", methods=["POST"])
+def app_review_scratch(app_id):
+    """Собрать описание резюме «с нуля» по профессии (результат запоминается)."""
+    key = (request.form.get("key") or "").strip()
+    profession = (request.form.get("profession") or "").strip()
+    if not key:
+        return jsonify({"ok": False, "error": "не указано поле"}), 400
+    return jsonify(pool.gen_scratch(app_id, key, profession=profession))
+
+
+@bp.route("/applications/<int:app_id>/review/profession_add", methods=["POST"])
+def app_review_profession_add(app_id):
+    """Профессия, которой нет в справочнике: администратор вписал её руками."""
+    title = (request.form.get("title") or "").strip()
+    if not title:
+        return jsonify({"ok": False, "error": "впишите название профессии"}), 400
+    return jsonify(pool.add_profession(title))
+
+
+@bp.route("/applications/<int:app_id>/review/statuses")
+def app_review_statuses(app_id):
+    """Текущее состояние документов заявки: нужно плиткам и счётчику."""
+    import json as _json
+    rows = db.q(
+        "SELECT template_id, status FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
+        (app_id,),
+    ) or []
+    out = {}
+    for r in rows:
+        out[str(r.get("template_id"))] = r.get("status") or ""
+    checked = sum(1 for v in out.values() if v in ("verified", "rejected"))
+    return _json.dumps({
+        "ok": True,
+        "statuses": out,
+        "ready": checked,
+        "total": len(out),
+        "can_send": bool(out) and checked == len(out),
+    }, ensure_ascii=False), 200, {"Content-Type": "application/json; charset=utf-8"}
+
+
+@bp.route("/applications/<int:app_id>/review/file-vars")
+def app_review_file_vars(app_id):
+    """Какие переменные заявки взяты из этого входящего документа.
+
+    Читаем текст документа клиента (со скана — распознаванием) и ищем в нём
+    значения переменных: что нашлось, то и подставлено из этого документа.
+    """
+    import re
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
+        return jsonify({"ok": False, "error": "не указан файл"}), 400
+    a = db.application_get(app_id)
+    if not a or not a.get("client_id"):
+        return jsonify({"ok": False, "error": "заявка не найдена"}), 404
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
+    target = (root / name).resolve()
+    if not str(target).startswith(str(root)) or not target.is_file():
+        return jsonify({"ok": False, "error": "файл не найден"}), 404
+
+    text = ""
+    try:
+        from services.doc_read import read_text
+        text = read_text(target) or ""
+    except Exception as e:
+        log.warning("не удалось прочитать документ %s: %s", name, str(e)[:120])
+
+    def norm(s: str) -> str:
+        return re.sub(r"[^0-9a-zа-я]+", "", (s or "").lower())
+
+    flat = norm(text)
+    found, checked = [], 0
+    if len(flat) > 20:
+        for g in pool.build_pool(app_id):
+            raw = str(g.get("value") or "")
+            val = norm(raw)
+            if len(val) < 4:
+                continue
+            checked += 1
+            hit = val in flat
+            if not hit:
+                # Скан читается с ошибками: сверяем по словам — если в документе
+                # нашлась большая часть значения, считаем его взятым отсюда.
+                words = [w for w in re.split(r"[^0-9A-Za-zА-Яа-я]+", raw) if len(w) >= 4]
+                if len(words) >= 2:
+                    got = sum(1 for w in words if norm(w) in flat)
+                    hit = got >= max(2, int(len(words) * 0.6))
+            if hit:
+                found.extend(list(g["names"].values()))
+    return jsonify({"ok": True, "file": name, "vars": sorted(set(found)),
+                    "checked": checked, "text_len": len(text)})
+
+
+@bp.route("/applications/<int:app_id>/review/rebuild", methods=["POST"])
+def app_review_rebuild(app_id):
+    """Пересобрать все документы заявки по правилам — даже уже готовые.
+
+    Нужно, чтобы любую заявку, включая архивную, можно было открыть и увидеть
+    документы такими, какими они должны быть сейчас.
+    """
+    from services import autofill
+    started = autofill.build_all_async(app_id)
+    return jsonify({"ok": True, "started": started})
+
+
+@bp.route("/applications/<int:app_id>/review/drive", methods=["POST"])
+def app_review_drive(app_id):
+    """Прикрепить к заявке ссылку на папку Google Drive."""
+    url = (request.form.get("url") or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        return jsonify({"ok": False, "error": "ссылка должна начинаться с http"}), 400
+    db.exec_sql("UPDATE applications SET gdrive_url=? WHERE id=?", (url, app_id))
+    return jsonify({"ok": True, "url": url})
+
+
+@bp.route("/applications/<int:app_id>/review/options")
+def app_review_options(app_id):
+    """Варианты значения для поля: прошлые значения и примеры из шаблона."""
+    key = (request.args.get("key") or "").strip()
+    return jsonify({"ok": True, "options": pool.history_options(app_id, key)})
+
+
+@bp.before_app_request
+def _old_app_screen_redirect():
+    """Старый экран заявки заменён новым: держим один вид, без развилки.
+
+    Ссылки из истории, карточки и бота теперь ведут на /review, но старые
+    закладки тоже должны открывать рабочий экран, а не позавчерашнюю вёрстку.
+    """
+    import re as _re
+    from flask import redirect, request
+    m = _re.match(r"^/applications/(\d+)/view/?$", request.path or "")
+    if m:
+        qs = ("?" + request.query_string.decode()) if request.query_string else ""
+        return redirect("/applications/%s/review%s" % (m.group(1), qs), code=302)
+    return None
+
+
+@bp.route("/applications/<int:app_id>/review")
+def app_review(app_id: int):
+    a = db.application_get(app_id)
+    if not a:
+        flash("Заявка не найдена", "error")
+        return redirect(url_for("dashboard.page"))
+
+    client = db.client_get(a["client_id"]) if a.get("client_id") else None
+    client_name = _client_display(a, client)
+    files = _client_files(a["client_id"]) if a.get("client_id") else []
+
+    docs = db.q(
+        "SELECT id, template_id, status, pdf_path, rendered_at FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
+        (app_id,),
+    ) or []
+
+    picked = request.args.get("tpl", type=int)
+    tpl_ids = [d.get("template_id") for d in docs if d.get("template_id")]
+    if picked not in tpl_ids:
+        picked = tpl_ids[0] if tpl_ids else None
+
+    # Активный документ: в главное окно отдаём адрес документа (не вставляем
+    # его в страницу). Плитки в полоске — лёгкие картинки, а живой документ
+    # грузится только тот, который открыт, и по нажатию на миниатюру.
+    _doc_attr = (' src="/applications/%s/doc/%s/html"' % (app_id, picked)) if picked else ""
+
+    checked = sum(1 for d in docs if (d.get("status") or "") in ("verified", "rejected"))
+    can_send = bool(docs) and checked == len(docs)
+
+    # Ссылка на папку заявки на Google Drive. У архивных заявок своей ссылки
+    # обычно нет — показываем папку клиента и даём прикрепить ссылку заявки.
+    drive_url = (a.get("gdrive_url") or "").strip()
+    client_drive = ""
+    try:
+        _cl = db.client_get(a["client_id"]) if a.get("client_id") else None
+        client_drive = ((_cl or {}).get("gdrive_folder_url") or "").strip()
+    except Exception:
+        client_drive = ""
+    # Логотип Google Диска — узнаваемая кнопка перехода в папку клиента
+    # Значок разбора: логотип Диска и стрелка — «забираем документы с Диска»
+    drive_dl_icon = ('<svg width="20" height="15" viewBox="0 0 22 15" aria-hidden="true">'
+                     '<path d="M5.3 1h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
+                     '<path d="M5.3 1 0 10.2l2.7 4.6L8 5.6z" fill="#11A861"/>'
+                     '<path d="M2.7 14.8h10.6L16 10.2H5.4z" fill="#2684FC"/>'
+                     '<path d="M18.6 1v7.2M15.8 5.6l2.8 2.8 2.8-2.8" stroke="#fff" stroke-width="1.5"'
+                     ' fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')
+    gdrive_logo = ('<svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">'
+                   '<path d="M5.3 0h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
+                   '<path d="M5.3 0 0 9.2l2.7 4.6L8 4.6z" fill="#11A861"/>'
+                   '<path d="M2.7 13.8h10.6L16 9.2H5.4z" fill="#2684FC"/></svg>')
+    drive_link = drive_url or client_drive
+
+    # Чип папки клиента в шапке окна просмотра: со ссылкой, а если ссылки нет —
+    # просто подписью (битая ссылка хуже, чем её отсутствие).
+    _folder_svg = ('<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+                   'stroke-width="1.8" stroke-linecap="round"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4'
+                   'l1.7 2H19a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 19H4.5A1.5 1.5 0 0 1 3 17.5z"/></svg>')
+    if drive_link:
+        folder_html = ('<a class="rv-mh-folder" id="rv-modal-folder" href="%s" target="_blank" '
+                       'rel="noopener" title="Папка клиента на Google Диске">%sПапка клиента</a>'
+                       % (_html.escape(drive_link, quote=True), _folder_svg))
+    else:
+        folder_html = ('<span class="rv-mh-folder is-off" id="rv-modal-folder" '
+                       'title="Папка клиента на Google Диске ещё не указана">%sПапка клиента</span>'
+                       % _folder_svg)
+    if drive_link:
+        drive_html = ('<a class="btn sm rv-drive-btn" href="%s" target="_blank" rel="noopener"'
+                      ' title="Папка клиента на Google Drive">%sПерейти в Google Диск клиента</a>'
+                      % (_html.escape(drive_link, quote=True), gdrive_logo))
+    else:
+        drive_html = ('<input type="text" id="rv-drive-input" class="rv-drive-input"'
+                      ' placeholder="вставьте ссылку на папку клиента на Google Диске">'
+                      '<button type="button" class="btn sm rv-drive-btn" id="rv-drive-save">'
+                      + gdrive_logo + 'Указать папку на Google Диске</button>')
+
+    # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
+    # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
+    # Если у заявки ещё нет своих документов — заводим их по типу продукта.
+    # Так открытие любой заявки (в том числе архивной) сразу даёт панель переменных.
+    try:
+        if not (db.application_documents(app_id) or []):
+            for _t in db.q("SELECT template_id FROM product_documents WHERE product_id=? "
+                           "ORDER BY sort_order, id", (a.get("product_id"),)) or []:
+                db.application_doc_create(app_id, _t.get("template_id"))
+    except Exception as _e:
+        log.warning("документы заявки %s не завелись: %s", app_id, str(_e)[:100])
+
+    pool_groups = pool.build_pool(app_id)
+    filled_n = sum(1 for g in pool_groups if g["filled"])
+    total_n = len(pool_groups)
+    fill_done = "1" if (total_n and filled_n == total_n) else "0"
+    # Разбор считается выполненным, только если он реально прошёл и документы
+    # скачаны. Иначе галочки нет — администратор видит, что данные не подтянулись.
+    scan_done = "0"
+    scan_note = ""
+    scan_files = 0
+    try:
+        from services import drive as _drive
+        _cid = a.get("client_id")
+        _st = _drive.status(app_id) or {}
+        scan_files = len(_drive.docs_for_client(_cid)) if _cid else 0
+        if (_st.get("status") or "") == "ok" and (_st.get("total") or 0) > 0 \
+                and (_st.get("done") or 0) >= (_st.get("total") or 0):
+            scan_done = "1"
+        elif (_st.get("status") or "") == "running":
+            scan_note = "идёт разбор документов…"
+        else:
+            scan_note = (_st.get("note") or "документы с Google Диска ещё не разобраны")
+    except Exception:
+        scan_done = "0"
+
+    # Продукты для смены типа заявки: список статический, из пакетов документов.
+    # У каждого продукта видно, сколько документов он требует.
+    products = []
+    try:
+        products = db.q(
+            "SELECT p.id, p.name, COUNT(pd.template_id) AS docs "
+            "FROM products p LEFT JOIN product_documents pd ON pd.product_id = p.id "
+            "WHERE COALESCE(p.active, 1) = 1 GROUP BY p.id ORDER BY p.id"
+        ) or []
+    except Exception:
+        products = []
+    cur_product = a.get("product_id")
+    # Список продуктов: строка того продукта, что стоит в заявке, подсвечена
+    # жёлтым внутри списка — при выборе другого видно, чем он отличается.
+    product_options = "".join(
+        '<button type="button" class="rv-opt%s" data-value="%s">'
+        '<span class="rv-opt-name">%s</span>'
+        '<span class="rv-opt-docs">документов: %s</span>%s</button>' % (
+            " is-current" if str(pr.get("id")) == str(cur_product) else "",
+            pr.get("id"),
+            _html.escape(str(pr.get("name") or "продукт")),
+            pr.get("docs") or 0,
+            '<span class="rv-opt-tag">нужен по заявке</span>'
+            if str(pr.get("id")) == str(cur_product) else "",
+        )
+        for pr in products
+    )
+    cur_product_name = next((str(pr.get("name") or "") for pr in products
+                             if str(pr.get("id")) == str(cur_product)), "продукт не указан")
+    cur_docs = next((pr.get("docs") or 0 for pr in products
+                     if str(pr.get("id")) == str(cur_product)), 0)
+    scan_note_cls = " is-warn" if scan_note else ""
+
+    # Дата создания в виде «02.10.2026» — как в рендере заявки.
+    created_h = ""
+    _c = str(a.get("created_at") or "")
+    if len(_c) >= 10:
+        created_h = "%s.%s.%s" % (_c[8:10], _c[5:7], _c[0:4])
+
+    # Готовность заявки: маркер ставит предподготовка (scripts/app_prepare.py).
+    # Если она уже прошла, администратору не нужно ничего ждать.
+    prep_note = ""
+    try:
+        _p = Path("/opt/wolf_v2/data/prep/app_%s.json" % app_id)
+        if _p.is_file():
+            _m = json.loads(_p.read_text(encoding="utf-8"))
+            if _m.get("at"):
+                prep_note = "подготовлено заранее в %s" % str(_m["at"])[11:16]
+    except Exception:
+        prep_note = ""
+
+    head = f"""
+<div class="wb-top">
+  <div class="wb-id">
+    <div class="wb-id-line">
+      <a class="rv-back" href="/history" title="Назад к списку заявок" aria-label="Назад">‹</a>
+      <span class="wb-id-num">Заявка #{app_id}</span>
+      <span class="wb-id-name">{client_name}</span>
+      <span class="wb-id-state">· {_status_label(a.get('status'))} · {created_h or 'дата не указана'}</span>
+    </div>
+    <div class="wb-id-row">
+      <button type="button" class="wb-id-more" id="wb-q-more">▾ Развернуть текст заявки</button>
+      <span class="wb-drive-wrap">{drive_html}</span>
+      {'<span class="wb-prep" title="Документы, значения и превью уже собраны на сервере">✅ ' + prep_note + '</span>' if prep_note else ''}
+    </div>
+    <button type="button" id="rv-head-toggle" hidden></button>
+  </div>
+
+  <div class="wb-flow">
+    <button type="button" class="wb-tile{' is-done' if scan_done == '1' else ''}" id="rv-scan" data-done="{scan_done}"
+            title="Выгрузка документов клиента из его папки на Google Диске">
+      <span class="wb-tile-b">
+        <span class="wb-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Выгрузка<br>с Google Диска</span>
+      </span>
+      <span class="wb-tile-note" id="wb-note-1">{'готово' if scan_done == '1' else ('идёт выгрузка' if scan_note else 'ждёт запуска')}</span>
+    </button>
+    <button type="button" class="wb-tile{' is-done' if scan_done == '1' else ''}" id="wb-tile-2"
+            title="Распознавание: система читает сканы и определяет, какие поля в них есть">
+      <span class="wb-tile-b">
+        <span class="wb-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Распознавание<br>документов</span>
+      </span>
+      <span class="wb-tile-note" id="wb-note-2">{'готово' if scan_done == '1' else ('после выгрузки' if scan_note else 'ждёт запуска')}</span>
+    </button>
+    <button type="button" class="wb-tile{' is-done' if fill_done == '1' else ''}" id="rv-autofill" data-done="{fill_done}"
+            title="Заполнение переменных форм по правилам системы">
+      <span class="wb-tile-b">
+        <span class="wb-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Заполнение<br>переменных</span>
+      </span>
+      <span class="wb-tile-note" id="wb-note-3">{'готово' if fill_done == '1' else 'ждёт запуска'}</span>
+    </button>
+    <button type="button" class="wb-tile{' is-done' if can_send else ' is-cur'}" id="wb-tile-4"
+            title="Проверка администратором и отправка готовых документов на Google Диск">
+      <span class="wb-tile-b">
+        <span class="wb-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Проверка<br>и отправка</span>
+      </span>
+      <span class="wb-tile-note" id="wb-note-4">{'всё проверено' if can_send else 'проверено %d из %d' % (checked, len(docs))}</span>
+    </button>
+  </div>
+
+  <div class="wb-side">
+    <div class="wb-side-row">
+      <span class="wb-side-lbl">Тип продукта:</span>
+      <span class="rv-select" id="rv-product" data-value="{cur_product}">
+        <button type="button" class="rv-select-btn" id="rv-product-btn"
+                title="От типа продукта зависят документы и переменные заявки">
+          <span id="rv-product-cur">{cur_product_name}</span>
+          <span class="rv-select-caret" aria-hidden="true">▾</span>
+        </button>
+        <span class="rv-select-list" id="rv-product-list" hidden>{product_options}</span>
+      </span>
+      <span class="wb-side-lbl">· документов: {cur_docs}</span>
+    </div>
+    <div class="wb-side-cmt">Комментарий из заявки: {(a.get('comment') or 'не указан')[:160]}</div>
+  </div>
+</div>
+<span class="rv-drive-box" id="rv-drive-box" hidden></span>
+<button type="button" class="rv-vars-btn" id="rv-vars-btn" hidden></button>
+<div class="wb-note"><span id="rv-scan-note" class="rv-scan-note{' is-warn' if scan_note else ''}">{scan_note}</span></div>
+"""
+
+    # ── Вкладка 1: исходные данные ───────────────────────────────────────────
+    # Плитки входящих файлов: снимок сразу видно, клик открывает файл в окне
+    # просмотра слева — на компьютере рядом с переменными справа.
+    # Сконвертированная копия HEIC-снимка отдельной плиткой не нужна: пара
+    # «.HEIC + .photo.png» — это один и тот же кадр, иначе фото видно дважды.
+    all_files = list(files)          # до фильтрации: в нём есть сконвертированные копии
+    derived = set()
+    for f in files:
+        # 1) Копия снимка из HEIC: пара «X.HEIC + X.photo.jpg» — один кадр.
+        if f["ext"] in (".heic", ".heif"):
+            _base = f["name"].rsplit(".", 1)[0] + ".photo."
+            for g in files:
+                if g["name"].startswith(_base):
+                    derived.add(g["name"])
+        # 2) Обратная ситуация: снимок уже облегчён в X.jpg, а копия X.photo.jpg
+        #    осталась — второй плиткой она не нужна.
+        if ".photo." in f["name"]:
+            _orig = f["name"].replace(".photo.", ".", 1)
+            if any(g["name"] == _orig for g in files):
+                derived.add(f["name"])
+    files = [f for f in files if f["name"] not in derived]
+
+    def _preview_of(name: str, ext: str) -> str:
+        if ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+            # Миниатюра — уменьшенная копия (5 КБ вместо 5 МБ) и грузится сразу,
+            # нативно браузером: раньше её подставлял скрипт, и до его срабатывания
+            # на плитке висело колёсико загрузки.
+            return ('<img src="/applications/%s/file?name=%s&w=160" alt="%s" loading="lazy" decoding="async">'
+                    % (app_id, url_quote(name), _html.escape(name, quote=True)))
+        if ext in (".pdf",):
+            # PDF показываем отрисованной страницей: встроенный просмотрщик
+            # браузера открывает файл не всегда, картинка работает везде.
+            # Превью готовится заранее, страница весит единицы килобайт.
+            return ('<img src="/applications/%s/file-page?name=%s&w=160" alt="%s" loading="lazy" decoding="async">'
+                    % (app_id, url_quote(name), _html.escape(name, quote=True)))
+        if ext in (".heic", ".heif"):
+            twin = ""
+            _base = name.rsplit(".", 1)[0] + ".photo."
+            for g in all_files:
+                if g["name"].startswith(_base):
+                    twin = g["name"]
+                    break
+            # Браузер не показывает HEIC — для плитки берём сконвертированную копию.
+            # Копии нет в отфильтрованном списке, поэтому ищем по исходному.
+            if any(f["name"] == twin for f in all_files):
+                return ('<img src="/applications/%s/file?name=%s&w=160" alt="%s" loading="lazy">'
+                        % (app_id, url_quote(twin), _html.escape(twin, quote=True)))
+            return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">🖼️</div>'
+        return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">📄</div>'
+
+    files_html = "".join(
+        '<div class="rv-thumb rv-file-thumb" data-file="%s" data-page="%s">'
+        '<div class="rv-thumb-frame is-ready">%s</div>'
+        '<div class="rv-thumb-cap">'
+        '<span class="rv-thumb-name">%s</span>'
+        '<span class="rv-thumb-state">%s</span>'
+        '<div class="rv-prog"><i></i></div>'
+        '<button type="button" class="rv-check" data-check="drive" '
+        'title="Скачано с Диска" aria-label="Подтвердить, что файл скачан с Диска"></button>'
+        '</div></div>'
+        % (_html.escape(f["name"], quote=True),
+           ('/applications/%s/file-page?name=%s' % (app_id, url_quote(f["name"])))
+           if f["ext"] == ".pdf" else "",
+           _preview_of(f["name"], f["ext"]),
+           _html.escape(f["name"][:26]),
+           "не подтверждено")
+        for f in files
+    ) or '<div class="rv-empty">Файлы клиента не найдены</div>'
+
+    drive_link = (('<a href="%s" target="_blank" rel="noopener">папка заявки на Google Drive</a>'
+                   % a.get("gdrive_url")) if a.get("gdrive_url") else "ссылка не указана")
+
+    pane_src = f"""
+  <div class="rv-pane is-on" id="pane-real">
+    <div class="rv-body">
+      <div class="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
+    </div>
+  </div>
+"""
+
+    card_rows = f"""
+      <div class="rv-row"><span class="rv-k">Клиент</span><span class="rv-v">{client_name}</span></div>
+      <div class="rv-row"><span class="rv-k">Продукт</span><span class="rv-v rv-mark-yellow">{a.get('product_name') or '—'}</span></div>
+      <div class="rv-row"><span class="rv-k">Статус заявки</span><span class="rv-v">{_status_label(a.get('status'))}</span></div>
+      <div class="rv-row"><span class="rv-k">Создана</span><span class="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
+      <div class="rv-row"><span class="rv-k">Взял в работу</span><span class="rv-v">{a.get('taken_login') or '—'}</span></div>
+      <div class="rv-row"><span class="rv-k">Комментарий менеджера</span><span class="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
+"""
+
+    # ── Вкладка 3: готовые документы и визор ─────────────────────────────────
+    # Плитки документов: миниатюра подгружается лениво, при открытии вкладки.
+    # Клик по плитке разворачивает документ в визоре слева.
+    thumbs = "".join(
+        '<div class="rv-thumb%s" data-tpl="%s">'
+        '<div class="rv-thumb-frame is-loading"><span class="rv-spinner"></span>'
+        '<img src="/applications/%s/doc/%s/thumb" alt="%s" loading="lazy" decoding="async">'
+        '</div>'
+        '<div class="rv-thumb-cap">'
+        '<span class="rv-thumb-name">%s</span>'
+        '<span class="rv-thumb-state" id="rv-thumb-status-%s">%s</span>'
+        '<div class="rv-prog"><i></i></div>'
+        '<button type="button" class="rv-check rv-mark%s" data-verdict="verify" data-tpl="%s" '
+        'title="Проверено" aria-label="Отметить проверенным"></button>'
+        '</div></div>'
+        % (" is-on" if d.get("template_id") == picked else "", d.get("template_id"),
+           app_id, d.get("template_id"), _template_name(d.get("template_id")),
+           _template_name(d.get("template_id")), d.get("template_id"),
+           _doc_status_label(d.get("status")),
+           " rv-on-ok" if (d.get("status") or "") == "verified" else "", d.get("template_id"))
+        for d in docs
+    ) or '<div class="rv-empty">У заявки пока нет документов</div>'
+
+    verdict_rows = "".join(
+        '<div class="rv-row" data-row-tpl="%s">'
+        '<span class="rv-k">%s</span>'
+        '<span class="rv-v" id="rv-status-%s">%s</span>'
+        '<span style="margin-left:auto;display:flex;gap:6px">'
+        '<button type="button" class="btn sm rv-mark" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
+        '<button type="button" class="btn sm rv-mark" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
+        '</span></div>'
+        % (d.get("template_id"), _template_name(d.get("template_id")),
+           d.get("template_id"), _doc_status_label(d.get("status")),
+           d.get("template_id"), d.get("template_id"))
+        for d in docs
+    ) or '<div class="rv-empty">Согласовывать пока нечего</div>'
+
+    pane_ready = f"""
+  <div class="rv-pane" id="pane-ready">
+    <div class="rv-thumbs" id="rv-thumbs">{thumbs}</div>
+    <div class="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
+    <div class="rv-note" style="margin:0 13px 13px">Нажмите плитку — документ откроется поверх
+      страницы на две трети слева. Подтвердить или отклонить можно и на самой плитке, и в окне.
+      Справа — переменные заявки: нажмите на переменную, и её место подсветится
+        в документе; жёлтым в документе отмечены подставленные значения.</div>
+  </div>
+"""
+
+    # ── Правая часть: переменные значения (склеенный пул) ───────────────────
+    # Одно поле на одну логическую величину. Если ФИО встречается в двух
+    # документах — правится здесь один раз и уходит в оба.
+    # пул собран выше, второй раз не собираем
+
+    src_names = {"client": "из данных клиента", "doc": "из документов",
+                 "gen": "генерируется", "manual": "вручную"}
+
+    # Прошлые значения есть далеко не у всех переменных: список открываем только
+    # для тех, где выбор из истории действительно нужен и возможен.
+    try:
+        hist_names = pool.names_with_history()
+    except Exception:
+        hist_names = set()
+
+    fields_html = []
+    sec_counts = {}
+    for g in pool_groups:
+        sec_counts[g.get("section") or "Переменные"] = sec_counts.get(g.get("section") or "Переменные", 0) + 1
+
+    # Каждый раздел — блок в рамке, который раскрывается и закрывается нажатием
+    # на заголовок. Внутри поля идут строго одинаково: название переменной,
+    # значение, откуда оно взято.
+    cur_section = None
+    sec_index = 0
+    for g in pool_groups:
+        sec = g.get("section") or "Переменные"
+        if sec != cur_section:
+            if cur_section is not None:
+                fields_html.append('</div></div>')
+            sec_index += 1
+            fields_html.append(
+                '<div class="rv-blk" data-sec="%d">'
+                '<button type="button" class="rv-blk-head">'
+                '<span class="rv-blk-t">%s</span>'
+                '<span class="rv-blk-n">%d</span>'
+                '<span class="rv-blk-arrow" aria-hidden="true">▾</span>'
+                '</button><div class="rv-blk-body">'
+                % (sec_index, _html.escape(sec), sec_counts.get(sec, 0)))
+            cur_section = sec
+
+        label = g["label"]
+        if g["doc_count"] == 1 and g.get("value_split"):
+            label = "%s · %s" % (label, g["doc_titles"][0] if g["doc_titles"] else "документ")
+        docs_note = ("в %d документах" % g["doc_count"]) if g["doc_count"] > 1 \
+                    else "в 1 документе"
+
+        vars_all = ",".join(g["names"].values())
+        var_first = next(iter(g["names"].values()), "")
+        src = g.get("src") or "сгенерировано"
+        if not g["filled"]:
+            # пустое значение честно помечаем: источник появится после заполнения
+            src = "не заполнено — нажмите «Заполнить автоматически»"
+
+        # Кубик — только у значений, которые можно перевыпустить: номер документа,
+        # номера справки и счёта, Ref., остаток, маска карты, адрес.
+        kind = g.get("kind") or "gen"
+        if kind == "gen":
+            regen = ('<button type="button" class="rv-act" data-act="regen" data-key="%s"'
+                     ' title="Сгенерировать значение заново">🎲</button>'
+                     % _html.escape(g["key"], quote=True))
+        else:
+            regen = ('<span class="rv-act rv-act-off" title="Значение берётся как есть —'
+                     ' перевыпускать нечего">·</span>')
+
+        # Инструкция переменной: правило из конструктора плюс источник значения.
+        rule_txt = (g.get("rule_note") or "").strip()
+        info_bits = [rule_txt] if rule_txt else []
+        if var_first == "doc_date":
+            info_bits.append("Это дата формирования документа. Она же период по — "
+                             "одна и та же дата, текущая.")
+        info_bits.append("Источник: %s." % src)
+        info_bits.append("Используется: %s." % docs_note)
+        if kind == "gen":
+            info_bits.append("Кнопка 🎲 перевыпускает значение заново.")
+        info = "\n\n".join(info_bits)
+
+        # Расхождение документа и анкеты: подсвечиваем поле и даём выбор, что
+        # подставить в бланк. По умолчанию — значение из документа клиента.
+        conflict = g.get("conflict")
+        conflict_html = ""
+        conflict_cls = ""
+        if conflict:
+            conflict_cls = " is-conflict"
+            _dv = _html.escape(str(conflict.get("doc") or ""))
+            _cv = _html.escape(str(conflict.get("card") or ""))
+            _src_name = _html.escape(str(conflict.get("from") or "документ клиента"))
+            conflict_html = (
+                '<div class="rv-conflict">'
+                '<div class="rv-conflict-head">⚠ данные в анкете отличаются</div>'
+                '<select class="rv-conflict-sel" data-key="%s">'
+                '<option value="doc" data-value="%s" selected>из документа (файл «%s»): %s</option>'
+                '<option value="card" data-value="%s">из анкеты: %s</option>'
+                '</select></div>' % (_html.escape(g["key"], quote=True),
+                                     _dv, _src_name, _dv, _cv, _cv)
+            )
+
+        # Для переменных резюме администратор может выбрать профессию и собрать
+        # описание автоматически — либо оставить и поправить текст вручную.
+        cv_picker = ""
+        # Список профессий нужен только там, где есть текст описания: имя, паспорт
+        # и даты генерировать по профессии не нужно.
+        CV_GEN_VARS = ("cv_summary", "cv_job1_bullets", "cv_job2_bullets", "cv_job3_bullets",
+                       "cv_skills_hard", "cv_skills_soft", "cv_skills_tools",
+                       "cv_education_degree", "cv_education_note", "cv_job1_title")
+        if str(var_first or "") in CV_GEN_VARS:
+            _ck = _html.escape(g["key"], quote=True)
+            cv_picker = ('<div class="rv-cvgen">'
+                         '<select class="rv-cvprof" data-key="%s" title="Профессия для описания">'
+                         '<option value="">профессия…</option>'
+                         '<option value="__custom__">✎ своя профессия…</option></select>'
+                         '<button type="button" class="rv-cvbtn" data-key="%s"'
+                         ' title="Собрать описание резюме по профессии">Собрать описание</button>'
+                         '<button type="button" class="rv-cvpieces" data-key="%s"'
+                         ' title="Отметить готовые фразы и собрать из них текст">Кусочки</button>'
+                         '<button type="button" class="rv-cvscratch" data-key="%s"'
+                         ' title="Собрать описание заново, другими словами">С нуля</button>'
+                         '</div>' % (_ck, _ck, _ck, _ck))
+
+        fields_html.append(
+            '<div class="rv-field%s" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
+            ' data-list="%s">'
+            '<div class="rv-fname">%s</div>'
+            '<div class="rv-fedit">'
+            '<textarea class="rv-input%s" rows="1" data-key="%s" spellcheck="false"'
+            ' title="Можно вписать вручную. Изменение сохраняется само.">%s</textarea>'
+            '<div class="rv-acts">'
+            '<button type="button" class="rv-info" data-key="%s" data-rule="%s"'
+            ' title="Инструкция по переменной">i</button>%s'
+            '</div></div>'
+            '<div class="rv-fsrc"><span class="rv-src">%s</span>'
+            '<span class="rv-docs">%s</span></div>%s%s'
+            '</div>' % (
+                conflict_cls,
+                _html.escape(g["key"], quote=True),
+                _html.escape(var_first, quote=True),
+                _html.escape(vars_all, quote=True),
+                _html.escape(",".join(str(t) for t in (g.get("templates") or [])), quote=True),
+                "1" if (g.get("list_allowed")
+                        and (set(g.get("names", {}).values()) & hist_names)) else "0",
+                _html.escape(label),
+                " is-empty" if not g["filled"] else "",
+                _html.escape(g["key"], quote=True),
+                _html.escape(str(g["value"])),
+                _html.escape(g["key"], quote=True),
+                _html.escape(info, quote=True),
+                regen,
+                _html.escape(src),
+                _html.escape(docs_note),
+                cv_picker,
+                conflict_html,
+            )
+        )
+    # Архивную заявку показываем в том виде, как она должна выглядеть по системе:
+    # документы собираются заново по текущим правилам.
+    if (a.get("record_kind") or "") == "archive":
+        try:
+            from services import autofill
+            autofill.build_all_async(app_id)
+        except Exception:
+            pass
+
+    if cur_section is not None:
+        fields_html.append('</div></div>')
+
+    if not fields_html:
+        fields_html.append('<div class="rv-empty">У заявки пока нет значений — '
+                           'сначала соберите документы</div>')
+
+    total_n = len(pool_groups)
+    if total_n and filled_n == total_n:
+        progress_cls = " is-done"
+        progress_text = "Заполнено всё: %d из %d" % (filled_n, total_n)
+    else:
+        progress_cls = " is-urgent"
+        progress_text = "Заполнено %d из %d" % (filled_n, total_n)
+    # Строка «Требует внимания» — как в рендере: сколько полей надо проверить.
+    attn_n = (sum(1 for g in pool_groups if not g.get("filled"))
+              + sum(1 for g in pool_groups if g.get("conflict")))
+    attn_html = (
+        '<div class="rv-attn" id="rv-attn">'
+        '<span class="rv-attn-i" aria-hidden="true">⚠</span>'
+        '<span class="rv-attn-t">Требует внимания: %d</span>'
+        '<button type="button" class="rv-attn-btn" id="rv-attn-btn">Проверить и исправить ›</button>'
+        '</div>' % attn_n) if attn_n else ""
+
+    # ── Этапы заявки: по фактическим данным, а не «на глаз» ───────────────────
+    _docs_n = len(docs)
+    _filled_docs = sum(1 for d in docs
+                       if (d.get("status") or "") in ("filled", "rendered", "verified", "sent"))
+    _sent = str(a.get("sent_at") or "")
+    _steps = [
+        ("Заявка принята", created_h or "дата не указана", True),
+        ("Сканы клиента с Диска",
+         ("%d файла" % len(files)) if files else "файлов нет",
+         bool(files)),
+        ("Документы собраны",
+         ("%d из %d" % (_filled_docs, _docs_n)) if _docs_n else "документов нет",
+         bool(_docs_n) and _filled_docs == _docs_n),
+        ("Проверка документов",
+         ("проверено %d из %d" % (checked, _docs_n)) if _docs_n else "—",
+         bool(_docs_n) and checked == _docs_n),
+        ("Отправка в Google Drive",
+         ("отправлено %s" % _sent[:16]) if _sent else "ждёт проверки",
+         bool(_sent)),
+    ]
+    _first_open = next((i for i, s in enumerate(_steps) if not s[2]), None)
+    # Этапы — цифрами 1..5, под каждой подпись, при наведении — подсказка, что это
+    # за этап. Так администратор видит, где остановилась работа, не открывая детали.
+    _step_tips = (
+        "Заявка пришла от менеджера: клиент, продукт, папка на Google Диске.",
+        "Документы клиента скачиваются из папки на Google Диске.",
+        "Система читает сканы и определяет, какие поля в них есть и откуда их брать.",
+        "Значения подставляются в бланки автоматически по правилам системы.",
+        "Администратор проверяет документы и выгружает готовые обратно на Диск.",
+    )
+    steps_html = (
+        '<div class="wb-steps" id="rv-steps">'
+        + "".join(
+            '<span class="wb-stp%s%s">'
+            '<span class="ln" aria-hidden="true"></span>'
+            '<span class="d">%d</span>'
+            '<span class="t">%s</span>'
+            '<span class="tip"><b>Этап %d — %s</b>%s</span></span>'
+            % (" is-done" if done else "",
+               " is-cur" if (not done and i == _first_open) else "",
+               i + 1,
+               _html.escape(name),
+               i + 1,
+               _html.escape(name),
+               _html.escape(_step_tips[i] if i < len(_step_tips) else ""))
+            for i, (name, note, done) in enumerate(_steps))
+        + '</div>')
+
+    right = f"""
+<div class="rv-panel rv-right" id="rv-right">
+  <div class="rv-body">
+    <div class="rv-phead">
+      <div class="rv-phead-top">
+        <div class="rv-stage">Переменные документа<span class="rv-chip-auto"
+             title="Значения подставляются автоматически по документам клиента">АВТО</span></div>
+        <button type="button" class="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
+      </div>
+      <div class="rv-vars-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.4"/><path d="M15.8 15.8 20 20"/></svg>
+        <input type="search" id="rv-vars-search" placeholder="Поиск переменной…"
+               autocomplete="off" aria-label="Поиск переменной">
+      </div>
+      <div class="rv-progress{progress_cls}" id="rv-progress">
+        <span id="rv-progress-text">{progress_text}</span>
+        <button type="button" class="rv-collapse-all" id="rv-collapse-all"
+                title="Свернуть все блоки">Свернуть блоки</button>
+      </div>
+      <div class="rv-filter-note" id="rv-panel-count"></div>
+      {attn_html}
+    </div>
+    {''.join(fields_html)}
+  </div>
+</div>
+"""
+
+    # ── Низ: согласование и отправка ─────────────────────────────────────────
+    foot = f"""
+<div class="rv-foot">
+  <div class="rv-state {'ok' if can_send else 'warn'}">
+    {'✅ Все документы согласованы — можно отправлять' if can_send
+     else '⛔ Отправить нельзя: согласовано %d из %d документов' % (checked, len(docs))}
+  </div>
+  <form method="post" action="/applications/{app_id}/send" class="rv-send"
+        onsubmit="return confirm('Отправить документы в Google Drive?')">
+    <button class="btn" type="submit"{' disabled' if not can_send else ''}
+            title="{'Отправить документы на Google Диск' if can_send else 'Сначала согласуйте документы'}">
+      📤 Отправить на Google Drive
+    </button>
+  </form>
+</div>
+"""
+
+    # Стили боевой раскладки лежат отдельным файлом: правки вида не трогают логику.
+    try:
+        WB_CSS = (Path(__file__).with_name("workbench.css")).read_text(encoding="utf-8")
+    except OSError:
+        WB_CSS = ""
+
+    body = f"""
+<style>{CSS}</style>
+<style>{WB_CSS}</style>
+<div class="wb-wrap">
+  <div class="wb-headwrap">
+  {head}
+  <div class="wb-brief" id="wb-brief" hidden><div class="rv-card-body">{card_rows}</div></div>
+  </div>
+  <div class="wb-heads">
+    <div class="mini-t"><span class="vt">Сканы<br>клиента</span><span class="cnt">{len(files)}</span></div>
+    <div><b>Информация о клиенте</b><span class="grow"></span>
+      <span class="tools"><button type="button" class="wb-zt" data-wb-zoom="out">−</button>
+      <button type="button" class="wb-zt on" data-wb-zoom="fit">вписать</button>
+      <button type="button" class="wb-zt" data-wb-zoom="in">+</button></span></div>
+    <div><b>Переменные</b><span class="cnt" id="wb-vars-cnt">{len(pool_groups)}</span>
+      <span class="wb-scope" id="wb-vars-scope">вся заявка</span><span class="grow"></span>
+      <span class="tools"><button type="button" class="wb-zt" id="wb-vars-collapse"
+        title="Свернуть все блоки переменных">▤</button></span></div>
+    <div><b>Наши документы</b><span class="cnt">{len(docs)}</span><span class="grow"></span>
+      <span class="tools">
+        <button type="button" class="wb-zt ok rv-mark" data-verdict="verify" data-tpl="{picked or ''}"
+          title="Открытый документ проверен — сохранить">✓</button>
+        <button type="button" class="wb-zt no rv-mark" data-verdict="reject" data-tpl="{picked or ''}"
+          title="Открытый документ не нужен">✕</button>
+        <button type="button" class="wb-zt up" id="wb-upload"{' ' if can_send else ' disabled'}
+          title="{'Загрузить готовые документы на Google Диск' if can_send else 'Сначала подтвердите документы: %d из %d' % (checked, len(docs))}">⬆</button>
+        <button type="button" class="wb-zt" data-wb-zoom2="out">−</button>
+        <button type="button" class="wb-zt on" data-wb-zoom2="fit">вписать</button>
+        <button type="button" class="wb-zt" data-wb-zoom2="in">+</button>
+      </span></div>
+    <div class="mini-t"><span class="vt">Наши<br>докум.</span><span class="cnt">{len(docs)}</span></div>
+  </div>
+  <div class="wb-grid">
+    <div class="wb-rail wb-rail-l">{pane_src}</div>
+    <div class="wb-view wb-view-l">
+      <div class="wb-stage">
+        <img id="wb-scan-img" alt="Скан клиента">
+        <div class="wb-stage-empty" id="wb-scan-empty">Выберите документ в полоске слева</div>
+      </div>
+      <div class="rv-modal wb-inline" id="rv-modal" style="display:none">
+  <div class="rv-modal-win" id="rv-modal-win">
+    <div class="rv-modal-head">
+      <div class="rv-mh-main">
+        <div class="rv-mh-title" id="rv-modal-title">Документ</div>
+        <div class="rv-mh-sub">
+          {folder_html}
+          <span class="rv-mh-src" id="rv-modal-src"></span>
+        </div>
+      </div>
+      <span class="rv-modal-tools" id="rv-modal-tools">
+        <button type="button" class="rv-modal-vars" id="rv-modal-vars">2 Переменные</button>
+        <button type="button" id="rv-modal-fit" title="Показать файл целиком в окне">⤢ Вписать целиком</button>
+        <button type="button" class="rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
+        <button type="button" class="rv-no" id="rv-modal-no">✕ Не нужен</button>
+        <button type="button" id="rv-modal-close">Закрыть ✕</button>
+      </span>
+    </div>
+    <div class="rv-modal-body">
+      <div class="zp-preview" data-zoom-pan>
+        <div class="html-stage" id="rv-modal-stage"></div>
+      </div>
+    </div>
+    <div class="rv-modal-foot">
+      <span class="rv-mf-state" id="rv-modal-note">Правки значений справа применяются к документу сразу.</span>
+      <a class="rv-mf-dl" id="rv-modal-dl" href="#" target="_blank" rel="noopener" hidden>Скачать оригинал</a>
+    </div>
+  </div>
+</div>
+      </div>
+    </div>
+    <div class="wb-vars">{right}</div>
+    <div class="wb-view wb-view-r">
+      <div class="wb-cbar">
+        <span class="lang"><button type="button" class="on">🇬🇧 Оригинал</button><button type="button">🇷🇺 Перевод</button></span>
+        <span class="grow"></span><span>переводится только этот документ</span>
+      </div>
+      <div class="wb-stage">
+        <iframe id="wb-doc" title="Готовый бланк заявки"{_doc_attr}></iframe>
+        <div class="wb-stage-empty" id="wb-doc-empty">Выберите документ в полоске справа — бланк откроется здесь</div>
+      </div>
+    </div>
+    <div class="wb-rail wb-rail-r">{thumbs}</div>
+  </div>
+  {foot}
+</div>
+
+<div class="rv-backdrop" id="rv-backdrop"></div>
+<script>
+/* Обвязка боевой раскладки: раскрытие текста заявки, показ бланка в правом окне
+   и заготовка выгрузки. Логика документов, вердиктов и зума — прежняя. */
+(function () {{
+  var qm = document.getElementById('wb-q-more');
+  var br = document.getElementById('wb-brief');
+  if (qm && br) {{
+    qm.addEventListener('click', function () {{
+      var open = br.hidden;
+      br.hidden = !open;
+      qm.classList.toggle('is-open', open);
+      qm.textContent = open ? '▴ Свернуть текст заявки' : '▾ Развернуть текст заявки';
+    }});
+  }}
+  document.addEventListener('click', function (e) {{
+    var t = e.target && e.target.closest ? e.target.closest('.rv-thumb[data-tpl]') : null;
+    if (t && t.dataset.tpl) {{
+      var f = document.getElementById('wb-doc');
+      var fe = document.getElementById('wb-doc-empty');
+      if (f) {{ f.src = '/applications/{app_id}/doc/' + t.dataset.tpl + '/html'; }}
+      if (fe) {{ fe.style.display = 'none'; }}
+    }}
+  }}, true);
+  var up = document.getElementById('wb-upload');
+  if (up) {{
+    up.addEventListener('click', function () {{
+      if (!up.disabled) {{ alert('Выгрузка на Google Диск: функция в разработке — нужна загрузка в gdrive_api.'); }}
+    }});
+  }}
+  var vc = document.getElementById('wb-vars-collapse');
+  if (vc) {{
+    vc.addEventListener('click', function () {{
+      var a = document.getElementById('rv-collapse-all');
+      if (a) {{ a.click(); }}
+    }});
+  }}
+  /* Этапы-кнопки: пока идёт работа — бегут полоски, когда готово — зелёный. */
+  (function bindTiles() {{
+    var tiles = [['rv-scan', 'wb-note-1', 'идёт выгрузка', 'готово'],
+                 ['wb-tile-2', 'wb-note-2', null, 'готово'],
+                 ['rv-autofill', 'wb-note-3', 'идёт заполнение', 'готово']];
+    tiles.forEach(function (spec) {{
+      var b = document.getElementById(spec[0]), note = document.getElementById(spec[1]);
+      if (!b) {{ return; }}
+      b.addEventListener('click', function () {{
+        if (b.id !== 'wb-tile-2') {{ b.classList.add('is-run'); if (note && spec[2]) {{ note.textContent = spec[2]; }} }}
+      }});
+      new MutationObserver(function () {{
+        if (b.dataset.done === '1') {{
+          b.classList.remove('is-run'); b.classList.add('is-done');
+          if (note) {{ note.textContent = spec[3]; }}
+        }}
+      }}).observe(b, {{ attributes: true, attributeFilter: ['data-done', 'class'] }});
+    }});
+  }})();
+  /* Левое окно: показываем скан клиента простой картинкой (лёгкий каркас,
+     движок зума подключим отдельно, чтобы страница не тормозила). */
+  function showScan(tile) {{
+    var img = document.getElementById('wb-scan-img');
+    var emp = document.getElementById('wb-scan-empty');
+    if (!img || !tile) {{ return; }}
+    var page = tile.dataset.page || '';
+    var name = tile.dataset.file || '';
+    var big = page || ('/applications/{app_id}/file?name=' + encodeURIComponent(name) + '&w=1400');
+    img.src = big;
+    img.style.display = 'block';
+    if (emp) {{ emp.style.display = 'none'; }}
+  }}
+  document.addEventListener('click', function (e) {{
+    var t = e.target && e.target.closest ? e.target.closest('.wb-rail-l .rv-thumb') : null;
+    if (t) {{ showScan(t); }}
+  }}, true);
+  /* Этап 1 «Выгрузка с Google Диска»: пока грузятся миниатюры клиента, этап
+     мигает и пишет, сколько уже выгружено; когда всё загрузилось — галочка.
+     Сам визор и наши бланки подключаются после этого, чтобы разметка и поля
+     показывались сразу. */
+  (function stageOne() {{
+    var tile1 = document.getElementById('rv-scan');
+    var note = document.getElementById('wb-note-1');
+    var tiles = document.querySelectorAll('.wb-rail-l .rv-thumb img');
+    if (!tiles.length) {{ return; }}
+    var total = tiles.length, done = 0;
+    if (tile1) {{ tile1.classList.add('is-run'); }}
+    function tick() {{
+      done++;
+      if (note) {{
+        note.textContent = done >= total ? ('выгружено: ' + total)
+                                         : ('идёт выгрузка: ' + done + ' из ' + total);
+      }}
+      if (done >= total && tile1) {{
+        tile1.classList.remove('is-run');
+        tile1.classList.add('is-done');
+        var t2 = document.getElementById('wb-tile-2');
+        var n2 = document.getElementById('wb-note-2');
+        if (t2) {{ t2.classList.add('is-cur'); }}
+        if (n2) {{ n2.textContent = 'можно распознавать'; }}
+        /* Наши бланки подключаем только теперь: сначала разметка и документы
+           клиента, потом правая сторона. Так страница не ждёт всё сразу. */
+        var fd = document.getElementById('wb-doc');
+        var fde = document.getElementById('wb-doc-empty');
+        var onT = document.querySelector('.wb-rail-r .rv-thumb.is-on') ||
+                  document.querySelector('.wb-rail-r .rv-thumb[data-tpl]');
+        if (fd && !fd.getAttribute('src') && onT) {{
+          fd.src = '/applications/{app_id}/doc/' + onT.dataset.tpl + '/html';
+          if (fde) {{ fde.style.display = 'none'; }}
+        }}
+      }}
+    }}
+    for (var i = 0; i < tiles.length; i++) {{
+      var im = tiles[i];
+      if (!im.getAttribute('src') && im.dataset.src) {{ im.src = im.dataset.src; }}
+      if (im.complete && im.naturalWidth) {{ tick(); }}
+      else {{ im.addEventListener('load', tick); im.addEventListener('error', tick); }}
+    }}
+  }})();
+  /* Переменные зависят от открытого документа: щёлкнули наш бланк — в центре
+     остаются его поля, щёлкнули скан клиента — снова все поля заявки. */
+  function wbFilterVars(tpl, title) {{
+    var fields = document.querySelectorAll('.wb-vars .rv-field');
+    var shown = 0;
+    for (var i = 0; i < fields.length; i++) {{
+      var list = (fields[i].dataset.tpls || '').split(',');
+      var ok = !tpl || list.indexOf(String(tpl)) >= 0;
+      fields[i].style.display = ok ? '' : 'none';
+      if (ok) {{ shown++; }}
+    }}
+    var blks = document.querySelectorAll('.wb-vars .rv-blk');
+    for (var b = 0; b < blks.length; b++) {{
+      var body = blks[b].querySelector('.rv-blk-body');
+      var vis = body ? body.querySelectorAll('.rv-field').length : 0;
+      var real = 0;
+      if (body) {{
+        var ff = body.querySelectorAll('.rv-field');
+        for (var k = 0; k < ff.length; k++) {{ if (ff[k].style.display !== 'none') {{ real++; }} }}
+      }}
+      blks[b].style.display = real ? '' : 'none';
+      var n = blks[b].querySelector('.rv-blk-n');
+      if (n) {{ n.textContent = real; }}
+      if (vis === 0) {{ blks[b].style.display = 'none'; }}
+    }}
+    var cap = document.getElementById('wb-vars-scope');
+    if (cap) {{ cap.textContent = title ? ('документ: ' + title) : 'вся заявка'; }}
+    var cnt = document.getElementById('wb-vars-cnt');
+    if (cnt) {{ cnt.textContent = shown; }}
+  }}
+  document.addEventListener('click', function (e) {{
+    if (!e.target || !e.target.closest) {{ return; }}
+    var t = e.target.closest('.rv-thumb[data-tpl]');
+    if (t) {{
+      var nm = t.querySelector('.rv-thumb-name');
+      wbFilterVars(t.dataset.tpl, nm ? nm.textContent.trim() : '');
+      return;
+    }}
+    if (e.target.closest('.wb-rail-l .rv-thumb')) {{ wbFilterVars('', ''); }}
+  }}, true);
+  /* При открытии заявки сразу наполняем оба окна и показываем переменные
+     первого документа — чтобы было видно: окон два, слева клиент, справа наши. */
+  setTimeout(function () {{
+    var on = document.querySelector('.wb-rail-r .rv-thumb.is-on') ||
+             document.querySelector('.wb-rail-r .rv-thumb[data-tpl]');
+    if (on) {{
+      var nm = on.querySelector('.rv-thumb-name');
+      wbFilterVars(on.dataset.tpl, nm ? nm.textContent.trim() : '');
+      var f = document.getElementById('wb-doc');
+      var fe = document.getElementById('wb-doc-empty');
+      if (f && !f.getAttribute('src')) {{
+        f.src = '/applications/{app_id}/doc/' + on.dataset.tpl + '/html';
+        if (fe) {{ fe.style.display = 'none'; }}
+      }}
+    }}
+    /* Автопоказ первого скана — БЕЗ нажатия на плитку: нажатие открывало
+       тяжёлое окно-модалку с движком зума, и страница подвисала. Здесь просто
+       показываем картинку в левом окне. */
+    var sc = document.querySelector('.wb-rail-l .rv-thumb');
+    if (sc) {{ showScan(sc); }}
+  }}, 1000);
+}})();
+</script>
+<script>
+{js_for(app_id, picked)}
+</script>
+"""
+
+    from blocks.shared.layout import render
+    crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/history">История и поиск</a>'
+              f' &rsaquo; <b>Проверка заявки #{app_id}</b>')
+    return render(f"Проверка заявки #{app_id}", "history", body, crumbs=crumbs)

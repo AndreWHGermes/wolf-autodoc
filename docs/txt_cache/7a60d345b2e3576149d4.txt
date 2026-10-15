@@ -1,0 +1,103 @@
+LLC "MODUL"
+REMOTE WORK AGREEMENT
+For E33G Visa / Remote Worker KITAS Support
+This Remote Work Agreement ("Agreement") is made on this 17th day of September 2026.
+
+BETWEEN
+
+LLC "MODUL" (Obshchestvo s ogranichennoy otvetstvennostyu «MODUL»), a limited liability company
+incorporated under the laws of the Russian Federation, with registered address at 26 Novoryazanskaya
+St., bldg. 1, premises 2/1, Moscow, 105066, Russian Federation, INN: 000000000, KPP: 770101001,
+OGRN: 1257700396117, represented by its General Director Yuri Kupriyanov (hereinafter referred to as
+the "Company")
+AND
+CLIENT LOGOIDA, Passport No: 75 9380339, Date of Birth: 08 February 2001, Nationality:
+Russian Federation, Place of Birth: Moscow Region, Russia, (hereinafter referred to as the
+"Contractor")
+
+1. NATURE OF ENGAGEMENT
+
+The Company engages the Contractor as a Software Developer to provide the following services:
+— design, development, testing and maintenance of the Company's software products and information systems;
+— writing, reviewing and optimising program code in accordance with the Company's technical requirements;
+— integration of software components, databases and third-party services;
+— fixing defects, improving performance and ensuring the security of software;
+— preparation of technical documentation and participation in project planning with the Company's team.
+The Contractor shall perform all duties remotely and independently, including while temporarily residing in
+Indonesia. The Contractor shall not provide services to any Indonesian individual, company, or entity, and
+shall not derive income from Indonesian sources under this Agreement. All services rendered under this
+Agreement are provided exclusively for the Company and its operations.
+
+2. TERM
+
+This Agreement has been in effect since 16th September 2025 and shall remain valid until 16th September
+2030, unless terminated earlier by either party with 30 days written notice. This Agreement may be renewed
+by mutual written agreement between the parties.
+
+3. COMPENSATION
+
+The Company agrees to pay the Contractor:
+RUB 6,720,000 (Six Million Seven Hundred Twenty Thousand Russian Rubles) per
+annum,
+● which is RUB 560,000 (Five Hundred Sixty Thousand Russian Rubles) per month.
+
+Payments shall be made via international bank transfer to the Contractor's nominated bank account. The
+Contractor shall be solely responsible for any personal tax obligations arising in their country of tax
+residence. The Company shall not be responsible for any Indonesian tax obligations, if any arise under
+applicable Indonesian regulations.
+4. REMOTE WORK CONFIRMATION
+
+The Company confirms that:
+— The Contractor performs services exclusively for the Company.
+— The Company is not incorporated, registered, or operating in Indonesia.
+— The Contractor does not conduct business activities within Indonesia on behalf of the Company.
+— The Contractor's work is location-independent and fully remote.
+
+5. INDEPENDENT STATUS
+
+The Contractor acts as an independent contractor/remote employee under the laws of the Company's
+jurisdiction, and shall not be considered an employee of any Indonesian entity. Nothing in this Agreement
+shall be interpreted as establishing:
+— an Indonesian employment relationship
+— a permanent establishment in Indonesia
+— or any form of Indonesian commercial activity.
+6. GOVERNING LAW
+
+This Agreement shall be governed by and interpreted in accordance with the laws of the Russian Federation.
+
+7. COMPANY DECLARATION FOR INDONESIAN REMOTE WORKER VISA
+
+For the purpose of supporting the Contractor's E33G Remote Worker Visa / KITAS application in Indonesia,
+the Company formally confirms that:
+— CLIENT Logoida is engaged by the Company as a Software Developer since 16 September
+2025.
+— The Contractor performs services solely for the Company's operations.
+— The Contractor does not work for any Indonesian company, client, or entity.
+— The Contractor does not receive income from Indonesian sources.
+— The Company is not incorporated, registered, or conducting business in Indonesia.
+— The Contractor's work is fully remote and location-independent, and may be carried out while
+temporarily residing in Indonesia.
+— This Agreement does not establish any employment relationship or commercial activity within
+Indonesia.
+This declaration forms an integral part of this Agreement.
+
+SIGNATURES
+
+Signed on behalf of the Company:
+Title: GENERAL DIRECTOR
+Name: Yuri Kupriyanov
+
+Signature: ___________________________
+
+L.S.
+
+Contractor:
+Name: CLIENT Logoida
+Passport: 75 9380339
+
+Signature: ___________________________
+Date: 17 September 2026
+
+LLC "MODUL" | 105066, Moscow, Novoryazanskaya 26/1, prem. 2/1 | INN 000000000 | KPP 770101001 | OGRN 1257700396117
+
+

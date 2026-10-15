@@ -1,0 +1,642 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<title>Тестовый прогон на реальных данных — CLIENT ANNA</title>
+<style>
+body{font-family:"DejaVu Sans",Arial,sans-serif;margin:0;padding:22px;background:#F6F8F7;color:#1E293B}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:26px 0 6px}
+h3{font-size:14.5px;margin:18px 0 6px;color:#166534}
+.lead{font-size:13px;color:#475569;margin-bottom:16px}
+.card{background:#fff;border:1px solid #E2E8E4;border-radius:10px;padding:14px 16px;margin-bottom:14px}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{border-bottom:1px solid #EDF1EE;padding:5px 7px;text-align:left;vertical-align:top}
+th{background:#F4FAF6;color:#166534;font-weight:600}
+code{background:#F1F5F3;padding:1px 4px;border-radius:4px;font-size:11.5px}
+.v{font-weight:600}.meta{font-size:11.5px;color:#64748B}
+.pill{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10.5px}
+.bad{background:#FEF2F2;color:#B91C1C;border:1px solid #FCA5A5}
+.ok{background:#ECFDF5;color:#15803D;border:1px solid #BBF7D0}
+</style></head><body>
+<h1>Тестовый прогон: реальные данные одного клиента</h1>
+<div class="lead">Клиент: <b>CLIENT ANNA</b> (id 65) · продукты: BRIDGING, C1, C1-EXT, CONV, D12, E33G-EXT, E33G-NEW · папка на Google Диске: 19 файл(ов)<br>Источник данных: карточка клиента и его реальные документы из папки на Диске. Один и тот же человек во всех документах всех продуктов.</div>
+<div class="card"><b>Пакетный набор клиента на Google Диске</b><div class="meta">02.pdf · B12E21E1087150-C.pdf · Bridging_Visa_CLIENT(1).pdf · CONTRACT.pdf · Contract_Linguamarina_2026__Anna_CLIENT_.pdf · FOTO - CLIENT_048.jpg · ITK - CLIENT_048.pdf · ITK.pdf · PASSPORT - CLIENT_048.jpg · Resume_Anna_CLIENT.pdf · Work_Agreement_Anna_CLIENT.pdf · Z1B0553648.pdf · bankstatement.pdf · organized_CLIENT.pdf · passport.pdf · personal.pdf · Снимок экрана 2026-09-26 в 15.13.57.jpg · Справка о движении средств.pdf · Справка о доступном остатке.pdf</div></div>
+<h2>BRIDGING — Мостовая виза (60 дней на переход) <span class="meta">(заявка №91)</span></h2>
+<div class="meta">документов 5 · переменных 95 · без значения 9 · расхождений между документами 1</div>
+<div class="card"><h3>bridging_request_letter__default — «Bridging: письмо в иммиграцию (офис по адресу клиента)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>addressee_line1</code></td><td class="v">Bapak Kepala Kantor Imigrasi Kelas I Khusus TPI Ngurah Rai</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line2</code></td><td class="v">Jalan Perumahan Taman Jimbaran No. 1 Mumbul,</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line3</code></td><td class="v">Kabupaten Badung, Bali</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_address</code></td><td class="v">Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_name</code></td><td class="v">Marcellena Nirmala Chrisna Moeri</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_nik</code></td><td class="v">5171015403930001</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>body_request_line</code></td><td class="v">Bridging Visa 60 hari untuk orang asing pada perusahaan kami, yang selanjutnya akan di menjadi
+KITAS E33G Remote Worker, dengan data sebagai berikut:</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_dob</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_gender</code></td><td class="v">Perempuan</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default</td></tr>
+<tr><td><code>client_nationality</code></td><td class="v">RUSIA</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>itk_expiry</code></td><td class="v">15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>itk_no</code></td><td class="v">B12E21E1087150-C</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_no</code></td><td class="v">97/PTAPB-SP/06.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_place_date</code></td><td class="v">Badung, 24 Agustus 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_subject</code></td><td class="v">Permohonan Bridging Visa 60 Hari</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_expiry</code></td><td class="v">23-11-2030</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>signatory_name</code></td><td class="v">Bartosz Pawel Nafalski</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/BRIDGING/bridging_request_letter__default.html</div></div>
+<div class="card"><h3>cv__format_CLIENT — «Резюме (CV) — формат Сиваева» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>cv_date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_degree</code></td><td class="v">Management</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_school</code></td><td class="v">EDUCATION National Research University Higher School</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_years</code></td><td class="v">2013 — 2018</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_bullets</code></td><td class="v">Plan, produce, and coordinate video and social media content across the company’s platforms.
+Manage content calendars and production schedules, coordinating with creative and editing teams.
+Oversee pre-production, filming logistics, and post-production/editing workflows.
+Coordinate remote production operations and ensure timely delivery of content.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_company</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_period</code></td><td class="v">Sep 2022 – Present</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_title</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_languages</code></td><td class="v">Russian (Native), English (Upper-Intermediate)</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_profession</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_hard</code></td><td class="v">Instagram, YouTube, TikTok, video editing, content planning, analytics</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_soft</code></td><td class="v">attention to detail, time management, teamwork, clear communication, responsibility</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_summary</code></td><td class="v">Social Media Producer professional with over 6 years of experience across instagram. Skilled in YouTube, TikTok, video editing, content planning, analytics. Works fully remotely and independently for Linguamarina, Inc..</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/BRIDGING/cv__format_CLIENT.html</div></div>
+<div class="card"><h3>statement_letter_e02__default — «Statement Letter (Form E-02) — Bridging» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_in_indonesia</code></td><td class="v">350901, КРАСНОДАРСКИЙ КРАЙ, Г КРАСНОДАР, УЛ РОССИЙСКАЯ , Д. 79/3, КОРП. 1, КВ. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bridging_request_letter__default</td></tr>
+<tr><td><code>date_of_expiry</code></td><td class="v">15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_issue</code></td><td class="v">09-04-2015</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">06.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>email</code></td><td class="v">CLIENT@alpha-prime.group</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>existing_stay_permit</code></td><td class="v">VISIT STAY PERMIT (ITK), VALID UNTIL 15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>guarantor</code></td><td class="v">Bartosz Pawel Nafalski</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">RUSIA</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>occupation</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>place</code></td><td class="v">Badung</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_birth_inline</code></td><td class="v">NEZLOBNAYA / 01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>purpose_of_application</code></td><td class="v">Visa Bridging to E33G</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>stay_permit_no</code></td><td class="v">B12E21E1087150-C</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>stay_permit_to_be_applied_for</code></td><td class="v">BRIDGE</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/BRIDGING/statement_letter_e02__default.html</div></div>
+<div class="card"><h3>remote_work_agreement__default — «Remote Work Agreement (контракт)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>agreement_date</code></td><td class="v">30th September 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_numeric</code></td><td class="v">7,284,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_words</code></td><td class="v">Seven Million Two Hundred Eighty-Four Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_incorporated_phrase</code></td><td class="v">(Linguamarina, Inc.), a software development company incorporated under the laws of the Russian Federation,</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_name_in_quotes</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_registered_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>employee_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employer_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_line</code></td><td class="v">— CLIENT ANNA SERGEEVNA is engaged by the Company as a social media producer / creative producer since 6th September 2024.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_phrase</code></td><td class="v">as a social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_kpp_ogrn</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_ogrn_line</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_numeric</code></td><td class="v">607,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_words</code></td><td class="v">Six Hundred Seven Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, employment_contract__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, employment_contract__default</td></tr>
+<tr><td><code>passport_valid_until</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bridging_request_letter__default, employment_contract__default</td></tr>
+<tr><td><code>services_list</code></td><td class="v">•&amp;nbsp;&amp;nbsp;Planning and scheduling content across social media platforms;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Managing production timelines and coordinating creative teams;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Organization of video shoots and post-production workflows;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Preparation of creative briefs and performance reports.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>term_start_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/BRIDGING/remote_work_agreement__default.html</div></div>
+<div class="card"><h3>employment_contract__default — «Employment Contract (договор работы с организацией)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>company_address_1</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_address_2</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_entity_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_full_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_type</code></td><td class="v">Limited Liability Company</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_no</code></td><td class="v">L-</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_place</code></td><td class="v">Moscow</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>employee_full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_short</code></td><td class="v">CLIENT A.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>governing_law</code></td><td class="v">the Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, remote_work_agreement__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, remote_work_agreement__default</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bridging_request_letter__default, remote_work_agreement__default</td></tr>
+<tr><td><code>signer_name</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_title</code></td><td class="v">GENERAL DIRECTOR</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/BRIDGING/employment_contract__default.html</div></div>
+<div class="card"><b>Расхождения: одна переменная — разные значения в документах группы</b><table><tr><th>Переменная</th><th>Значения по документам</th></tr>
+<tr><td><code>nationality</code></td><td class="meta">statement_letter_e02__default = RUSIA | remote_work_agreement__default = Russian Federation | employment_contract__default = Russian Federation</td></tr>
+</table></div>
+<h2>C1 — Виза C1 (B211A — кунджунган, 60 дней, до 180 с продлением) <span class="meta">(заявка №92)</span></h2>
+<div class="meta">документов 2 · переменных 21 · без значения 0 · расхождений между документами 0</div>
+<div class="card"><h3>bank_statement_3m__sber — «Банковская справка 3 мес. (Сбер)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>account_no</code></td><td class="v">40817810000013042292</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/C1/bank_statement_3m__sber.html</div></div>
+<div class="card"><h3>bank_statement_3m__tbank — «Банковская справка 3 мес. (Т-Банк)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/C1/bank_statement_3m__tbank.html</div></div>
+<h2>C1-EXT — Продление C1 (+60 дней, до 180) <span class="meta">(заявка №93)</span></h2>
+<div class="meta">документов 2 · переменных 21 · без значения 0 · расхождений между документами 0</div>
+<div class="card"><h3>bank_statement_3m__sber — «Банковская справка 3 мес. (Сбер)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>account_no</code></td><td class="v">40817810000013042292</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/C1-EXT/bank_statement_3m__sber.html</div></div>
+<div class="card"><h3>bank_statement_3m__tbank — «Банковская справка 3 мес. (Т-Банк)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/C1-EXT/bank_statement_3m__tbank.html</div></div>
+<h2>CONV — Конверсия (Alih Status) — выход в KITAS <span class="meta">(заявка №94)</span></h2>
+<div class="meta">документов 5 · переменных 95 · без значения 9 · расхождений между документами 1</div>
+<div class="card"><h3>conversion_request_letter__default — «Conversion: письмо в иммиграцию (офис по адресу клиента)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>addressee_line1</code></td><td class="v">Bapak Kepala Kantor Imigrasi Kelas I Khusus TPI Ngurah Rai</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line2</code></td><td class="v">Jalan Perumahan Taman Jimbaran No. 1 Mumbul,</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line3</code></td><td class="v">Kabupaten Badung, Bali</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_address</code></td><td class="v">Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_name</code></td><td class="v">Marcellena Nirmala Chrisna Moeri</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_nik</code></td><td class="v">5171015403930001</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>body_request_line</code></td><td class="v">Konversi Bridging Visa menjadi KITAS E33G Remote Worker untuk orang asing pada perusahaan
+kami dengan data sebagai berikut:</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_dob</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_gender</code></td><td class="v">Perempuan</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default</td></tr>
+<tr><td><code>client_nationality</code></td><td class="v">RUSIA</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>itk_expiry</code></td><td class="v">15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>itk_no</code></td><td class="v">B12E21E1087150-C</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_no</code></td><td class="v">97/PTAPB-SP/06.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_place_date</code></td><td class="v">Badung, 24 Agustus 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_subject</code></td><td class="v">Konversi Bridging Visa menjadi KITAS E33G Remote Worker</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_expiry</code></td><td class="v">23-11-2030</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>signatory_name</code></td><td class="v">Bartosz Pawel Nafalski</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/CONV/conversion_request_letter__default.html</div></div>
+<div class="card"><h3>cv__format_CLIENT — «Резюме (CV) — формат Сиваева» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>cv_date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_degree</code></td><td class="v">Management</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_school</code></td><td class="v">EDUCATION National Research University Higher School</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_years</code></td><td class="v">2013 — 2018</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_bullets</code></td><td class="v">Plan, produce, and coordinate video and social media content across the company’s platforms.
+Manage content calendars and production schedules, coordinating with creative and editing teams.
+Oversee pre-production, filming logistics, and post-production/editing workflows.
+Coordinate remote production operations and ensure timely delivery of content.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_company</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_period</code></td><td class="v">Sep 2022 – Present</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_title</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_languages</code></td><td class="v">Russian (Native), English (Upper-Intermediate)</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_profession</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_hard</code></td><td class="v">Instagram, YouTube, TikTok, video editing, content planning, analytics</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_soft</code></td><td class="v">attention to detail, time management, teamwork, clear communication, responsibility</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_summary</code></td><td class="v">Social Media Producer professional with over 6 years of experience across instagram. Skilled in YouTube, TikTok, video editing, content planning, analytics. Works fully remotely and independently for Linguamarina, Inc..</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/CONV/cv__format_CLIENT.html</div></div>
+<div class="card"><h3>statement_letter_e02__default — «Statement Letter (Form E-02) — Bridging» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_in_indonesia</code></td><td class="v">350901, КРАСНОДАРСКИЙ КРАЙ, Г КРАСНОДАР, УЛ РОССИЙСКАЯ , Д. 79/3, КОРП. 1, КВ. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">conversion_request_letter__default</td></tr>
+<tr><td><code>date_of_expiry</code></td><td class="v">15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_issue</code></td><td class="v">09-04-2015</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">06.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>email</code></td><td class="v">CLIENT@alpha-prime.group</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>existing_stay_permit</code></td><td class="v">VISIT STAY PERMIT (ITK), VALID UNTIL 15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>guarantor</code></td><td class="v">Bartosz Pawel Nafalski</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">RUSIA</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>occupation</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default, employment_contract__default</td></tr>
+<tr><td><code>place</code></td><td class="v">Badung</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_birth_inline</code></td><td class="v">NEZLOBNAYA / 01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>purpose_of_application</code></td><td class="v">Visa Bridging to E33G</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>stay_permit_no</code></td><td class="v">B12E21E1087150-C</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>stay_permit_to_be_applied_for</code></td><td class="v">BRIDGE</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/CONV/statement_letter_e02__default.html</div></div>
+<div class="card"><h3>remote_work_agreement__default — «Remote Work Agreement (контракт)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>agreement_date</code></td><td class="v">30th September 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_numeric</code></td><td class="v">7,284,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_words</code></td><td class="v">Seven Million Two Hundred Eighty-Four Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_incorporated_phrase</code></td><td class="v">(Linguamarina, Inc.), a software development company incorporated under the laws of the Russian Federation,</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_name_in_quotes</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_registered_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>employee_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employer_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_line</code></td><td class="v">— CLIENT ANNA SERGEEVNA is engaged by the Company as a social media producer / creative producer since 6th September 2024.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_phrase</code></td><td class="v">as a social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_kpp_ogrn</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_ogrn_line</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_numeric</code></td><td class="v">607,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_words</code></td><td class="v">Six Hundred Seven Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, employment_contract__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, employment_contract__default</td></tr>
+<tr><td><code>passport_valid_until</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">conversion_request_letter__default, employment_contract__default</td></tr>
+<tr><td><code>services_list</code></td><td class="v">•&amp;nbsp;&amp;nbsp;Planning and scheduling content across social media platforms;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Managing production timelines and coordinating creative teams;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Organization of video shoots and post-production workflows;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Preparation of creative briefs and performance reports.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>term_start_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/CONV/remote_work_agreement__default.html</div></div>
+<div class="card"><h3>employment_contract__default — «Employment Contract (договор работы с организацией)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>company_address_1</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_address_2</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_entity_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_full_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_type</code></td><td class="v">Limited Liability Company</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_no</code></td><td class="v">L-</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_place</code></td><td class="v">Moscow</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>employee_full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_short</code></td><td class="v">CLIENT A.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>governing_law</code></td><td class="v">the Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, remote_work_agreement__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">statement_letter_e02__default, remote_work_agreement__default</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">conversion_request_letter__default, remote_work_agreement__default</td></tr>
+<tr><td><code>signer_name</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_title</code></td><td class="v">GENERAL DIRECTOR</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/CONV/employment_contract__default.html</div></div>
+<div class="card"><b>Расхождения: одна переменная — разные значения в документах группы</b><table><tr><th>Переменная</th><th>Значения по документам</th></tr>
+<tr><td><code>nationality</code></td><td class="meta">statement_letter_e02__default = RUSIA | remote_work_agreement__default = Russian Federation | employment_contract__default = Russian Federation</td></tr>
+</table></div>
+<h2>D12 — Виза D12 — Pra-Investasi (многократная 1–2 года) <span class="meta">(заявка №95)</span></h2>
+<div class="meta">документов 5 · переменных 80 · без значения 5 · расхождений между документами 0</div>
+<div class="card"><h3>bank_statement_3m__sber — «Банковская справка 3 мес. (Сбер)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>account_no</code></td><td class="v">40817810000013042292</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank, d12_cover_letter__default</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/D12/bank_statement_3m__sber.html</div></div>
+<div class="card"><h3>bank_statement_3m__tbank — «Банковская справка 3 мес. (Т-Банк)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber, d12_cover_letter__default</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/D12/bank_statement_3m__tbank.html</div></div>
+<div class="card"><h3>cv__format_CLIENT — «Резюме (CV) — формат Сиваева» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>cv_date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_degree</code></td><td class="v">Management</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_school</code></td><td class="v">EDUCATION National Research University Higher School</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_years</code></td><td class="v">2013 — 2018</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_bullets</code></td><td class="v">Plan, produce, and coordinate video and social media content across the company’s platforms.
+Manage content calendars and production schedules, coordinating with creative and editing teams.
+Oversee pre-production, filming logistics, and post-production/editing workflows.
+Coordinate remote production operations and ensure timely delivery of content.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_company</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_period</code></td><td class="v">Sep 2022 – Present</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_title</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_languages</code></td><td class="v">Russian (Native), English (Upper-Intermediate)</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_profession</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_hard</code></td><td class="v">Instagram, YouTube, TikTok, video editing, content planning, analytics</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_soft</code></td><td class="v">attention to detail, time management, teamwork, clear communication, responsibility</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_summary</code></td><td class="v">Social Media Producer professional with over 6 years of experience across instagram. Skilled in YouTube, TikTok, video editing, content planning, analytics. Works fully remotely and independently for Linguamarina, Inc..</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/D12/cv__format_CLIENT.html</div></div>
+<div class="card"><h3>d12_cover_letter__default — «D12: Permohonan Visa (ходатайство)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_in_indonesia</code></td><td class="v">350901, КРАСНОДАРСКИЙ КРАЙ, Г КРАСНОДАР, УЛ РОССИЙСКАЯ , Д. 79/3, КОРП. 1, КВ. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line1</code></td><td class="v">Bapak Kepala Kantor Imigrasi Kelas I Khusus TPI Ngurah Rai</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line2</code></td><td class="v">Jalan Perumahan Taman Jimbaran No. 1 Mumbul,</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>addressee_line3</code></td><td class="v">Kabupaten Badung, Bali</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_address</code></td><td class="v">Jl. Tukad Balian Gg. Wirasatya VII/1A Sidakarya</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_nik</code></td><td class="v">5171015403930001</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>attorney_occupation</code></td><td class="v">Swasta</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_citizenship</code></td><td class="v">RUSIA</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_gender</code></td><td class="v">Perempuan</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber, bank_statement_3m__tbank</td></tr>
+<tr><td><code>itk_expiry</code></td><td class="v">15-09-2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>itk_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_no</code></td><td class="v">97/PTAPB-SP/06.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>letter_subject</code></td><td class="v">Permohonan Visa D12</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_expiry</code></td><td class="v">23-11-2030</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_birth_inline</code></td><td class="v">NEZLOBNAYA / 01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_date</code></td><td class="v">Badung, 6 Oktober 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>signatory_citizenship</code></td><td class="v">Polandia</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>signatory_name</code></td><td class="v">Bartosz Pawel Nafalski</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>signatory_person_name</code></td><td class="v">BARTOSZ PAWEL NAFALSKI</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>sponsor_address</code></td><td class="v">Jl. Wisma Udayana No.164 Buruan, Kec. Blahbatuh, Kabupaten Gianyar, Bali 80581</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>sponsor_company</code></td><td class="v">PT ALPHA PRIME BALI</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>sponsor_contact</code></td><td class="v">Telp: +62 811 397 9669, Email: ptalphaprimeconsulting@gmail.com</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/D12/d12_cover_letter__default.html</div></div>
+<div class="card"><h3>employment_contract__default — «Employment Contract (договор работы с организацией)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>company_address_1</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_address_2</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_entity_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_full_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_type</code></td><td class="v">Limited Liability Company</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_no</code></td><td class="v">L-</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_place</code></td><td class="v">Moscow</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_short</code></td><td class="v">CLIENT A.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>governing_law</code></td><td class="v">the Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_name</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_title</code></td><td class="v">GENERAL DIRECTOR</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/D12/employment_contract__default.html</div></div>
+<h2>E33G-EXT — Продление E33G КИТАС <span class="meta">(заявка №96)</span></h2>
+<div class="meta">документов 5 · переменных 78 · без значения 8 · расхождений между документами 0</div>
+<div class="card"><h3>bank_statement_3m__tbank — «Банковская справка 3 мес. (Т-Банк)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__sber</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-EXT/bank_statement_3m__tbank.html</div></div>
+<div class="card"><h3>cv__format_CLIENT — «Резюме (CV) — формат Сиваева» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>cv_date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_degree</code></td><td class="v">Management</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_school</code></td><td class="v">EDUCATION National Research University Higher School</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_years</code></td><td class="v">2013 — 2018</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_bullets</code></td><td class="v">Plan, produce, and coordinate video and social media content across the company’s platforms.
+Manage content calendars and production schedules, coordinating with creative and editing teams.
+Oversee pre-production, filming logistics, and post-production/editing workflows.
+Coordinate remote production operations and ensure timely delivery of content.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_company</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_period</code></td><td class="v">Sep 2022 – Present</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_title</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_languages</code></td><td class="v">Russian (Native), English (Upper-Intermediate)</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_profession</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_hard</code></td><td class="v">Instagram, YouTube, TikTok, video editing, content planning, analytics</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_soft</code></td><td class="v">attention to detail, time management, teamwork, clear communication, responsibility</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_summary</code></td><td class="v">Social Media Producer professional with over 6 years of experience across instagram. Skilled in YouTube, TikTok, video editing, content planning, analytics. Works fully remotely and independently for Linguamarina, Inc..</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-EXT/cv__format_CLIENT.html</div></div>
+<div class="card"><h3>remote_work_agreement__default — «Remote Work Agreement (контракт)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>agreement_date</code></td><td class="v">30th September 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_numeric</code></td><td class="v">7,284,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_words</code></td><td class="v">Seven Million Two Hundred Eighty-Four Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_incorporated_phrase</code></td><td class="v">(Linguamarina, Inc.), a software development company incorporated under the laws of the Russian Federation,</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_name_in_quotes</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_registered_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>employee_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employer_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_line</code></td><td class="v">— CLIENT ANNA SERGEEVNA is engaged by the Company as a social media producer / creative producer since 6th September 2024.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_phrase</code></td><td class="v">as a social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_kpp_ogrn</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_ogrn_line</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_numeric</code></td><td class="v">607,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_words</code></td><td class="v">Six Hundred Seven Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>passport_valid_until</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>services_list</code></td><td class="v">•&amp;nbsp;&amp;nbsp;Planning and scheduling content across social media platforms;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Managing production timelines and coordinating creative teams;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Organization of video shoots and post-production workflows;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Preparation of creative briefs and performance reports.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>term_start_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-EXT/remote_work_agreement__default.html</div></div>
+<div class="card"><h3>bank_statement_3m__sber — «Банковская справка 3 мес. (Сбер)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>account_no</code></td><td class="v">40817810000013042292</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_3m__tbank</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-EXT/bank_statement_3m__sber.html</div></div>
+<div class="card"><h3>employment_contract__default — «Employment Contract (договор работы с организацией)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>company_address_1</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_address_2</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_entity_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_full_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_type</code></td><td class="v">Limited Liability Company</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_no</code></td><td class="v">L-</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_place</code></td><td class="v">Moscow</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>employee_full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_short</code></td><td class="v">CLIENT A.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>governing_law</code></td><td class="v">the Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>signer_name</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_title</code></td><td class="v">GENERAL DIRECTOR</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-EXT/employment_contract__default.html</div></div>
+<h2>E33G-NEW — Новый E33G КИТАС (Remote Worker) <span class="meta">(заявка №97)</span></h2>
+<div class="meta">документов 5 · переменных 78 · без значения 8 · расхождений между документами 0</div>
+<div class="card"><h3>bank_statement_12m__sber — «Банковская справка 12 мес. (Сбер)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>account_no</code></td><td class="v">40817810000013042292</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__tbank</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-NEW/bank_statement_12m__sber.html</div></div>
+<div class="card"><h3>bank_statement_12m__tbank — «Банковская справка 12 мес. (Т-Банк)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>address_live</code></td><td class="v">350901, Краснодарский Край, Г Краснодар, Ул Российская , д. 79/3, корп. 1, кв. 653</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>balance_rub</code></td><td class="v">7 834 306,99</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>balance_words</code></td><td class="v">seven million eight hundred thirty-four thousand three hundred six</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>card_mask</code></td><td class="v">553691******4644</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>client_name</code></td><td class="v">CLIENT_048</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>doc_date</code></td><td class="v">03.09.2026</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>doc_no</code></td><td class="v">9922732e</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>period_from</code></td><td class="v">02.10.2025</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>period_to</code></td><td class="v">02.10.2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+<tr><td><code>ref_no</code></td><td class="v">B19289961ADL</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">bank_statement_12m__sber</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-NEW/bank_statement_12m__tbank.html</div></div>
+<div class="card"><h3>remote_work_agreement__default — «Remote Work Agreement (контракт)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>agreement_date</code></td><td class="v">30th September 2026</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_numeric</code></td><td class="v">7,284,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>annual_amount_words</code></td><td class="v">Seven Million Two Hundred Eighty-Four Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_incorporated_phrase</code></td><td class="v">(Linguamarina, Inc.), a software development company incorporated under the laws of the Russian Federation,</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_name_in_quotes</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_registered_address</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>employee_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employer_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_line</code></td><td class="v">— CLIENT ANNA SERGEEVNA is engaged by the Company as a social media producer / creative producer since 6th September 2024.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>engagement_phrase</code></td><td class="v">as a social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_kpp_ogrn</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>inn_ogrn_line</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_numeric</code></td><td class="v">607,000</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>monthly_amount_words</code></td><td class="v">Six Hundred Seven Thousand</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>passport_valid_until</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>services_list</code></td><td class="v">•&amp;nbsp;&amp;nbsp;Planning and scheduling content across social media platforms;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Managing production timelines and coordinating creative teams;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Organization of video shoots and post-production workflows;&lt;br&gt;•&amp;nbsp;&amp;nbsp;Preparation of creative briefs and performance reports.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">employment_contract__default</td></tr>
+<tr><td><code>term_start_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-NEW/remote_work_agreement__default.html</div></div>
+<div class="card"><h3>employment_contract__default — «Employment Contract (договор работы с организацией)» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>company_address_1</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_address_2</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_entity_no</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_full_name</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>company_type</code></td><td class="v">Limited Liability Company</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_date</code></td><td class="v">6th September 2024</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_no</code></td><td class="v">L-</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>contract_place</code></td><td class="v">Moscow</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>employee_full_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>employee_short</code></td><td class="v">CLIENT A.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>governing_law</code></td><td class="v">the Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>passport_number</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">remote_work_agreement__default</td></tr>
+<tr><td><code>signer_name</code></td><td class="v"><i style="color:#B91C1C">пусто</i></td><td><span class="pill" style="background:#FEF2F2;color:#B91C1C">нет данных</span></td><td class="meta">—</td></tr>
+<tr><td><code>signer_title</code></td><td class="v">GENERAL DIRECTOR</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>term_end_date</code></td><td class="v">6th September 2029</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">remote_work_agreement__default</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-NEW/employment_contract__default.html</div></div>
+<div class="card"><h3>cv__format_CLIENT — «Резюме (CV) — формат Сиваева» <span class="pill ok">PDF собран</span></h3>
+<table><tr><th>Переменная</th><th>Значение</th><th>Источник</th><th>Ещё в документах группы</th></tr>
+<tr><td><code>cv_date_of_birth</code></td><td class="v">01-02-1995</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_degree</code></td><td class="v">Management</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_school</code></td><td class="v">EDUCATION National Research University Higher School</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_education_years</code></td><td class="v">2013 — 2018</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_bullets</code></td><td class="v">Plan, produce, and coordinate video and social media content across the company’s platforms.
+Manage content calendars and production schedules, coordinating with creative and editing teams.
+Oversee pre-production, filming logistics, and post-production/editing workflows.
+Coordinate remote production operations and ensure timely delivery of content.</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_company</code></td><td class="v">Linguamarina, Inc.</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_period</code></td><td class="v">Sep 2022 – Present</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_job1_title</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_languages</code></td><td class="v">Russian (Native), English (Upper-Intermediate)</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_name</code></td><td class="v">CLIENT ANNA SERGEEVNA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_nationality</code></td><td class="v">Russian Federation</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_passport_no</code></td><td class="v">000000000</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_place_of_birth</code></td><td class="v">NEZLOBNAYA</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_profession</code></td><td class="v">social media producer / creative producer</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_hard</code></td><td class="v">Instagram, YouTube, TikTok, video editing, content planning, analytics</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_skills_soft</code></td><td class="v">attention to detail, time management, teamwork, clear communication, responsibility</td><td><span class="pill" style="background:#FFFBEB;color:#B45309">собрано по правилам</span></td><td class="meta">—</td></tr>
+<tr><td><code>cv_summary</code></td><td class="v">Social Media Producer professional with over 6 years of experience across instagram. Skilled in YouTube, TikTok, video editing, content planning, analytics. Works fully remotely and independently for Linguamarina, Inc..</td><td><span class="pill" style="background:#ECFDF5;color:#15803D">из документа клиента</span></td><td class="meta">—</td></tr>
+</table>
+<div class="meta">файл: /opt/wolf_v2/data/cache/real_kit/E33G-NEW/cv__format_CLIENT.html</div></div>
+</body></html>

@@ -1,0 +1,1517 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ c1dacffd
+
+01.08.2026
+
+CLIENT Denis Victorovich
+Home address: 450103, Resp Bashkortostan, G Ufa, Ul Sochinskaya , D. 7, Kv. 2
+
+About the product
+Date of conclusion of the contract: 30.04.2019
+Contract number: 5136969077
+Personal account number: 40817810400010011758
+
+Movement of funds for the period from 01.08.2025 to 01.08.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+31.07.2026
+08:04
+
+31.07.2026
+08:04
+
+-75 000.00 ₽
+
+-75 000.00 ₽
+
+Internal transfer to contract
+5058435131
+
+6862
+
+31.07.2026
+07:29
+
+31.07.2026
+07:29
+
+-37.50 ₽
+
+-37.50 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+31.07.2026
+07:27
+
+31.07.2026
+07:27
+
+-250.00 ₽
+
+-250.00 ₽
+
+Payment in mBank.MegaFon 6862
+
+30.07.2026
+16:20
+
+30.07.2026
+16:20
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79037332700
+
+30.07.2026
+16:15
+
+30.07.2026
+16:15
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+30.07.2026
+15:19
+
+30.07.2026
+15:34
+
+-179.98 ₽
+
+-179.98 ₽
+
+Replenishment by phone
+6862
+number SBP.100000000273
+RU
+Payment in PYATEROCHKA
+1969
+33176 Ufa RUS
+
+30.07.2026
+15:19
+
+30.07.2026
+15:20
+
+-20.02 ₽
+
+-20.02 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+30.07.2026
+14:50
+
+30.07.2026
+14:51
+
+-1 500.00 ₽
+
+-1 500.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+1969
+
+30.07.2026
+13:05
+
+30.07.2026
+13:05
+
+-30.00 ₽
+
+-30.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+30.07.2026
+13:05
+
+30.07.2026
+13:57
+
+-870.00 ₽
+
+-870.00 ₽
+
+Payment in Sold Smoke Ufa
+RU
+
+1969
+
+30.07.2026
+09:02
+
+30.07.2026
+09:02
+
+-38.55 ₽
+
+-38.55 ₽
+
+Internal transfer to contract
+8294837270
+
+6862
+
+30.07.2026
+09:02
+
+30.07.2026
+09:03
+
+-76 361.45 ₽
+
+-76 361.45 ₽
+
+Payment in Trip.com
+MOSCOW RU
+
+6862
+
+30.07.2026
+08:20
+
+30.07.2026
+08:35
+
+-288.64 ₽
+
+-288.64 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+30.07.2026
+08:20
+
+30.07.2026
+08:20
+
+-11.36 ₽
+
+-11.36 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+30.07.2026
+08:14
+
+30.07.2026
+08:20
+
+-40.00 ₽
+
+-40.00 ₽
+
+Payment in VODA U DOMA
+Dmitrievka RUS
+
+1969
+
+30.07.2026
+08:14
+
+30.07.2026
+08:15
+
+-10.00 ₽
+
+-10.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+6862
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+30.07.2026
+08:02
+
+30.07.2026
+08:02
+
+-3.00 ₽
+
+-3.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+30.07.2026
+08:02
+
+30.07.2026
+08:17
+
+-247.00 ₽
+
+-247.00 ₽
+
+Payment in BRAUNI10 Ufa
+RUS
+
+1969
+
+30.07.2026
+08:00
+
+30.07.2026
+08:01
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+1969
+
+29.07.2026
+18:24
+
+29.07.2026
+18:25
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+29.07.2026
+15:09
+
+29.07.2026
+16:09
+
+-400.00 ₽
+
+-400.00 ₽
+
+Replenishment by phone
+6862
+number SBP.100000000111
+RU
+Payment in OZERO DUNDUK 1969
+Raush RUS
+
+29.07.2026
+14:44
+
+29.07.2026
+14:59
+
+-10.99 ₽
+
+-10.99 ₽
+
+Payment in PYATEROCHKA
+16488 Davlekanovo RUS
+
+1969
+
+29.07.2026
+14:44
+
+29.07.2026
+14:44
+
+-39.01 ₽
+
+-39.01 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+29.07.2026
+14:44
+
+29.07.2026
+14:44
+
+-31.04 ₽
+
+-31.04 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+29.07.2026
+14:44
+
+29.07.2026
+14:59
+
+-118.96 ₽
+
+-118.96 ₽
+
+Payment in PYATEROCHKA
+16488 Davlekanovo RUS
+
+1969
+
+29.07.2026
+13:23
+
+29.07.2026
+13:38
+
+-270.00 ₽
+
+-270.00 ₽
+
+Payment in DOMOVAYA
+1969
+KUKHNYA Davlekanovo RUS
+
+29.07.2026
+13:23
+
+29.07.2026
+13:23
+
+-30.00 ₽
+
+-30.00 ₽
+
+Internal transfer to contract
+8294837270
+
+29.07.2026
+09:37
+
+30.07.2026
+12:46
+
+-1 023.00 ₽
+
+-1 023.00 ₽
+
+Payment in RNAZSBN02-018 1969
+DAVLEKANOVO RUS
+
+29.07.2026
+09:37
+
+29.07.2026
+09:37
+
+-27.00 ₽
+
+-27.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+20:09
+
+28.07.2026
+20:24
+
+-789.65 ₽
+
+-789.65 ₽
+
+Payment in PYATEROCHKA
+16488 Davlekanovo RUS
+
+1969
+
+28.07.2026
+20:09
+
+28.07.2026
+20:10
+
+-10.35 ₽
+
+-10.35 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+15:32
+
+28.07.2026
+15:32
+
+-40.00 ₽
+
+-40.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+15:31
+
+28.07.2026
+16:31
+
+-260.00 ₽
+
+-260.00 ₽
+
+Payment in SP_GBU
+DIREKCIYA 2 Alga RUS
+
+1969
+
+28.07.2026
+14:29
+
+28.07.2026
+14:45
+
+-89.90 ₽
+
+-89.90 ₽
+
+Payment in BAYRAM 246
+Chishmy RUS
+
+1969
+
+28.07.2026
+14:29
+
+28.07.2026
+14:30
+
+-10.10 ₽
+
+-10.10 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+14:19
+
+28.07.2026
+14:25
+
+-265.15 ₽
+
+-265.15 ₽
+
+1969
+
+28.07.2026
+14:19
+
+28.07.2026
+14:20
+
+-34.85 ₽
+
+-34.85 ₽
+
+Payment in
+KRASNOE&BELOE Chishmy
+RUS
+Internal transfer to contract
+8294837270
+
+28.07.2026
+13:32
+
+28.07.2026
+13:32
+
+-37.86 ₽
+
+-37.86 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+13:32
+
+28.07.2026
+13:47
+
+-862.14 ₽
+
+-862.14 ₽
+
+Payment in MAGNIT MM
+LEMOZERO Zubovo RUS
+
+1969
+
+28.07.2026
+13:26
+
+28.07.2026
+13:27
+
+-45.05 ₽
+
+-45.05 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+13:26
+
+28.07.2026
+13:41
+
+-254.95 ₽
+
+-254.95 ₽
+
+Payment in MONETKA
+Zubovo RUS
+
+1969
+
+28.07.2026
+13:25
+
+28.07.2026
+13:25
+
+-39.00 ₽
+
+-39.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+13:25
+
+28.07.2026
+13:30
+
+-1 211.00 ₽
+
+-1 211.00 ₽
+
+Payment in KUEDMYASO
+UFA26 Zubovo RUS
+
+1969
+
+1969
+
+1969
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+28.07.2026
+13:15
+
+28.07.2026
+13:16
+
++12 300.00 ₽
+
++12 300.00 ₽
+
+28.07.2026
+13:14
+
+28.07.2026
+13:14
+
+-12 300.00 ₽
+
+-12 300.00 ₽
+
+Replenishment by phone
+6862
+number SBP.100000000020
+RU
+External transfer by phone
+6862
+number +79270891730
+
+28.07.2026
+09:52
+
+28.07.2026
+09:57
+
+-289.02 ₽
+
+-289.02 ₽
+
+Payment in
+KRASNOE&BELOE Ufa RUS
+
+1969
+
+28.07.2026
+09:52
+
+28.07.2026
+09:53
+
+-10.98 ₽
+
+-10.98 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+08:34
+
+28.07.2026
+08:49
+
+-254.00 ₽
+
+-254.00 ₽
+
+Payment in BRAUNI 8 Ufa
+RUS
+
+1969
+
+28.07.2026
+08:34
+
+28.07.2026
+08:34
+
+-46.00 ₽
+
+-46.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+28.07.2026
+05:54
+
+28.07.2026
+05:54
+
++1 302.00 ₽
+
++1 302.00 ₽
+
+6862
+
+27.07.2026
+20:09
+
+27.07.2026
+20:09
+
+-537.00 ₽
+
+-537.00 ₽
+
+Replenishment by phone
+number Avito.Bezopasnaya
+sdelka MOSCOW RU
+Payment in Autopay.TMobile
+
+27.07.2026
+19:24
+
+27.07.2026
+19:24
+
+-48.03 ₽
+
+-48.03 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+27.07.2026
+19:24
+
+27.07.2026
+19:39
+
+-101.97 ₽
+
+-101.97 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+27.07.2026
+19:19
+
+27.07.2026
+19:34
+
+-36.99 ₽
+
+-36.99 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+27.07.2026
+19:19
+
+27.07.2026
+19:19
+
+-13.01 ₽
+
+-13.01 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+27.07.2026
+19:11
+
+27.07.2026
+19:11
+
+-33.05 ₽
+
+-33.05 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+27.07.2026
+19:11
+
+27.07.2026
+19:26
+
+-316.95 ₽
+
+-316.95 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+27.07.2026
+16:13
+
+27.07.2026
+16:15
+
+-48.51 ₽
+
+-48.51 ₽
+
+Internal transfer to contract
+8294837270
+
+6862
+
+27.07.2026
+16:13
+
+27.07.2026
+16:14
+
+-1 751.49 ₽
+
+-1 751.49 ₽
+
+Payment in Pyaterochka
+33176PQR MOSCOW RU
+
+6862
+
+27.07.2026
+14:12
+
+27.07.2026
+14:12
+
++10 000.00 ₽
+
++10 000.00 ₽
+
+Intrabank transfer from
+contract 5177818662
+
+6862
+
+27.07.2026
+09:53
+
+27.07.2026
+09:53
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+External transfer by phone
+number +79037332700
+
+6862
+
+27.07.2026
+09:22
+
+27.07.2026
+09:23
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 0475108936
+
+6862
+
+27.07.2026
+09:14
+
+27.07.2026
+09:14
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+External transfer by phone
+number +79037332700
+
+6862
+
+27.07.2026
+09:12
+
+27.07.2026
+09:12
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 0475108936
+
+6862
+
+26.07.2026
+20:34
+
+26.07.2026
+20:49
+
+-273.94 ₽
+
+-273.94 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+26.07.2026
+20:34
+
+26.07.2026
+20:34
+
+-26.06 ₽
+
+-26.06 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+26.07.2026
+16:42
+
+26.07.2026
+16:47
+
+-40.00 ₽
+
+-40.00 ₽
+
+Payment in VODA U DOMA
+Dmitrievka RUS
+
+1969
+
+26.07.2026
+16:42
+
+26.07.2026
+16:43
+
+-10.00 ₽
+
+-10.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+26.07.2026
+16:41
+
+26.07.2026
+16:42
+
+-10.00 ₽
+
+-10.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+26.07.2026
+16:41
+
+26.07.2026
+16:46
+
+-40.00 ₽
+
+-40.00 ₽
+
+Payment in VODA U DOMA
+Dmitrievka RUS
+
+1969
+
+6862
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+26.07.2026
+14:58
+
+26.07.2026
+14:59
+
++250 000.00 ₽
+
++250 000.00 ₽
+
+Intrabank transfer from
+contract 5550156094
+
+6862
+
+26.07.2026
+14:17
+
+26.07.2026
+14:17
+
++100 000.00 ₽
+
++100 000.00 ₽
+
+26.07.2026
+13:10
+
+26.07.2026
+13:11
+
+-40.00 ₽
+
+-40.00 ₽
+
+Replenishment by phone
+6862
+number SBP.100000000008
+RU
+Internal transfer to contract 1969
+8294837270
+
+26.07.2026
+13:10
+
+27.07.2026
+13:42
+
+-460.00 ₽
+
+-460.00 ₽
+
+Payment in Delikatesy Ufa
+RUS
+
+1969
+
+26.07.2026
+11:20
+
+26.07.2026
+11:20
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+External transfer by phone
+number +79037332700
+
+6862
+
+26.07.2026
+11:14
+
+26.07.2026
+11:15
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 5320921769
+
+6862
+
+26.07.2026
+10:46
+
+26.07.2026
+10:46
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+External transfer by phone
+number +79037332700
+
+6862
+
+26.07.2026
+10:45
+
+26.07.2026
+10:45
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Intrabank transfer from
+contract 5779301638
+
+6862
+
+26.07.2026
+09:57
+
+26.07.2026
+09:57
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Intrabank transfer from
+contract 5528957359
+
+6862
+
+25.07.2026
+20:10
+
+25.07.2026
+20:10
+
+-390.00 ₽
+
+-390.00 ₽
+
+Payment in Autopay.TMobile
+
+6862
+
+25.07.2026
+19:55
+
+25.07.2026
+20:10
+
+-345.95 ₽
+
+-345.95 ₽
+
+Payment in PYATEROCHKA
+33176 Ufa RUS
+
+1969
+
+25.07.2026
+19:55
+
+25.07.2026
+19:55
+
+-4.05 ₽
+
+-4.05 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+13:55
+
+25.07.2026
+13:55
+
++189.99 ₽
+
++189.99 ₽
+
+25.07.2026
+11:46
+
+25.07.2026
+12:01
+
+-320.00 ₽
+
+-320.00 ₽
+
+Refund transaction in
+1969
+PYATEROCHKA 33176 Ufa
+RUS
+Payment in SP_BEEF DONER 1969
+Ufa RUS
+
+25.07.2026
+11:46
+
+25.07.2026
+11:46
+
+-30.00 ₽
+
+-30.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+11:39
+
+25.07.2026
+11:39
+
+-35.04 ₽
+
+-35.04 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+11:39
+
+25.07.2026
+11:55
+
+-314.96 ₽
+
+-314.96 ₽
+
+Payment in PYATEROCHKA
+20482 Ufa RUS
+
+1969
+
+25.07.2026
+11:31
+
+25.07.2026
+11:31
+
+-45.00 ₽
+
+-45.00 ₽
+
+Internal transfer to contract
+8294837270
+
+6862
+
+25.07.2026
+11:31
+
+25.07.2026
+11:32
+
+-605.00 ₽
+
+-605.00 ₽
+
+Payment in IP Ibragimli I.F.
+MOSCOW RU
+
+6862
+
+25.07.2026
+09:36
+
+25.07.2026
+09:52
+
+-309.70 ₽
+
+-309.70 ₽
+
+Payment in BAJRAM 317 Ufa 1969
+RUS
+
+25.07.2026
+09:36
+
+25.07.2026
+09:36
+
+-40.30 ₽
+
+-40.30 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+09:27
+
+25.07.2026
+09:32
+
+-180.00 ₽
+
+-180.00 ₽
+
+Payment in SP_OVOSHHI I
+FRUKTY. Zubovo RUS
+
+1969
+
+25.07.2026
+09:27
+
+25.07.2026
+09:27
+
+-20.00 ₽
+
+-20.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+09:27
+
+25.07.2026
+09:32
+
+-280.00 ₽
+
+-280.00 ₽
+
+Payment in SP_OVOSHHI I
+FRUKTY. Zubovo RUS
+
+1969
+
+25.07.2026
+09:27
+
+25.07.2026
+09:27
+
+-20.00 ₽
+
+-20.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+25.07.2026
+09:01
+
+25.07.2026
+09:16
+
+-475.00 ₽
+
+-475.00 ₽
+
+Payment in BRAUNI10 Ufa
+RUS
+
+1969
+
+25.07.2026
+09:01
+
+25.07.2026
+09:01
+
+-25.00 ₽
+
+-25.00 ₽
+
+Internal transfer to contract
+8294837270
+
+1969
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

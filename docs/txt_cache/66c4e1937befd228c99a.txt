@@ -1,0 +1,1281 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ fd6cdb06
+
+22.07.2026
+
+CLIENT_004 Aleksandrovna
+Home address: 140104, Moskovskaya Obl, G Ramenskoe, Ul Solnechnaya, D. 14, Kv. 7
+
+About the product
+Date of conclusion of the contract: 07.09.2015
+Contract number: 5009017749
+Personal account number: 40817810800000851913
+Amount of available balance as 22.07.2026: 2 742 457,8 ₽
+
+Movement of funds for the period from 22.07.2025 to 22.07.2026
+Date and time
+of the transaction
+
+Date of processing
+of the transaction
+
+Transaction amount
+and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+30.06.2026
+11:54
+18.06.2026
+06:14
+10.06.2026
+11:52
+
+30.06.2026
+11:54
+18.06.2026
+06:14
+10.06.2026
+11:53
+
++10 716.00 ₽
+
++10 716.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+
+9432
+
++16 000.00 ₽
+
++16 000.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
++8 400.00 ₽
+
++8 400.00 ₽
+
+Intrabank transfer from
+contract 5284258844
+
+9432
+
+10.06.2026
+07:25
+04.06.2026
+11:35
+03.06.2026
+09:19
+27.05.2026
+14:25
+
+10.06.2026
+07:26
+04.06.2026
+11:36
+03.06.2026
+09:19
+27.05.2026
+14:26
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
++2 250.00 ₽
+
++2 250.00 ₽
+
+9432
+
+-52 500.00 ₽
+
+-52 500.00 ₽
+
++18 000.00 ₽
+
++18 000.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+External transfer by phone
+number +79119761793
+Intrabank transfer from
+contract 5156671256
+
+24.05.2026
+20:54
+20.05.2026
+09:59
+18.05.2026
+12:19
+15.05.2026
+11:02
+
+24.05.2026
+20:55
+20.05.2026
+09:59
+18.05.2026
+12:19
+15.05.2026
+11:03
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+External transfer by phone
+number +998990472333
+
+8056
+
+-70 000.00 ₽
+
+-70 000.00 ₽
+
+9432
+
++9 338.00 ₽
+
++9 338.00 ₽
+
++6 300.00 ₽
+
++6 300.00 ₽
+
+Internal transfer to contract
+5058435131
+Intrabank transfer from
+contract 5204812203
+Intrabank transfer from
+contract 5805736181
+
+12.05.2026
+14:40
+
+12.05.2026
+14:40
+
+-6 343.00 ₽
+
+-6 343.00 ₽
+
+Internal transfer to contract
+5537657545
+
+8056
+
+12.05.2026
+13:38
+
+12.05.2026
+13:38
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
+06.05.2026
+15:14
+06.05.2026
+09:18
+
+06.05.2026
+15:14
+06.05.2026
+09:19
+
+-4 200.00 ₽
+
+-4 200.00 ₽
+
+Internal transfer to contract
+5440838018
+
+8056
+
++4 200.00 ₽
+
++4 200.00 ₽
+
+Intrabank transfer from
+contract 0195009935
+
+9432
+
+05.05.2026
+17:58
+
+05.05.2026
+17:59
+
++58 359.00 ₽
+
++58 359.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+
+9432
+
+8056
+9432
+
+9432
+9432
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+of the transaction
+
+Date of processing Transaction amount
+of the transaction
+and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+05.05.2026
+17:57
+05.05.2026
+17:56
+05.05.2026
+13:23
+03.05.2026
+20:50
+03.05.2026
+20:35
+03.05.2026
+20:32
+03.05.2026
+12:50
+03.05.2026
+11:42
+03.05.2026
+11:39
+03.05.2026
+11:31
+03.05.2026
+10:58
+27.04.2026
+06:27
+25.04.2026
+06:43
+23.04.2026
+06:54
+
+05.05.2026
+17:57
+05.05.2026
+17:56
+05.05.2026
+13:23
+03.05.2026
+20:50
+03.05.2026
+20:35
+03.05.2026
+20:32
+03.05.2026
+12:51
+03.05.2026
+11:42
+03.05.2026
+11:39
+03.05.2026
+11:31
+03.05.2026
+10:59
+27.04.2026
+06:27
+25.04.2026
+06:43
+23.04.2026
+06:54
+
+-248 000.00 ₽
+
+-248 000.00 ₽
+
+8056
+
++248 000.00 ₽
+
++248 000.00 ₽
+
++4 200.00 ₽
+
++4 200.00 ₽
+
+Internal transfer to contract
+5156671256
+Intrabank transfer from
+contract 5058435131
+Intrabank transfer from
+contract 5440838018
+
+-19 000.00 ₽
+
+-19 000.00 ₽
+
+8056
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
++21 000.00 ₽
+
++21 000.00 ₽
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+-52 500.00 ₽
+
+-52 500.00 ₽
+
++59 000.00 ₽
+
++59 000.00 ₽
+
+Internal transfer to contract
+8147321886
+Internal transfer to contract
+5294318703
+Intrabank transfer from
+contract 5156671256
+External transfer by phone
+number +79218941749
+External transfer by phone
+number +79119761793
+Intrabank transfer from
+contract 5058435131
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+8056
+
+-1 552.00 ₽
+
+-1 552.00 ₽
+
+-4 150.00 ₽
+
+-4 150.00 ₽
+
++18 000.00 ₽
+
++18 000.00 ₽
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+External transfer by phone
+number +79119761793
+Payment in YMAvito
+MOSCOW RU
+Internal transfer to contract
+5846491016
+Intrabank transfer from
+contract 5058435131
+Internal transfer to contract
+5058435131
+
+22.04.2026
+10:41
+12.04.2026
+08:40
+06.04.2026
+16:22
+06.04.2026
+09:33
+06.04.2026
+09:33
+06.04.2026
+08:08
+31.03.2026
+17:08
+31.03.2026
+07:27
+
+22.04.2026
+10:42
+12.04.2026
+08:40
+06.04.2026
+16:22
+06.04.2026
+09:33
+06.04.2026
+09:33
+06.04.2026
+08:08
+31.03.2026
+17:09
+31.03.2026
+07:27
+
++4 150.00 ₽
+
++4 150.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
+-10 650.00 ₽
+
+-10 650.00 ₽
+
+9432
+
+-10 500.00 ₽
+
+-10 500.00 ₽
+
+-52 500.00 ₽
+
+-52 500.00 ₽
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+-1 350.00 ₽
+
+-1 350.00 ₽
+
+Internal transfer to contract
+0349811517
+External transfer by phone
+number +79119761793
+External transfer by phone
+number +79119761793
+Intrabank transfer from
+contract 5058435131
+Internal transfer to contract
+5083216278
+
++45 000.00 ₽
+
++45 000.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
+05.03.2026
+16:32
+
+05.03.2026
+16:32
+
+-11 739.44 ₽
+
+-11 739.44 ₽
+
+Internal transfer to contract
+8147321886
+
+8056
+
+05.03.2026
+16:32
+
+05.03.2026
+16:32
+
+-500.00 ₽
+
+-500.00 ₽
+
+External transfer by phone
+number +79119761793
+
+8056
+
+05.03.2026
+16:30
+05.03.2026
+06:10
+05.03.2026
+06:08
+
+05.03.2026
+16:31
+05.03.2026
+06:10
+05.03.2026
+06:08
+
+-7 000.00 ₽
+
+-7 000.00 ₽
+
+External transfer by phone
+number +79119761793
+
+8056
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
+-45 000.00 ₽
+
+-45 000.00 ₽
+
+External transfer by phone
+number +79119761793
+
+8056
+
+9432
+9432
+
+8056
+9432
+9432
+8056
+9432
+
+8056
+9432
+9432
+9432
+
+8056
+8056
+9432
+8056
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+of the transaction
+
+Date of processing Transaction amount
+of the transaction
+and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+05.03.2026
+06:06
+02.03.2026
+07:12
+
+05.03.2026
+06:06
+02.03.2026
+07:13
+
++42 300.00 ₽
+
++42 300.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
+-93.68 ₽
+
+-93.68 ₽
+
+External bank transfer to
+account
+03100643000000018500,
+OKTS № 7 GU Banka Rossii
+po TSFO //UFK po Tul'skoi
+oblasti
+
+9432
+
+25.02.2026
+18:07
+23.02.2026
+05:50
+23.02.2026
+04:57
+23.02.2026
+04:56
+
+25.02.2026
+18:07
+23.02.2026
+05:50
+23.02.2026
+04:58
+24.02.2026
+05:06
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+8056
+
+-16 000.00 ₽
+
+-16 000.00 ₽
+
+-3 700.00 ₽
+
+-3 700.00 ₽
+
+Internal transfer to contract
+5156671256
+Internal transfer to contract
+5156671256
+Internal transfer to contract
+0349811517
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+External bank transfer to
+account
+03100643000000018500,
+OKTS № 7 GU Banka Rossii
+po TSFO //UFK po Tul'skoi
+oblasti
+
+9432
+
+18.02.2026
+06:11
+16.02.2026
+08:09
+15.02.2026
+10:49
+12.02.2026
+06:30
+11.02.2026
+16:01
+11.02.2026
+08:51
+11.02.2026
+05:57
+09.02.2026
+17:07
+09.02.2026
+16:34
+09.02.2026
+15:42
+08.02.2026
+16:07
+06.02.2026
+14:41
+06.02.2026
+14:25
+04.02.2026
+18:40
+04.02.2026
+16:01
+04.02.2026
+15:58
+04.02.2026
+15:48
+04.02.2026
+15:41
+
+18.02.2026
+06:11
+16.02.2026
+08:09
+15.02.2026
+10:50
+12.02.2026
+06:30
+11.02.2026
+16:01
+11.02.2026
+08:52
+11.02.2026
+05:57
+09.02.2026
+17:07
+09.02.2026
+16:34
+09.02.2026
+15:42
+08.02.2026
+16:07
+06.02.2026
+14:42
+06.02.2026
+14:26
+04.02.2026
+18:40
+04.02.2026
+16:01
+04.02.2026
+15:59
+04.02.2026
+15:48
+04.02.2026
+15:42
+
+-68 000.00 ₽
+
+-68 000.00 ₽
+
+9432
+
++7 000.00 ₽
+
++7 000.00 ₽
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+External transfer by phone
+number +79520588618
+Intrabank transfer from
+contract 5058435131
+Internal transfer to contract
+5058435131
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
++5 600.00 ₽
+
++5 600.00 ₽
+
+9432
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
++42 000.00 ₽
+
++42 000.00 ₽
+
+-23 754.00 ₽
+
+-23 754.00 ₽
+
++5 300.00 ₽
+
++5 300.00 ₽
+
+-70 000.00 ₽
+
+-70 000.00 ₽
+
+-8 200.00 ₽
+
+-8 200.00 ₽
+
+-1 190.00 ₽
+
+-1 190.00 ₽
+
++67 721.00 ₽
+
++67 721.00 ₽
+
++5 900.00 ₽
+
++5 900.00 ₽
+
+-10 700.00 ₽
+
+-10 700.00 ₽
+
+-52 500.00 ₽
+
+-52 500.00 ₽
+
++7 700.00 ₽
+
++7 700.00 ₽
+
++40 000.00 ₽
+
++40 000.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+Internal transfer to contract
+5709995707
+Intrabank transfer from
+contract 5156671256
+Internal transfer to contract
+5059488402
+Intrabank transfer from
+contract 5156671256
+Internal transfer to contract
+5386881964
+External transfer by phone
+number +79119761793
+Payment in kupitrip
+MOSCOW RU
+Intrabank transfer from
+contract 5156671256
+Intrabank transfer from
+contract 5058435131
+External transfer by phone
+number +79119761793
+External transfer by phone
+number +79119761793
+Intrabank transfer from
+contract 5058435131
+Intrabank transfer from
+contract 5058435131
+
+8056
+9432
+
+9432
+9432
+
+8056
+9432
+9432
+9432
+9432
+8056
+9432
+9432
+9432
+8056
+8056
+9432
+9432
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+of the transaction
+
+Date of processing Transaction amount
+of the transaction
+and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+02.02.2026
+19:01
+02.02.2026
+05:00
+25.01.2026
+05:50
+19.01.2026
+13:36
+18.01.2026
+10:27
+16.01.2026
+10:38
+15.01.2026
+07:37
+15.01.2026
+07:33
+15.01.2026
+07:29
+15.01.2026
+07:26
+15.01.2026
+07:26
+12.01.2026
+05:17
+11.01.2026
+18:48
+11.01.2026
+18:40
+
+02.02.2026
+19:02
+02.02.2026
+05:00
+25.01.2026
+05:50
+19.01.2026
+13:36
+18.01.2026
+10:28
+16.01.2026
+10:39
+15.01.2026
+07:37
+15.01.2026
+07:33
+15.01.2026
+07:29
+15.01.2026
+07:27
+15.01.2026
+07:26
+12.01.2026
+05:18
+11.01.2026
+19:13
+11.01.2026
+18:40
+
+-12 000.00 ₽
+
+-12 000.00 ₽
+
+9432
+
+-1 700.00 ₽
+
+-1 700.00 ₽
+
+External transfer by phone
+number +79216350150
+nullnull
+
++53 000.00 ₽
+
++53 000.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
+-12 000.00 ₽
+
+-12 000.00 ₽
+
+9432
+
++12 000.00 ₽
+
++12 000.00 ₽
+
++37 150.00 ₽
+
++37 150.00 ₽
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
++200.00 ₽
+
++200.00 ₽
+
++2 400.00 ₽
+
++2 400.00 ₽
+
+Internal transfer to contract
+5058435131
+Intrabank transfer from
+contract 5058435131
+Intrabank transfer from
+contract 5156671256
+External transfer by phone
+number +79014850675
+Intrabank transfer from
+contract 5156671256
+Intrabank transfer from
+contract 8147321886
+
++12 000.00 ₽
+
++12 000.00 ₽
+
+9432
+
++4 283.00 ₽
+
++4 283.00 ₽
+
+-40 000.00 ₽
+
+-40 000.00 ₽
+
+-1 190.00 ₽
+
+-1 190.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+Intrabank transfer from
+contract 8147321886
+Internal transfer to contract
+5647730919
+Payment in Kupitrip Moskva RU
+
++1 500.00 ₽
+
++1 500.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+
+9432
+
+11.01.2026
+16:48
+11.01.2026
+16:21
+11.01.2026
+16:20
+09.01.2026
+13:16
+09.01.2026
+12:56
+08.01.2026
+19:19
+08.01.2026
+19:16
+08.01.2026
+16:51
+
+11.01.2026
+16:48
+11.01.2026
+16:21
+11.01.2026
+16:45
+09.01.2026
+13:16
+09.01.2026
+12:56
+08.01.2026
+19:19
+08.01.2026
+19:16
+08.01.2026
+16:51
+
++435 000.00 ₽
+
++435 000.00 ₽
+
+IP SOBOLEV DMITRII
+VALEREVICH
+
+9432
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+8056
+
+-1 190.00 ₽
+
+-1 190.00 ₽
+
+External transfer by phone
+number +79119761793
+Payment in Kupitrip Moskva RU
+
++4 930.00 ₽
+
++4 930.00 ₽
+
+9432
+
++37 500.00 ₽
+
++37 500.00 ₽
+
+-7 000.00 ₽
+
+-7 000.00 ₽
+
+-52 500.00 ₽
+
+-52 500.00 ₽
+
+Intrabank transfer from
+contract 5156671256
+Intrabank transfer from
+contract 5156671256
+External transfer by phone
+number +79119761793
+External transfer by phone
+number +79119761793
+
++62 300.00 ₽
+
++62 300.00 ₽
+
+Intrabank transfer from
+contract 5058435131
+
+9432
+
+05.01.2026
+15:08
+
+05.01.2026
+15:08
+
++2 422.00 ₽
+
++2 422.00 ₽
+
+Intrabank transfer
+
+9432
+
+23.12.2025
+07:28
+
+23.12.2025
+07:28
+
+-47 000.00 ₽
+
+-47 000.00 ₽
+
+External transfer by phone
+number +79142922381
+
+9432
+
+23.12.2025
+07:13
+23.12.2025
+07:09
+23.12.2025
+07:09
+
+23.12.2025
+07:13
+23.12.2025
+07:09
+23.12.2025
+07:09
+
++17 000.00 ₽
+
++17 000.00 ₽
+
+9432
+
++15 511.00 ₽
+
++15 511.00 ₽
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+Intrabank transfer from
+contract 8147321886
+Intrabank transfer from
+contract 5156671256
+Intrabank transfer from
+contract 8147321886
+
+9432
+
+9432
+9432
+9432
+9432
+9432
+
+9432
+9432
+9432
+
+9432
+
+9432
+8056
+8056
+
+9432
+9432
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

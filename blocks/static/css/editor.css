@@ -1,0 +1,55 @@
+/* Wolf AutoDoc — стили blocks/editor.html (вынесено из кода) */
+{% raw %}
+  :root{--bg:#0f172a;--panel:#1e293b;--line:#334155;--txt:#e2e8f0;--mut:#94a3b8;--ac:#22c55e;--warn:#f59e0b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:13px/1.4 system-ui,-apple-system,Segoe UI}
+  .top{display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+  .top h1{margin:0;font-size:13px}
+  .top .badge{background:#334155;color:#e2e8f0;padding:3px 8px;border-radius:6px;font-family:monospace;font-size:12px}
+  .top .right{margin-left:auto;display:flex;gap:8px}
+  .btn{padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:#334155;color:#e2e8f0;cursor:pointer;font:inherit}
+  .btn:hover{background:#475569}
+  .btn.pri{background:var(--ac);border-color:#16a34a;color:#052e16;font-weight:600}
+  .btn.warn{background:var(--warn);border-color:#b45309;color:#1e293b;font-weight:600}
+  .layout{display:grid;grid-template-columns:380px minmax(420px,0.85fr) 1.4fr;height:calc(100vh - 51px);gap:6px;background:#0b1220;padding:6px;box-sizing:border-box}
+  .col{border-radius:8px;overflow:auto;background:var(--panel);border:1px solid var(--line)}
+  .center-pane{display:flex;align-items:flex-start;justify-content:center;padding:14px;background:#1a1a1a}
+  .pdf-pane{display:flex;align-items:flex-start;justify-content:center;padding:14px;background:#1a1a1a}
+  /* масштаб A4 вписан полностью в колонку HTML */
+  .center-pane{overflow:hidden}
+  .pdf-pane{overflow:hidden}
+  .sheet-wrapper{display:block;margin:0 auto;width:fit-content}
+  /* запас по высоте чтобы не было overflow в iframe */
+  .center-pane,.pdf-pane{display:flex;align-items:flex-start;justify-content:center;padding:10px;background:#1a1a1a;overflow:hidden!important}
+  .col{overflow:auto;border-right:1px solid var(--line)}
+  .col:last-child{border-right:none;background:#525659}
+  .col h2{margin:0;padding:8px 12px;background:#0f172a;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1}
+  .var{padding:8px 12px;border-bottom:1px solid #1e293b;display:flex;gap:8px;align-items:flex-start;cursor:pointer;font-size:13px}
+  .var:hover{background:#1e293b}
+  .var.sel{background:#1e3a8a44;border-left:3px solid var(--ac)}
+  .var .num{min-width:24px;color:var(--mut);font-family:monospace;font-size:11px;padding-top:5px}
+  .var .body{flex:1;min-width:0}
+  .var .name{font-family:monospace;font-weight:600;color:#93c5fd;font-size:13px;word-break:break-all}
+  .var .label{display:block;color:var(--mut);font-size:12px;margin:2px 0}
+  .var input,.var textarea{width:100%;padding:6px 8px;background:#0f172a;color:var(--txt);border:1px solid var(--line);border-radius:4px;font-family:monospace;font-size:13px;box-sizing:border-box}
+  .vargroup{margin:0 0 12px}
+  .gt{display:flex;gap:8px;align-items:baseline;font-size:11px;font-weight:700;letter-spacing:.04em;
+      text-transform:uppercase;color:#7dd3a0;border-bottom:1px solid var(--line);padding:8px 2px 5px;margin-bottom:6px}
+  .gh{text-transform:none;letter-spacing:0;font-size:11px;font-weight:400;color:#7b8a99}
+  .var textarea{min-height:48px;resize:vertical}
+  .var .src{font-size:10px;color:var(--mut);margin-top:3px}
+  .var .src.auto{color:#22c55e}.var .src.saved{color:#f59e0b}
+  .html-pane{position:relative}
+  .html-pane iframe{width:100%;height:100%;border:0;background:#fff}
+  .pdf-pane iframe{width:100%;height:100%;border:0;background:#525659}
+  .pdf-empty{display:flex;align-items:center;justify-content:center;height:100%;color:#cbd5e1;font-size:13px;background:#334155;border:2px dashed #475569;margin:16px;border-radius:8px;text-align:center;padding:24px}
+  .toolbar{padding:4px 8px;background:#1e293b;border-bottom:1px solid var(--line);display:flex;gap:6px;align-items:center;font-size:11px;color:var(--mut);position:sticky;top:0;z-index:2;height:28px}
+  .toolbar b{color:#e2e8f0}
+  .toolbar .spacer{flex:1}
+  .saved{background:#16a34a;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px}
+  #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ac);color:#052e16;padding:10px 20px;border-radius:8px;font-weight:600;display:none;z-index:9}
+}{% endraw %}
+
+html,body{margin:0;padding:0;background:#666}
+    body{display:flex;justify-content:center;padding:14px}
+    .sheet{width:595.92pt;height:841.92pt;background:#fff;box-shadow:0 0 8px rgba(0,0,0,.4);position:relative;overflow:hidden;flex:0 0 auto}

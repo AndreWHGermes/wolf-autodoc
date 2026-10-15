@@ -1,0 +1,1458 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ a605cdc7
+
+03.09.2026
+
+CLIENT Evgeniy Anatolevich
+Home address: 443028, Samarskaya Obl, G Samara, Pgt Krasnyi Pakhar' , D. 21, Kv. 96
+
+About the product
+Date of conclusion of the contract: 24.11.2018
+Contract number: 5013271811
+Personal account number: 40817810100000889148
+
+Movement of funds for the period from 03.09.2025 to 03.09.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+02.09.2026
+22:34
+
+02.09.2026
+22:34
+
++90.00 ₽
+
++90.00 ₽
+
+Cashback
+
+—
+
+02.09.2026
+15:04
+
+02.09.2026
+16:13
+
+-1 383.00 ₽
+
+-1 383.00 ₽
+
+7684
+
+02.09.2026
+15:03
+
+02.09.2026
+15:03
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Intrabank transfer from
+contract 0756467759
+
+02.09.2026
+12:59
+
+02.09.2026
+12:59
+
+-757.10 ₽
+
+-757.10 ₽
+
+Internal transfer to contract
+0756467759
+
+4700
+
+02.09.2026
+12:59
+
+02.09.2026
+12:59
+
++1 349.00 ₽
+
++1 349.00 ₽
+
+01.09.2026
+19:34
+
+01.09.2026
+19:34
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+Replenishment by phone
+4700
+number SBP.110000000288
+RU
+Internal transfer to contract 4700
+5590044551
+
+01.09.2026
+19:34
+
+01.09.2026
+19:34
+
++757.10 ₽
+
++757.10 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+01.09.2026
+19:04
+
+02.09.2026
+16:03
+
+-5 360.20 ₽
+
+-5 360.20 ₽
+
+Payment in UFS-ONLINE
+Moskva RUS
+
+7684
+
+01.09.2026
+18:28
+
+01.09.2026
+19:28
+
+-45.96 ₽
+
+-45.96 ₽
+
+Payment in Y.M*URENT
+MOSKVA RUS
+
+7684
+
+01.09.2026
+18:23
+
+01.09.2026
+19:23
+
+-207.41 ₽
+
+-207.41 ₽
+
+Payment in Y.M*URENT
+MOSKVA RUS
+
+7684
+
+01.09.2026
+17:23
+
+01.09.2026
+17:38
+
++550 000.00 ₽
+
++550 000.00 ₽
+
+LLC "Procter &
+Gamble"
+
+7684
+
+01.09.2026
+14:00
+
+01.09.2026
+14:12
+
+-38.36 ₽
+
+-38.36 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+01.09.2026
+13:56
+
+01.09.2026
+14:19
+
+-443.00 ₽
+
+-443.00 ₽
+
+Payment in Hlebnitca
+05G1052044 g Moskva RU
+
+7684
+
+01.09.2026
+13:54
+
+01.09.2026
+14:04
+
+-19.18 ₽
+
+-19.18 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+01.09.2026
+13:48
+
+01.09.2026
+14:01
+
+-51.95 ₽
+
+-51.95 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+21:36
+
+30.08.2026
+21:36
+
+-1 377.00 ₽
+
+-1 377.00 ₽
+
+External transfer by phone
+number +79063458624
+
+4700
+
+4700
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+30.08.2026
+20:41
+
+30.08.2026
+20:56
+
+-1 700.00 ₽
+
+-1 700.00 ₽
+
+Payment in TSVETY MOSKVA 7684
+RUS
+
+30.08.2026
+19:25
+
+30.08.2026
+19:25
+
+-1 349.00 ₽
+
+-1 349.00 ₽
+
+Payment in AVITO MOSCOW
+RU
+
+4700
+
+30.08.2026
+19:21
+
+30.08.2026
+19:37
+
+-654.00 ₽
+
+-654.00 ₽
+
+Payment in YM*ozon
+MOSKVA RUS
+
+7684
+
+30.08.2026
+19:08
+
+30.08.2026
+19:21
+
+-2 366.00 ₽
+
+-2 366.00 ₽
+
+Payment in WB*Wildberries
+Podol?sk RU
+
+7684
+
+30.08.2026
+18:59
+
+30.08.2026
+19:10
+
+-39.16 ₽
+
+-39.16 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:55
+
+30.08.2026
+19:10
+
+-129.00 ₽
+
+-129.00 ₽
+
+Payment in GALAMART
+MOSCOW RUS
+
+7684
+
+30.08.2026
+18:50
+
+30.08.2026
+19:00
+
+-20.18 ₽
+
+-20.18 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:45
+
+30.08.2026
+19:00
+
+-19.98 ₽
+
+-19.98 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:38
+
+30.08.2026
+18:53
+
+-110.19 ₽
+
+-110.19 ₽
+
+Payment in PERVOMAJSKIJ
+MOSCOW RUS
+
+7684
+
+30.08.2026
+18:26
+
+30.08.2026
+18:40
+
+-107.90 ₽
+
+-107.90 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:23
+
+30.08.2026
+18:38
+
+-1 492.00 ₽
+
+-1 492.00 ₽
+
+Payment in VV_KKM 1990.6
+MOSCOW RUS
+
+7684
+
+30.08.2026
+18:15
+
+30.08.2026
+18:31
+
+-69.99 ₽
+
+-69.99 ₽
+
+Payment in MIRATORG 274
+MOSCOW RUS
+
+7684
+
+30.08.2026
+18:11
+
+30.08.2026
+18:12
+
+-145 876.25 ₽
+
+-145 876.25 ₽
+
+Internal transfer to contract
+0756467759
+
+4700
+
+30.08.2026
+18:11
+
+30.08.2026
+18:11
+
++165 000.00 ₽
+
++165 000.00 ₽
+
+Replenishment with a partner 7684
+ATM T-Bank Moscow RU
+
+30.08.2026
+18:09
+
+30.08.2026
+18:21
+
+-59.34 ₽
+
+-59.34 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:04
+
+30.08.2026
+18:12
+
+-151.06 ₽
+
+-151.06 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+30.08.2026
+18:03
+
+30.08.2026
+18:04
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+30.08.2026
+02:00
+
+30.08.2026
+03:14
+
+-7 000.00 ₽
+
+-7 000.00 ₽
+
+External transfer by phone
+number +79297849090
+
+4700
+
+30.08.2026
+02:00
+
+30.08.2026
+03:14
+
++5 729.00 ₽
+
++5 729.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+29.08.2026
+01:05
+
+29.08.2026
+03:24
+
+-350.00 ₽
+
+-350.00 ₽
+
+External transfer by phone
+number +79167408414
+
+4700
+
+29.08.2026
+00:28
+
+29.08.2026
+03:50
+
+-379.00 ₽
+
+-379.00 ₽
+
+7684
+
+29.08.2026
+00:06
+
+29.08.2026
+03:24
+
++2 000.00 ₽
+
++2 000.00 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Intrabank transfer from
+contract 0756467759
+
+28.08.2026
+23:16
+
+29.08.2026
+03:34
+
+-8 890.00 ₽
+
+-8 890.00 ₽
+
+Payment in AVITO MOSCOW
+RU
+
+4700
+
+28.08.2026
+23:16
+
+29.08.2026
+03:24
+
++8 506.30 ₽
+
++8 506.30 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+28.08.2026
+16:26
+
+28.08.2026
+17:40
+
+-717.00 ₽
+
+-717.00 ₽
+
+7684
+
+28.08.2026
+16:20
+
+28.08.2026
+16:20
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+4700
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+28.08.2026
+16:14
+
+29.08.2026
+15:39
+
+-1 220.00 ₽
+
+-1 220.00 ₽
+
+28.08.2026
+13:47
+
+28.08.2026
+13:48
+
++1 300.00 ₽
+
++1 300.00 ₽
+
+Cash withdrawal in
+7684
+YandexBank_C2A g. Moskva
+RUS
+Intrabank transfer from
+4700
+contract 0756467759
+
+28.08.2026
+07:27
+
+28.08.2026
+07:28
+
+-330.30 ₽
+
+-330.30 ₽
+
+Payment in Arcadia Labs
+MOSCOW RU
+
+4700
+
+28.08.2026
+02:44
+
+28.08.2026
+04:18
+
+-3 684.00 ₽
+
+-3 684.00 ₽
+
+7684
+
+28.08.2026
+02:43
+
+28.08.2026
+03:47
+
++4 000.00 ₽
+
++4 000.00 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Intrabank transfer from
+contract 0756467759
+
+27.08.2026
+19:23
+
+27.08.2026
+19:24
+
+-365.00 ₽
+
+-365.00 ₽
+
+Payment in Servisy Yandeksa 4700
+MOSCOW RU
+
+27.08.2026
+19:23
+
+27.08.2026
+19:23
+
++400.00 ₽
+
++400.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+26.08.2026
+18:12
+
+26.08.2026
+18:38
+
+-939.00 ₽
+
+-939.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+26.08.2026
+18:12
+
+26.08.2026
+18:13
+
++939.00 ₽
+
++939.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+26.08.2026
+16:12
+
+26.08.2026
+16:12
+
+-3 600.00 ₽
+
+-3 600.00 ₽
+
+Transfer
+
+4700
+
+26.08.2026
+16:11
+
+26.08.2026
+16:12
+
++3 600.00 ₽
+
++3 600.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+26.08.2026
+14:53
+
+26.08.2026
+14:53
+
+-10 000.00 ₽
+
+-10 000.00 ₽
+
+External transfer by phone
+number +79102342080
+
+4700
+
+26.08.2026
+14:53
+
+26.08.2026
+14:53
+
++10 000.00 ₽
+
++10 000.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+25.08.2026
+11:24
+
+25.08.2026
+11:25
+
+-29 731.00 ₽
+
+-29 731.00 ₽
+
+Payment in OOO "ARP"
+MOSCOW RU
+
+4700
+
+25.08.2026
+11:24
+
+25.08.2026
+11:25
+
++10 564.00 ₽
+
++10 564.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+22.08.2026
+16:29
+
+22.08.2026
+16:48
+
+-927.00 ₽
+
+-927.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+22.08.2026
+12:54
+
+22.08.2026
+12:54
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Intrabank transfer from
+contract 8119038278
+
+4700
+
+13.08.2026
+20:07
+
+14.08.2026
+16:47
+
+-8 621.00 ₽
+
+-8 621.00 ₽
+
+13.08.2026
+19:53
+
+14.08.2026
+15:25
+
+-2 885.00 ₽
+
+-2 885.00 ₽
+
+13.08.2026
+13:56
+
+13.08.2026
+13:56
+
++11 600.00 ₽
+
++11 600.00 ₽
+
+Cash withdrawal in
+7684
+YandexBank_C2A g. Moskva
+RUS
+Cash withdrawal in
+7684
+YandexBank_C2A g. Moskva
+RUS
+Intrabank transfer from
+4700
+contract 0756467759
+
+12.08.2026
+16:37
+
+12.08.2026
+16:37
+
+-45 000.00 ₽
+
+-45 000.00 ₽
+
+External transfer by phone
+number +79182302220
+
+4700
+
+12.08.2026
+16:37
+
+12.08.2026
+16:37
+
++45 000.00 ₽
+
++45 000.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+09.08.2026
+16:30
+
+09.08.2026
+16:49
+
+-924.00 ₽
+
+-924.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+09.08.2026
+16:30
+
+09.08.2026
+16:30
+
++924.00 ₽
+
++924.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+06.08.2026
+22:52
+
+07.08.2026
+03:17
+
+-913.00 ₽
+
+-913.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+06.08.2026
+22:52
+
+07.08.2026
+03:09
+
++913.00 ₽
+
++913.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+4700
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+04.08.2026
+00:46
+
+04.08.2026
+03:24
+
+-904.00 ₽
+
+-904.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+04.08.2026
+00:46
+
+04.08.2026
+03:07
+
++904.00 ₽
+
++904.00 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+03.08.2026
+16:29
+
+03.08.2026
+16:30
+
+-25 505.00 ₽
+
+-25 505.00 ₽
+
+Payment in SITITREVEL LTD
+MOSCOW RU
+
+4700
+
+03.08.2026
+16:25
+
+03.08.2026
+16:25
+
++22 161.52 ₽
+
++22 161.52 ₽
+
+Intrabank transfer from
+contract 0756467759
+
+4700
+
+02.08.2026
+02:52
+
+02.08.2026
+03:30
+
+-896.00 ₽
+
+-896.00 ₽
+
+Payment in UNISIM g
+Moskva RU
+
+7684
+
+02.08.2026
+02:07
+
+02.08.2026
+03:14
+
+-419.48 ₽
+
+-419.48 ₽
+
+Payment in DUTY FREE VKO
+A7 MOSKVA RUS
+
+7684
+
+02.08.2026
+00:52
+
+02.08.2026
+03:25
+
+-1 945.00 ₽
+
+-1 945.00 ₽
+
+7684
+
+01.08.2026
+21:49
+
+02.08.2026
+03:06
+
+-1 091.00 ₽
+
+-1 091.00 ₽
+
+01.08.2026
+19:34
+
+01.08.2026
+19:42
+
+-112.90 ₽
+
+-112.90 ₽
+
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Payment in Whoosh.bike
+Moskva RU
+
+01.08.2026
+19:21
+
+01.08.2026
+19:37
+
+-608.00 ₽
+
+-608.00 ₽
+
+Payment in MOYCHAY.RU
+MOSCOW RUS
+
+7684
+
+01.08.2026
+19:10
+
+01.08.2026
+19:25
+
+-646.00 ₽
+
+-646.00 ₽
+
+Payment in MOYCHAY.RU
+MOSCOW RUS
+
+7684
+
+01.08.2026
+18:39
+
+01.08.2026
+18:39
+
+-164.00 ₽
+
+-164.00 ₽
+
+Internal transfer to contract
+0756467759
+
+4700
+
+01.08.2026
+18:36
+
+01.08.2026
+18:51
+
+-4 010.00 ₽
+
+-4 010.00 ₽
+
+Payment in ROO MSH
+MOSKVA RUS
+
+7684
+
+01.08.2026
+17:51
+
+02.08.2026
+15:25
+
++550 000.00 ₽
+
++550 000.00 ₽
+
+LLC "Procter & Gamble"
+
+7684
+
+01.08.2026
+17:11
+
+01.08.2026
+17:21
+
+-89.32 ₽
+
+-89.32 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+01.08.2026
+16:32
+
+01.08.2026
+16:41
+
+-79.74 ₽
+
+-79.74 ₽
+
+Payment in Whoosh.bike
+Moskva RU
+
+7684
+
+01.08.2026
+16:26
+
+01.08.2026
+16:27
+
++6 000.00 ₽
+
++6 000.00 ₽
+
+Replenishment with a partner 7684
+ATM T-Bank Moscow RU
+
+01.08.2026
+16:09
+
+01.08.2026
+16:24
+
+-943.00 ₽
+
+-943.00 ₽
+
+Payment in SUPERMARKET 7684
+AZBUKA VKU MOSCOW RUS
+
+01.08.2026
+16:00
+
+02.08.2026
+13:17
+
+-83.00 ₽
+
+-83.00 ₽
+
+Payment in Mos.Transport
+MOSKVA RUS
+
+01.08.2026
+14:06
+
+01.08.2026
+14:07
+
++1 238.00 ₽
+
++1 238.00 ₽
+
+01.08.2026
+13:27
+
+01.08.2026
+13:42
+
+-2 300.00 ₽
+
+-2 300.00 ₽
+
+Replenishment by phone
+4700
+number SBP.100000000259
+RU
+Payment in TSVETY MOSKVA 7684
+RUS
+
+01.08.2026
+12:30
+
+01.08.2026
+12:45
+
+-8 190.00 ₽
+
+-8 190.00 ₽
+
+31.07.2026
+23:12
+
+01.08.2026
+03:34
+
+-1 211.00 ₽
+
+-1 211.00 ₽
+
+31.07.2026
+22:17
+
+01.08.2026
+03:17
+
+-249.98 ₽
+
+-249.98 ₽
+
+31.07.2026
+22:17
+
+01.08.2026
+03:16
+
+-968.88 ₽
+
+-968.88 ₽
+
+7684
+
+7684
+
+7684
+
+Payment in KOFEMANIYA
+NEVA TAUERS MOSCOW
+RUS
+Payment in
+YANDEX*4121*GO Moskva
+RU
+Payment in MAGNOLIYA
+MOSCOW RUS
+
+7684
+
+Payment in MAGNOLIYA
+MOSCOW RUS
+
+7684
+
+7684
+
+7684
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

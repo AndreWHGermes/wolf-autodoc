@@ -1,0 +1,293 @@
+{
+ "90": {
+  "product": "BRIDGING",
+  "docs": [
+   {
+    "code": "bridging_request_letter__default",
+    "vars": 21,
+    "filled": 22,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "letter_place_date": "Badung, 24 Agustus 2026",
+     "client_address": "Kapu Kapu Ubud, Jl. Tirtanadi Banjar Laplapan, Pejeng Kawan,",
+     "addressee_line3": "Kota Denpasar, Bali 80235",
+     "place_of_birth": "KAZAKHSTAN"
+    }
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "vars": 20,
+    "filled": 19,
+    "empty_ok": [
+     "cv_job2_company",
+     "cv_job2_period"
+    ],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "cv_job1_company": "LLC \"KUPISHUZ\"",
+     "cv_nationality": "Russian Federation",
+     "cv_job1_bullets": "•  Work remotely with a distributed team, coordinating tasks",
+     "cv_summary": "Artist / Producer professional with over 6 years of experien"
+    }
+   },
+   {
+    "code": "statement_letter_e02__default",
+    "vars": 18,
+    "filled": 18,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "passport_number": "000000000",
+     "purpose_of_application": "Visa Bridging to E33G",
+     "date_of_expiry": "11-10-2026",
+     "date_of_issue": "16-03-2023"
+    }
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "vars": 22,
+    "filled": 26,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "inn_kpp_ogrn": "INN: 000000000, KPP: 771401001, OGRN: 1197746522797",
+     "company_incorporated_phrase": "(LLC \"Chillgaming\"), a software development company incorpor",
+     "annual_amount_numeric": "4,980,000",
+     "place_of_birth": "KAZAKHSTAN"
+    }
+   },
+   {
+    "code": "employment_contract__default",
+    "vars": 21,
+    "filled": 26,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "employee_short": "BUDKO O.",
+     "company_entity_no": "1197746522797",
+     "company_address_1": "125167, Moscow",
+     "place_of_birth": "KAZAKHSTAN"
+    }
+   }
+  ],
+  "conflicts": {},
+  "defects": [],
+  "client_folder": {},
+  "total_vars": 102,
+  "filled": 111
+ },
+ "85": {
+  "product": "C1",
+  "docs": [
+   {
+    "code": "bank_statement_3m__sber",
+    "vars": 10,
+    "filled": 11,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "period_to": "26.08.2026",
+     "period_from": "26.08.2025",
+     "address_live": "185014, г. Петрозаводск, пр. Лесной,",
+     "balance_rub": "2 757 201,00"
+    }
+   }
+  ],
+  "conflicts": {},
+  "defects": [],
+  "client_folder": {},
+  "total_vars": 10,
+  "filled": 11
+ },
+ "76": {
+  "product": "D12",
+  "docs": [
+   {
+    "code": "bank_statement_3m__tbank",
+    "vars": 10,
+    "filled": 11,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "period_to": "06.10.2026",
+     "period_from": "06.07.2026",
+     "address_live": "450010, Respublika Bashkortostan, G Ufa, Ul Dostoevskogo , D",
+     "balance_rub": "488 575,88"
+    }
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "vars": 20,
+    "filled": 14,
+    "empty_ok": [
+     "cv_job1_bullets",
+     "cv_job2_period",
+     "cv_skills_hard",
+     "cv_job2_company",
+     "cv_job2_bullets"
+    ],
+    "empty_bad": [],
+    "no_data": [
+     "cv_job1_title"
+    ],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "cv_job1_company": "«BUSINESS TECHNOLOGIES»",
+     "cv_nationality": "Russian Federation",
+     "cv_summary": "Specialist professional with over 8 years of experience acro",
+     "cv_date_of_birth": "November 2, 1989"
+    }
+   },
+   {
+    "code": "d12_cover_letter__default",
+    "vars": 24,
+    "filled": 21,
+    "empty_ok": [
+     "itk_no",
+     "itk_expiry"
+    ],
+    "empty_bad": [],
+    "no_data": [
+     "address_in_indonesia",
+     "passport_expiry"
+    ],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "place_date": "Badung, 6 Oktober 2026",
+     "addressee_line3": "Kabupaten Badung, Bali",
+     "attorney_occupation": "Swasta",
+     "addressee_line2": "Jalan Perumahan Taman Jimbaran No. 1 Mumbul,"
+    }
+   }
+  ],
+  "conflicts": {},
+  "defects": [],
+  "client_folder": {},
+  "total_vars": 54,
+  "filled": 46
+ },
+ "57": {
+  "product": "E33G-EXT",
+  "docs": [
+   {
+    "code": "bank_statement_3m__tbank",
+    "vars": 10,
+    "filled": 11,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "period_to": "06.10.2026",
+     "period_from": "06.07.2026",
+     "address_live": "603137, Nizhegorodskaya Oblast, Nizhny Novgorod, Akademika L",
+     "balance_rub": "269 583,23"
+    }
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "vars": 22,
+    "filled": 25,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [
+     "passport_valid_until"
+    ],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "inn_kpp_ogrn": "INN: 1660338214, KPP: 166001001, OGRN: 1191690096047",
+     "company_incorporated_phrase": "(LLC \"SOTKA\"), a software development company incorporated u",
+     "annual_amount_numeric": "6,828,000",
+     "place_of_birth": "Nizhny"
+    }
+   }
+  ],
+  "conflicts": {},
+  "defects": [],
+  "client_folder": {
+   "BANK_STATEMENT": 2,
+   "UNREADABLE": 1,
+   "PASSPORT": 1,
+   "REMOTE_WORK_AGREEMENT": 1
+  },
+  "total_vars": 32,
+  "filled": 36
+ },
+ "63": {
+  "product": "E33G-NEW",
+  "docs": [
+   {
+    "code": "bank_statement_12m__tbank",
+    "vars": 10,
+    "filled": 11,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "period_to": "10.08.2026",
+     "period_from": "10.08.2025",
+     "address_live": "127276, Moscow, Ul Akademika Komarova, D. 11B, Kv. 6",
+     "balance_rub": "6 352 154,92"
+    }
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "vars": 22,
+    "filled": 24,
+    "empty_ok": [],
+    "empty_bad": [],
+    "no_data": [
+     "passport_valid_until",
+     "place_of_birth"
+    ],
+    "leftovers": [],
+    "pdf": true,
+    "examples": {
+     "inn_kpp_ogrn": "INN: 000000000, KPP: 501801001, OGRN: 1185029007140",
+     "company_incorporated_phrase": "(L-TECH LLC), a software development company incorporated un",
+     "annual_amount_numeric": "5,256,000",
+     "company_name_in_quotes": "L-TECH Razrabotka Programmnogo Obespecheniya"
+    }
+   }
+  ],
+  "conflicts": {},
+  "defects": [],
+  "client_folder": {
+   "BANK_STATEMENT": 2,
+   "UNREADABLE": 2,
+   "STAY_PERMIT_KITAS": 1,
+   "REMOTE_WORK_AGREEMENT": 1,
+   "PASSPORT": 1
+  },
+  "total_vars": 32,
+  "filled": 35
+ }
+}

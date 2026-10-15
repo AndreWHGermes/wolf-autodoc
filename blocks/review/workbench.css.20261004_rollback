@@ -1,0 +1,197 @@
+/* Боевая раскладка экрана заявки (макет 04.10.2026, вторая итерация).
+   Подключается поверх blocks/review/styles.py: перестраивает шапку и геометрию.
+   Рабочие механизмы (визор data-zoom-pan, плитки .rv-thumb, панель .rv-right,
+   кнопки шагов rv-scan / rv-autofill) остаются прежними. */
+
+:root{
+  --wb-turq:#0F6E63; --wb-turq2:#17B3A3; --wb-gold:#D4AF37; --wb-deep:#04201E;
+  --wb-line:#DCE4E0; --wb-ink:#12241F; --wb-muted:#6B7C70; --wb-stage:#E7EBEE;
+  --wb-rail:50px; --wb-vars:320px; --wb-heads:40px;
+}
+
+/* Высота не фиксируется: страница дышит, окна прокручиваются сами (движок зума). */
+.wb-wrap{display:flex;flex-direction:column}
+
+/* ── 1. ШАПКА ЗАЯВКИ: одна строка, три зоны, без наложений ─────────────────── */
+.wb-top{display:grid;grid-template-columns:minmax(270px,1fr) auto minmax(250px,1fr);
+  align-items:center;gap:10px 14px;background:#fff;border-bottom:1px solid var(--wb-line);
+  padding:8px 12px;position:relative;z-index:40}
+.wb-top > *{min-width:0}
+
+/* левая зона: что за заявка */
+.wb-id{display:flex;flex-direction:column;gap:4px}
+.wb-id-line{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.wb-id-num{font-size:13.5px;font-weight:700;white-space:nowrap}
+.wb-id-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.wb-id-state{font-size:11px;color:var(--wb-muted);white-space:nowrap}
+.wb-id-more{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--wb-line);
+  background:#fff;border-radius:8px;padding:3px 9px;font-size:11.5px;font-weight:600;color:var(--wb-turq);cursor:pointer}
+.wb-id-more.is-open{background:#EAF7F4}
+
+/* центр: четыре этапа-кнопки с микроанимацией */
+.wb-flow{display:flex;align-items:flex-start;justify-content:center;gap:8px}
+.wb-tile{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:0;cursor:pointer}
+.wb-tile-b{display:flex;align-items:center;gap:7px;min-width:104px;height:38px;padding:0 10px;border-radius:10px;
+  border:1.5px solid #CBD6D1;background:#fff;color:#5C6B66;font-size:11.5px;font-weight:650;
+  line-height:1.15;text-align:left}
+.wb-tile-b .n{width:20px;height:20px;flex:0 0 20px;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;font-weight:700;background:#EEF4F2;color:#5C6B66}
+.wb-tile.is-done .wb-tile-b{border-color:#16A34A;background:#E7F6EC;color:#14532D}
+.wb-tile.is-done .wb-tile-b .n{background:#16A34A;color:#fff}
+.wb-tile.is-cur .wb-tile-b{border-color:var(--wb-gold);background:#FFFBEB;color:#7A5B00}
+.wb-tile.is-cur .wb-tile-b .n{background:var(--wb-gold);color:#3A2E00}
+.wb-tile.is-run .wb-tile-b{border-color:var(--wb-turq);background:#EAF7F4;color:#0B554C}
+.wb-tile-note{font-size:9.5px;color:var(--wb-muted);white-space:nowrap}
+.wb-tile.is-run .wb-tile-note,.wb-tile.is-cur .wb-tile-note{color:#0B554C;font-weight:600}
+
+/* микроанимация: бегущие полоски + мягкое свечение у работающего этапа */
+.wb-bars{display:flex;gap:2px;align-items:flex-end;height:12px}
+.wb-bars i{display:block;width:3px;height:5px;background:var(--wb-turq);border-radius:2px}
+.wb-tile.is-run .wb-bars i,.wb-tile.is-cur .wb-bars i{animation:wbBars .9s ease-in-out infinite}
+.wb-tile.is-run .wb-bars i:nth-child(2),.wb-tile.is-cur .wb-bars i:nth-child(2){animation-delay:.15s}
+.wb-tile.is-run .wb-bars i:nth-child(3),.wb-tile.is-cur .wb-bars i:nth-child(3){animation-delay:.3s}
+.wb-tile.is-run .wb-bars i:nth-child(4),.wb-tile.is-cur .wb-bars i:nth-child(4){animation-delay:.45s}
+@keyframes wbBars{0%,100%{height:4px;opacity:.45}50%{height:12px;opacity:1}}
+.wb-tile.is-run .wb-tile-b,.wb-tile.is-cur .wb-tile-b{animation:wbGlow 1.6s ease-in-out infinite}
+@keyframes wbGlow{0%,100%{box-shadow:0 0 0 0 rgba(23,179,163,0)}50%{box-shadow:0 0 0 4px rgba(23,179,163,.16)}}
+@media (prefers-reduced-motion:reduce){.wb-bars i,.wb-tile-b{animation:none!important}}
+
+/* правая зона: продукт и комментарий заявки */
+.wb-side{display:flex;flex-direction:column;gap:3px}
+.wb-side-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.wb-side-lbl{font-size:10.5px;color:var(--wb-muted);white-space:nowrap}
+/* Строка под номером заявки: раскрыть текст заявки и папка клиента на Диске */
+.wb-id-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.wb-id-row .wb-drive-wrap{display:inline-flex}
+.wb-prep{font-size:10.5px;color:#1B7F52;background:#E8F6EE;border:1px solid #C7E9D6;border-radius:7px;
+  padding:1px 7px;white-space:nowrap}
+.wb-id-row .rv-drive-btn{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;
+  border:1px solid var(--wb-turq);background:#EAF7F4;color:var(--wb-turq);border-radius:8px;
+  font-size:11.5px;font-weight:700;text-decoration:none;white-space:nowrap}
+.wb-id-row .rv-drive-btn:hover{background:#DFF4EF}
+.wb-id-row .rv-drive-input{min-height:26px;border:1px solid var(--wb-line);border-radius:8px;
+  padding:0 8px;font-size:11.5px;max-width:240px}
+.wb-scope{font-size:10.5px;color:var(--wb-turq);background:#EAF7F4;border:1px solid #CDE9E2;
+  border-radius:7px;padding:1px 7px;white-space:nowrap}
+.wb-side-val{font-size:12px;font-weight:650}
+.wb-side-cmt{font-size:10.5px;color:#3E4A45;font-style:italic;overflow-wrap:anywhere}
+
+/* ── 2. ПОЛОСА ДЕЙСТВИЙ: Google Диск во всю ширину полосы слева ─────────────── */
+.wb-actions{display:flex;align-items:center;gap:8px;background:#FBFDFC;border-bottom:1px solid var(--wb-line);
+  padding:6px 12px;flex-wrap:wrap}
+.wb-drive{flex:1 1 340px;display:flex;align-items:center;justify-content:center;gap:9px;min-height:34px;
+  border:1px solid var(--wb-turq);background:#EAF7F4;color:var(--wb-turq);border-radius:9px;
+  font-size:12.5px;font-weight:700;text-decoration:none;padding:0 14px}
+.wb-drive:hover{background:#DFF4EF}
+/* Компактная кнопка перехода в папку клиента — размером с обычную кнопку. */
+.wb-drive-wrap{display:flex;flex:0 0 auto;min-width:0}
+.wb-drive-wrap .rv-drive-btn,.wb-drive-wrap .rv-drive-input{min-height:32px}
+.wb-drive-wrap .rv-drive-btn{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;padding:0 12px;font-size:12px}
+.wb-drive-wrap .rv-drive-input{flex:0 1 320px;border:1px solid var(--wb-line);border-radius:9px;padding:0 12px;font-size:12px}
+.wb-drive.is-off{border-color:var(--wb-line);background:#fff;color:var(--wb-muted);font-weight:600;cursor:default}
+.wb-note{font-size:10.5px;color:var(--wb-muted);padding:0 12px 6px;background:#FBFDFC}
+.wb-note .is-warn{color:#B45309}
+
+/* раскрытый текст заявки — только над левой частью */
+.wb-headwrap{position:relative;z-index:40}
+.wb-brief{position:absolute;left:12px;top:100%;width:640px;background:#fff;border:1px solid #CFDAD5;
+  border-radius:0 0 12px 12px;box-shadow:0 12px 28px rgba(16,44,38,.20);z-index:50;padding:10px 12px}
+.wb-brief .rv-row{border-bottom:1px solid #EEF3F1}
+
+/* ── 3. Ряд шапок: одинаковые, 40 px ───────────────────────────────────────── */
+.wb-heads{display:grid;grid-template-columns:var(--wb-rail) minmax(0,1fr)
+  clamp(230px,22vw,320px) minmax(0,1fr) var(--wb-rail);
+  height:var(--wb-heads);background:#FBFDFC;border-bottom:1px solid var(--wb-line)}
+.wb-heads > div{display:flex;align-items:center;gap:6px;padding:0 10px;height:var(--wb-heads);
+  border-right:1px solid var(--wb-line);min-width:0}
+.wb-heads > div:last-child{border-right:0}
+.wb-heads b{font-size:12px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb-heads .grow{flex:1}
+.wb-heads .cnt{background:#EAF7F4;color:var(--wb-turq);border:1px solid #A9DED5;border-radius:99px;
+  font-size:10px;font-weight:700;padding:0 6px;line-height:16px}
+.wb-heads .tools{display:flex;gap:4px;align-items:center}
+.wb-heads .mini-t{flex-direction:column;justify-content:center;gap:1px;background:#EEF4F2;padding:0 4px}
+.wb-heads .mini-t .vt{font-size:9.5px;font-weight:650;color:var(--wb-muted);text-align:center;line-height:1.15}
+.wb-zt{border:1px solid var(--wb-line);background:#fff;border-radius:6px;min-width:24px;height:22px;
+  font-size:11px;color:var(--wb-ink);padding:0 4px;cursor:pointer}
+.wb-zt.on{background:#EAF7F4;border-color:var(--wb-turq);color:var(--wb-turq);font-weight:700}
+.wb-zt.ok{background:#E7F6EC;border-color:#9BDFB4;color:#166534;font-weight:700}
+.wb-zt.no{background:#FEF2F2;border-color:#FCA5A5;color:#B91C1C;font-weight:700}
+.wb-zt.up{background:#EAF7F4;border-color:var(--wb-turq);color:var(--wb-turq);font-weight:700}
+.wb-zt[disabled]{background:#F4F7F5;border-color:#C9D4CF;color:#8A9A94;cursor:not-allowed}
+
+/* ── 4. Рабочая зона ───────────────────────────────────────────────────────── */
+.wb-grid{display:grid;grid-template-columns:var(--wb-rail) minmax(0,1fr)
+  clamp(230px,22vw,320px) minmax(0,1fr) var(--wb-rail);
+  align-items:stretch;background:#fff;margin-top:0}
+.wb-grid > *{min-width:0;border-right:1px solid var(--wb-line)}
+.wb-grid > *:last-child{border-right:0}
+
+/* рейлы миниатюр */
+.wb-rail{background:#EEF4F2;max-height:72vh;overflow:auto;padding:8px 0;display:flex;flex-direction:column;
+  align-items:center;gap:7px}
+.wb-rail .rv-thumbs{display:flex;flex-direction:column;align-items:center;gap:7px;padding:0;background:none}
+.wb-rail .rv-thumb{width:34px;height:44px;border-radius:5px;padding:0;border:1px solid #B9C7C2;background:#fff;
+  box-shadow:0 1px 3px rgba(16,44,38,.12);display:block}
+.wb-rail .rv-thumb.is-on{border-color:var(--wb-turq);box-shadow:0 0 0 2px rgba(23,179,163,.35)}
+.wb-rail .rv-thumb .rv-thumb-frame{width:100%;height:100%;border-radius:4px;overflow:hidden}
+.wb-rail .rv-thumb .rv-thumb-cap{display:none}
+.wb-rail .rv-thumb .rv-check{display:none}
+/* Миниатюры «наших» документов в рейле — значок вместо тяжёлого встроенного окна:
+   бланк рисуется в правом визоре, в полоске он не нужен. */
+.wb-rail-r .rv-thumb iframe{display:none}
+.wb-rail-r .rv-thumb .rv-thumb-frame{position:relative;background:#fff}
+.wb-rail-r .rv-thumb .rv-thumb-frame:after{content:'📄';position:absolute;inset:0;display:grid;
+  place-items:center;font-size:15px;opacity:.5}
+.wb-rail .rv-thumb iframe{transform:scale(.28);transform-origin:top left;width:357%;height:357%;border:0}
+
+/* окна просмотра */
+.wb-view{display:flex;flex-direction:column;background:#fff;position:relative}
+.wb-view .wb-stage{flex:1}
+/* Каркас: окна фиксированной высоты, внутри — превью. Прокрутка и зум — позже. */
+.wb-stage{height:calc(100vh - 330px);min-height:420px;background:var(--wb-stage);position:relative;
+  overflow:hidden;display:flex;align-items:flex-start;justify-content:center;padding:10px}
+.wb-stage img#wb-scan-img{max-width:100%;max-height:100%;object-fit:contain;box-shadow:0 2px 10px rgba(16,44,38,.14);display:none}
+.wb-stage-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--wb-muted)}
+.wb-stage iframe{width:100%;height:100%;border:0;background:#fff}
+.wb-view .wb-cbar{height:30px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#F4F8F6;
+  border-bottom:1px solid var(--wb-line);font-size:10.5px;color:var(--wb-muted)}
+.wb-view .wb-cbar .lang{display:inline-flex;border:1px solid var(--wb-line);border-radius:7px;overflow:hidden;background:#fff}
+.wb-view .wb-cbar .lang button{border:0;background:#fff;padding:3px 10px;font-size:11px;font-weight:650;color:var(--wb-ink);cursor:pointer}
+.wb-view .wb-cbar .lang button.on{background:#E7F6EC;color:#14532D}
+.wb-stage{flex:1;background:var(--wb-stage);overflow:hidden;position:relative}
+.wb-stage iframe{width:100%;height:100%;border:0;background:#fff}
+
+/* встроенный визор (движок зума зафиксирован — меняем только положение) */
+#rv-modal.wb-inline{position:static!important;inset:auto!important;display:block!important;
+  background:transparent!important;z-index:auto!important;backdrop-filter:none!important}
+#rv-modal.wb-inline .rv-modal-win{position:static!important;inset:auto!important;width:100%!important;
+  height:100%!important;max-width:none!important;max-height:none!important;border-radius:0!important;
+  box-shadow:none!important;display:flex!important;flex-direction:column}
+#rv-modal.wb-inline .rv-modal-body{flex:1;min-height:0}
+#rv-modal.wb-inline .rv-modal-foot{display:none}
+
+/* панель переменных в колонке */
+.wb-vars{background:#FBFDFC;display:flex;flex-direction:column;min-width:0}
+/* Внутренний заголовок панели дублирует шапку колонки — скрываем, поиск и прогресс остаются. */
+.wb-vars .rv-phead-top{display:none}
+.wb-vars .rv-right{position:static!important;inset:auto!important;width:100%!important;max-width:none!important;
+  box-shadow:none!important;border-radius:0!important;background:transparent!important;display:flex!important;
+  flex-direction:column;min-height:0}
+.wb-vars .rv-body{flex:1;min-height:0;max-height:72vh;overflow:auto}
+.wb-vars .rv-close-mobile{display:none!important}
+
+/* низ: согласование и отправка */
+.wb-foot{border-top:1px solid var(--wb-line);background:#F8FBFA;padding:6px 12px;display:flex;
+  align-items:center;gap:10px;flex-wrap:wrap}
+
+/* адаптив: шапка не разваливается, этапы остаются по центру */
+@media (max-width:1080px){
+  .wb-top{grid-template-columns:1fr;gap:8px}
+  .wb-flow{order:3;justify-content:center;flex-wrap:wrap}
+}
+/* На узком экране полоски миниатюр ужимаются, но пять колонок остаются:
+   правое окно (наши документы) видно всегда, без горизонтальной прокрутки. */
+@media (max-width:1180px){
+  :root{--wb-rail:38px}
+}

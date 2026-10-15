@@ -1,0 +1,2244 @@
+{
+ "bank_statement_12m__sber": {
+  "docs": 120,
+  "vars": {
+   "address_live": {
+    "filled_docs": 0,
+    "docs": 120,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "balance_rub": {
+    "filled_docs": 118,
+    "docs": 120,
+    "unique": 59,
+    "common": [
+     "6563150,36",
+     "6435028,75",
+     "5437641,41",
+     "5748423,10",
+     "6642678,54",
+     "5526581,34"
+    ],
+    "constant": false
+   },
+   "balance_words": {
+    "filled_docs": 118,
+    "docs": 120,
+    "unique": 59,
+    "common": [
+     "six million five hundred sixty-three thousand one hundred fifty",
+     "six million four hundred thirty-five thousand twenty-eight",
+     "five million four hundred thirty-seven thousand six hundred forty-one",
+     "five million seven hundred forty-eight thousand four hundred twenty-three",
+     "six million six hundred forty-two thousand six hundred seventy-eight",
+     "five million five hundred twenty-six thousand five hundred eighty-one"
+    ],
+    "constant": false
+   },
+   "card_mask": {
+    "filled_docs": 118,
+    "docs": 120,
+    "unique": 59,
+    "common": [
+     "427602******4491",
+     "427901******2483",
+     "427638******7306",
+     "639002******4592",
+     "220220******8201",
+     "427660******4442"
+    ],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 120,
+    "docs": 120,
+    "unique": 61,
+    "common": [
+     "CLIENT_045",
+     "CLIENT_008",
+     "CLIENT_027",
+     "CLIENT_044",
+     "CLIENT_018",
+     "CLIENT_067"
+    ],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 120,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_no": {
+    "filled_docs": 0,
+    "docs": 120,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "period_from": {
+    "filled_docs": 118,
+    "docs": 120,
+    "unique": 3,
+    "common": [
+     "02.10.2025",
+     "22.08.2025",
+     "17.09.2025"
+    ],
+    "constant": false
+   },
+   "period_to": {
+    "filled_docs": 118,
+    "docs": 120,
+    "unique": 3,
+    "common": [
+     "02.10.2026",
+     "22.08.2026",
+     "17.09.2026"
+    ],
+    "constant": false
+   },
+   "ref_no": {
+    "filled_docs": 0,
+    "docs": 120,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "bank_statement_12m__tbank": {
+  "docs": 123,
+  "vars": {
+   "address_live": {
+    "filled_docs": 0,
+    "docs": 123,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "balance_rub": {
+    "filled_docs": 121,
+    "docs": 123,
+    "unique": 60,
+    "common": [
+     "6 921 309, 00",
+     "7 464 886,10",
+     "7 682 732,07",
+     "7 665 439,49",
+     "7 564 899,25",
+     "6 098 219,39"
+    ],
+    "constant": false
+   },
+   "balance_words": {
+    "filled_docs": 121,
+    "docs": 123,
+    "unique": 60,
+    "common": [
+     "seven million one hundred twenty-one thousand three hundred nine",
+     "seven million four hundred sixty-four thousand eight hundred eighty-six",
+     "seven million six hundred eighty-two thousand seven hundred thirty-two",
+     "seven million six hundred sixty-five thousand four hundred thirty-nine",
+     "seven million five hundred sixty-four thousand eight hundred ninety-nine",
+     "six million ninety-eight thousand two hundred nineteen"
+    ],
+    "constant": false
+   },
+   "card_mask": {
+    "filled_docs": 120,
+    "docs": 123,
+    "unique": 59,
+    "common": [
+     "220070******7233",
+     "220070******7106",
+     "518901******1076",
+     "521324******2703",
+     "551960******7488",
+     "220070******0516"
+    ],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 123,
+    "docs": 123,
+    "unique": 63,
+    "common": [
+     "CLIENT_045",
+     "CLIENT_008",
+     "CLIENT_027",
+     "CLIENT_044",
+     "CLIENT_018",
+     "CLIENT_067"
+    ],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 123,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_no": {
+    "filled_docs": 0,
+    "docs": 123,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "period_from": {
+    "filled_docs": 121,
+    "docs": 123,
+    "unique": 4,
+    "common": [
+     "02.10.2025",
+     "22.08.2025",
+     "17.09.2025",
+     "26.05.2025"
+    ],
+    "constant": false
+   },
+   "period_to": {
+    "filled_docs": 121,
+    "docs": 123,
+    "unique": 4,
+    "common": [
+     "02.10.2026",
+     "22.08.2026",
+     "17.09.2026",
+     "26.08.2026"
+    ],
+    "constant": false
+   },
+   "ref_no": {
+    "filled_docs": 0,
+    "docs": 123,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "bank_statement_3m__sber": {
+  "docs": 141,
+  "vars": {
+   "address_live": {
+    "filled_docs": 0,
+    "docs": 141,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "balance_rub": {
+    "filled_docs": 138,
+    "docs": 141,
+    "unique": 69,
+    "common": [
+     "739082.84",
+     "366616.05",
+     "689435.91",
+     "666828.11",
+     "698002.37",
+     "196640.22"
+    ],
+    "constant": false
+   },
+   "card_mask": {
+    "filled_docs": 138,
+    "docs": 141,
+    "unique": 69,
+    "common": [
+     "427602******5484",
+     "427901******0942",
+     "220220******0874",
+     "427638******8625",
+     "427616******0563",
+     "546918******7791"
+    ],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 139,
+    "docs": 141,
+    "unique": 70,
+    "common": [
+     "CLIENT_045",
+     "CLIENT_008",
+     "CLIENT_027",
+     "CLIENT_044",
+     "CLIENT_018",
+     "CLIENT_067"
+    ],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 141,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_no": {
+    "filled_docs": 0,
+    "docs": 141,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "period_from": {
+    "filled_docs": 138,
+    "docs": 141,
+    "unique": 3,
+    "common": [
+     "02.07.2026",
+     "22.08.2025",
+     "17.09.2025"
+    ],
+    "constant": false
+   },
+   "period_to": {
+    "filled_docs": 138,
+    "docs": 141,
+    "unique": 3,
+    "common": [
+     "02.10.2026",
+     "22.08.2026",
+     "17.09.2026"
+    ],
+    "constant": false
+   },
+   "ref_no": {
+    "filled_docs": 138,
+    "docs": 141,
+    "unique": 65,
+    "common": [
+     "B19289961ADL",
+     "6022975d",
+     "4902558y",
+     "0318362y",
+     "8635452a",
+     "5143701q"
+    ],
+    "constant": false
+   }
+  }
+ },
+ "bank_statement_3m__tbank": {
+  "docs": 145,
+  "vars": {
+   "address_live": {
+    "filled_docs": 0,
+    "docs": 145,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "balance_rub": {
+    "filled_docs": 140,
+    "docs": 145,
+    "unique": 70,
+    "common": [
+     "577 182,67",
+     "670 084,48",
+     "414 810,04",
+     "748 796,65",
+     "314 669,34",
+     "476 162,68"
+    ],
+    "constant": false
+   },
+   "balance_words": {
+    "filled_docs": 140,
+    "docs": 145,
+    "unique": 70,
+    "common": [
+     "five hundred seventy-seven thousand one hundred eighty-two",
+     "six hundred seventy thousand eighty-four",
+     "four hundred fourteen thousand eight hundred ten",
+     "seven hundred forty-eight thousand seven hundred ninety-six",
+     "three hundred fourteen thousand six hundred sixty-nine",
+     "four hundred seventy-six thousand one hundred sixty-two"
+    ],
+    "constant": false
+   },
+   "card_mask": {
+    "filled_docs": 140,
+    "docs": 145,
+    "unique": 69,
+    "common": [
+     "220070******7233",
+     "548387******2531",
+     "518901******6342",
+     "220070******1431",
+     "553691******3632",
+     "551960******4017"
+    ],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 141,
+    "docs": 145,
+    "unique": 71,
+    "common": [
+     "CLIENT_045",
+     "CLIENT_008",
+     "CLIENT_027",
+     "CLIENT_044",
+     "CLIENT_018",
+     "CLIENT_067"
+    ],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 145,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_no": {
+    "filled_docs": 0,
+    "docs": 145,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "period_from": {
+    "filled_docs": 140,
+    "docs": 145,
+    "unique": 3,
+    "common": [
+     "02.07.2026",
+     "22.08.2025",
+     "17.09.2025"
+    ],
+    "constant": false
+   },
+   "period_to": {
+    "filled_docs": 140,
+    "docs": 145,
+    "unique": 3,
+    "common": [
+     "02.10.2026",
+     "22.08.2026",
+     "17.09.2026"
+    ],
+    "constant": false
+   },
+   "ref_no": {
+    "filled_docs": 0,
+    "docs": 145,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "bridging_request_letter__denpasar": {
+  "docs": 1,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "addressee_line1": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "application_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_citizenship": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_nik": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_occupation": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_gender": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_nationality": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_3": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_subject": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_citizenship": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_nik_or_dash": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_position": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_company": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_contact": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "bridging_request_letter__ngurahrai": {
+  "docs": 2,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "addressee_line1": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "addressee_line2": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "addressee_line3": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "application_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_address": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_citizenship": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_nik": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_occupation": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_gender": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_nationality": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_2": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_3": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_subject": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "770139869"
+    ],
+    "constant": true
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_address": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_citizenship": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_position": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_address": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_company": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "PT ALPHA PRIME BALI"
+    ],
+    "constant": true
+   },
+   "sponsor_contact": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_person_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "surname": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "CLIENT"
+    ],
+    "constant": true
+   }
+  }
+ },
+ "conversion_request_letter__denpasar": {
+  "docs": 1,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "application_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_nik": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_occupation": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_gender": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_nationality": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_3": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_subject": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_citizenship": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_nik_or_dash": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_position": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_company": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_contact": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "conversion_request_letter__ngurahrai": {
+  "docs": 1,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "application_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_nik": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "attorney_occupation": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_gender": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_nationality": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_iso_3": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_subject": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_citizenship": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_nik_or_dash": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_position": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_address": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_company": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_contact": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "cv__format_detailed": {
+  "docs": 2,
+  "vars": {
+   "cv_date_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_degree": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_note": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_bullets": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_company": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_period": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "2020 — Present"
+    ],
+    "constant": true
+   },
+   "cv_job1_title": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "IT Specialist"
+    ],
+    "constant": true
+   },
+   "cv_job2_company": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_period": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_title": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_languages": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_nationality": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_expiry": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_issue": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_place_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_skills_hard": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_skills_soft": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_skills_tools": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_summary": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "cv__format_short": {
+  "docs": 2,
+  "vars": {
+   "cv_date_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_degree": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_school": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_bullets": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_company": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "LLC \"Inter RAO"
+    ],
+    "constant": true
+   },
+   "cv_job1_period": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_title": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_bullets": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_company": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_period": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job2_title": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_languages": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_nationality": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_expiry": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_issue": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_passport_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_place_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_summary": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "cv__format_CLIENT": {
+  "docs": 2,
+  "vars": {
+   "cv_date_of_birth": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "April 3, 1989"
+    ],
+    "constant": true
+   },
+   "cv_education_degree": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_school": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_education_years": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_bullets": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_company": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_period": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_job1_title": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_languages": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_nationality": {
+    "filled_docs": 1,
+    "docs": 2,
+    "unique": 1,
+    "common": [
+     "Russian Federation"
+    ],
+    "constant": true
+   },
+   "cv_passport_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_place_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_skills_hard": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "cv_summary": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "d12_cover_letter__default": {
+  "docs": 2,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_citizenship": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "itk_expiry": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "itk_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "letter_subject": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_expiry": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_no": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_date_of_birth": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "signatory_position": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_address": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_birth_place_date": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_company": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_contact": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_nationality": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "sponsor_person_name": {
+    "filled_docs": 0,
+    "docs": 2,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "remote_work_agreement__default": {
+  "docs": 61,
+  "vars": {
+   "agreement_date": {
+    "filled_docs": 59,
+    "docs": 61,
+    "unique": 2,
+    "common": [
+     "18",
+     "3 October 2026"
+    ],
+    "constant": false
+   },
+   "annual_amount_numeric": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "annual_amount_words": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "company_address_phrase": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "company_intro_phrase": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "company_name_in_quotes": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "company_requisites_phrase": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "contractor_full_name": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_of_birth": {
+    "filled_docs": 1,
+    "docs": 61,
+    "unique": 1,
+    "common": [
+     "3 April 1989"
+    ],
+    "constant": true
+   },
+   "full_name_latin": {
+    "filled_docs": 1,
+    "docs": 61,
+    "unique": 1,
+    "common": [
+     "POLYAKOV EVGENIY ANDREEVICH"
+    ],
+    "constant": true
+   },
+   "monthly_amount_numeric": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "monthly_amount_words": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "nationality": {
+    "filled_docs": 1,
+    "docs": 61,
+    "unique": 1,
+    "common": [
+     "Russian Federation"
+    ],
+    "constant": true
+   },
+   "passport_issued_block": {
+    "filled_docs": 1,
+    "docs": 61,
+    "unique": 1,
+    "common": [
+     "000000000"
+    ],
+    "constant": true
+   },
+   "passport_number": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place_of_birth_block": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "position_as": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "position_title": {
+    "filled_docs": 1,
+    "docs": 61,
+    "unique": 1,
+    "common": [
+     "as Infrastructure Engineer"
+    ],
+    "constant": true
+   },
+   "services_list": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "term_end_date": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "term_start_date": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "the_company_confirms_that": {
+    "filled_docs": 0,
+    "docs": 61,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "statement_letter_e02__bridging": {
+  "docs": 1,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_of_expiry": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_of_issue": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "email": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "existing_stay_permit": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "full_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "guarantor": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "nationality": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "occupation": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_number": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "phone": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place": {
+    "filled_docs": 1,
+    "docs": 1,
+    "unique": 1,
+    "common": [
+     "(place),(dd"
+    ],
+    "constant": true
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "purpose_of_application": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "stay_permit_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "stay_permit_to_be_applied_for": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "statement_letter_e02__conversion": {
+  "docs": 1,
+  "vars": {
+   "address_in_indonesia": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "client_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_of_expiry": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_of_issue": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "doc_date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "email": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "existing_stay_permit": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "full_name": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "guarantor": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "nationality": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "occupation": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport_number": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "phone": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "place": {
+    "filled_docs": 1,
+    "docs": 1,
+    "unique": 1,
+    "common": [
+     "(place),(dd"
+    ],
+    "constant": true
+   },
+   "place_birth_inline": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "purpose_of_application": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "stay_permit_no": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "stay_permit_to_be_applied_for": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ },
+ "test_sber": {
+  "docs": 1,
+  "vars": {
+   "company": {
+    "filled_docs": 1,
+    "docs": 1,
+    "unique": 1,
+    "common": [
+     "LLC \"TEST COMPANY\""
+    ],
+    "constant": true
+   },
+   "company_formally_confirms_th": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_words": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_words_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "date_words_3": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "passport": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "the_company_agrees_to_pay_th": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "the_company_agrees_to_pay_th_2": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "the_company_confirms_that": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   },
+   "title": {
+    "filled_docs": 0,
+    "docs": 1,
+    "unique": 0,
+    "common": [],
+    "constant": false
+   }
+  }
+ }
+}

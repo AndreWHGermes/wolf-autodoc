@@ -1,0 +1,443 @@
+TRANSLATION FROM RUSSIAN INTO ENGLISH. This document is a translation of a bank statement issued in Russian by Sberbank PJSC and is to be
+submitted together with the original. The bank logo, the QR verification code and the electronic-signature certificate block of the original are not
+reproduced; their content is rendered in words below. Amounts are shown in the English number format (comma as thousands separator, full stop as
+decimal separator).
+[Bank logo: SBER] 900 www.sberbank.ru 19 Vavilova St., Moscow, 117312
+
+Ordered via SberBank Online
+
+Individual payment account statement
+For the period 11.08.2025 — 11.08.2026
+Account holder
+
+Belyaev CLIENT Alekseevich
+
+Account number
+
+40817 810 6 2586 0825698
+
+Cards linked to the account
+
+MIR SberCard •• 7203
+MIR SberCard Instant •• 7081
+
+Currency
+
+Russian rouble
+
+Account opening date
+
+23.09.2020
+
+Account closing date
+
+–
+
+TOTAL TRANSACTIONS FOR THE PERIOD
+Credits
+
++ 5,304,599.96
+
+Debits
+
+3,485,506.78
+
+Additional filters applied
+Transaction type
+
+Credits and debits
+
+Transaction details
+TRANSACTION
+DATE (MSK)
+
+Processing date1
+
+CATEGORY
+
+auth. code
+
+Transaction description
+
+AMOUNT IN
+ACCOUNT
+CURRENCY
+Amount in
+transaction
+
+currency2
+
+11.08.2026 20:20 Supermarkets
+11.08.2026 374194 KRASNOE&BELOE Petrozavodsk RUS. Card transaction ****7081
+
+480.37
+
+11.08.2026 15:04 Supermarkets
+11.08.2026 390526 PYATEROCHKA 853 Petrozavodsk RUS. Card transaction
+****7081
+
+653.94
+
+11.08.2026 14:44 Other transactions
+11.08.2026 248225 MAPP_SBERBANK_ONL@IN_PAY. Account transaction ****5698
+
+200.00
+
+10.08.2026 23:36 Supermarkets
+11.08.2026 694344 Solodov Kukkovka RUS. Card transaction ****7081
+
+1,795.95
+
+11.08.2026 12:58 Transfer to card
+11.08.2026 844126 SBOL transfer from payment account **5485 Ya. Nikolay
+Gennadevich. Account transaction ****5698
+
++2,000.00
+
+11.08.2026 03:52 Restaurants and cafés
+11.08.2026 969569 Tick-time. Card transaction ****7203
+
+677.00
+
+10.08.2026 19:38 SBP QR-code payment
+10.08.2026 978082 Shop 13697. Card transaction ****7203
+
+373.98
+
+10.08.2026 18:11 SBP transfer
+10.08.2026 704597 Transfer from T-Bank. Account transaction ****5698
+
++35,000.00
+
+10.08.2026 12:40 SBP transfer
+10.08.2026 194153 Transfer from Ozon Bank (Ozon). Card transaction ****7203
+
++1,000.00
+
+08.08.2026 00:56 Supermarkets
+09.08.2026 614078 Solodov CENTR RUS. Card transaction ****7081
+
+703.98
+
+TRANSACTION
+DATE (MSK)
+
+Processing date1
+
+CATEGORY
+
+auth. code
+
+Transaction description
+
+AMOUNT IN
+ACCOUNT
+CURRENCY
+Amount in
+transaction
+
+currency2
+
+08.08.2026 00:37 Restaurants and cafés
+08.08.2026 375863 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+08.08.2026 00:30 Restaurants and cafés
+08.08.2026 267939 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+08.08.2026 00:02 Restaurants and cafés
+08.08.2026 259315 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+07.08.2026 23:43 Restaurants and cafés
+07.08.2026 173986 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+700.00
+
+07.08.2026 23:28 Restaurants and cafés
+07.08.2026 247537 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+07.08.2026 23:17 Restaurants and cafés
+07.08.2026 634708 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+07.08.2026 23:05 Restaurants and cafés
+07.08.2026 657087 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+400.00
+
+07.08.2026 22:55 Restaurants and cafés
+07.08.2026 237505 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+400.00
+
+07.08.2026 22:50 Restaurants and cafés
+07.08.2026 191177 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+200.00
+
+07.08.2026 22:48 Restaurants and cafés
+07.08.2026 148709 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+300.00
+
+07.08.2026 22:46 Restaurants and cafés
+07.08.2026 780312 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+400.00
+
+07.08.2026 22:24 Restaurants and cafés
+07.08.2026 462134 VKARELIIEST PETROZAVODSK RUS. Card transaction ****7081
+
+1,140.00
+
+07.08.2026 22:24 Restaurants and cafés
+07.08.2026 632329 VKARELIIEST PETROZAVODSK RUS. Card transaction ****7081
+
+695.00
+
+07.08.2026 21:20 Supermarkets
+07.08.2026 984783 SIGMA U DOMA PETROZAVODSK RUS. Card transaction
+****7081
+
+159.80
+
+07.08.2026 18:45 Supermarkets
+07.08.2026 804892 PYATEROCHKA 853 PETROZAVODSK RUS. Card transaction
+****7081
+
+256.98
+
+06.08.2026 18:59 Supermarkets
+06.08.2026 261345 KRASNOE&BELOE PETROZAVODSK RUS. Card transaction
+****7081
+
+163.08
+
+TRANSACTION
+DATE (MSK)
+
+Processing date1
+
+CATEGORY
+
+auth. code
+
+Transaction description
+
+AMOUNT IN
+ACCOUNT
+CURRENCY
+Amount in
+transaction
+
+currency2
+
+06.08.2026 00:07 Restaurants and cafés
+06.08.2026 004109 DEZHAVU PETROZAVODSK RUS. Card transaction ****7081
+
+740.00
+
+06.08.2026 07:56 Other expenses
+06.08.2026 710297 SberPrime. Card transaction ****7203
+
+399.00
+
+05.08.2026 21:05 Supermarkets
+05.08.2026 099118 PYATEROCHKA 18571 PETROZAVODSK RUS. Card transaction
+****7081
+
+449.96
+
+05.08.2026 20:56 Restaurants and cafés
+05.08.2026 453320 KRUTILKA PETROZAVODSK RUS. Card transaction ****7081
+
+272.30
+
+05.08.2026 17:18 Supermarkets
+05.08.2026 481136 KRASNOE&BELOE PETROZAVODSK RUS. Card transaction
+****7081
+
+212.47
+
+04.08.2026 22:01 Other expenses
+05.08.2026 690449 OZON MOSCOW RUS. Card transaction ****7203
+
+186.00
+
+04.08.2026 18:14 Other expenses
+04.08.2026 175612 OZON MOSCOW RUS. Card transaction ****7203
+
+2,048.00
+
+04.08.2026 22:10 Supermarkets
+04.08.2026 743358 SIGMA U DOMA PETROZAVODSK RUS. Card transaction
+****7081
+
+322.20
+
+04.08.2026 21:22 Supermarkets
+04.08.2026 024243 SIGMA U DOMA PETROZAVODSK RUS. Card transaction
+****7081
+
+260.00
+
+04.08.2026 20:01 Restaurants and cafés
+04.08.2026 220540 DO ZARI PETROZAVODSK RUS. Card transaction ****7081
+
+540.00
+
+04.08.2026 05:01 Supermarkets
+04.08.2026 203073 Lenta- 16 PETROZAVODSK RUS. Card transaction ****7081
+
+688.95
+
+03.08.2026 20:50 SBP transfer
+03.08.2026 807098 Transfer to Gazprombank. Account transaction ****5698
+
+1,000.00
+
+03.08.2026 20:07 Supermarkets
+03.08.2026 720774 KRASNOE&BELOE PETROZAVODSK RUS. Card transaction
+****7081
+
+727.76
+
+03.08.2026 16:51 Transfer from card
+03.08.2026 896008 Transfer to Ya. Nikolay Gennadevich. Account transaction
+****5698
+
+2,000.00
+
+03.08.2026 15:56 Supermarkets
+03.08.2026 158077 KRASNOE&BELOE PETROZAVODSK RUS. Card transaction
+****7081
+
+483.53
+
+03.08.2026 13:16 Supermarkets
+03.08.2026 578690 PYATEROCHKA 853 PETROZAVODSK RUS. Card transaction
+****7081
+
+69.99
+
+TRANSACTION
+DATE (MSK)
+
+Processing date1
+
+CATEGORY
+
+auth. code
+
+Transaction description
+
+03.08.2026 13:15 SBP transfer
+03.08.2026 542751 Transfer from Raiffeisenbank. Card transaction ****7203
+
+AMOUNT IN
+ACCOUNT
+CURRENCY
+Amount in
+transaction
+
+currency2
+
++4,000.00
+
+02.08.2026 21:29 Supermarkets
+02.08.2026 882017 KRASNOE&BELOE PETROZAVODSK RUS. Card transaction
+****7081
+
+335.95
+
+02.08.2026 12:49 Transfer from card
+02.08.2026 138738 Transfer to B. CLIENT Alekseevich. Account transaction
+****5698
+
+426.82
+
+02.08.2026 12:48 Transfer from card
+02.08.2026 318174 Transfer to B. CLIENT Alekseevich. Account transaction
+****5698
+
+426.82
+
+01.08.2026 10:22 SBP transfer
+01.08.2026 341792 Transfer to Ozon Bank (Ozon). Account transaction ****5698
+
+1,000.00
+
+31.07.2026 21:35 Supermarkets
+31.07.2026 598142 VODNIK MATROSY RUS. Card transaction ****7081
+31.07.2026 20:22 Transfer from card
+31.07.2026 934576 Transfer to V. Marina Sergeevna. Account transaction ****5698
+
+380.00
+7,200.00
+
+31.07.2026 15:32 Supermarkets
+31.07.2026 223482 PYATEROCHKA 6999 VILGA RUS. Card transaction ****7081
+
+94.68
+
+31.07.2026 15:28 Restaurants and cafés
+31.07.2026 833034 PEKARNYA BEKKERJOY VILGA RUS. Card transaction ****7081
+
+410.00
+
+30.07.2026 23:04 Supermarkets
+31.07.2026 939865 Solodov CENTR RUS. Card transaction ****7081
+
+436.50
+
+31.07.2026 02:58 Restaurants and cafés
+31.07.2026 965456 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+300.00
+
+31.07.2026 01:51 Restaurants and cafés
+31.07.2026 801195 RYUMOCHNAYA MAYAK PETROZAVODSK RUS. Card transaction
+****7081
+
+300.00
+
+31.07.2026 01:50 Restaurants and cafés
+31.07.2026 692795 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+200.00
+
+31.07.2026 01:36 Restaurants and cafés
+31.07.2026 888932 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+200.00
+
+31.07.2026 01:06 Restaurants and cafés
+31.07.2026 548984 RYUMOCHNAYA MAYAK. PETROZAVODSK RUS. Card
+transaction ****7081
+
+400.00
+
+31.07.2026 00:54 Restaurants and cafés
+31.07.2026 520349 MAYAK PETROZAVODSK RUS. Card transaction ****7081
+
+200.00
+
+30.07.2026 23:48 Restaurants and cafés
+30.07.2026 551437 OOO OLIMP PETROZAVODSK RUS. Card transaction ****7081
+
+200.00
+
+

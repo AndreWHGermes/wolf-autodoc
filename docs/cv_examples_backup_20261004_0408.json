@@ -1,0 +1,67 @@
+[
+ {
+  "template_id": 4,
+  "name": "cv_nationality",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 4,
+  "name": "cv_job1_period",
+  "examples_json": "[\"Jun 2025 – Present\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_nationality",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_job1_period",
+  "examples_json": "[\"March 2018 – Present\"]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_education_degree",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_skills_hard",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_skills_soft",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_skills_tools",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 5,
+  "name": "cv_languages",
+  "examples_json": "[]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_nationality",
+  "examples_json": "[\"Russian Federation\"]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_job1_period",
+  "examples_json": "[\"September 2025 – Present\"]"
+ },
+ {
+  "template_id": 6,
+  "name": "cv_skills_hard",
+  "examples_json": null
+ },
+ {
+  "template_id": 6,
+  "name": "cv_education_degree",
+  "examples_json": null
+ }
+]

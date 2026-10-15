@@ -1,0 +1,1353 @@
+{
+ "BRIDGING": {
+  "name": "Мостовая виза (60 дней на переход)",
+  "our_docs": [
+   {
+    "code": "bridging_request_letter__default",
+    "slot": "bridging_letter",
+    "title": "Bridging: письмо в иммиграцию (офис по адресу клиента)"
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "slot": "cv",
+    "title": "Резюме (CV) — формат Сиваева"
+   },
+   {
+    "code": "employment_contract__default",
+    "slot": "employment_contract",
+    "title": "Employment Contract (договор работы с организацией)"
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "slot": "work_agreement",
+    "title": "Remote Work Agreement (контракт)"
+   },
+   {
+    "code": "statement_letter_e02__default",
+    "slot": "statement_e02_bridging",
+    "title": "Statement Letter (Form E-02) — Bridging"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bridging_request_letter__default": [
+    "addressee_office",
+    "attorney_address",
+    "attorney_name",
+    "attorney_nik",
+    "body_request_line",
+    "client_address",
+    "client_dob",
+    "date",
+    "itk_expiry",
+    "itk_no",
+    "letter_place_date",
+    "passport_expiry",
+    "signatory_address",
+    "signatory_name",
+    "sponsor_person_name",
+    "surname",
+    "date_iso",
+    "date_iso_2",
+    "date_iso_3",
+    "letter_no",
+    "letter_subject",
+    "addressee_line1",
+    "addressee_line2",
+    "addressee_line3",
+    "client_gender",
+    "client_nationality",
+    "address_in_indonesia",
+    "place_of_birth",
+    "address_live",
+    "application_no",
+    "client_name",
+    "passport_no",
+    "place_date",
+    "sponsor_name",
+    "place_birth_inline",
+    "signatory_position",
+    "signatory_citizenship",
+    "signatory_nik_or_dash"
+   ],
+   "cv__format_CLIENT": [
+    "cv_profession",
+    "cv_name",
+    "cv_date_of_birth",
+    "cv_place_of_birth",
+    "cv_nationality",
+    "cv_passport_no",
+    "cv_summary",
+    "cv_job1_title",
+    "cv_job1_period",
+    "cv_job1_company",
+    "cv_job1_bullets",
+    "cv_job2_period",
+    "cv_job2_company",
+    "cv_job2_bullets",
+    "cv_languages",
+    "full_name_latin",
+    "cv_skills_hard",
+    "cv_education_degree",
+    "cv_education_school",
+    "cv_education_years"
+   ],
+   "employment_contract__default": [
+    "company_full_name",
+    "company_type",
+    "company_country",
+    "company_entity_no",
+    "company_address_1",
+    "company_address_2",
+    "company_block",
+    "company_link",
+    "contract_no",
+    "contract_date",
+    "contract_place",
+    "employee_full_name",
+    "employee_short",
+    "passport_number",
+    "date_of_birth",
+    "nationality",
+    "place_of_birth",
+    "position_title",
+    "services_list",
+    "base_salary",
+    "term_start_date",
+    "term_end_date",
+    "signer_title",
+    "signer_name",
+    "governing_law"
+   ],
+   "remote_work_agreement__default": [
+    "passport_expiry",
+    "passport_issue_date",
+    "passport_issued_by",
+    "the_company_confirms_that",
+    "services_list",
+    "agreement_date",
+    "company_name_in_quotes",
+    "date_of_birth",
+    "full_name_latin",
+    "inn_kpp_ogrn",
+    "nationality",
+    "passport_number",
+    "place_of_birth",
+    "employee_address",
+    "contract_no",
+    "employer_name",
+    "employee_name",
+    "company_registered_address",
+    "company_inn",
+    "company_kpp",
+    "company_ogrn",
+    "position_title",
+    "term_start_date",
+    "term_end_date",
+    "annual_amount_numeric",
+    "annual_amount_words",
+    "monthly_amount_numeric",
+    "monthly_amount_words",
+    "contractor_full_name"
+   ],
+   "statement_letter_e02__default": [
+    "full_name",
+    "place_date_of_birth",
+    "date_of_issue",
+    "date_of_expiry",
+    "birth_date",
+    "existing_stay_permit",
+    "purpose_of_application",
+    "stay_permit_to_be_applied_for",
+    "address_in_indonesia",
+    "client_name",
+    "doc_date",
+    "email",
+    "nationality",
+    "passport_number",
+    "phone",
+    "place",
+    "guarantor",
+    "place_of_birth",
+    "sponsor_company",
+    "stay_permit_no",
+    "place_birth_inline"
+   ]
+  },
+  "shared_variables": {
+   "passport_expiry": 2,
+   "address_in_indonesia": 2,
+   "place_of_birth": 4,
+   "client_name": 2,
+   "place_birth_inline": 2,
+   "full_name_latin": 2,
+   "contract_no": 2,
+   "passport_number": 3,
+   "date_of_birth": 2,
+   "nationality": 3,
+   "position_title": 2,
+   "services_list": 2,
+   "term_start_date": 2,
+   "term_end_date": 2
+  }
+ },
+ "C1": {
+  "name": "Виза C1 (B211A — кунджунган, 60 дней, до 180 с продлением)",
+  "our_docs": [
+   {
+    "code": "bank_statement_3m__sber",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_3m__tbank",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Т-Банк)"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bank_statement_3m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "balance_rub",
+    "account_no",
+    "contract_date",
+    "contract_no"
+   ],
+   "bank_statement_3m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "balance_rub",
+    "doc_date"
+   ]
+  },
+  "shared_variables": {
+   "doc_no": 2,
+   "card_mask": 2,
+   "ref_no": 2,
+   "address_live": 2,
+   "balance_words": 2,
+   "client_name": 2,
+   "period_from": 2,
+   "period_to": 2,
+   "doc_date": 2,
+   "balance_rub": 2
+  }
+ },
+ "C1-EXT": {
+  "name": "Продление C1 (+60 дней, до 180)",
+  "our_docs": [
+   {
+    "code": "bank_statement_3m__sber",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_3m__tbank",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Т-Банк)"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bank_statement_3m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "balance_rub",
+    "account_no",
+    "contract_date",
+    "contract_no"
+   ],
+   "bank_statement_3m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "balance_rub",
+    "doc_date"
+   ]
+  },
+  "shared_variables": {
+   "doc_no": 2,
+   "card_mask": 2,
+   "ref_no": 2,
+   "address_live": 2,
+   "balance_words": 2,
+   "client_name": 2,
+   "period_from": 2,
+   "period_to": 2,
+   "doc_date": 2,
+   "balance_rub": 2
+  }
+ },
+ "CONV": {
+  "name": "Конверсия (Alih Status) — выход в KITAS",
+  "our_docs": [
+   {
+    "code": "conversion_request_letter__default",
+    "slot": "conversion_letter",
+    "title": "Conversion: письмо в иммиграцию (офис по адресу клиента)"
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "slot": "cv",
+    "title": "Резюме (CV) — формат Сиваева"
+   },
+   {
+    "code": "employment_contract__default",
+    "slot": "employment_contract",
+    "title": "Employment Contract (договор работы с организацией)"
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "slot": "work_agreement",
+    "title": "Remote Work Agreement (контракт)"
+   },
+   {
+    "code": "statement_letter_e02__default",
+    "slot": "statement_e02_conversion",
+    "title": "Statement Letter (Form E-02) — Bridging"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "conversion_request_letter__default": [
+    "addressee_office",
+    "body_request_line",
+    "client_address",
+    "client_dob",
+    "date",
+    "itk_expiry",
+    "itk_no",
+    "letter_place_date",
+    "passport_expiry",
+    "place_of_birth",
+    "signatory_address",
+    "signatory_name",
+    "sponsor_person_name",
+    "surname",
+    "letter_no",
+    "letter_subject",
+    "addressee_line1",
+    "addressee_line2",
+    "addressee_line3",
+    "sponsor_address",
+    "sponsor_contact",
+    "attorney_name",
+    "attorney_occupation",
+    "bridging_visa_no",
+    "attorney_citizenship",
+    "attorney_nik",
+    "attorney_address",
+    "client_gender",
+    "client_nationality",
+    "passport_no",
+    "place_date_of_birth",
+    "sponsor_company_details",
+    "application_no",
+    "client_name",
+    "date_iso",
+    "date_iso_2",
+    "date_iso_3",
+    "place_date",
+    "sponsor_company",
+    "sponsor_name",
+    "place_birth_inline",
+    "signatory_position",
+    "signatory_citizenship",
+    "signatory_nik_or_dash"
+   ],
+   "cv__format_CLIENT": [
+    "cv_profession",
+    "cv_name",
+    "cv_date_of_birth",
+    "cv_place_of_birth",
+    "cv_nationality",
+    "cv_passport_no",
+    "cv_summary",
+    "cv_job1_title",
+    "cv_job1_period",
+    "cv_job1_company",
+    "cv_job1_bullets",
+    "cv_job2_period",
+    "cv_job2_company",
+    "cv_job2_bullets",
+    "cv_languages",
+    "full_name_latin",
+    "cv_skills_hard",
+    "cv_education_degree",
+    "cv_education_school",
+    "cv_education_years"
+   ],
+   "employment_contract__default": [
+    "company_full_name",
+    "company_type",
+    "company_country",
+    "company_entity_no",
+    "company_address_1",
+    "company_address_2",
+    "company_block",
+    "company_link",
+    "contract_no",
+    "contract_date",
+    "contract_place",
+    "employee_full_name",
+    "employee_short",
+    "passport_number",
+    "date_of_birth",
+    "nationality",
+    "place_of_birth",
+    "position_title",
+    "services_list",
+    "base_salary",
+    "term_start_date",
+    "term_end_date",
+    "signer_title",
+    "signer_name",
+    "governing_law"
+   ],
+   "remote_work_agreement__default": [
+    "passport_expiry",
+    "passport_issue_date",
+    "passport_issued_by",
+    "the_company_confirms_that",
+    "services_list",
+    "agreement_date",
+    "company_name_in_quotes",
+    "date_of_birth",
+    "full_name_latin",
+    "inn_kpp_ogrn",
+    "nationality",
+    "passport_number",
+    "place_of_birth",
+    "employee_address",
+    "contract_no",
+    "employer_name",
+    "employee_name",
+    "company_registered_address",
+    "company_inn",
+    "company_kpp",
+    "company_ogrn",
+    "position_title",
+    "term_start_date",
+    "term_end_date",
+    "annual_amount_numeric",
+    "annual_amount_words",
+    "monthly_amount_numeric",
+    "monthly_amount_words",
+    "contractor_full_name"
+   ],
+   "statement_letter_e02__default": [
+    "full_name",
+    "place_date_of_birth",
+    "date_of_issue",
+    "date_of_expiry",
+    "birth_date",
+    "existing_stay_permit",
+    "purpose_of_application",
+    "stay_permit_to_be_applied_for",
+    "address_in_indonesia",
+    "client_name",
+    "doc_date",
+    "email",
+    "nationality",
+    "passport_number",
+    "phone",
+    "place",
+    "guarantor",
+    "place_of_birth",
+    "sponsor_company",
+    "stay_permit_no",
+    "place_birth_inline"
+   ]
+  },
+  "shared_variables": {
+   "passport_expiry": 2,
+   "place_of_birth": 4,
+   "place_date_of_birth": 2,
+   "client_name": 2,
+   "sponsor_company": 2,
+   "place_birth_inline": 2,
+   "full_name_latin": 2,
+   "contract_no": 2,
+   "passport_number": 3,
+   "date_of_birth": 2,
+   "nationality": 3,
+   "position_title": 2,
+   "services_list": 2,
+   "term_start_date": 2,
+   "term_end_date": 2
+  }
+ },
+ "D12": {
+  "name": "Виза D12 — Pra-Investasi (многократная 1–2 года)",
+  "our_docs": [
+   {
+    "code": "bank_statement_3m__sber",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_3m__tbank",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Т-Банк)"
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "slot": "cv",
+    "title": "Резюме (CV) — формат Сиваева"
+   },
+   {
+    "code": "d12_cover_letter__default",
+    "slot": "d12_sponsor_letters",
+    "title": "D12: Permohonan Visa (ходатайство)"
+   },
+   {
+    "code": "employment_contract__default",
+    "slot": "employment_contract",
+    "title": "Employment Contract (договор работы с организацией)"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bank_statement_3m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "balance_rub",
+    "account_no",
+    "contract_date",
+    "contract_no"
+   ],
+   "bank_statement_3m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "balance_rub",
+    "doc_date"
+   ],
+   "cv__format_CLIENT": [
+    "cv_profession",
+    "cv_name",
+    "cv_date_of_birth",
+    "cv_place_of_birth",
+    "cv_nationality",
+    "cv_passport_no",
+    "cv_summary",
+    "cv_job1_title",
+    "cv_job1_period",
+    "cv_job1_company",
+    "cv_job1_bullets",
+    "cv_job2_period",
+    "cv_job2_company",
+    "cv_job2_bullets",
+    "cv_languages",
+    "full_name_latin",
+    "cv_skills_hard",
+    "cv_education_degree",
+    "cv_education_school",
+    "cv_education_years"
+   ],
+   "d12_cover_letter__default": [
+    "letter_no",
+    "letter_subject",
+    "signatory_position",
+    "signatory_citizenship",
+    "signatory_address",
+    "sponsor_address",
+    "sponsor_contact",
+    "sponsor_person_name",
+    "sponsor_birth_place_date",
+    "sponsor_nationality",
+    "sponsor_position",
+    "passport_no",
+    "place_date_of_birth",
+    "client_name",
+    "place_date",
+    "sponsor_company",
+    "job_and_position",
+    "signatory_name",
+    "signatory_name_2",
+    "client_citizenship",
+    "passport_expiry",
+    "address_in_indonesia",
+    "itk_no",
+    "itk_expiry",
+    "addressee_line1",
+    "addressee_line2",
+    "addressee_line3",
+    "attorney_occupation",
+    "attorney_nik",
+    "attorney_address",
+    "client_gender",
+    "place_birth_inline"
+   ],
+   "employment_contract__default": [
+    "company_full_name",
+    "company_type",
+    "company_country",
+    "company_entity_no",
+    "company_address_1",
+    "company_address_2",
+    "company_block",
+    "company_link",
+    "contract_no",
+    "contract_date",
+    "contract_place",
+    "employee_full_name",
+    "employee_short",
+    "passport_number",
+    "date_of_birth",
+    "nationality",
+    "place_of_birth",
+    "position_title",
+    "services_list",
+    "base_salary",
+    "term_start_date",
+    "term_end_date",
+    "signer_title",
+    "signer_name",
+    "governing_law"
+   ]
+  },
+  "shared_variables": {
+   "doc_no": 2,
+   "card_mask": 2,
+   "ref_no": 2,
+   "address_live": 2,
+   "balance_words": 2,
+   "client_name": 3,
+   "period_from": 2,
+   "period_to": 2,
+   "doc_date": 2,
+   "balance_rub": 2,
+   "contract_date": 2,
+   "contract_no": 2
+  }
+ },
+ "E33G-EXT": {
+  "name": "Продление E33G КИТАС",
+  "our_docs": [
+   {
+    "code": "bank_statement_3m__sber",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_3m__tbank",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Т-Банк)"
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "slot": "cv",
+    "title": "Резюме (CV) — формат Сиваева"
+   },
+   {
+    "code": "employment_contract__default",
+    "slot": "employment_contract",
+    "title": "Employment Contract (договор работы с организацией)"
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "slot": "work_agreement",
+    "title": "Remote Work Agreement (контракт)"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bank_statement_3m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "balance_rub",
+    "account_no",
+    "contract_date",
+    "contract_no"
+   ],
+   "bank_statement_3m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "balance_rub",
+    "doc_date"
+   ],
+   "cv__format_CLIENT": [
+    "cv_profession",
+    "cv_name",
+    "cv_date_of_birth",
+    "cv_place_of_birth",
+    "cv_nationality",
+    "cv_passport_no",
+    "cv_summary",
+    "cv_job1_title",
+    "cv_job1_period",
+    "cv_job1_company",
+    "cv_job1_bullets",
+    "cv_job2_period",
+    "cv_job2_company",
+    "cv_job2_bullets",
+    "cv_languages",
+    "full_name_latin",
+    "cv_skills_hard",
+    "cv_education_degree",
+    "cv_education_school",
+    "cv_education_years"
+   ],
+   "employment_contract__default": [
+    "company_full_name",
+    "company_type",
+    "company_country",
+    "company_entity_no",
+    "company_address_1",
+    "company_address_2",
+    "company_block",
+    "company_link",
+    "contract_no",
+    "contract_date",
+    "contract_place",
+    "employee_full_name",
+    "employee_short",
+    "passport_number",
+    "date_of_birth",
+    "nationality",
+    "place_of_birth",
+    "position_title",
+    "services_list",
+    "base_salary",
+    "term_start_date",
+    "term_end_date",
+    "signer_title",
+    "signer_name",
+    "governing_law"
+   ],
+   "remote_work_agreement__default": [
+    "passport_expiry",
+    "passport_issue_date",
+    "passport_issued_by",
+    "the_company_confirms_that",
+    "services_list",
+    "agreement_date",
+    "company_name_in_quotes",
+    "date_of_birth",
+    "full_name_latin",
+    "inn_kpp_ogrn",
+    "nationality",
+    "passport_number",
+    "place_of_birth",
+    "employee_address",
+    "contract_no",
+    "employer_name",
+    "employee_name",
+    "company_registered_address",
+    "company_inn",
+    "company_kpp",
+    "company_ogrn",
+    "position_title",
+    "term_start_date",
+    "term_end_date",
+    "annual_amount_numeric",
+    "annual_amount_words",
+    "monthly_amount_numeric",
+    "monthly_amount_words",
+    "contractor_full_name"
+   ]
+  },
+  "shared_variables": {
+   "doc_no": 2,
+   "card_mask": 2,
+   "ref_no": 2,
+   "address_live": 2,
+   "balance_words": 2,
+   "client_name": 2,
+   "period_from": 2,
+   "period_to": 2,
+   "doc_date": 2,
+   "balance_rub": 2,
+   "contract_date": 2,
+   "contract_no": 3,
+   "full_name_latin": 2,
+   "passport_number": 2,
+   "date_of_birth": 2,
+   "nationality": 2,
+   "place_of_birth": 2,
+   "position_title": 2,
+   "services_list": 2,
+   "term_start_date": 2,
+   "term_end_date": 2
+  }
+ },
+ "E33G-NEW": {
+  "name": "Новый E33G КИТАС (Remote Worker)",
+  "our_docs": [
+   {
+    "code": "bank_statement_12m__sber",
+    "slot": "bank_stmt_12m",
+    "title": "Банковская справка 12 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_12m__tbank",
+    "slot": "bank_stmt_12m",
+    "title": "Банковская справка 12 мес. (Т-Банк)"
+   },
+   {
+    "code": "bank_statement_3m__sber",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Сбер)"
+   },
+   {
+    "code": "bank_statement_3m__tbank",
+    "slot": "bank_stmt_3m",
+    "title": "Банковская справка 3 мес. (Т-Банк)"
+   },
+   {
+    "code": "cv__format_CLIENT",
+    "slot": "cv",
+    "title": "Резюме (CV) — формат Сиваева"
+   },
+   {
+    "code": "employment_contract__default",
+    "slot": "employment_contract",
+    "title": "Employment Contract (договор работы с организацией)"
+   },
+   {
+    "code": "remote_work_agreement__default",
+    "slot": "work_agreement",
+    "title": "Remote Work Agreement (контракт)"
+   }
+  ],
+  "client_docs": [
+   {
+    "label": "Загранпаспорт клиента",
+    "detail": "паспорт: серия/номер, кем выдан, даты",
+    "required": true
+   },
+   {
+    "label": "Фотография клиента",
+    "detail": "фото 3×4/4×6 в цвете",
+    "required": true
+   },
+   {
+    "label": "Справка банка об остатке",
+    "detail": "остаток, период, номер справки, банк",
+    "required": true
+   },
+   {
+    "label": "Адрес проживания и регистрации",
+    "detail": "город, улица, дом, индекс",
+    "required": true
+   },
+   {
+    "label": "Свидетельство о браке",
+    "detail": "для подачи с супругом(ой)",
+    "required": false
+   },
+   {
+    "label": "Свидетельство о рождении",
+    "detail": "для подачи с детьми",
+    "required": false
+   },
+   {
+    "label": "Действующий KITAS / ITK-пермит",
+    "detail": "при продлении и конверсии",
+    "required": false
+   },
+   {
+    "label": "Трудовая книжка (ИТК)",
+    "detail": "встречается у ~7% клиентов",
+    "required": false
+   },
+   {
+    "label": "Commitment / guarantee letter",
+    "detail": "для зависимых членов семьи",
+    "required": false
+   }
+  ],
+  "variables": {
+   "bank_statement_12m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "contract_date",
+    "contract_no",
+    "account_no",
+    "balance_rub"
+   ],
+   "bank_statement_12m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "contract_no",
+    "account_no",
+    "balance_rub",
+    "doc_date",
+    "contract_date"
+   ],
+   "bank_statement_3m__sber": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "doc_date",
+    "balance_rub",
+    "account_no",
+    "contract_date",
+    "contract_no"
+   ],
+   "bank_statement_3m__tbank": [
+    "doc_no",
+    "card_mask",
+    "ref_no",
+    "address_live",
+    "balance_words",
+    "client_name",
+    "period_from",
+    "period_to",
+    "balance_rub",
+    "doc_date"
+   ],
+   "cv__format_CLIENT": [
+    "cv_profession",
+    "cv_name",
+    "cv_date_of_birth",
+    "cv_place_of_birth",
+    "cv_nationality",
+    "cv_passport_no",
+    "cv_summary",
+    "cv_job1_title",
+    "cv_job1_period",
+    "cv_job1_company",
+    "cv_job1_bullets",
+    "cv_job2_period",
+    "cv_job2_company",
+    "cv_job2_bullets",
+    "cv_languages",
+    "full_name_latin",
+    "cv_skills_hard",
+    "cv_education_degree",
+    "cv_education_school",
+    "cv_education_years"
+   ],
+   "employment_contract__default": [
+    "company_full_name",
+    "company_type",
+    "company_country",
+    "company_entity_no",
+    "company_address_1",
+    "company_address_2",
+    "company_block",
+    "company_link",
+    "contract_no",
+    "contract_date",
+    "contract_place",
+    "employee_full_name",
+    "employee_short",
+    "passport_number",
+    "date_of_birth",
+    "nationality",
+    "place_of_birth",
+    "position_title",
+    "services_list",
+    "base_salary",
+    "term_start_date",
+    "term_end_date",
+    "signer_title",
+    "signer_name",
+    "governing_law"
+   ],
+   "remote_work_agreement__default": [
+    "passport_expiry",
+    "passport_issue_date",
+    "passport_issued_by",
+    "the_company_confirms_that",
+    "services_list",
+    "agreement_date",
+    "company_name_in_quotes",
+    "date_of_birth",
+    "full_name_latin",
+    "inn_kpp_ogrn",
+    "nationality",
+    "passport_number",
+    "place_of_birth",
+    "employee_address",
+    "contract_no",
+    "employer_name",
+    "employee_name",
+    "company_registered_address",
+    "company_inn",
+    "company_kpp",
+    "company_ogrn",
+    "position_title",
+    "term_start_date",
+    "term_end_date",
+    "annual_amount_numeric",
+    "annual_amount_words",
+    "monthly_amount_numeric",
+    "monthly_amount_words",
+    "contractor_full_name"
+   ]
+  },
+  "shared_variables": {
+   "doc_no": 4,
+   "card_mask": 4,
+   "ref_no": 4,
+   "address_live": 4,
+   "balance_words": 4,
+   "client_name": 4,
+   "period_from": 4,
+   "period_to": 4,
+   "doc_date": 4,
+   "contract_date": 4,
+   "contract_no": 5,
+   "account_no": 3,
+   "balance_rub": 4,
+   "full_name_latin": 2,
+   "passport_number": 2,
+   "date_of_birth": 2,
+   "nationality": 2,
+   "place_of_birth": 2,
+   "position_title": 2,
+   "services_list": 2,
+   "term_start_date": 2,
+   "term_end_date": 2
+  }
+ }
+}

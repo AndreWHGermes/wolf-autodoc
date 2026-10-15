@@ -1,0 +1,1475 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ dae1f16e
+
+28.07.2026
+
+Garz CLIENT Leonidovich
+Home address: 119618, Moscow, Sh Borovskoe , D. 2, Korp. 6, Kv. 315
+
+About the product
+Date of conclusion of the contract: 15.01.2018
+Contract number: 5061730130
+Personal account number: 40817810900004626798
+
+Movement of funds for the period from 28.07.2025 to 28.07.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+24.07.2026
+14:01
+
+24.07.2026
+14:02
+
+-4.10 ₽
+
+-4.10 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+24.07.2026
+13:08
+
+24.07.2026
+13:09
+
++4.10 ₽
+
++4.10 ₽
+
+CE5 T-Bank, RU
+
+1493
+
+23.07.2026
+09:34
+
+23.07.2026
+09:35
+
+-25 000.00 ₽
+
+-25 000.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+23.07.2026
+09:05
+
+23.07.2026
+09:05
+
++425 000.00 ₽
+
++425 000.00 ₽
+
+LLC SUPER MARIO
+
+1493
+
+22.07.2026
+22:26
+
+23.07.2026
+04:00
+
+-831.00 ₽
+
+-831.00 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+22.07.2026
+18:23
+
+22.07.2026
+18:23
+
++820.00 ₽
+
++820.00 ₽
+
+Intrabank transfer from
+contract 5002440765
+
+1493
+
+22.07.2026
+01:42
+
+22.07.2026
+04:09
+
++5 011.00 ₽
+
++5 011.00 ₽
+
+Intrabank transfer from
+contract 8170373040
+
+1493
+
+22.07.2026
+01:41
+
+23.07.2026
+14:57
+
+-5 000.00 ₽
+
+-5 000.00 ₽
+
+21.07.2026
+16:49
+
+21.07.2026
+16:50
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+Cash withdrawal in
+1198
+YandexBank_C2A g. Moskva
+RUS
+Internal transfer to contract 1493
+5746216673
+
+21.07.2026
+16:49
+
+21.07.2026
+16:50
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+21.07.2026
+11:31
+
+21.07.2026
+11:31
+
+-22 000.00 ₽
+
+-22 000.00 ₽
+
+Internal transfer to contract
+5611691758
+
+1493
+
+21.07.2026
+11:30
+
+21.07.2026
+11:30
+
++22 000.00 ₽
+
++22 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+21.07.2026
+11:24
+
+21.07.2026
+11:24
+
+-1 829.00 ₽
+
+-1 829.00 ₽
+
+Internal transfer to contract
+8043764181
+
+1493
+
+21.07.2026
+11:23
+
+21.07.2026
+11:25
+
++1 829.00 ₽
+
++1 829.00 ₽
+
+c2c transfer Avito Dostavka g 1198
+Moskva RU
+
+20.07.2026
+20:02
+
+20.07.2026
+20:02
+
+-728.00 ₽
+
+-728.00 ₽
+
+Internal transfer to contract
+8043764181
+
+1493
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+20.07.2026
+20:01
+
+20.07.2026
+20:01
+
++728.00 ₽
+
++728.00 ₽
+
+19.07.2026
+15:27
+
+19.07.2026
+15:27
+
++1 600.00 ₽
+
++1 600.00 ₽
+
+Replenishment by phone
+1493
+number SBP.110000000288
+RU
+Intrabank transfer from
+1493
+contract 8170373040
+
+19.07.2026
+11:44
+
+19.07.2026
+11:44
+
+-1 600.00 ₽
+
+-1 600.00 ₽
+
+External transfer by phone
+number +79174397702
+
+1493
+
+19.07.2026
+07:32
+
+19.07.2026
+07:32
+
+-95 000.00 ₽
+
+-95 000.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+19.07.2026
+06:54
+
+19.07.2026
+06:54
+
++95 000.00 ₽
+
++95 000.00 ₽
+
+Replenishment with a partner 1198
+ATM T-Bank Sterlitamak RU
+
+18.07.2026
+08:01
+
+18.07.2026
+08:01
+
+-3 863.00 ₽
+
+-3 863.00 ₽
+
+Internal transfer to contract
+8170373040
+
+18.07.2026
+08:01
+
+18.07.2026
+08:01
+
++3 863.00 ₽
+
++3 863.00 ₽
+
+17.07.2026
+13:21
+
+17.07.2026
+13:21
+
+-3 050.00 ₽
+
+-3 050.00 ₽
+
+Replenishment by phone
+1493
+number SBP.110000000288
+RU
+Internal transfer to contract 1493
+8170373040
+
+17.07.2026
+13:18
+
+17.07.2026
+13:20
+
+-116 950.00 ₽
+
+-116 950.00 ₽
+
+External transfer by phone
+number +79158129238
+
+1493
+
+17.07.2026
+13:18
+
+17.07.2026
+13:19
+
++20 000.00 ₽
+
++20 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+17.07.2026
+13:16
+
+17.07.2026
+13:17
+
+-7 000.00 ₽
+
+-7 000.00 ₽
+
+Payment in ABSBP MOSCOW 1493
+RU
+
+17.07.2026
+13:15
+
+17.07.2026
+13:16
+
+-15 000.00 ₽
+
+-15 000.00 ₽
+
+Internal transfer to contract
+5384399704
+
+1493
+
+17.07.2026
+13:14
+
+17.07.2026
+13:14
+
++7 000.00 ₽
+
++7 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+17.07.2026
+13:14
+
+17.07.2026
+13:14
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+17.07.2026
+13:14
+
+17.07.2026
+13:14
+
++100 000.00 ₽
+
++100 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+17.07.2026
+07:00
+
+17.07.2026
+07:00
+
+-10 843.00 ₽
+
+-10 843.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+16.07.2026
+18:28
+
+16.07.2026
+18:28
+
++10 843.00 ₽
+
++10 843.00 ₽
+
+Replenishment from the
+salary project Zarplata RU
+
+1493
+
+16.07.2026
+16:50
+
+16.07.2026
+16:52
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+1198
+
+16.07.2026
+16:41
+
+16.07.2026
+16:41
+
++50 000.00 ₽
+
++50 000.00 ₽
+
+Intrabank transfer from
+contract 8170373040
+
+1493
+
+16.07.2026
+12:07
+
+16.07.2026
+12:08
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+External transfer by phone
+number +79299763132
+
+1493
+
+16.07.2026
+12:06
+
+16.07.2026
+12:06
+
+-540.00 ₽
+
+-540.00 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+16.07.2026
+12:06
+
+16.07.2026
+12:06
+
++3 000.00 ₽
+
++3 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+16.07.2026
+10:13
+
+16.07.2026
+10:13
+
++540.00 ₽
+
++540.00 ₽
+
+Intrabank transfer from
+contract 5002440765
+
+1493
+
+16.07.2026
+08:12
+
+16.07.2026
+08:12
+
+-8 100.00 ₽
+
+-8 100.00 ₽
+
+Internal transfer to contract
+5026760459
+
+1493
+
+16.07.2026
+08:12
+
+16.07.2026
+08:12
+
++8 100.00 ₽
+
++8 100.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+15.07.2026
+16:40
+
+15.07.2026
+16:40
+
+-30 000.00 ₽
+
+-30 000.00 ₽
+
+Internal transfer to contract
+5083974559
+
+1493
+
+15.07.2026
+16:39
+
+15.07.2026
+16:39
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+1493
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+15.07.2026
+15:12
+
+15.07.2026
+15:14
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+5773
+
+15.07.2026
+13:27
+
+15.07.2026
+13:32
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+15.07.2026
+13:27
+
+15.07.2026
+13:32
+
+-500.00 ₽
+
+-500.00 ₽
+
+Internal transfer to contract
+5002440765
+
+1493
+
+15.07.2026
+13:23
+
+15.07.2026
+13:32
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+CE5 T-Bank, Bonus Privedi
+druga RU
+
+1493
+
+15.07.2026
+13:08
+
+15.07.2026
+13:17
+
++500.00 ₽
+
++500.00 ₽
+
+CE5 T-Bank, Bonus Privedi
+druga RU
+
+1493
+
+14.07.2026
+17:28
+
+14.07.2026
+17:29
+
+-3 000.00 ₽
+
+-3 000.00 ₽
+
+Internal transfer to contract
+5160724695
+
+1493
+
+14.07.2026
+17:24
+
+14.07.2026
+17:24
+
++43 000.00 ₽
+
++43 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+14.07.2026
+12:12
+
+14.07.2026
+12:13
+
+-3 185.00 ₽
+
+-3 185.00 ₽
+
+Internal transfer to contract
+8043764181
+
+1493
+
+14.07.2026
+12:12
+
+14.07.2026
+12:13
+
+-490.00 ₽
+
+-490.00 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+14.07.2026
+10:43
+
+14.07.2026
+10:44
+
++3 185.00 ₽
+
++3 185.00 ₽
+
+13.07.2026
+19:32
+
+13.07.2026
+19:32
+
++490.00 ₽
+
++490.00 ₽
+
+Replenishment by phone
+1493
+number SBP.100000000004
+RU
+Intrabank transfer from
+1493
+contract 5002440765
+
+12.07.2026
+09:14
+
+12.07.2026
+09:14
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+Transfer to mBank.perevod
+
+1493
+
+12.07.2026
+09:14
+
+12.07.2026
+09:14
+
+-80 000.00 ₽
+
+-80 000.00 ₽
+
+Transfer to mBank.perevod
+
+1493
+
+12.07.2026
+09:13
+
+12.07.2026
+09:14
+
++100 000.00 ₽
+
++100 000.00 ₽
+
+Intrabank transfer from
+contract 8170373040
+
+1493
+
+12.07.2026
+09:11
+
+12.07.2026
+09:11
+
+-4 791.10 ₽
+
+-4 791.10 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+11.07.2026
+22:29
+
+11.07.2026
+22:29
+
++4 011.37 ₽
+
++4 011.37 ₽
+
+Cashback
+
+—
+
+11.07.2026
+22:28
+
+11.07.2026
+22:28
+
++779.73 ₽
+
++779.73 ₽
+
+Cashback
+
+—
+
+11.07.2026
+10:11
+
+11.07.2026
+10:12
+
+-1 100.00 ₽
+
+-1 100.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+10.07.2026
+21:56
+
+10.07.2026
+21:56
+
++1 100.00 ₽
+
++1 100.00 ₽
+
+Intrabank transfer from
+contract 5002440765
+
+1493
+
+10.07.2026
+17:40
+
+10.07.2026
+17:41
+
+-40 000.00 ₽
+
+-40 000.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+1493
+
+10.07.2026
+09:38
+
+10.07.2026
+09:38
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Internal transfer to contract
+5649982690
+
+1493
+
+10.07.2026
+09:38
+
+10.07.2026
+09:38
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+10.07.2026
+07:14
+
+10.07.2026
+07:14
+
++100 000.00 ₽
+
++100 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+09.07.2026
+22:32
+
+10.07.2026
+03:56
+
+-23.85 ₽
+
+-23.85 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+09.07.2026
+14:48
+
+09.07.2026
+14:48
+
++23.85 ₽
+
++23.85 ₽
+
+09.07.2026
+13:33
+
+09.07.2026
+13:33
+
+-33 000.00 ₽
+
+-33 000.00 ₽
+
+Refund transaction in
+1198
+DOSTAVKA IZ PYATEROCHK
+MOSCOW RUS
+Internal transfer to contract 1493
+5649982690
+
+09.07.2026
+13:33
+
+09.07.2026
+13:33
+
++33 000.00 ₽
+
++33 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+08.07.2026
+10:18
+
+08.07.2026
+10:20
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+Cash withdrawal in ATM.TBANK MOSCOW RUS
+
+8191
+
+08.07.2026
+07:06
+
+08.07.2026
+07:06
+
+-9 000.00 ₽
+
+-9 000.00 ₽
+
+Payment in AIA*T-Travel
+MOSCOW RU
+
+1493
+
+08.07.2026
+07:03
+
+08.07.2026
+07:04
+
++9 000.00 ₽
+
++9 000.00 ₽
+
+Refund transaction in AIA*TTravel MOSCOW RU
+
+1493
+
+07.07.2026
+20:17
+
+07.07.2026
+20:18
+
++1 572.99 ₽
+
++1 572.99 ₽
+
+Intrabank transfer from
+contract 8170373040
+
+1493
+
+07.07.2026
+14:31
+
+07.07.2026
+14:46
+
+-1 572.99 ₽
+
+-1 572.99 ₽
+
+1198
+
+06.07.2026
+06:40
+
+06.07.2026
+06:40
+
+-50 000.00 ₽
+
+-50 000.00 ₽
+
+Payment in DOSTAVKA IZ
+PYATEROCHK MOSCOW
+RUS
+Internal transfer to contract
+8170373040
+
+06.07.2026
+06:39
+
+06.07.2026
+06:40
+
+-2 330.00 ₽
+
+-2 330.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+06.07.2026
+06:38
+
+06.07.2026
+06:38
+
++2 330.00 ₽
+
++2 330.00 ₽
+
+05.07.2026
+09:06
+
+05.07.2026
+09:06
+
++50 000.00 ₽
+
++50 000.00 ₽
+
+Replenishment by phone
+1493
+number SBP.100000000008
+RU
+Replenishment with a partner 1198
+ATM T-Bank Sterlitamak RU
+
+03.07.2026
+20:54
+
+03.07.2026
+20:55
+
++1 166.00 ₽
+
++1 166.00 ₽
+
+Intrabank transfer from
+contract 8170373040
+
+1493
+
+03.07.2026
+20:54
+
+03.07.2026
+21:06
+
+-1 166.00 ₽
+
+-1 166.00 ₽
+
+Payment in AIA*Samokat
+MOSCOW RU
+
+1493
+
+03.07.2026
+19:08
+
+03.07.2026
+19:08
+
+-1 116.00 ₽
+
+-1 116.00 ₽
+
+Internal transfer to contract
+8043764181
+
+1493
+
+03.07.2026
+19:07
+
+03.07.2026
+19:07
+
++1 116.00 ₽
+
++1 116.00 ₽
+
+03.07.2026
+16:42
+
+03.07.2026
+16:43
+
+-3 013.00 ₽
+
+-3 013.00 ₽
+
+Replenishment by phone
+1493
+number SBP.100000000004
+RU
+Internal transfer to contract 1493
+8043764181
+
+03.07.2026
+16:28
+
+03.07.2026
+16:29
+
++3 013.00 ₽
+
++3 013.00 ₽
+
+03.07.2026
+11:53
+
+03.07.2026
+11:55
+
+-58 000.00 ₽
+
+-58 000.00 ₽
+
+03.07.2026
+11:51
+
+03.07.2026
+11:51
+
++58 000.00 ₽
+
+03.07.2026
+07:11
+
+03.07.2026
+07:12
+
+02.07.2026
+11:01
+
+1493
+
+Replenishment by phone
+number Avito.Bezopasnaya
+sdelka MOSCOW RU
+Internal transfer to contract
+8170373040
+
+1493
+
++58 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+-460.00 ₽
+
+-460.00 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+02.07.2026
+11:02
+
++460.00 ₽
+
++460.00 ₽
+
+Intrabank transfer from
+contract 5002440765
+
+1493
+
+02.07.2026
+05:38
+
+02.07.2026
+05:38
+
+-21 944.00 ₽
+
+-21 944.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+01.07.2026
+13:29
+
+01.07.2026
+13:30
+
++944.00 ₽
+
++944.00 ₽
+
+Intrabank transfer from
+contract 5649982690
+
+1493
+
+01.07.2026
+13:12
+
+01.07.2026
+13:13
+
+-9 000.00 ₽
+
+-9 000.00 ₽
+
+Payment in AIA*T-Travel
+MOSCOW RU
+
+1493
+
+01.07.2026
+12:58
+
+01.07.2026
+13:00
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+Cash withdrawal in ATM.TBANK UFA RUS
+
+1493
+
+01.07.2026
+07:43
+
+01.07.2026
+07:43
+
+-100 000.00 ₽
+
+-100 000.00 ₽
+
+Internal transfer to contract
+8170373040
+
+1493
+
+01.07.2026
+07:42
+
+01.07.2026
+07:43
+
++200 000.00 ₽
+
++200 000.00 ₽
+
+Intrabank transfer from
+contract 7020718362
+
+1493
+
+29.06.2026
+14:49
+
+29.06.2026
+14:49
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Internal transfer to contract
+0299924746
+
+1493
+
+1493
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+

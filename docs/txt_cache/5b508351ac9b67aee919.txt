@@ -1,0 +1,1384 @@
+TBANK
+38A, BLD. 26, 2 KHUTORSKAYA STREET, MOSCOW, 127287, RUSSIA.
+TEL.: +7 (495) 648 1000, TBANK.RU
+
+Bank Statement
+№ 625e2b83
+
+19.08.2026
+
+Misyurov Aleksey Konstantinovich
+Home address: 188669, Leningradskaya Obl, G Murino, Ul Novaya , D. 7, Korp. 3, Kv. 749
+
+About the product
+Date of conclusion of the contract: 25.09.2021
+Contract number: 5503991647
+Personal account number: 40817810500044883153
+
+Movement of funds for the period from 19.08.2025 to 19.08.2026
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+18.08.2026
+22:05
+
+18.08.2026
+22:05
+
++160.20 ₽
+
++160.20 ₽
+
+nullnull MONEY POT
+
+—
+
+18.08.2026
+19:13
+
+18.08.2026
+19:14
+
+-599.00 ₽
+
+-599.00 ₽
+
+09.08.2026
+12:17
+
+09.08.2026
+12:17
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Payment in
+6646
+YANDEX*4816*360 Moscow
+RUS
+Intrabank transfer from
+6646
+contract LLC "UNIQUE"
+
+05.08.2026
+18:47
+
+05.08.2026
+18:48
+
+-37 000.00 ₽
+
+-37 000.00 ₽
+
+External transfer by phone
+number +79254479874
+
+6646
+
+05.08.2026
+18:42
+
+05.08.2026
+18:43
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in mBank.T-Mobile
+
+6646
+
+01.08.2026
+18:18
+
+01.08.2026
+18:18
+
+-12 000.00 ₽
+
+-12 000.00 ₽
+
+External transfer by phone
+number +79063601466
+
+6646
+
+23.07.2026
+23:15
+
+23.07.2026
+23:15
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.07.2026
+22:59
+
+23.07.2026
+22:59
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+21.07.2026
+10:45
+
+21.07.2026
+10:46
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Intrabank transfer from
+contract 5493051729
+
+6646
+
+09.07.2026
+19:13
+
+09.07.2026
+19:28
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Intrabank transfer from
+contract LLC "UNIQUE"
+
+6646
+
+29.06.2026
+17:37
+
+29.06.2026
+17:37
+
++10 850.00 ₽
+
++10 850.00 ₽
+
+Intrabank transfer from
+contract 5493051729
+
+6646
+
+23.06.2026
+23:17
+
+23.06.2026
+23:17
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.06.2026
+23:01
+
+23.06.2026
+23:01
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+18.06.2026
+19:13
+
+18.06.2026
+19:28
+
+-599.00 ₽
+
+-599.00 ₽
+
+16.06.2026
+09:21
+
+16.06.2026
+09:21
+
+-57 854.00 ₽
+
+-57 854.00 ₽
+
+Payment in
+6646
+YANDEX*4816*360 Moscow
+RUS
+Internal transfer to contract 6646
+5068981870
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+1
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+11.06.2026
+18:23
+
+11.06.2026
+18:23
+
++30 000.00 ₽
+
++30 000.00 ₽
+
+Intrabank transfer from
+contract 5068981870
+
+6646
+
+10.06.2026
+16:37
+
+10.06.2026
+16:38
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Intrabank transfer from
+contract LLC "UNIQUE"
+
+6646
+
+09.06.2026
+07:32
+
+09.06.2026
+09:27
+
+-3 383.00 ₽
+
+-3 383.00 ₽
+
+Payment in OZON Moskva RU 6646
+
+06.06.2026
+11:48
+
+06.06.2026
+11:49
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in mBank.T-Mobile
+
+23.05.2026
+23:13
+
+23.05.2026
+23:13
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.05.2026
+22:54
+
+23.05.2026
+22:54
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+21.05.2026
+13:06
+
+21.05.2026
+13:07
+
++5 000.00 ₽
+
++5 000.00 ₽
+
+Intrabank transfer from
+contract 5493051729
+
+18.05.2026
+19:13
+
+18.05.2026
+19:28
+
+-599.00 ₽
+
+-599.00 ₽
+
+12.05.2026
+11:44
+
+12.05.2026
+11:44
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Payment in
+6646
+YANDEX*4816*360 Moscow
+RUS
+Intrabank transfer from
+6646
+contract LLC "UNIQUE"
+
+23.04.2026
+23:14
+
+23.04.2026
+23:14
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.04.2026
+22:56
+
+23.04.2026
+22:56
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.04.2026
+22:32
+
+23.04.2026
+22:32
+
++36.00 ₽
+
++36.00 ₽
+
+Cashback
+
+23.04.2026
+19:15
+
+23.04.2026
+19:31
+
+-4 150.00 ₽
+
+-4 150.00 ₽
+
+20.04.2026
+01:28
+
+20.04.2026
+04:36
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in
+6646
+YANDEX*4816*360 Moscow
+RUS
+Payment in mBank.T-Mobile 6646
+
+10.04.2026
+19:13
+
+10.04.2026
+19:28
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Intrabank transfer from
+contract LLC "UNIQUE"
+
+23.03.2026
+23:13
+
+23.03.2026
+23:13
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.03.2026
+22:58
+
+23.03.2026
+22:58
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+18.03.2026
+19:13
+
+19.03.2026
+19:50
+
+-499.00 ₽
+
+-499.00 ₽
+
+6646
+
+12.03.2026
+16:32
+
+12.03.2026
+16:32
+
+-3 200.00 ₽
+
+-3 200.00 ₽
+
+Payment in
+YANDEX*7372*360 Moskva
+RU
+Internal transfer to contract
+5235907994
+
+12.03.2026
+14:24
+
+12.03.2026
+14:25
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Intrabank transfer from
+contract LLC "UNIQUE"
+
+6646
+
+10.03.2026
+10:51
+
+10.03.2026
+10:52
+
+-1 000.00 ₽
+
+-1 000.00 ₽
+
+Transfer within the bank
+MONEY POT
+
+6646
+
+09.03.2026
+18:12
+
+09.03.2026
+18:28
+
+-50.00 ₽
+
+-50.00 ₽
+
+09.03.2026
+16:40
+
+09.03.2026
+18:27
+
+-4 826.00 ₽
+
+-4 826.00 ₽
+
+09.03.2026
+16:38
+
+09.03.2026
+16:39
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in
+6646
+YANDEX*5814*EDA Moskva
+RU
+Payment in
+6646
+YANDEX*5814*EDA Moskva
+RU
+Payment in mBank.T-Mobile 6646
+
+09.03.2026
+16:34
+
+09.03.2026
+16:35
+
++1 000.00 ₽
+
++1 000.00 ₽
+
+Transfer within the bank
+MONEY POT
+
+6646
+
+6646
+
+—
+
+6646
+
+6646
+
+6646
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+2
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+23.02.2026
+23:12
+
+23.02.2026
+23:12
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.02.2026
+22:52
+
+23.02.2026
+22:52
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+22.02.2026
+00:18
+
+22.02.2026
+04:29
+
+-647.00 ₽
+
+-647.00 ₽
+
+Payment in OZON Moskva RU 6646
+
+20.02.2026
+14:45
+
+20.02.2026
+14:46
+
+-15 000.00 ₽
+
+-15 000.00 ₽
+
+External transfer by phone
+number +79939792341
+
+18.02.2026
+19:13
+
+19.02.2026
+19:26
+
+-499.00 ₽
+
+-499.00 ₽
+
+13.02.2026
+10:42
+
+13.02.2026
+10:43
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Payment in
+6646
+YANDEX*YANDEX*7372*36
+Moskva RU
+Intrabank transfer from
+6646
+contract LLC "UNIQUE"
+
+10.02.2026
+13:19
+
+10.02.2026
+13:20
+
+-20 000.00 ₽
+
+-20 000.00 ₽
+
+Internal transfer to contract
+5301689104
+
+6646
+
+06.02.2026
+14:12
+
+06.02.2026
+14:12
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in mBank.T-Mobile
+
+6646
+
+05.02.2026
+17:06
+
+05.02.2026
+17:07
+
+-1 491.84 ₽
+
+-1 491.84 ₽
+
+Payment in plati.market
+MOSCOW RU
+
+6646
+
+02.02.2026
+14:58
+
+02.02.2026
+14:59
+
+-2 000.00 ₽
+
+-2 000.00 ₽
+
+External transfer by phone
+number +79951148263
+
+6646
+
+24.01.2026
+17:14
+
+24.01.2026
+17:14
+
++10 000.00 ₽
+
++10 000.00 ₽
+
+Intrabank transfer from
+contract 5542562854
+
+6646
+
+23.01.2026
+23:15
+
+23.01.2026
+23:15
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.01.2026
+22:56
+
+23.01.2026
+22:56
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+20.01.2026
+15:37
+
+20.01.2026
+15:37
+
++399.00 ₽
+
++399.00 ₽
+
+6646
+
+20.01.2026
+15:37
+
+20.01.2026
+15:37
+
++399.00 ₽
+
++399.00 ₽
+
+20.01.2026
+15:36
+
+20.01.2026
+15:36
+
++399.00 ₽
+
++399.00 ₽
+
+20.01.2026
+15:35
+
+20.01.2026
+15:35
+
++399.00 ₽
+
++399.00 ₽
+
+18.01.2026
+19:12
+
+18.01.2026
+19:27
+
+-499.00 ₽
+
+-499.00 ₽
+
+16.01.2026
+10:26
+
+16.01.2026
+10:27
+
++15 000.00 ₽
+
++15 000.00 ₽
+
+13.01.2026
+00:11
+
+13.01.2026
+03:09
+
+-399.00 ₽
+
+-399.00 ₽
+
+10.01.2026
+17:24
+
+10.01.2026
+17:25
+
++515 000.00 ₽
+
++515 000.00 ₽
+
+Refund transaction in
+YANDEX*5815*PLUS
+Moscow RUS
+Refund transaction in
+YANDEX*5815*PLUS
+MOSCOW RUS
+Refund transaction in
+YANDEX*5815*PLUS
+MOSCOW RUS
+Refund transaction in
+YANDEX*5815*PLUS
+MOSCOW RUS
+Payment in
+YANDEX*4816*360 Moscow
+RUS
+Replenishment by phone
+number SBP.100000000111
+RU
+Payment in
+YANDEX*5815*PLUS
+MOSCOW RUS
+Internal transfer from
+contract LLC "UNIQUE"
+
+10.01.2026
+09:18
+
+10.01.2026
+09:18
+
+-706.03 ₽
+
+-706.03 ₽
+
+Internal transfer to contract
+0717354245
+
+6646
+
+10.01.2026
+08:54
+
+10.01.2026
+08:54
+
+-945.20 ₽
+
+-945.20 ₽
+
+Transfer within the bank
+MONEY POT
+
+6646
+
+10.01.2026
+08:53
+
+10.01.2026
+08:53
+
+-1 247.13 ₽
+
+-1 247.13 ₽
+
+Transfer within the bank
+MONEY POT
+
+6646
+
+6646
+
+6646
+
+6646
+
+6646
+
+6646
+
+6646
+
+6646
+
+6646
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+3
+
+Date and time
+Date of processing Transaction amount
+of the transaction of the transaction and its currency
+
+Transaction amount
+in the card currency
+
+Transaction description
+
+Card
+number
+
+10.01.2026
+00:14
+
+10.01.2026
+03:20
+
++21 000.00 ₽
+
++21 000.00 ₽
+
+Intrabank transfer from
+contract 5042443175
+
+6646
+
+09.01.2026
+23:16
+
+09.01.2026
+23:16
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+09.01.2026
+13:48
+
+09.01.2026
+13:48
+
++1 700.00 ₽
+
++1 700.00 ₽
+
+Intrabank transfer from
+contract 5068981870
+
+6646
+
+08.01.2026
+23:15
+
+08.01.2026
+23:15
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+07.01.2026
+23:15
+
+07.01.2026
+23:15
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+06.01.2026
+23:15
+
+06.01.2026
+23:15
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+05.01.2026
+23:09
+
+05.01.2026
+23:09
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+04.01.2026
+23:09
+
+04.01.2026
+23:09
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+03.01.2026
+23:15
+
+03.01.2026
+23:15
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+02.01.2026
+23:09
+
+02.01.2026
+23:09
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+01.01.2026
+23:09
+
+01.01.2026
+23:09
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+31.12.2025
+22:51
+
+31.12.2025
+22:51
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+31.12.2025
+22:04
+
+31.12.2025
+22:04
+
++809.20 ₽
+
++809.20 ₽
+
+nullnull MONEY POT
+
+—
+
+31.12.2025
+17:21
+
+31.12.2025
+17:21
+
+-49.00 ₽
+
+-49.00 ₽
+
+Payment in mBank.T-Mobile
+
+6646
+
+31.12.2025
+16:42
+
+31.12.2025
+17:21
+
+-760.20 ₽
+
+-760.20 ₽
+
+Payment in CloudTips Online 6646
+Moskva RU
+
+30.12.2025
+23:09
+
+30.12.2025
+23:09
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+29.12.2025
+23:06
+
+29.12.2025
+23:06
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+28.12.2025
+23:20
+
+28.12.2025
+23:20
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+27.12.2025
+23:20
+
+27.12.2025
+23:20
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+26.12.2025
+23:16
+
+26.12.2025
+23:16
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+25.12.2025
+23:20
+
+25.12.2025
+23:20
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+24.12.2025
+23:19
+
+24.12.2025
+23:19
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+24.12.2025
+09:43
+
+24.12.2025
+09:43
+
+-299.00 ₽
+
+-299.00 ₽
+
+Transfer within the bank
+MONEY POT
+
+6646
+
+23.12.2025
+23:20
+
+23.12.2025
+23:20
+
+-8.00 ₽
+
+-8.00 ₽
+
+nullnull MONEY POT
+
+—
+
+23.12.2025
+23:12
+
+23.12.2025
+23:12
+
+-99.00 ₽
+
+-99.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.12.2025
+22:56
+
+23.12.2025
+22:56
+
+-59.00 ₽
+
+-59.00 ₽
+
+Bank service payment
+—
+PRIME_AUTH MOSCOW RUS
+
+23.12.2025
+22:34
+
+23.12.2025
+22:34
+
++457.00 ₽
+
++457.00 ₽
+
+Cashback
+
+—
+
+«TBank» universal license of Bank of Russia No 2673 c/a 30101810145250000974 Main Department Bank of Russia in the Central Federal District
+BIC 044525974 TIC 000000000 CRR 771301001
+
+4
+
+
