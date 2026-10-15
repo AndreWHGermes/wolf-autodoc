@@ -26,6 +26,7 @@ MENU = [
     ("CLIENT",    "Журнал",   "/CLIENT",  ICON_HIST),
     # «|» в подписи = перенос строки в меню (в остальных местах — « · »)
     ("CLIENT", "Конструктор|Продукты / Документы", "/CLIENT", ICON_DOC),
+    ("guide",     "Инструкция|Пакеты и переменные", "/guide", ICON_DOC),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
 
@@ -1265,6 +1266,15 @@ html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
   setTimeout(off, 6000);
 }})();
 </script></body></html>"""
+    # Одиночные суррогаты (0xD800–0xDFFF) в HTML ломали ВСЮ страницу: werkzeug не может
+    # закодировать их в utf-8, и админка отдавала 500 вместо заявки. Данные приходят из
+    # разных источников (фото, тексты клиентов, парсеры) — вычищаем и записываем след в лог.
+    if any(0xD800 <= ord(ch) <= 0xDFFF for ch in html):
+        import logging as _log
+        _i = next(i for i, ch in enumerate(html) if 0xD800 <= ord(ch) <= 0xDFFF)
+        _log.getLogger("wolf").warning("в HTML найдены суррогаты (позиция %d): %r",
+                                       _i, html[max(0, _i - 160):_i + 40])
+        html = "".join(ch for ch in html if not (0xD800 <= ord(ch) <= 0xDFFF))
     resp = Response(html, mimetype="text/html; charset=utf-8")
     # Страница отдаётся с проверкой свежести: если браузер уже видел точно
     # такую же страницу, сервер отвечает «не изменилось» (304) — без тела.

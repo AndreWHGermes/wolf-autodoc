@@ -429,7 +429,7 @@ def _write_CLIENT_text(app_id: int, body: str, form: dict, user) -> None:
     p.write_text("\n".join(lines), encoding="utf-8")
 
 def create_CLIENT(form: dict, from_user: sqlite3.Row,
-                       autofill: bool = False) -> tuple[int, int]:
+                       autofill: bool = False, raw_text: str = "") -> tuple[int, int]:
     """Создаёт клиента и заявку. Возвращает (CLIENT_id, client_id)."""
     conn = db()
     full = form.get("full_name") or ""
@@ -534,13 +534,19 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     _gCLIENT_url = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
     cur = conn.execute(
         "INSERT INTO CLIENT (client_id, CLIENT_id, CLIENT, source, "
-        "comment, price_idr, gCLIENT_url, raw_payload, bot_manager_id, created_at) "
-        "CLIENT (?,?, 'new', 'telegram', ?, ?, ?, ?, ?, CLIENT('now'))",
+        "comment, brief, price_idr, gCLIENT_url, raw_payload, raw_message, bot_manager_id, created_at) "
+        "CLIENT (?,?, 'new', 'telegram', ?, ?, ?, ?, ?, ?, ?, CLIENT('now'))",
         (client_id, CLIENT_id,
          form.get("comment") or "",
+         # текст заявки сразу становится комментарием сборки: должность, сфера и прочее,
+         # что менеджер написал в боте, применяется к документам заявки без переноса руками
+         (form.get("comment") or form.get("notes") or ""),
          price_idr,
          _gCLIENT_url,
          json.dumps(form, ensure_ascii=False),
+         # точь-в-точь текст заявки, как его прислал менеджер в Telegram:
+         # уходит отдельным txt-файлом в папку документов на Google Диске
+         (raw_text or "").strip(),
          from_user["id"]))
     app_id = cur.lastrowid
     _kind = _record_kind(conn)
@@ -585,7 +591,8 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
         rows = conn.execute(
             "SELECT t.id, t.code FROM CLIENT t "
             "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
-            "WHERE pd.CLIENT_id=?", (CLIENT_id,)).fetchall()
+            "WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged')",
+            (CLIENT_id,)).fetchall()
         # Письма в иммиграцию идут ровно одним комплектом: Ngurah Rai или
         # Denpasar — по адресу проживания клиента. Второй вариант не создаём.
         from CLIENT import immigration_CLIENT as _io
@@ -615,34 +622,21 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     # Разбор документов клиента из Google CLIENT — автоматически, сразу после
     # приёма заявки. Раньше приходилось жать «Разобрать документы (нейросеть)»
     # в карточке; теперь данные клиента уже вытащены, когда её открывают.
-    if _gCLIENT_url:
-        try:
-            # сразу проверяем содержимое папки: есть ли там паспорт клиента
-            from CLIENT import CLIENT as _CLIENT_svc
-            _chk = _CLIENT_svc.check_folder(app_id, client_id)
-            if not _chk.get("ok"):
-                log.warning("заявка #%s: в папке Google CLIENT %s",
-                            app_id,
-                            "паспорт клиента не найден" if _chk.get("files") else "нет файлов")
-        except Exception as _exc:  # noqa: BLE001
-            log.warning("проверка папки Google CLIENT по заявке #%s: %s", app_id, _exc)
-        try:
-            from CLIENT.CLIENT import CLIENT_scan
-            res = CLIENT_scan(app_id, client_id)
-            log.info("автораэбор Google CLIENT по заявке #%s: %s", app_id, res.get("note"))
-        except Exception as exc:  # noqa: BLE001
-            log.warning("не удалось запустить автораэбор Google CLIENT: %s", exc)
-        # Пока заявка ждёт администратора, готовим её целиком: дожидаемся разбора,
-        # собираем документы и рисуем превью. Тогда открытие заявки мгновенное —
-        # ничего не нужно ждать и не нужно заново ходить на Диск.
-        try:
-            import subprocess as _sp
-            _sp.Popen(["/usr/bin/nice", "-n", "15", "/usr/bin/python3",
-                       "/opt/wolf_v2/scripts/app_prepare.py", str(app_id)],
-                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, CLIENT_new_session=True)
-            log.info("предподготовка заявки #%s запущена", app_id)
-        except Exception as _exc:  # noqa: BLE001
-            log.warning("предподготовка заявки #%s не запустилась: %s", app_id, _exc)
+    # Заявка принята — дальше она идёт в ОЧЕРЕДЬ, а не запускается сразу.
+    # Раньше бот немедленно поднимал разбор Диска и предподготовку, и три заявки
+    # подряд давали три тяжёлых процесса одновременно — сервер вешало. Теперь
+    # тяжёлую работу (сканы, распознавание, сборку) делает один воркер очереди,
+    # строго по одной заявке; менеджер при этом сразу получает подтверждение.
+    try:
+        import sys as _sys
+        _sys.path.insert(0, "/opt/wolf_v2/scripts")
+        import auto_CLIENT as _auto_CLIENT
+        _auto_CLIENT.add(app_id, quiet=True)
+        from CLIENT import app_CLIENT as _CLIENT
+        _CLIENT.step(app_id, 'accept', 'ok', 'заявка принята ботом, поставлена в очередь')
+        log.info("заявка #%s поставлена в очередь автоподготовки", app_id)
+    except Exception as _exc:  # noqa: BLE001
+        log.warning("не удалось поставить заявку #%s в очередь: %s", app_id, _exc)
 
     # PDF генерируем отдельно и позже (это ~5 сек на 5 документов).
     # Если генерировать здесь, бот молчит всё это время и менеджер думает,
@@ -695,7 +689,7 @@ def _apply_CLIENT(app_id: int, CLIENT_id: int) -> None:
     CLIENT = conn.execute(
         """SELECT t.id, t.code FROM CLIENT_CLIENT pd
              JOIN CLIENT t ON t.id=pd.template_id
-            WHERE pd.CLIENT_id=? ORDER BY t.id""", (CLIENT_id,)).fetchall()
+            WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY t.id""", (CLIENT_id,)).fetchall()
     now = CLIENT.now().isoformat(timespec="seconds")
     # Комплект писем в иммиграцию — по адресу клиента: Ngurah Rai либо Denpasar.
     from CLIENT import immigration_CLIENT as _io
@@ -1266,8 +1260,12 @@ def handle_update(upd: dict) -> None:
                 _codes = [r["code"] for r in db().execute(
                     "SELECT code FROM CLIENT ORDER BY id").fetchall()]
                 ai = parse_free_form(body, _codes)
+                # Заполняем только ПУСТЫЕ поля: setdefault не работал, потому что
+                # жёсткий шаблон уже создаёт все ключи пустыми — из-за этого разбор
+                # заявки от менеджера уходил в никуда (разбор 05.10.2026).
                 for k, v in (ai.get("client") or {}).items():
-                    form.setdefault(k, v)
+                    if v not in (None, "", "-") and not str(form.get(k) or "").strip():
+                        form[k] = v
                 _app = ai.get("CLIENT") or {}
                 if _app.get("CLIENT") and not form.get("CLIENT_name"):
                     form["CLIENT_name"] = _app["CLIENT"]
@@ -1323,17 +1321,26 @@ def handle_update(upd: dict) -> None:
                    "или просто ссылку и продукт — данные система возьмёт из папки сама.")
             return
         try:
-            app_id, client_id = create_CLIENT(form, user)
+            app_id, client_id = create_CLIENT(form, user, raw_text=body)
+            # администраторам сообщаем сразу: новая заявка, кто менеджер и папка клиента на Диске
+            try:
+                from bot.notify import notify_admins_new_app
+                notify_admins_new_app(app_id, user["full_name"] or user["username"])
+            except Exception as _exc:  # noqa: BLE001
+                log.warning("уведомление админам о заявке #%s: %s", app_id, _exc)
             # сразу сообщаем менеджеру, если из папки Google CLIENT нечего взять
             try:
                 from CLIENT import CLIENT as _ds
                 _chk_msg = _ds.check_folder(app_id, client_id)
                 if not _chk_msg.get("ok"):
-                    send(chat_id, ("\u26a0\ufe0f Заявка №" + str(app_id) + " принята, но в папке Google CLIENT "
-                                   + ("паспорт клиента не найден" if _chk_msg.get("files")
-                                      else "нет файлов")
-                                   + ".\nДобавьте паспорт (и документы по типу продукта) в папку —"
-                                     " иначе система не сможет заполнить данные клиента."))
+                    # Папку проверяем мягко: файлы в неё часто загружают уже ПОСЛЕ приёма
+                    # заявки, поэтому «нет файлов» сразу после приёма — преждевременный вывод.
+                    # Система перепроверит папку при обработке и скажет уже по факту.
+                    send(chat_id, ("\u2139\ufe0f Заявка №" + str(app_id) + " принята. В папке Google CLIENT пока "
+                                   + ("не видно паспорта клиента" if _chk_msg.get("files")
+                                      else "не видно файлов")
+                                   + ".\nЕсли файлы ещё загружаются — ничего делать не нужно: система "
+                                     "перепроверит папку при обработке заявки."))
             except Exception as _exc:  # noqa: BLE001
                 log.warning("проверка папки после приёма заявки #%s: %s", app_id, _exc)
             try:

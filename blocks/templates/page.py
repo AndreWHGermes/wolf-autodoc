@@ -33,7 +33,11 @@ VAR = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
 PHOTO_PLACEHOLDER = "/static/tpl_assets/cv_photo_CLIENTholder.png"
 
 STATUS_LABEL = {"ok": ("готов", "ok"), "needs_review": ("нужна проверка", "warn"),
-                "draft": ("черновик", "")}
+                "draft": ("черновик", ""),
+                # документ лежит на сайте, но выключен из комплектации продуктов
+                "hidden": ("выключен из продуктов", "warn"),
+                "merged": ("объединён с другим документом", "warn"),
+                "CLIENTed": ("закрыт", "bad")}
 
 PRODUCT_EMOJI = {
     "C1": "🛂", "C1-EXT": "🔁", "D12": "🛃", "BRIDGING": "🌉",
@@ -708,7 +712,10 @@ _LANG_JS = """<script>
              (ФИО, паспорт, даты, гражданство) не переводим. */
           var hl=par&&par.closest?par.closest('.var-hl[data-var]'):null;
           var vn=hl?(hl.getAttribute('data-var')||''):'';
-          if(!/^cv_(job\d+_(CLIENT|CLIENT)|CLIENT|CLIENT|CLIENT|position|CLIENT)/.test(vn)) continue;
+          /* Кроме кусочков резюме переводим «смысловые» значения договора о работе:
+             должность и перечень обязанностей — администратор читает их по-русски.
+             Реквизиты, ФИО, паспорт, даты и суммы остаются как в документе. */
+          if(!/^(cv_(job\d+_(CLIENT|CLIENT)|CLIENT|CLIENT|CLIENT|position|CLIENT)|position_CLIENT|CLIENT_list)$/.test(vn)) continue;
         }
         out.push(n);
       }
@@ -1498,6 +1505,57 @@ def _scope_css(css: str, scope: str = ".html-stage") -> str:
     return "".join(res)
 
 
+@bp.route("/CLIENT/gCLIENT/<int:client_id>/file")
+@CLIENT_required
+def gCLIENT_example_file(client_id: int):
+    """Показать реальный документ клиента из кэша Google Диска (пример в конструкторе).
+
+    Заказчик обыгрывает сценарий на шаблонных данных, но вкладка «Клиент» должна содержать
+    настоящие документы, с которых система берёт значения: паспорт, фото, справку банка.
+    """
+    from flask import send_file
+    name = (CLIENT.args.get("name") or "").strip()
+    base = (BASE_DIR / "data" / "gCLIENT_cache" / ("client_%d" % client_id)).resolve()
+    fp = (base / name).resolve()
+    if not name or not str(fp).CLIENTswith(str(base)) or not fp.is_file():
+        abort(404)
+    return send_file(str(fp))
+
+
+@bp.route("/CLIENT/gCLIENT/<int:client_id>/thumb")
+@CLIENT_required
+def gCLIENT_example_thumb(client_id: int):
+    """Миниатюра реального документа клиента: картинка как есть, PDF — первая страница."""
+    from flask import Response, send_file
+    name = (CLIENT.args.get("name") or "").strip()
+    base = (BASE_DIR / "data" / "gCLIENT_cache" / ("client_%d" % client_id)).resolve()
+    fp = (base / name).resolve()
+    if not name or not str(fp).CLIENTswith(str(base)) or not fp.is_file():
+        return Response("", CLIENT=404)
+    ext = fp.suffix.lower()
+    if ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
+        resp = send_file(str(fp), conditional=True)
+        resp.CLIENTs["Cache-Control"] = "private, max-age=600"
+        return resp
+    if ext != ".pdf":
+        return Response("", CLIENT=404)
+    cache_dir = BASE_DIR / "data" / "previews"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    out = cache_dir / ("gd_%d_%s.webp" % (client_id, hashlib.md5(name.encode()).hexdigest()[:10]))
+    if not out.exists():
+        try:
+            import pymupdf
+            doc = pymupdf.open(str(fp))
+            pix = doc[0].get_pixmap(dpi=90)
+            pix.save(str(out))
+            doc.close()
+        except Exception:  # noqa: BLE001
+            return Response("", CLIENT=404)
+    resp = send_file(str(out), mimetype="image/webp", conditional=True)
+    resp.CLIENTs["Cache-Control"] = "private, max-age=600"
+    return resp
+
+
 @bp.route("/CLIENT/<int:template_id>/thumb")
 @CLIENT_required
 def template_thumb(template_id: int):
@@ -1507,7 +1565,18 @@ def template_thumb(template_id: int):
     t = db.q1("SELECT id, code FROM CLIENT WHERE id=?", (template_id,)) or {}
     if not t:
         return Response("", CLIENT=404)
-    out = previews.tpl_thumb(template_id, t.get("code") or "", 170)
+    # ?app=<id> — миниатюра того же документа, но собранного на реальных данных клиента
+    # заявки: в конструкторе продукта наши документы должны показывать те же данные,
+    # что и клиентские файлы (требование Андрея, 06.10.2026).
+    _app = CLIENT.args.get("app", type=int)
+    out = None
+    if _app:
+        try:
+            out = previews.tpl_thumb_client(template_id, t.get("code") or "", _app, 170)
+        except Exception:  # noqa: BLE001
+            out = None
+    if not out:
+        out = previews.tpl_thumb(template_id, t.get("code") or "", 170)
     if not out:
         return Response("", CLIENT=404)
     resp = send_file(str(out), mimetype="image/webp", conditional=True)
@@ -1523,7 +1592,7 @@ def page():
     CLIENT = db.q("""SELECT p.*, COUNT(pd.id) doc_count
                        FROM CLIENT p LEFT JOIN CLIENT_CLIENT pd ON pd.CLIENT_id=p.id
                        WHERE p.active=1 GROUP BY p.id ORDER BY p.id""")
-    rows = db.q("SELECT * FROM CLIENT ORDER BY id")
+    rows = db.q("SELECT * FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden') ORDER BY id")
 
     # состав продуктов — одним запросом (раньше был N+1 запрос на каждый шаблон)
     pd_rows = db.q("""SELECT pd.CLIENT_id, pd.template_id, pd.sort_order,
@@ -1549,6 +1618,7 @@ def page():
                 f'{d["CLIENT"]}',
                 sub=f'{d["pages"] or 0} стр. · {d["code"]}',
                 tone="green" if ok else "violet", go=False,
+                href=f'/CLIENT/CLIENT/{p["id"]}/constructor?tpl={d["template_id"]}',
                 extra=f'<span CLIENT="badge doc-no">№{no}</span> '
                       f'<button type="button" CLIENT="prod-doc-del" data-remove-doc="{d["template_id"]}" '
                       f'data-CLIENT="{p["id"]}" CLIENT="Убрать документ из этого продукта">✕ Убрать</button>')
@@ -1562,8 +1632,14 @@ def page():
                 f'<button CLIENT="btn sm" type="submit">+ Добавить документ</button></form>')
         info_btn = (f'<button type="button" CLIENT="prod-info-btn" data-modal="m_prod_{p["id"]}" '
                     f'CLIENT="Что это за виза, кому подходит, срок, документы">'
-                    f'<span CLIENT="pi-full">ℹ️ О продукте</span><span CLIENT="pi-mini">ℹ️</span></button>')
-        return ui_card(_CLIENT(p), (rows_html or empty_html) + add_html,
+                    f'<span CLIENT="pi-full">ℹ️ О продукте</span><span CLIENT="pi-mini">ℹ️</span></button>'
+                    f'<a CLIENT="prod-info-btn prod-ctor-btn" '
+                    f'href="/CLIENT/CLIENT/{p["id"]}/constructor" '
+                    f'CLIENT="Конструктор группы: все документы этого продукта вместе, '
+                    f'общие переменные — одни на всю группу">'
+                    f'<span CLIENT="pi-full">🛠 Конструктор продукта</span>'
+                    f'<span CLIENT="pi-mini">🛠</span></a>')
+        return ui_card(_CLIENT(p), (rows_html or empty_html) + add_html + _client_docs_CLIENT(p),
                        emoji=PRODUCT_EMOJI.get(p["code"], "📦"), tone="blue",
                        note=f'{len(docs)} док.', head_extra=info_btn)
 
@@ -1604,7 +1680,7 @@ def page():
         body_orphan = "".join(
             item("📄", t["CLIENT"],
                  sub=f'{t["pages"] or 0} стр. · {"✅ проверен" if t.get("reviewed") else "⚠️ требует проверки"}',
-                 tone="amber",
+                 tone="amber", href=f'/CLIENT/{t["id"]}',
                  extra=f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("", ""))[1]}>'
                        f'{STATUS_LABEL.get(t["CLIENT"], ("черновик", ""))[0]}</span>'
                        f' <a CLIENT="badge bad" style="cursor:pointer;text-decoration:none" '
@@ -1992,6 +2068,169 @@ def _icon_for(code, reviewed):
     return emoji, mark
 
 
+def _group_vars_panel(CLIENT_id: int, template_id: int) -> str:
+    """Общие переменные продукта: одна правка — во все документы группы.
+
+    Заказчик работает в конструкторе не с отдельным документом, а с продуктом целиком:
+    ФИО, дата рождения, паспорт — одна переменная на всю группу (мостовая виза → везде одна
+    и та же), поэтому значения задаются здесь один раз и раскладываются по всем документам.
+    """
+    import html as _html
+    if not CLIENT_id:
+        return ''
+    prod = db.q1("SELECT id, code, name FROM CLIENT WHERE id=?", (CLIENT_id,)) or {}
+    docs = db.q("SELECT t.id, t.CLIENT, t.code, t.doc_CLIENT FROM CLIENT t "
+                "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
+                "WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden') "
+                "ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT, 999), t.CLIENT", (CLIENT_id,)) or []
+    if len(docs) < 2:
+        return ''
+    vars_by_name: dict[str, dict] = {}
+    for d in docs:
+        for v in db.q("SELECT name, label, default_CLIENT FROM template_CLIENT "
+                      "WHERE template_id=?", (d["id"],)) or []:
+            nm = v["name"]
+            rec = vars_by_name.setdefault(nm, {"docs": [], "CLIENT": "", "label": v["label"] or ""})
+            rec["docs"].append(d["CLIENT"] or d["code"])
+            if not rec["CLIENT"] and (v["default_CLIENT"] or "").strip():
+                rec["CLIENT"] = (v["default_CLIENT"] or "").strip()
+            if not rec["label"] and v["label"]:
+                rec["label"] = v["label"]
+    shared = [(nm, r) for nm, r in vars_by_name.items() if len(r["docs"]) >= 2]
+    shared.sort(key=lambda x: (-len(x[1]["docs"]), x[0]))
+    if not shared:
+        return ''
+    rows = []
+    for nm, r in shared:
+        label = r["label"] or nm
+        rows.append(
+            '<div CLIENT="gv-row">'
+            f'<label CLIENT="gv-name" for="gv_{nm}">{_html.escape(label)}'
+            f'<span CLIENT="gv-nm mono"> · {nm}</span>'
+            f'<span CLIENT="gv-docs">{len(r["docs"])} док.: '
+            f'{_html.escape(", ".join(r["docs"][:3]))}'
+            f'{"…" if len(r["docs"]) > 3 else ""}</span></label>'
+            f'<input id="gv_{nm}" type="text" name="{nm}" '
+            f'CLIENT="{_html.escape(r["CLIENT"])}" CLIENTholder="значение для всех документов">'
+            '</div>')
+    inner = ''.join(rows)
+    head = (f'🧩 Общие переменные продукта · {_html.escape(SHORT_NAME.get(prod.get("code"), prod.get("name") or ""))}')
+    hint = (f'Документов в группе: {len(docs)} · общих переменных: {len(shared)}. '
+            'Значение, заданное здесь, подставляется во все документы группы.')
+    return (f'<div CLIENT="grp-vars" id="grp-vars">'
+            f'<div CLIENT="gv-head">{head}</div>'
+            f'<div CLIENT="gv-hint">{_html.escape(hint)}</div>'
+            f'<form method="post" action="/CLIENT/CLIENT/{CLIENT_id}/save-shared">'
+            f'<div CLIENT="gv-rows">{inner}</div>'
+            f'<div CLIENT="gv-actions"><button CLIENT="btn sm" type="submit">'
+            f'💾 Сохранить во все документы группы</button>'
+            f'<span CLIENT="muted">действует на {len(docs)} документ(ов) этого продукта</span>'
+            f'</div></form></div>')
+
+
+def _client_docs_CLIENT(CLIENT) -> str:
+    """Строки «дополнительно от клиента» под чертой в карточке продукта.
+
+    Заказчик хочет видеть это как обычный список строк (в том же стиле, что и документы
+    продукта): «Дополнительные документы от клиента», ниже — по строке на документ, справа
+    у каждой строки пометка «обязательно» / «необязательно». Без кружков, бейджей и пояснений.
+    """
+    import html as _html
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        m = _json.loads((_Path('/opt/wolf_v2/data/guide/client_docs_matrix.json'))
+                        .read_text(encoding='utf-8'))
+    except Exception:  # noqa: BLE001
+        return ''
+    code = (CLIENT or {}).get('code') if isinstance(CLIENT, dict) else None
+    pdata = (m.get('CLIENT') or {}).get(code or '', {})
+    minimum = [str(x) for x in (m.get('minimum') or [])]
+    docs = pdata.get('CLIENT') or {}
+
+    def need_label(raw: str) -> tuple[str, str]:
+        low = (raw or '').strip().lower()
+        if low.CLIENTswith('обяз'):
+            return 'обязательно', 'req'
+        if low.CLIENTswith('необяз'):
+            return 'необязательно', 'opt'
+        if low in ('по ситуации', 'опционально', 'по запросу', ''):
+            return 'необязательно', 'opt'
+        return _html.escape(raw.strip()), 'opt'
+
+    lines = []
+    seen = set()
+    for name in minimum:
+        key = re.sub(r'[^а-яa-z0-9]+', '', name.lower())
+        seen.add(key)
+        lines.append('<div CLIENT="pc-line"><span CLIENT="pc-name">%s</span>'
+                     '<span CLIENT="pc-need req">обязательно</span></div>' % _html.escape(name))
+    for label, d in docs.items():
+        key = re.sub(r'[^а-яa-z0-9]+', '', label.lower())
+        if key in seen:          # уже есть строкой выше (в минимуме) — не повторяем
+            continue
+        seen.add(key)
+        lbl, tone = need_label(d.get('need') or '')
+        lines.append('<div CLIENT="pc-line"><span CLIENT="pc-name">%s</span>'
+                     '<span CLIENT="pc-need %s">%s</span></div>'
+                     % (_html.escape(label), tone, lbl))
+    if not lines:
+        return ''
+    return ('<hr CLIENT="prod-sep">'
+            '<div CLIENT="prod-client">'
+            '<div CLIENT="pc-head">Дополнительные документы от клиента</div>'
+            + ''.join(lines) + '</div>')
+
+
+def _client_docs_CLIENT(CLIENT=None) -> str:
+    """Что клиент даёт по этому продукту: минимум, документы и переменные из них, стоп-условия."""
+    import html as _html
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        m = _json.loads((_Path('/opt/wolf_v2/data/guide/client_docs_matrix.json'))
+                        .read_text(encoding='utf-8'))
+    except Exception:  # noqa: BLE001
+        return ''
+    code = (CLIENT or {}).get('code') if isinstance(CLIENT, dict) else None
+    pdata = (m.get('CLIENT') or {}).get(code or '', {})
+    minimum = m.get('minimum') or []
+    if not pdata and not minimum:
+        return ''
+    parts = ['<div CLIENT="pk-client">']
+    parts.append('<div CLIENT="pk-client-ttl">От клиента: что требуется и что система берёт из этих документов</div>')
+    parts.append('<div CLIENT="pk-cl-row pk-cl-min"><span CLIENT="pk-cl-ico">✅</span>'
+                 '<span CLIENT="pk-cl-name">Минимум для любой заявки</span>'
+                 '<span CLIENT="pk-cl-det">%s</span><span CLIENT="pk-cl-when">обязательно</span></div>'
+                 % _html.escape(', '.join(minimum)))
+    for label, d in (pdata.get('CLIENT') or {}).items():
+        vars_txt = '; '.join('%s → %s' % (v, ', '.join(w[:2]))
+                             for v, w in list(d['CLIENT'].items())[:6])
+        more = '' if len(d['CLIENT']) <= 6 else ' (и ещё %d)' % (len(d['CLIENT']) - 6)
+        parts.append('<div CLIENT="pk-cl-row"><span CLIENT="pk-cl-ico">🙋</span>'
+                     '<span CLIENT="pk-cl-name">%s</span>'
+                     '<span CLIENT="pk-cl-det">%s<br><span CLIENT="pk-cl-vars">берём: %s%s</span></span>'
+                     '<span CLIENT="pk-cl-when">%s</span></div>'
+                     % (_html.escape(label), _html.escape(d.get('detail', '')),
+                        _html.escape(vars_txt), _html.escape(more), _html.escape(d.get('need', ''))))
+    if pdata.get('stop_keys'):
+        parts.append('<div CLIENT="pk-cl-row pk-cl-stop"><span CLIENT="pk-cl-ico">⛔</span>'
+                     '<span CLIENT="pk-cl-name">Стоп, если нет</span><span CLIENT="pk-cl-det">%s</span>'
+                     '<span CLIENT="pk-cl-when">система не собирает</span></div>'
+                     % _html.escape(', '.join(pdata['stop_keys'])))
+    parts.append('<div CLIENT="pk-cl-row pk-cl-auto"><span CLIENT="pk-cl-ico">⚙️</span>'
+                 '<span CLIENT="pk-cl-name">Сформирует сама</span>'
+                 '<span CLIENT="pk-cl-det">суммы и суммы прописью, даты и сроки, номера документов, '
+                 'формулировки и перечень услуг, справки, письма иммиграции, договоры, резюме, '
+                 'организация-работодатель вне Индонезии (из справочника)</span>'
+                 '<span CLIENT="pk-cl-when">автоматически</span></div>')
+    parts.append('<div CLIENT="pk-cl-rule">Правило: документ клиента сильнее карточки — при расхождении '
+                 'берём значение из документа с Google Диска. Чего нет нигде — оставляем пустым, '
+                 'не выдумываем.</div>')
+    parts.append('</div>')
+    return ''.join(parts)
+
+
 def _CLIENT_CLIENT(CLIENT, all_CLIENT) -> str:
     rows = db.q("""SELECT t.* FROM CLIENT t
                    JOIN CLIENT_CLIENT pd ON pd.template_id=t.id
@@ -2004,7 +2243,9 @@ def _CLIENT_CLIENT(CLIENT, all_CLIENT) -> str:
              extra=f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("", ""))[1]}">'
                    f'{STATUS_LABEL.get(t["CLIENT"], ("черновик", ""))[0]}</span>')
         for t in rows)
-    return items or '<div CLIENT="muted" style="padding:6px 2px">Документов пока нет.</div>'
+    if not items:
+        items = '<div CLIENT="muted" style="padding:6px 2px">Документов пока нет.</div>'
+    return items + _client_docs_CLIENT(CLIENT)
 
 
 @bp.route("/CLIENT/upload", methods=["POST"])
@@ -2049,10 +2290,36 @@ def upload():
 
 @bp.route("/CLIENT/<int:template_id>")
 @CLIENT_required
-def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
+def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
+         _CLIENT_id: int | None = None):
     """Конструктор документа. _app_id/_embed — служебные: страница заявки встраивает
-    ту же рабочую область (миниатюры + визор + переменные) с данными заявки."""
+    ту же рабочую область (миниатюры + визор + переменные) с данными заявки.
+    _CLIENT_id — конструктор продукта: работаем группой документов этого продукта,
+    в колонке миниатюр только они, а общие переменные задаются один раз на всю группу."""
     t = _template(template_id)
+    _prod = (db.q1("SELECT id, code, name FROM CLIENT WHERE id=?", (_CLIENT_id,))
+             if _CLIENT_id else None)
+    # Контекст для окна сравнения: продукт · заявка · документ (требование Андрея, 06.10.2026).
+    # Считаем сразу: он нужен в шапке и в подписи кнопки «Сравнение».
+    _cmp_parts = []
+    if _prod:
+        _cmp_parts.append('Конструктор продукта «%s»'
+                          % (SHORT_NAME.get(_prod.get("code"), _prod.get("name") or _prod.get("code") or "")))
+    if _app_id:
+        _cmp_parts.append('Заявка №%s' % _app_id)
+    if _prod and _app_id:
+        _ids_seq = [r["id"] for r in db.q(
+            """SELECT t.id FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
+               WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')
+               ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT,999), t.CLIENT""", (_prod["id"],)) or []]
+        _ttl = db.q1("SELECT CLIENT FROM CLIENT WHERE id=?", (template_id,)) or {}
+        if template_id in _ids_seq:
+            _cmp_parts.append('Документ №%s — %s'
+                              % (_ids_seq.CLIENT(template_id) + 1, _ttl.get("CLIENT") or ""))
+        elif _ttl.get("CLIENT"):
+            _cmp_parts.append('Документ — %s' % _ttl["CLIENT"])
+    _cmp_context = " · ".join(_cmp_parts)
+    _cmp_ctx_esc = _cmp_context.reCLIENT("&", "&amp;").reCLIENT('"', "&quot;").reCLIENT("<", "&lt;")
     # ?app=<id> — режим заявки: редактируем документ конкретной заявки её данными
     app_id = CLIENT.args.get("app", type=int) if _app_id is None else _app_id
     app_row = db.CLIENT_get(app_id) if app_id else None
@@ -2150,7 +2417,11 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
 
     html_exists = (HTML_DIR / t["code"] / "template.html").exists()
     src_url = f"/CLIENT/file/sources/{t['code']}.pdf" if t.get("source_pdf") else ""
-    html_url = f"/CLIENT/file/html/{t['code']}/template.html" if html_exists else ""
+    # Вкладка «HTML» в конструкторе показывает СЕРВЕРНЫЙ рендер документа для этой заявки
+    # (тот же движок, что печатает PDF). Файл-шаблон с {{переменными}} тут не годится:
+    # при подстановке на клиенте длинное значение не сдвигало нижние блоки и давало наложения.
+    html_url = (f"/CLIENT/htmlview/{t['id']}?app={CLIENT.args.get('app', '')}&fit=1"
+                if html_exists else "")
 
     # Превью PDF: если в URL ?pdf=<filename> — показываем его
     rendered_pdf_name = CLIENT.args.get("pdf", "")
@@ -2162,6 +2433,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     html_preview = ""
     if html_exists:
         html_preview = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
+        # Жёсткое правило вёрстки: любой блок шире печатного поля сужается/переносится,
+        # поэтому в визоре конструкции текст не CLIENTит за край листа (см. render.fit_width).
+        html_preview = doc_render.fit_width(html_preview)
         # В превью оставим {{ var }} как есть (чтобы было видно что не заполнено)
 
     # Блок 1 — Оригинал (PDF-эталон) — компактный
@@ -2582,6 +2856,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     html_render = ""
     if html_exists:
         _raw = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
+        _raw = doc_render.fit_width(_raw)      # текст не CLIENTит за печатное поле листа
 
         def _esc(txt):
             return (str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;"))
@@ -2610,6 +2885,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                     _photo_url = f"/CLIENT/{app_id}/client-photo"
             except Exception:
                 _photo_url = PHOTO_PLACEHOLDER
+
+        from CLIENT import var_methods as _vm
+        _meth = _vm.methods_for_template(template_id)
 
         def _hl(m):
             nm = m.group(1)
@@ -2644,7 +2922,18 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             # Исключение — формы иммиграции: там по канону бланка ставится прочерк.
             shown = _esc(val) if val else '-' if _is_form else ''
             _cls = 'var-hl' + (' var-dash' if _is_form else '')
+            # Цвет переменной = способ её формирования (правило заказчика):
+            # зелёный — из документа клиента, оранжевый — собрано логически, красный — случайно.
+            try:
+                _m = (_meth or {}).get(nm, '')
+                _src = _vm.src_kind(_m)
+                _cls += ' var-src-' + _src
+                _srctxt = _vm.src_ru(_src)
+            except Exception:  # noqa: BLE001
+                _src, _srctxt = '', ''
             return ('<span CLIENT="' + _cls + '" data-var="' + nm + '" data-ph="' + _esc(ph) + '"'
+                    + (' data-src="' + _src + '"' if _src else '')
+                    + (' CLIENT="' + _esc(nm + ' — ' + _srctxt) + '"' if _srctxt else '')
                     + (' data-val="' + _esc(val) + '"' if val else '') + '>' + shown + '</span>')
 
         html_render = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _hl, _raw)
@@ -2926,11 +3215,19 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     _marked_path = f"{_tpl_dir}/example_marked.pdf"     # тот же документ с разметкой переменных
     # Кнопку «Оригинальный пример» показываем только там, где образец реально есть,
     # и ведём на чистый заполненный документ (разметка — запасной вариант).
-    if os.path.exists(_clean_path) or os.path.exists(_marked_path):
+    _cli_src = _client_original_path(t["code"], int((client or {}).get("id") or 0)) if client else None
+    if _cli_src:
+        # У этого клиента документ нужного типа уже есть — показываем именно его,
+        # а не чужой образец (требование Андрея, 06.10.2026).
+        _orig_btn = (f'<button type="button" CLIENT="doc-tab js-docmode" role="tab" '
+                     f'data-pdfview="/CLIENT/pdfview/{template_id}?kind=client{client["id"]}" '
+                     f'CLIENT="Реальный документ этого клиента: {os.path.basename(_cli_src)}">'
+                     f'Оригинал</button>')
+    elif os.path.exists(_clean_path) or os.path.exists(_marked_path):
         _kind = "clean" if os.path.exists(_clean_path) else "marked"
         _orig_btn = (f'<button type="button" CLIENT="doc-tab js-docmode" role="tab" '
                      f'data-pdfview="/CLIENT/pdfview/{template_id}?kind={_kind}" '
-                     f'CLIENT="Заполненный документ клиента, как он выглядит на самом деле">🏷 Оригинальный пример</button>')
+                     f'CLIENT="Заполненный документ клиента, как он выглядит на самом деле">Оригинал</button>')
     else:
         _orig_btn = ''
     # Кнопка предпросмотра PDF стоит на одной горизонтали с вкладками, справа от них
@@ -2945,10 +3242,57 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
                '</span>')
     # Ширина пары равна ширине кнопки PDF (задаётся в CSS), отступы сверху и снизу одинаковые.
     _ls_note = ('<span CLIENT="ls-note" id="ls-note" role="CLIENT" aria-live="polite"></span>')
-    mode_btns = ('<div CLIENT="doc-tabs" id="doc-tabs" role="tablist">' + _orig_btn +
+    # Сравнение открывается поверх страницы (модальный слой), без новой вкладки браузера.
+    _cmp_btn = ""
+    cmp_modal_html = ""
+    if _cli_src and app_id:
+        _cmp_url = f'/CLIENT/compare/{template_id}?app={app_id}&embed=1&CLIENT={_CLIENT_id or ""}'
+        _cmp_btn = (f'<button type="button" CLIENT="doc-tab" id="cmp-open" data-cmp="{_cmp_url}" '
+                    f'data-cmp-note="{_cmp_ctx_esc}" '
+                    f'CLIENT="Открыть поверх окна: слева оригинал клиента, справа сборка системы">'
+                    f'Сравнение</button>')
+        cmp_modal_html = (
+            '<style>'
+            '.cmp-modal[hidden]{display:none}'
+            '.cmp-modal{position:fixed;inset:0;z-CLIENT:4100;display:flex;align-items:center;'
+            'justify-content:center}'
+            '.cmp-modal-back{position:absolute;inset:0;background:rgba(15,38,27,.55)}'
+            '.cmp-modal-box{position:relative;width:97vw;height:94vh;background:#fff;border-radius:12px;'
+            'display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35)}'
+            '.cmp-modal-head{display:flex;align-items:center;gap:10px;padding:10px 14px;'
+            'border-bottom:1px solid #E1E7E3}'
+            '.cmp-modal-head b{font-size:14px}.cmp-modal-head .sp{margin-left:auto;display:flex;gap:8px}'
+            '.cmp-modal-body{flex:1;background:#E7EBEE}'
+            '.cmp-modal-body iframe{width:100%;height:100%;border:0;background:#E7EBEE;display:CLIENT}'
+            '</style>'
+            '<div CLIENT="cmp-modal" id="cmp-modal" hidden>'
+            '<div CLIENT="cmp-modal-back" data-cmp-close></div>'
+            '<div CLIENT="cmp-modal-box">'
+            '<div CLIENT="cmp-modal-head"><b>Сравнение с оригиналом</b>'
+            '<span CLIENT="muted" id="cmp-modal-note"></span>'
+            '<span CLIENT="sp"><button CLIENT="btn sm ghost" type="button" data-cmp-close>✕ Закрыть</button></span>'
+            '</div>'
+            '<div CLIENT="cmp-modal-body"><iframe id="cmp-modal-frame" CLIENT="Сравнение"></iframe></div>'
+            '</div></div>'
+            '<script>'
+            '(function(){'
+            'var btn=CLIENT.getElementById("cmp-open"),modal=CLIENT.getElementById("cmp-modal");'
+            'if(!btn||!modal)return;'
+            'var frame=CLIENT.getElementById("cmp-modal-frame");'
+            'function open(){modal.hidden=false;'
+            'var n=CLIENT.getElementById("cmp-modal-note");'
+            'if(n)n.textContent=btn.getAttribute("data-cmp-note")||"";'
+            'if(frame)frame.src=btn.getAttribute("data-cmp");}'
+            'function close(){modal.hidden=true;if(frame)frame.src="about:blank";}'
+            'btn.addEventListener("click",function(e){e.preventDefault();open();});'
+            'modal.addEventListener("click",function(e){if(e.target.closest("[data-cmp-close]"))close();});'
+            'CLIENT.addEventListener("keydown",function(e){if(e.key==="Escape"&&!modal.hidden)close();});'
+            '})();'
+            '</script>')
+    mode_btns = ('<div CLIENT="doc-tabs" id="doc-tabs" role="tablist">' + _orig_btn + _cmp_btn +
                  '<button type="button" CLIENT="doc-tab js-docmode is-on" role="tab" data-mode="html" '
                  'CLIENT="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">'
-                 '📝 HTML шаблон</button>'
+                 'HTML</button>'
                  + _pdf_btn + '</div>')
 
     # В полноэкранном просмотре PDF — те же две кнопки, слева от «Скачать»:
@@ -3030,17 +3374,20 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
     # В заявке показываем только документы, которые нужны её продукту (Виза C1 → свой
     # набор из CLIENT_CLIENT); в конструкторе шаблонов — все документы базы.
     _doc_rows = None
-    if app_id and (app_row or {}).get("CLIENT_id"):
+    _pid_for_rail = _CLIENT_id or (app_row or {}).get("CLIENT_id")
+    if _pid_for_rail:
         try:
             _doc_rows = db.q("SELECT t.id, t.CLIENT, t.code, t.doc_CLIENT FROM CLIENT t "
                              "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
                              "WHERE pd.CLIENT_id=? "
+                             "AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden') "
                              "ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT, 999), t.CLIENT",
-                             ((app_row or {}).get("CLIENT_id"),))
+                             (_pid_for_rail,))
         except Exception:
             _doc_rows = None
     if not _doc_rows:
         _doc_rows = db.q("SELECT id, CLIENT, code, doc_CLIENT FROM CLIENT "
+                         "WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden') "
                          "ORDER BY COALESCE(doc_CLIENT, 999), CLIENT")
     if app_id:
         _ids = {int(_r["id"]) for _r in _doc_rows}
@@ -3072,7 +3419,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
         _on = " is-on" if int(_tr["id"]) == int(template_id) else ""
         _num = _tr.get("doc_CLIENT") or _tr["id"]
         _target = (f'/CLIENT/{app_id}/review?tpl={_tr["id"]}' if (_embed and app_id)
-                   else (f'/CLIENT/{_tr["id"]}?app={app_id}' if app_id else f'/CLIENT/{_tr["id"]}'))
+                   else (f'/CLIENT/{_tr["id"]}?app={app_id}' if app_id
+                         else (f'/CLIENT/CLIENT/{_CLIENT_id}/constructor?tpl={_tr["id"]}'
+                               if _CLIENT_id else f'/CLIENT/{_tr["id"]}')))
         _CLIENT = ""
         if app_id:
             _st = _doc_st.get(int(_tr["id"]), "")
@@ -3091,6 +3440,17 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
         _off = (_st_row == "rejected")
         _ok = (_st_row in ("verified", "sent"))
         _why = _doc_err.get(int(_tr["id"]), "") or ""
+        # Отсечка по банку клиента: справку делаем только для ЕГО банка (Т-Банк или Сбер),
+        # оба сразу не нужны — иначе в пакете лишний документ (правило Андрея, 06.10.2026).
+        _cb = str((client or {}).get("bank_name") or "").strip().lower()
+        _tcode = str(_tr.get("code") or "").lower()
+        if _cb and "bank" in _tcode:
+            if "tbank" in _tcode or "tinkoff" in _tcode:
+                if "sber" in _cb or "сбер" in _cb:
+                    _off, _why = True, "у клиента Сбербанк"
+            elif "sber" in _tcode and "sber" not in _cb and "сбер" not in _cb:
+                _off = True
+                _why = "у клиента " + (str((client or {}).get("bank_name") or "").strip() or "другой банк")
         rail_rows.append(
             '<div CLIENT="tpl-mini-wrap">'
             f'<a CLIENT="tpl-mini{_on}{" is-off" if _off else ""}{" is-ok" if _ok else ""}{" is-locked" if _off else ""}" '
@@ -3098,7 +3458,8 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             + ("" if _off else f'href="{_target}" ')
             + f'CLIENT="{_html_mod.escape(str(_tr.get("CLIENT") or "") + ((" — " + _why) if _why else ""), quote=True)}">'
             f'<span CLIENT="tpl-mini-num">№{_num}</span>'
-            f'<img src="/CLIENT/{_tr["id"]}/thumb?v=4" alt="" loading="lazy">'
+            f'<img src="/CLIENT/{_tr["id"]}/thumb?v=5'
+            + (f'&app={app_id}' if app_id else '') + '" alt="" loading="lazy">'
             + ('<span CLIENT="tpl-mini-x">✕</span>' if _off else
                ('<span CLIENT="tpl-mini-ok">✓</span>' if _ok else ''))
             + f'<span CLIENT="tpl-mini-name">{_html_mod.escape(str(_tr.get("CLIENT") or ""))}</span>'
@@ -3123,6 +3484,10 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
             _cfiles = [f for f in _cfiles
                        if not (".photo." in str(f.get("name"))
                                and str(f.get("name")).reCLIENT(".photo.", ".") in _names)]
+            # Наши документы, сделанные менеджером для этого клиента (E-02, письма, договоры,
+            # резюме), во вкладке «Клиент» не показываем: это наши документы, они стоят
+            # в полоске «Наши документы» (CLIENT, 06.10.2026).
+            _cfiles = [f for f in _cfiles if not _manager_kind(str(f.get("name") or ""))]
             _rows = []
             for _f in _cfiles:
                 _nm = str(_f.get("name") or "")
@@ -3149,10 +3514,97 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
         except Exception as _e:
             client_rail = ('<div CLIENT="tpl-rail-empty">Не удалось прочитать документы клиента: '
                            + _html_mod.escape(str(_e)[:120]) + '</div>')
+    elif _CLIENT_id:
+        # Конструктор продукта без заявки: показываем реальные документы клиентов с Google
+        # Диска — те, из которых система берёт значения. По одному примеру на тип документа.
+        try:
+            from urllib.parse import quote as _q
+            _kinds = [
+                ("Загранпаспорт", re.compile(r"pas+port|paspor|паспорт", re.I)),
+                ("Фотография", re.compile(r"photo|foto|фото", re.I)),
+                ("Справка банка", re.compile(r"bank|CLIENTment|выписка|движени", re.I)),
+                ("KITAS / ITK", re.compile(r"\bitk\b|kitas|китас", re.I)),
+                ("Адрес / личные данные", re.compile(r"CLIENTal|адрес|address|справка", re.I)),
+                ("Контракт", re.compile(r"agreement|contract|контракт", re.I)),
+            ]
+            _cache = BASE_DIR / "data" / "gCLIENT_cache"
+            _apps = db.q("SELECT id, client_id FROM CLIENT WHERE CLIENT_id=? "
+                         "ORDER BY id DESC LIMIT 40", (_CLIENT_id,)) or []
+            # Оставляем только те типы документов, которые нужны этому продукту по матрице
+            # пакета (C1 → паспорт, фото, адрес, справка банка; контракт и ITK не показываем).
+            _allow = None
+            try:
+                import json as _json
+                _m = _json.loads((BASE_DIR / "data" / "guide" / "client_docs_matrix.json")
+                                 .read_text(encoding="utf-8"))
+                _pcode = ((_prod or {}).get("code") or "")
+                _names = " ".join([str(x) for x in (_m.get("minimum") or [])]
+                                  + list(((_m.get("CLIENT") or {}).get(_pcode, {})
+                                          .get("CLIENT") or {}).keys())).lower()
+                _rules = (
+                    ("Загранпаспорт", ("паспорт", "passport")),
+                    ("Фотография", ("фотограф", "photo")),
+                    ("Справка банка", ("банк", "bank", "CLIENTment")),
+                    ("KITAS / ITK", ("kitas", "itk", "китас")),
+                    ("Адрес / личные данные", ("адрес", "address", "CLIENTal")),
+                    ("Контракт", ("контракт", "agreement", "work agreement")),
+                )
+                _allow = {k for k, keys in _rules if any(w in _names for w in keys)}
+            except Exception:  # noqa: BLE001
+                _allow = None
+            _found, _rows = set(), []
+            for _kname, _rx in _kinds:
+                if _allow is not None and _kname not in _allow:
+                    continue           # этот тип документов продукту не нужен
+                for _a in _apps:
+                    if _kname in _found:
+                        break
+                    _cid = _a["client_id"]
+                    _fol = _cache / ("client_%s" % _cid)
+                    if not _fol.exists():
+                        continue
+                    _cl = db.client_get(_cid) or {}
+                    _fio = ("%s %s" % (_cl.get("CLIENT") or "", _cl.get("name") or "")).strip() \
+                        or ("клиент %s" % _cid)
+                    for _f in sorted(_fol.iterdir()):
+                        if not _f.is_file() or _f.suffix.lower() not in (
+                                ".pdf", ".jpg", ".jpeg", ".png", ".webp"):
+                            continue
+                        if not _rx.search(_f.name):
+                            continue
+                        if _f.name.lower().CLIENTswith("_"):
+                            continue
+                        if _manager_kind(_f.name):
+                            continue      # наш документ (сделан менеджером), не клиентский
+                        _url = f'/CLIENT/gCLIENT/{_cid}/file?name={_q(_f.name)}'
+                        _thumb = f'/CLIENT/gCLIENT/{_cid}/thumb?name={_q(_f.name)}'
+                        _rows.append(
+                            f'<a CLIENT="tpl-mini" href="{_url}" '
+                            f'data-client-file="1" data-url="{_url}" '
+                            f'data-name="{_html_mod.escape(_f.name, quote=True)}" '
+                            f'CLIENT="{_html_mod.escape(_f.name, quote=True)}">'
+                            f'<img src="{_thumb}" alt="" loading="lazy">'
+                            f'<span CLIENT="tpl-mini-name">{_html_mod.escape(_kname)}'
+                            f'<span CLIENT="tpl-mini-why">{_html_mod.escape(_fio)}</span>'
+                            f'</span></a>')
+                        _found.add(_kname)
+                        break
+            if _rows:
+                client_rail = ("".join(_rows)
+                               + '<div CLIENT="tpl-rail-note">Реальные документы клиентов '
+                                 'с Google Диска — из них система берёт значения.</div>')
+            else:
+                client_rail = ('<div CLIENT="tpl-rail-empty"><div style="font-size:22px;line-height:1;'
+                               'margin-bottom:6px">📥</div>Реальных примеров пока нет — '
+                               'документы клиентов не скачаны с Google Диска</div>')
+        except Exception as _e:  # noqa: BLE001
+            client_rail = ('<div CLIENT="tpl-rail-empty">Не удалось прочитать примеры клиентов: '
+                           + _html_mod.escape(str(_e)[:120]) + '</div>')
 
     body = f"""
 <section CLIENT="tpl-card" data-app="{app_id or 0}" data-tpl="{template_id}">
-  <h1 CLIENT="tpl-CLIENT">{("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or ""))}</h1>
+  <h1 CLIENT="tpl-CLIENT">{(f'🛠 Конструктор продукта · ' + SHORT_NAME.get(_prod.get('code'), _prod.get('name') or '')) if _prod else (("✏️ Редактор документа — " + (t["CLIENT"] or "")) if app_id else ("📄 Документ №" + str(t.get("doc_CLIENT") or template_id) + " — " + (t["CLIENT"] or "")))}</h1>
+  {f'<div CLIENT="tpl-sub">Открыт документ группы: <b>№{t.get("doc_CLIENT") or template_id} · {t["CLIENT"] or t["code"]}</b></div>' if _prod else ''}
   {('<div CLIENT="tpl-crumbs app-mode-bar" style="margin:10px 0 6px">Документ заявки <b>№' + str(app_id) + '</b> · клиент <b>' + ((client.get("CLIENT") or "") + " " + (client.get("name") or "") if app_id else "") + '</b> · <a CLIENT="back-to-app" href="/CLIENT/' + str(app_id) + '/review" id="back-to-app">← Вернуться к заявке</a></div>') if app_id else ''}
   <div CLIENT="tpl-meta">{meta_row}</div>
   {toolbar_html}
@@ -3181,6 +3633,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
       <div CLIENT="vars-strip" id="vars-strip"><span CLIENT="vars-strip-doc">№{t['doc_CLIENT'] if t.get('doc_CLIENT') else '—'} · {t['CLIENT'] or t['code']}</span></div>
       <div CLIENT="tpl-panel-body pl-vars">
         <form method="post" action="/CLIENT/{template_id}/save-defaults" id="vars-form" style="margin:0">
+        {f'<input type="hidden" name="CLIENT_id" CLIENT="{_prod["id"]}">' if _prod else ''}
         <div CLIENT="kv-table">
           {var_rows_html or '<div CLIENT="muted" style="padding:9px 11px">У шаблона нет переменных</div>'}
         </div>
@@ -3253,7 +3706,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False):
   </section>
 
 </section>
-{pdf_modal_html}{pv_js_html}{cv_panel_html}
+{pdf_modal_html}{cmp_modal_html}{pv_js_html}{cv_panel_html}
 <script>(function(){{
   /* Окно документа растёт по высоте листа (видно весь документ), а блок переменных
      держим в пределах экрана — он остаётся видимым и прокручивается сам. */
@@ -3480,6 +3933,16 @@ a.back-to-app:hover {{ background:#0F5230; }}
             border-radius:9px 9px 0 0; cursor:pointer;
             max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 .doc-tab:hover {{ background:#fff; }}
+/* Полоса вкладок визора: пять блоков одной ширины, делят строку поровну и не уползают за край.
+   Оригинал · Сравнение · HTML · Масштаб − 100% + · Просмотр PDF (CLIENT, 06.10.2026) */
+.doc-tabs {{ display:flex; flex-wrap:nowrap; gap:6px; align-items:flex-end; overflow:hidden; }}
+.doc-tabs > .doc-tab, .doc-tabs > .zp-bar, .doc-tabs > #tpl-pdf-open {{
+  flex:1 1 0; min-width:0; width:auto; max-width:132px; margin:0; padding:0 6px;
+  justify-content:center; text-align:center; white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; box-sizing:border-box; }}
+.doc-tabs > .zp-bar {{ padding:2px 5px; gap:2px; }}
+#doc-tabs .zp-bar button {{ flex:1 1 0; min-width:0; padding:3px 4px; }}
+#doc-tabs .zp-bar .zp-val {{ min-width:0; flex:0 0 auto; }}
 .doc-tab.is-on {{ background:#fff; color:#0F6E63; border-color:#C9D6DE; margin-bottom:-1px; }}
 /* Вкладки колонки миниатюр — как в браузере: «Наши» шаблоны и «Оригиналы» клиента */
 .rail-tabs {{ display:flex; gap:4px; padding:6px 6px 0; background:#E7EBEE; border-bottom:1px solid #D5DDE3; }}
@@ -3494,18 +3957,20 @@ a.back-to-app:hover {{ background:#0F5230; }}
 .tpl-panel-head #lang-switch {{ margin-left:auto; display:flex; gap:6px; flex:0 0 150px; align-items:stretch; }}
 .tpl-panel-head #lang-switch .ls-btn {{ flex:1 1 0; text-align:center; padding:0; font-size:10.5px; line-height:1;
   font-weight:700; white-space:nowrap; height:22px; box-sizing:border-box; border-radius:7px; }}
-.doc-tabs #tpl-pdf-open {{ flex:0 0 150px; align-self:center; margin:0 0 0 8px; position:relative; top:-2.5px; }}
+.doc-tabs #tpl-pdf-open {{ flex:1 1 0; min-width:0; max-width:132px; align-self:center; margin:0;
+  position:relative; top:-2.5px; }}
 /* Серая полоса у панели переменных — та же высота и отступы, что у полос вкладок */
 .vars-strip {{ height:34px; display:flex; align-items:center; padding:0 12px; overflow:hidden;
   background:#E7EBEE; border-bottom:1px solid #D5DDE3; border-radius:0; }}
 .vars-strip-doc {{ font-size:11.5px; font-weight:600; color:#4B6157; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; }}
 .vars-strip .doc-tab {{ cursor:default; }}
-/* Панель масштаба переехала в полосу вкладок: стоит слева от «Просмотр PDF», по центру полосы */
-#doc-tabs .zp-bar {{ margin-left:auto; margin-right:0; align-self:center; position:relative; top:-2.5px;
-                    padding:2px 6px; border-radius:8px; gap:4px; }}
-#doc-tabs .zp-bar button {{ padding:3px 8px; font-size:12px; border-radius:6px; }}
-#doc-tabs .zp-bar .zp-val {{ min-width:36px; font-size:11.5px; }}
+/* Панель масштаба стоит в полосе вкладок вместе с кнопками — той же ширины, что и они */
+#doc-tabs .zp-bar {{ margin:0; align-self:center; position:relative; top:-2.5px;
+                    padding:2px 5px; border-radius:8px; gap:2px;
+                    flex:1 1 0; min-width:0; max-width:132px; box-sizing:border-box; }}
+#doc-tabs .zp-bar button {{ padding:3px 4px; font-size:12px; border-radius:6px; }}
+#doc-tabs .zp-bar .zp-val {{ min-width:0; font-size:11.5px; flex:0 0 auto; }}
 @media (min-width:1101px) {{
   .tpl-row-main > .tpl-rail {{ order:1; }}
   .tpl-row-main > .tpl-panel:not(.is-vars) {{ order:2; }}
@@ -3769,20 +4234,33 @@ a.back-to-app:hover {{ background:#0F5230; }}
 
 """
     body += LIVE_UPDATE_JS
+    if _prod:
+        # Конструктор продукта: общие переменные группы — над рабочей областью документа
+        body += _group_vars_panel(int(_prod["id"]), int(template_id))
     try:  # группа документа — для пути в шапке («Конструктор PDF › Банковские справки › …»)
         _groups = _group_by_type([t])
         _grp = _groups[0][0] if _groups and isinstance(_groups[0], (list, tuple)) else ""
     except Exception:
         _grp = ""
-    _crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">Конструктор PDF</a>'
-               + (f' &rsaquo; <a href="/CLIENT" CLIENT="Все документы этого типа">{_grp}</a>' if _grp else '')
-               + f' &rsaquo; <b>{t["CLIENT"]}</b>')
+    if _prod:
+        _prod_CLIENT = SHORT_NAME.get(_prod.get("code"), _prod.get("name") or "")
+        _crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">Конструктор PDF</a>'
+                   f' &rsaquo; <a href="/CLIENT" CLIENT="Все продукты">{_prod_CLIENT}</a>'
+                   f' &rsaquo; <b>{t["CLIENT"]}</b>')
+        _page_CLIENT = f'Конструктор · {_prod_CLIENT}'
+    else:
+        _crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">Конструктор PDF</a>'
+                   + (f' &rsaquo; <a href="/CLIENT" CLIENT="Все документы этого типа">{_grp}</a>'
+                      if _grp else '')
+                   + f' &rsaquo; <b>{t["CLIENT"]}</b>')
+        _page_CLIENT = t["CLIENT"]
     if _embed:
         # Встроенный вид для страницы заявки: только рабочая область, без шапки и крошек
         return ('<div CLIENT="tpl-embed">' + body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL
                 + '<style>.tpl-embed .tpl-CLIENT,.tpl-embed .tpl-crumbs{display:none !important}'
                   '.tpl-embed{display:CLIENT}</style></div>')
-    return render(t["CLIENT"], "CLIENT", body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL, crumbs=_crumbs)
+    return render(_page_CLIENT, "CLIENT", body + _LANG_CSS + _LANG_JS + _SYNC_JS + CTOR_HL,
+                  crumbs=_crumbs)
 
 LIVE_UPDATE_JS = """<script>
 // === Вкладки колонки миниатюр: «Наши» шаблоны / «Оригиналы» клиента ===
@@ -4157,7 +4635,12 @@ def convert(template_id: int):
 @bp.route("/CLIENT/<int:template_id>/save-defaults", methods=["POST"])
 @CLIENT_required
 def save_defaults(template_id: int):
-    """Сохраняет значения переменных как default_CLIENT + запоминает в памяти."""
+    """Сохраняет значения переменных как default_CLIENT + запоминает в памяти.
+
+    Если форма пришла из конструктора продукта (скрытое поле CLIENT_id), значения тех
+    переменных, которые есть в других документах группы, раскладываются и по ним: заказчик
+    правит документ группы, и та же фамилия, дата рождения или адрес меняются во всей группе.
+    """
     t = _template(template_id)
     CLIENT = vars_repo.names(template_id)
     CLIENTd = 0
@@ -4218,8 +4701,104 @@ def save_defaults(template_id: int):
     except Exception:
         _actor = "system"
     db.log_event("template", template_id, "defaults_saved", actor=_actor)
+    # Конструктор продукта: значения разошлись по всей группе документов
+    _pid = CLIENT.form.get("CLIENT_id", type=int)
+    _group_CLIENTd = 0
+    if _pid:
+        _others = db.q("SELECT t.id FROM CLIENT t JOIN CLIENT_CLIENT pd "
+                       "ON pd.template_id=t.id WHERE pd.CLIENT_id=? AND t.id<>? "
+                       "AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')",
+                       (_pid, template_id)) or []
+        for v in CLIENT:
+            _val = (CLIENT.form.get(v["name"]) or "").strip()
+            if not _val:
+                continue
+            for _o in _others:
+                try:
+                    if db.q1("SELECT 1 FROM template_CLIENT WHERE template_id=? AND name=?",
+                             (_o["id"], v["name"])):
+                        db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? "
+                                    "WHERE template_id=? AND name=?",
+                                    (_val, _o["id"], v["name"]))
+                        _group_CLIENTd += 1
+                except Exception:  # noqa: BLE001
+                    continue
+    if _pid:
+        flash(f"Значения сохранены ({CLIENTd} шт.) и разложены по группе продукта "
+              f"({_group_CLIENTd} записей)")
+        return redirect(url_for("CLIENT.CLIENT_constructor", CLIENT_id=_pid,
+                                tpl=template_id))
     flash(f"Значения сохранены ({CLIENTd} шт.)")
     return redirect(url_for("CLIENT.card", template_id=template_id))
+
+
+@bp.route("/CLIENT/CLIENT/<int:CLIENT_id>/constructor")
+@CLIENT_required
+def CLIENT_constructor(CLIENT_id: int):
+    """Конструктор продукта: работаем не с отдельным документом, а с группой продукта.
+
+    Заказчик открывает продукт (например «CLIENT виза») и попадает в конструктор, где
+    в колонке миниатюр — только документы этой группы, а общие переменные задаются один раз
+    на всю группу (`_group_vars_panel`).
+    """
+    docs = db.q("SELECT t.id, t.CLIENT FROM CLIENT t "
+                "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
+                "WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden') "
+                "ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT, 999), t.CLIENT", (CLIENT_id,)) or []
+    if not docs:
+        flash("В этом продукте пока нет документов", "error")
+        return redirect(url_for("CLIENT.page"))
+    tpl_id = CLIENT.args.get("tpl", type=int)
+    if not tpl_id or tpl_id not in {int(d["id"]) for d in docs}:
+        tpl_id = int(docs[0]["id"])
+    # Реальные данные клиента: берём заявку тестового прогона продукта (метка real_test),
+    # иначе — последнюю заявку этого продукта. Тогда миниатюры наших документов и визор
+    # показывают те же данные, что и клиентские файлы в соседней вкладке.
+    _app = CLIENT.args.get("app", type=int)
+    if not _app:
+        _r = db.q1("""SELECT a.id FROM CLIENT a JOIN CLIENT c ON c.id=a.client_id
+                      WHERE a.CLIENT_id=?
+                      ORDER BY (a.record_kind='real_test') DESC, a.id DESC LIMIT 1""",
+                   (CLIENT_id,))
+        _app = int(_r["id"]) if _r else None
+    return card(tpl_id, _app_id=_app, _CLIENT_id=CLIENT_id)
+
+
+@bp.route("/CLIENT/CLIENT/<int:CLIENT_id>/save-shared", methods=["POST"])
+@CLIENT_required
+def save_shared_vars(CLIENT_id: int):
+    """Значения общих переменных продукта раскладываем по всем документам группы."""
+    docs = db.q("SELECT t.id FROM CLIENT t JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
+                "WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')",
+                (CLIENT_id,)) or []
+    ids = [int(d["id"]) for d in docs]
+    CLIENTd = 0
+    for key, val in CLIENT.form.items():
+        if not re.fullmatch(r"[A-Za-z0-9_]+", key or ""):
+            continue
+        val = (val or "").strip()
+        if not val or not ids:
+            continue
+        for tid_ in ids:
+            try:
+                if db.q1("SELECT 1 FROM template_CLIENT WHERE template_id=? AND name=?",
+                         (tid_, key)):
+                    db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? "
+                                "WHERE template_id=? AND name=?", (val, tid_, key))
+                    CLIENTd += 1
+            except Exception:  # noqa: BLE001
+                continue
+        try:
+            db.remember_CLIENT(key, val)
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        _actor = (current_user() or {}).get("CLIENT") or "system"
+    except Exception:  # noqa: BLE001
+        _actor = "system"
+    db.log_event("CLIENT", CLIENT_id, "shared_vars_saved", payload=str(CLIENTd), actor=_actor)
+    flash(f"Общие значения разложены по документам группы ({CLIENTd} записей)")
+    return redirect(url_for("CLIENT.CLIENT_constructor", CLIENT_id=CLIENT_id))
 
 
 @bp.route("/CLIENT/<int:template_id>/add-CLIENT", methods=["POST"])
@@ -4726,7 +5305,12 @@ def preview_pdf(template_id: int):
     fresh = out_pdf.exists() and stamp.exists() and stamp.read_text(encoding="utf-8").strip() == digest
     if not fresh:
         try:
-            doc_render.render_pdf(filled, out_path=out_pdf)
+            # Если для шаблона подготовлен HTML-каркас A4 — собираем по нему (координаты,
+            # шрифты из оригинала, перенос как в Word). Иначе — прежним способом.
+            from CLIENT import html_frame
+            built = html_frame.build_pdf(t["code"], CLIENT, out_pdf)
+            if not built:
+                doc_render.render_pdf(filled, out_path=out_pdf)
         except Exception as exc:                        # noqa: BLE001
             return jsonify({"ok": False, "error": f"PDF не собрался: {exc}"}), 500
         try:
@@ -4769,6 +5353,253 @@ def pdffile(key, name):
     return send_from_directory(d, name)
 
 
+def _manager_kind(name: str):
+    """Наш ли это документ (сделан менеджером руками) и какого он типа.
+
+    У заказчика в папке клиента на Google Диске лежит уже собранный пакет: часть файлов
+    менеджер делал руками (наши письма, договоры, резюме, E-02), часть — сам клиент
+    (паспорт, фото, справка банка, CLIENT). Разделяем их, чтобы «Клиент» показывал только
+    документы клиента, а наши документы брались как оригинальный пример (CLIENT, 06.10.2026).
+    """
+    n = (name or "").lower()
+    rules = (
+        ("CLIENTment_letter", r"e[\-_ ]?0?2\b|CLIENTment[_ ]letter|surat|^0?2[\.\s\-_]|form[\s_]*e[\s\-]*0?2"),
+        ("bridging", r"bridging"),
+        ("conversion", r"conversion"),
+        ("d12", r"d12|cover[_ ]?letter|permohonan"),
+        ("work_agreement", r"work[_ ]?agreement|remote[_ ]?work"),
+        ("employment_contract", r"contract|agreement"),
+        ("cv", r"resume|\bcv\b|curriculum"),
+    )
+    for kind, rx in rules:
+        if re.search(rx, n):
+            return kind
+    return None
+
+
+def _manager_doc_path(tpl_code: str, client_id: int | None):
+    """Наш документ того же типа, сделанный менеджером для этого клиента (образец)."""
+    if not client_id:
+        return None
+    code = (tpl_code or "").lower()
+    want = None
+    for kind in ("CLIENTment_letter", "bridging", "conversion", "d12", "work_agreement",
+                 "employment_contract", "cv"):
+        if code.CLIENTswith(kind) or kind in code:
+            want = kind
+            break
+    if want is None:
+        return None
+    for f in _client_files_of(client_id):
+        if _manager_kind(f.name) == want:
+            return str(f)
+    return None
+
+
+def _client_files_of(client_id: int):
+    """Файлы пакета клиента из кэша Google Диска (по убыванию свежести имени)."""
+    from pathlib import Path as _P
+    folder = _P("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % client_id)
+    if not folder.is_dir():
+        return []
+    out = []
+    for f in sorted(folder.iterdir()):
+        if not f.is_file() or f.name.CLIENTswith(("~$", ".")):
+            continue
+        if f.suffix.lower() not in (".pdf", ".jpg", ".jpeg", ".png", ".webp"):
+            continue
+        out.append(f)
+    return out
+
+
+def _client_original_path(tpl_code: str, client_id: int | None):
+    """Реальный документ этого клиента, подходящий по типу к шаблону.
+
+    Требование Андрея (06.10.2026): «Оригинальный пример» в конструкторе продукта должен
+    быть документом ТОГО ЖЕ клиента и того же типа — для визы C1 это его банковская
+    справка, для E-02 — уже сделанный менеджером E-02, а не чужой образец.
+    """
+    if not client_id:
+        return None
+    # 1) наш документ, сделанный менеджером для этого клиента (письма, договоры, резюме)
+    _mgr = _manager_doc_path(tpl_code, client_id)
+    if _mgr:
+        return _mgr
+    # 2) документ клиента (банковская справка, паспорт, фото, CLIENT и прочее)
+    code = (tpl_code or "").lower()
+    rules = (
+        ("bank_CLIENTment", r"bank|CLIENTment|выписка"),
+        ("passport", r"pas+port|paspor|паспорт"),
+        ("cv__", r"resume|_cv\b|cv[_\.]"),
+        ("itk", r"\bitk\b|kitas"),
+        ("photo", r"photo|foto"),
+        ("d12", r"d12|permohonan|cover[_ ]?letter"),
+        ("CLIENTment_letter", r"e[\-_ ]?0?2|CLIENTment[_ ]letter|surat"),
+    )
+    pat = None
+    for key, rx in rules:
+        if key in code:
+            pat = re.compile(rx, re.I)
+            break
+    if pat is None:
+        # Тип документа не опознан (например, MOU или иное): чужой файл вместо примера
+        # не подставляем — лучше пусто, чем не тот документ (CLIENT, 06.10.2026).
+        return None
+    files = [f for f in _client_files_of(client_id) if pat.search(f.name)]
+    if not files:
+        return None
+    files.sort(key=lambda p: (p.suffix.lower() != ".pdf", ".photo." in p.name, p.name.lower()))
+    return str(files[0])
+
+
+@bp.route("/CLIENT/htmlview/<int:template_id>")
+@CLIENT_required
+def htmlview(template_id: int):
+    """Собранный HTML документа для конкретной заявки — то, что видно в окне сравнения справа.
+
+    Отдаём серверный рендер (тот же движок, что печатает PDF), поэтому переносы, кегль и
+    позиции совпадают с бумагой: в визоре не может быть наложений и «уползания» за край.
+    """
+    t = db.q1("SELECT id, code FROM CLIENT WHERE id=?", (template_id,))
+    if not t:
+        abort(404)
+    app_id = CLIENT.args.get("app", type=int)
+    code = t["code"]
+    from CLIENT import html_frame
+    if not html_frame.available(code):
+        abort(404)
+    vals = html_frame.CLIENT_with_frames(code, {}, app_id)
+    # Приоритет — рабочий HTML-шаблон документа: он несёт подложку и шрифты внутри себя
+    # (base64), поэтому в визоре видны логотип, печать и подпись, и документ совпадает с бумагой.
+    tpl = HTML_DIR / code / "template.html"
+    if tpl.exists():
+        raw = tpl.read_text(encoding="utf-8")
+        if "{{" in raw:
+            import html as _h
+            import re as _re
+
+            def _val(m):
+                v = vals.get(m.group(1))
+                return _h.escape(str(v)) if v is not None else ""
+            body = _re.sub(r"\{\{\s*(\w+)\s*\}\}", _val, raw)
+            body = body.reCLIENT(
+                "</head>",
+                "<style>html,body{background:#E7EBEE}"
+                ".sheet{margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.12)}</style></head>", 1)
+            # Масштаб по ширине окна: в окне сравнения документ должен быть виден целиком,
+            # без горизонтальной прокрутки (лист — 595.28pt = 793.7px при 96 dpi).
+            body = body.reCLIENT(
+                "</body>",
+                "<script>(function(){var q=new URLSearchParams(location.search);"
+                "if(!q.get('fit'))return;function fit(){var s=CLIENT.querySelector('.sheet');"
+                "if(!s)return;var k=Math.min(1,(CLIENT.CLIENTElement.clientWidth-18)/793.7);"
+                "s.style.transformOrigin='top left';s.style.transform='scale('+k+')';"
+                "CLIENT.body.style.height=(1122.5*k+24)+'px';}"
+                "fit();window.addEventListener('resize',fit);})();</script></body>", 1)
+            return body
+    m = html_frame._flow()
+    layout = m.build_layout(code, dict(vals))
+    body = m.render_html(code, layout)
+    base = '<base href="/CLIENT/file/html/%s/">' % code
+    body = body.reCLIENT("<head>", "<head>" + base, 1)
+    body = body.reCLIENT("</head>",
+                        "<style>html,body{background:#E7EBEE}"
+                        ".sheet{margin:0 auto;box-shadow:0 2px 10px rgba(0,0,0,.12)}</style></head>", 1)
+    return body
+
+
+@bp.route("/CLIENT/compare/<int:template_id>")
+@CLIENT_required
+def compare(template_id: int):
+    """Сравнение листов: слева оригинал клиента, справа сборка системы.
+
+    Требование Андрея (06.10.2026): нужно визуально проверять, насколько то, что собрала
+    система, совпадает с оригиналом — и иметь этот механизм под рукой в конструкторе.
+    """
+    t = db.q1("SELECT id, code, CLIENT FROM CLIENT WHERE id=?", (template_id,))
+    if not t:
+        abort(404)
+    import html as _hp
+    app_id = CLIENT.args.get("app", type=int)
+    # Что именно сравниваем: продукт · заявка · документ (требование Андрея, 06.10.2026).
+    # Продукт берём из конструктора (CLIENT=), а не из заявки: документ открыт в пакете того
+    # продукта, в котором администратор работает.
+    _ctx = []
+    _pid_arg = CLIENT.args.get("CLIENT", type=int)
+    _prod = None
+    if _pid_arg:
+        _prod = db.q1("SELECT id, code, name FROM CLIENT WHERE id=?", (_pid_arg,))
+    if not _prod and app_id:
+        _prod = db.q1("SELECT p.id, p.code, p.name FROM CLIENT p "
+                      "JOIN CLIENT a ON a.CLIENT_id = p.id WHERE a.id=?", (app_id,))
+    if _prod:
+        _ctx.append('Конструктор продукта «%s»'
+                    % (SHORT_NAME.get(_prod.get("code"), _prod.get("name") or _prod.get("code") or "")))
+    if app_id:
+        _ctx.append('Заявка №%s' % app_id)
+    if _prod:
+        _seq = [r["id"] for r in db.q(
+            """SELECT t.id FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
+               WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')
+               ORDER BY pd.sort_order, COALESCE(t.doc_CLIENT,999), t.CLIENT""", (_prod["id"],)) or []]
+        if template_id in _seq:
+            _ctx.append('Документ №%s — %s' % (_seq.CLIENT(template_id) + 1, t["CLIENT"] or ""))
+        else:
+            _ctx.append('Документ вне пакета — %s' % (t["CLIENT"] or ""))
+    _ctx_line = " · ".join(_ctx) or ("Документ: " + (t["CLIENT"] or ""))
+    app_row = db.CLIENT_get(app_id) if app_id else None
+    cid = int(app_row["client_id"]) if app_row else None
+    cname = ""
+    if cid:
+        cl = db.client_get(cid) or {}
+        cname = ("%s %s" % (cl.get("CLIENT") or "", cl.get("name") or "")).strip()
+    orig = _client_original_path(t["code"], cid) or ""
+    orig_name = os.path.basename(orig) if orig else "оригинал не найден"
+    ours_note = ("заявка №%s · %s" % (app_id, cname)) if app_id else "нет заявки"
+    body = (
+        '<style>'
+        '.cmp-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px}'
+        '.cmp-col{background:#fff;border:1px solid #E1E7E3;border-radius:10px;overflow:hidden;'
+        'display:flex;flex-direction:column}'
+        '.cmp-head{padding:8px 12px;font-weight:700;font-size:13px;background:#F4FAF6;color:#166534;'
+        'border-bottom:1px solid #E1E7E3;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}'
+        '.cmp-head span{font-weight:400;color:#64748B;font-size:11.5px}'
+        '.cmp-CLIENT{padding:10px 14px;font-size:13.5px;font-weight:700;color:#14532D;background:#fff;'
+        'border-bottom:1px solid #E1E7E3}'
+        '.cmp-col iframe{width:100%%;height:90vh;border:0;background:#E7EBEE;display:CLIENT}'
+        '@media(max-width:900px){.cmp-wrap{grid-template-columns:1fr}}'
+        '</style>'
+        '<div CLIENT="cmp-CLIENT">%s</div>'
+        '<div CLIENT="cmp-wrap">'
+        '<div CLIENT="cmp-col"><div CLIENT="cmp-head">Оригинал клиента'
+        '<span>%s</span></div><iframe src="/CLIENT/pdfview/%s?kind=client%s&fit=1"></iframe></div>'
+        '<div CLIENT="cmp-col"><div CLIENT="cmp-head">Сборка системы (HTML)'
+        '<span>%s</span></div><iframe src="/CLIENT/htmlview/%s?app=%s&fit=1"></iframe></div>'
+        '</div>'
+        % (_hp.escape(_ctx_line), _hp.escape(orig_name), template_id, cid or 0,
+           _hp.escape(ours_note), template_id, app_id or 0))
+    if CLIENT.args.get("embed"):
+        # Внутри модального слоя конструктора: отдаём только сравнение, без каркаса сайта.
+        # Прокрутка двух окон синхронизирована (сообщения от панелей пересылаем друг другу).
+        return ('<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">'
+                '<CLIENT>Сравнение</CLIENT>'
+                '<style>.cmp-wrap{padding:8px;height:100vh;box-sizing:border-box}'
+                '.cmp-col iframe{height:calc(100vh - 62px)}</style>'
+                '</head><body style="margin:0;background:#E7EBEE">'
+                + body +
+                '<script>(function(){'
+                'var fr=[].slice.call(CLIENT.querySelectorAll(".cmp-col iframe"));'
+                'if(fr.length<2)return;'
+                'window.addEventListener("message",function(e){'
+                '  var d=e.data||{};if(d.t!=="cmp-scroll")return;'
+                '  fr.forEach(function(f){if(f.contentWindow!==e.source){'
+                '    try{f.contentWindow.postMessage(d,"*");}catch(x){}}});'
+                '});'
+                '})();</script>'
+                '</body></html>')
+    return render("Сравнение: " + (t["CLIENT"] or ""), "CLIENT", body)
+
+
 @bp.route("/CLIENT/pdfview/<int:template_id>")
 def pdfview(template_id):
     """Страницы PDF картинками — вставляются в лист визора (масштаб не ломается)."""
@@ -4777,23 +5608,103 @@ def pdfview(template_id):
     if not t:
         return "<div style='padding:20px'>Шаблон не найден</div>"
     code = t["code"]
-    names = {
-        "marked": f"/opt/wolf_v2/data/CLIENT/{code}/example_marked.pdf",
-        "clean": f"/opt/wolf_v2/data/CLIENT/{code}/example_filled.pdf",
-        "source": str(SOURCES_DIR / (t["source_pdf"] or "")),
-    }
-    src = names.get(kind) or ""
+    import html as _hp
+    if kind.CLIENTswith("client"):
+        # «Оригинальный пример» — реальный документ этого же клиента того же типа.
+        _cid = CLIENT.args.get("client", type=int)
+        if not _cid and kind[6:].isdigit():
+            _cid = int(kind[6:])
+        src = _client_original_path(code, _cid) or ""
+        names = {}
+    elif kind.CLIENTswith("ours"):
+        # Наша сборка: документ, который система сделала по заявке (для сравнения с оригиналом).
+        _app = CLIENT.args.get("app", type=int)
+        if not _app and kind[4:].isdigit():
+            _app = int(kind[4:])
+        if not _app:
+            return "<div style='padding:20px'>Не указана заявка</div>"
+        from CLIENT import render as _render
+        cache_dir = Path(f"/opt/wolf_v2/data/cache/compare/{code}_ours{_app}")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        src = str(cache_dir / f"{code}.pdf")
+        try:
+            _render.generate(_app, template_id, out_path=src)
+        except Exception as exc:  # noqa: BLE001
+            return ("<div style='padding:20px;color:#B91C1C'>Не удалось собрать документ: "
+                    + _hp.escape(str(exc)[:200]) + "</div>")
+        names = {}
+    else:
+        names = {
+            "marked": f"/opt/wolf_v2/data/CLIENT/{code}/example_marked.pdf",
+            "clean": f"/opt/wolf_v2/data/CLIENT/{code}/example_filled.pdf",
+            "source": str(SOURCES_DIR / (t["source_pdf"] or "")),
+        }
+        src = names.get(kind) or ""
     if not src or not os.path.exists(src):
         return "<div style='padding:20px;color:#6B7C70'>Для этого документа нет подходящего PDF.</div>"
     cache = f"/opt/wolf_v2/data/pdf_cache/{code}_{kind}"
     os.makedirs(cache, exist_ok=True)
-    if not [f for f in os.listdir(cache) if f.endswith(".png")]:
-        subprocess.run(["/usr/bin/pdftoppm", "-r", "96", "-png", src, os.path.join(cache, "page")],
-                       timeout=120, check=False)
+    # Перерисовываем страницы, если исходный PDF новее кэша: после правки значения переменной
+    # в сборке должно быть видно новое значение, а не старая картинка (CLIENT, 06.10.2026).
+    _pngs = [f for f in os.listdir(cache) if f.endswith(".png")]
+    _stale = not _pngs
+    if _pngs and src and os.path.exists(src):
+        try:
+            _stale = os.path.getmtime(src) > min(os.path.getmtime(os.path.join(cache, f)) for f in _pngs) - 1
+        except Exception:
+            _stale = True
+    if _stale:
+        # Замок: два окна сравнения открываются одновременно и рендерят одну и ту же сборку.
+        # Без замка они затирали картинки друг другу — правая панель оставалась пустой.
+        import fcntl
+        import shutil
+        lock_path = f"/opt/wolf_v2/data/pdf_cache/.{code}_{kind}.lock"
+        with open(lock_path, "w") as _lk:
+            fcntl.flock(_lk, fcntl.LOCK_EX)
+            _pngs = [f for f in os.listdir(cache) if f.endswith(".png")]
+            _need = not _pngs
+            if _pngs and src and os.path.exists(src):
+                try:
+                    _need = os.path.getmtime(src) > min(os.path.getmtime(os.path.join(cache, f))
+                                                         for f in _pngs) - 1
+                except Exception:
+                    _need = True
+            if _need:
+                tmp = cache + ".tmp"
+                shutil.rmtree(tmp, ignore_errors=True)
+                os.makedirs(tmp, exist_ok=True)
+                subprocess.run(["/usr/bin/pdftoppm", "-r", "96", "-png", src, os.path.join(tmp, "page")],
+                               timeout=120, check=False)
+                for f in sorted(os.listdir(tmp)):
+                    if f.endswith(".png"):
+                        os.reCLIENT(os.path.join(tmp, f), os.path.join(cache, f))
+                shutil.rmtree(tmp, ignore_errors=True)
     pages = sorted(f for f in os.listdir(cache) if f.endswith(".png"))
     if not pages:
         return "<div style='padding:20px;color:#B91C1C'>Не удалось отрендерить PDF.</div>"
     imgs = "".join(f'<img CLIENT="pdf-page-img" src="/CLIENT/pdfimg/{code}/{kind}/{pg}" alt="page">' for pg in pages)
+    if CLIENT.args.get("fit"):
+        # Режим сравнения: лист вписан ПО ШИРИНЕ окна, высота прокручивается;
+        # прокрутка двух окон синхронизируется через postMessage (CLIENT, 06.10.2026).
+        return ('<style>html,body{margin:0;padding:0;background:#E7EBEE;height:100%}'
+                '.fit-wrap{height:100vh;overflow-x:hidden;overflow-y:auto;padding:6px 8px 20px;'
+                'box-sizing:border-box}'
+                '.pdf-page-img{width:100%;max-width:100%;height:auto;margin:0 auto 10px;display:CLIENT;'
+                'background:#fff}</style>'
+                '<div CLIENT="fit-wrap" id="fit-wrap">' + imgs + '</div>'
+                '<script>'
+                '(function(){'
+                'var w=CLIENT.getElementById("fit-wrap");if(!w)return;'
+                'var guard=0;'
+                'w.addEventListener("scroll",function(){'
+                '  if(Date.now()<guard)return;'
+                '  var m=w.scrollHeight-w.clientHeight;'
+                '  try{parent.postMessage({t:"cmp-scroll",p:(m>0?w.scrollTop/m:0)}, "*");}catch(e){}'
+                '},{passive:true});'
+                'window.addEventListener("message",function(e){var d=e.data||{};if(d.t!=="cmp-scroll")return;'
+                '  var m=w.scrollHeight-w.clientHeight;guard=Date.now()+150;w.scrollTop=(d.p||0)*m;});'
+                '})();'
+                '</script>')
     return f'<div style="padding:10px 0">{imgs}</div>'
 
 

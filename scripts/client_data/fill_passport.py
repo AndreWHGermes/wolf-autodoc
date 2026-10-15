@@ -69,7 +69,7 @@ def scan(client_id):
                 if not m:
                     continue
                 v = re.sub(r'\s+', ' ', m.group(1)).strip(' ,;.')
-                if len(v) < 4 or STOP.match(v) or BAD_VALUE.match(v):
+                if len(v) < 4 or STOP.match(v) or BAD_VALUE.match(v) or looks_like_noise(v):
                     continue
                 if key == 'CLIENT' and not any(a in v.lower() for a in ALLOWED_NAT):
                     continue

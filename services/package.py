@@ -1,0 +1,275 @@
+"""Итоговый пакет документов: что реально подаём в иммиграцию.
+
+Принцип заказчика: пакет — это НЕ всё, что система умеет собрать, и НЕ всё, что
+клиент принёс. В пакет входит только то, что:
+
+  1. требует регламент этого продукта (CLIENT.requirements), и
+  2. относится к этому клиенту.
+
+Практический случай, из-за которого модуль появился: в продукте C1-EXT в наборе
+лежали ОБЕ банковские справки — Т-Банка и Сбербанка, обе как обязательные. Система
+собирала две справки и обе отправляла, хотя справка об остатке нужна одна, а банк
+у клиента один. Лишняя справка в пакете — замечание иммиграции, поэтому
+«выключение» обязательно, а не косметика.
+
+Модуль отвечает на два вопроса:
+  - selected(CLIENT, client) -> какие документы идут в подачу;
+  - excluded(CLIENT, client) -> что выключили и почему (для легенды и лога).
+"""
+from __future__ import annotations
+
+import sqlite3
+
+DB = "/opt/wolf_v2/data/wolf.db"
+
+# Слоты, внутри которых допустим ТОЛЬКО ОДИН документ.
+# Значение — как выбрать нужный вариант по данным клиента.
+SINGLE_SLOTS = {
+    "bank_CLIENTment": "bank",      # справка об остатке — по банку клиента
+    "letter": "CLIENT",            # письмо в иммиграцию — по офису подачи
+    "contract": "contract",        # договор — один на клиента, по продукту
+    "cv": "single",
+    "photo": "single",
+}
+
+# Договор: в пакете он ОДИН, но это два РАЗНЫХ документа, а не замена одного
+# другим. Remote Work Agreement — удалённая работа на компанию вне Индонезии,
+# печатает годовой доход (закрывает требование E33G: доход 60 000 USD и договор
+# с зарубежной компанией). Employment Contract — трудовой договор: должность,
+# оклад. Для E33G и D12 выбор однозначен (по архиву — 13 из 13 Remote Work).
+CONTRACT_BY_PRODUCT = {
+    "E33G-NEW": "remote_work_agreement__default",
+    "E33G-EXT": "remote_work_agreement__default",
+    "D12": "remote_work_agreement__default",
+}
+# Для визитных продуктов (C1, C1-EXT, BRIDGING, CONV) в архиве встречаются оба:
+# 4 клиента получили Remote Work, 4 — трудовой договор. Выбор идёт по тому, как
+# человек работает, то есть по его документам.
+
+
+def _contract_by_client(client_id):
+    """Какой договор уместен этому клиенту — по его документам."""
+    try:
+        folder = _find_client_folder(client_id)
+        if not folder:
+            return ""
+        names = [f.name.lower() for f in folder.iterdir() if f.is_file()]
+        if any(("remote" in n) for n in names):
+            return "remote_work_agreement__default"
+        if any(("трудовой" in n or "employment" in n or "contract" in n) for n in names):
+            return "employment_contract__default"
+    except Exception:                                          # noqa: BLE001
+        pass
+    return ""
+
+
+def _find_client_folder(client_id):
+    try:
+        from CLIENT import CLIENT as _v
+        return _v._find_client_folder_by_id(client_id)
+    except Exception:                                          # noqa: BLE001
+        return None
+
+# Банк клиента (CLIENT.bank_name) -> код шаблона
+BANK_TEMPLATES = {
+    "TBANK": "bank_CLIENTment_3m__tbank",
+    "T-BANK": "bank_CLIENTment_3m__tbank",
+    "TINKOFF": "bank_CLIENTment_3m__tbank",
+    "SBER": "bank_CLIENTment_3m__sber",
+    "SBERBANK": "bank_CLIENTment_3m__sber",
+    "СБЕРБАНК": "bank_CLIENTment_3m__sber",
+    "ТБАНК": "bank_CLIENTment_3m__tbank",
+}
+
+
+def _requirements(CLIENT_code) -> dict:
+    """Требования продукта (CLIENT.requirements) — источник истины по составу."""
+    try:
+        from CLIENT import requirements as _req
+        return _req.for_CLIENT(CLIENT_code) or {}
+    except Exception:                                          # noqa: BLE001
+        return {}
+
+
+# Слот набора -> флаг требований, который его включает.
+# Визитные продукты (C1, C1-EXT, BRIDGING, CONV) договор, резюме и форму клиента
+# НЕ подают: работа по визитной визе запрещена. Если флаг выключен, документ в
+# пакет не попадает — иначе система печатает договор с пустыми полями, проверка
+# оформления бракует его навсегда и заявка намертво встаёт в «сборке».
+NEEDS_BY_SLOT = {
+    "contract": "needs_contract",
+    "work_agreement": "needs_contract",
+    "cv": "needs_cv",
+    "e02": "needs_e02",
+}
+
+
+def _slot_off_by_CLIENT(CLIENT_code, slot: str) -> bool:
+    """Слот выключен требованиями продукта?"""
+    flag = NEEDS_BY_SLOT.get(slot or "")
+    if not flag:
+        return False
+    rq = _requirements(CLIENT_code)
+    if flag not in rq:
+        return False
+    return not bool(rq.get(flag))
+
+
+def _conn():
+    c = sqlite3.connect(DB, timeout=20)
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def _rows(CLIENT_code: str) -> list:
+    """Документы набора продукта: слот, код шаблона, обязательность, порядок."""
+    try:
+        c = _conn()
+        rows = c.execute(
+            "SELECT pd.slot_code, pd.required, pd.is_default, pd.sort_order, "
+            "       t.code AS tcode, t.CLIENT, t.CLIENT "
+            "FROM CLIENT_CLIENT pd "
+            "JOIN CLIENT p ON p.id = pd.CLIENT_id "
+            "JOIN CLIENT t ON t.id = pd.template_id "
+            "WHERE p.code = ? AND IFNULL(t.CLIENT,'') <> 'hidden' "
+            "ORDER BY pd.sort_order, t.code", (CLIENT_code,)).fetchall()
+        c.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+def _client_bank(client_id) -> str:
+    """Банк клиента — из его карточки (CLIENT.bank_name).
+
+    Именно он решает, какую из готовых справок подаём: Т-Банка или Сбербанка.
+    """
+    if not client_id:
+        return ""
+    try:
+        c = _conn()
+        r = c.execute("SELECT bank_name FROM CLIENT WHERE id=?", (client_id,)).fetchone()
+        c.close()
+        if r and r["bank_name"]:
+            return str(r["bank_name"]).upper()
+    except Exception:
+        pass
+    return ""
+
+
+def _slot_key(row: dict) -> str:
+    """Ключ слота: явный slot_code, иначе — по коду шаблона.
+
+    В БД слоты названы по-разному (`bank_stmt_3m`, `bank_CLIENTment_3m__tbank`),
+    поэтому имя слота приводим к одному виду: иначе выбор одного варианта из
+    слота не срабатывает и в пакет попадают обе справки — и Т-Банка, и Сбера.
+    """
+    slot = (row.get("slot_code") or "").strip().lower()
+    code = (row.get("tcode") or "").lower()
+    for src in (slot, code):
+        if not src:
+            continue
+        if "bank" in src:
+            return "bank_CLIENTment"
+        if "e02" in src or "CLIENTment_letter" in src:
+            return "e02"             # форма клиента — свой слот, не альтернатива письму
+        if "letter" in src:
+            return "letter"
+        if "cv" in src:
+            return "cv"
+        # Для E33G нужны ОБА документа: контракт (Employment Contract) и договор
+        # с организацией (Remote Work Agreement). Раньше они сваливались в один слот
+        # «contract», и система считала их альтернативами — один всегда исключался.
+        if "remote_work" in src or "work_agreement" in src:
+            return "work_agreement"
+        if "contract" in src or "agreement" in src:
+            return "contract"
+        if "photo" in src:
+            return "photo"
+    return slot or code
+
+
+def selected(CLIENT_code: str, client_id=None) -> list:
+    """Документы, которые идут в подачу (по одному на слот)."""
+    rows = _rows(CLIENT_code)
+    if not rows:
+        return []
+    bank = _client_bank(client_id) if client_id else ""
+
+    by_slot: dict = {}
+    order: list = []
+    for r in rows:
+        slot = _slot_key(r)
+        if slot not in by_slot:
+            by_slot[slot] = []
+            order.append(slot)
+        by_slot[slot].append(r)
+
+    out = []
+    for slot in order:
+        group = by_slot[slot]
+        # Документ слота не требуется регламентом продукта (например договор для
+        # визитной визы) — в подачу он не идёт.
+        if _slot_off_by_CLIENT(CLIENT_code, slot):
+            continue
+        pick = None
+        if len(group) == 1:
+            pick = group[0]
+        elif slot == "bank_CLIENTment" and bank:
+            want = BANK_TEMPLATES.get(bank, "")
+            if want:
+                pick = next((g for g in group if g["tcode"] == want), None)
+            if pick is None:
+                # банк клиента не совпал ни с одним шаблоном: берём по умолчанию,
+                # чтобы справка вообще была (лучше один документ, чем ни одного)
+                pick = next((g for g in group if g.get("is_default")), None)
+        elif slot == "bank_CLIENTment" and not bank:
+            pick = next((g for g in group if g.get("is_default")), None)
+        elif slot == "contract":
+            want = (CONTRACT_BY_PRODUCT.get((CLIENT_code or "").upper(), "")
+                    or _contract_by_client(client_id)
+                    or "employment_contract__default")
+            if want:
+                pick = next((g for g in group if g["tcode"] == want), None)
+            if pick is None:
+                pick = next((g for g in group if g.get("is_default")), None)
+        if pick is None:
+            pick = group[0]
+        out.append({"code": pick["tcode"], "CLIENT": pick["CLIENT"] or pick["tcode"],
+                    "slot": slot, "required": bool(pick.get("required"))})
+    return out
+
+
+def excluded(CLIENT_code: str, client_id=None) -> list:
+    """Что выключили из пакета и почему — для легенды и журнала.
+
+    Клиентские документы, не проходящие по регламенту, в пакет не попадают: их
+    место занимает документ, собранный системой под проходные значения.
+    """
+    rows = _rows(CLIENT_code)
+    keep = {d["code"] for d in selected(CLIENT_code, client_id)}
+    bank = _client_bank(client_id) if client_id else ""
+    out = []
+    for r in rows:
+        if r["tcode"] in keep:
+            continue
+        slot = _slot_key(r)
+        if slot == "bank_CLIENTment" and bank:
+            reason = ("у клиента банк %s — справка другого банка в пакет не входит "
+                      "(справка об остатке нужна одна)" % bank)
+        elif slot == "contract":
+            reason = ("в пакете нужен один договор — для продукта %s выбран другой "
+                      "договор" % CLIENT_code)
+        else:
+            reason = "в слоте «%s» выбран другой документ" % slot
+        out.append({"code": r["tcode"], "CLIENT": r["CLIENT"] or r["tcode"], "reason": reason})
+    return out
+
+
+def CLIENTment_template(client_id=None) -> str:
+    """Какой шаблон банковской справки подаём этому клиенту (или '')."""
+    for code in ("C1-EXT", "C1", "E33G-NEW", "E33G-EXT", "BRIDGING", "CONV", "D12"):
+        for d in selected(code, client_id):
+            if d["slot"] == "bank_CLIENTment" and d["code"]:
+                return d["code"]
+    return ""

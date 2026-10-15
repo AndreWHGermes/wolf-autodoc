@@ -3,7 +3,7 @@
 
 Использование: /usr/bin/python3 /opt/wolf_v2/scripts/CLIENT_scan.py <CLIENT_id>
 """
-import sys, os, json, sqlite3, subprocess, time
+import sys, os, json, sqlite3, subprocess, time, re, CLIENT
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
@@ -15,8 +15,12 @@ CACHE = Path('/opt/wolf_v2/data/gCLIENT_cache')
 
 
 def conn():
-    c = sqlite3.connect(DB, timeout=30)
+    c = sqlite3.connect(DB, timeout=120)
     c.row_factory = sqlite3.Row
+    # Сборка и разбор документов могут идти одновременно: без busy_timeout
+    # разбор падал на «database is locked» и заявка оставалась без документов.
+    c.execute('PRAGMA busy_timeout=120000')
+    c.execute('PRAGMA journal_mode=WAL')
     return c
 
 
@@ -55,14 +59,33 @@ def fetch_docs(client_id: int, url: str):
 # ---- тип документа определяем сами: по имени файла и по шапке текста ----
 
 _DOC_KINDS = [
-    ("passport", ("паспорт", "passport", "российская федерация", "russian federation")),
-    ("bank_balance", ("доступном остатке", "доступный остаток", "available balance")),
-    ("bank_movement", ("движении средств", "движение средств", "CLIENTment of account")),
+    # банковские документы и ВНЖ идут ПЕРВЫМИ: их признаки точнее, а слова
+    # «российская федерация» и «passport» встречаются и в справках банка —
+    # из-за этого справка раньше определялась как паспорт и давала выдуманные данные
+    ("bank_balance", ("доступном остатке", "доступный остаток", "available balance", "balance",
+                      "справка о доступном", "bankCLIENTment", "bank_CLIENTment", "CLIENTalbank",
+                      "CLIENTal bank", "остатке.pdf", "остаток")),
+    ("bank_movement", ("движении средств", "движение средств", "CLIENTment of account",
+                       "funds_movement", "funds movement", "выписка")),
+    # свидетельство о рождении: в папке клиента это документ ребёнка, и его даты
+    # нельзя путать с датами клиента — поэтому тип нужен отдельный
+    ("CLIENT_certificate", ("свидетельство о рождении", "о рождении", "CLIENT certificate",
+                           "акта о рождении", "act of CLIENT")),
+    # индонезийская eVisa: в её тексте есть и «stay CLIENT», и «passport»,
+    # поэтому проверять её надо раньше ВНЖ и паспорта, иначе поля теряются.
+    # Из признаков убраны «bridging» и «e33g»: они есть в письмах и договорах,
+    # и по ним письмо родителя опознавалось как виза
+    ("visa", ("evisa", "visa no", "nomor visa", "limited stay visa", "kementerian imigrasi",
+              "direktorat jenderal imigrasi", "виза")),
+    ("itk", ("itk", "итк", "трудовая", "CLIENT CLIENT", "stay CLIENT")),
+    ("passport", ("паспорт", "passport")),
     ("photo", ("foto", "photo", "фото")),
-    ("contract", ("contract", "договор")),
-    ("itk", ("itk", "итк", "трудовая")),
+    ("contract", ("contract", "agreement", "договор")),
     ("resume", ("resume", "резюме", "cv")),
 ]
+
+# строка машиночитаемой зоны паспорта: заглавные латиница/цифры и «<»
+_MRZ_LINE = __import__('re').compile(r'^[A-Z0-9<]{25,}$', __import__('re').M)
 
 
 def doc_kind_name(path, text: str = "") -> str:
@@ -76,18 +99,23 @@ def doc_kind_name(path, text: str = "") -> str:
     for code, keys in _DOC_KINDS:
         if any(k in name for k in keys):
             return code
-    t = (text or "")[:1500].lower()
+    t = (text or "")[:1500]
+    low = t.lower()
     for code, keys in _DOC_KINDS:
-        if any(k in t for k in keys):
+        if any(k in low for k in keys):
             return code
+    # свободный «passport» в тексте — признак слабый: надёжно только по полосе MRZ
+    if any(_MRZ_LINE.match(ln.strip()) for ln in (text or "").splitlines()):
+        return "passport"
     return "other"
 
 
 DOC_KIND_RU = {
     "passport": "Паспорт", "bank_balance": "Справка о доступном остатке",
     "bank_movement": "Справка о движении средств", "photo": "Фотография клиента",
-    "contract": "Договор", "itk": "ИТК (трудовая книжка)", "resume": "Резюме",
-    "other": "Документ",
+    "contract": "Договор", "itk": "ИТК (разрешение на пребывание в Индонезии)",
+    "resume": "Резюме", "CLIENT_certificate": "Свидетельство о рождении",
+    "visa": "Виза", "other": "Документ",
 }
 
 def extract(path: Path) -> dict:
@@ -200,6 +228,26 @@ def _is_junk(CLIENT) -> bool:
     return str(CLIENT or "").strip().lower().rstrip(".") in _JUNK_VALUES
 
 
+_DATE_RE = re.compile(r'(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})')
+
+
+def _bad_date(CLIENT) -> bool:
+    """Невозможная дата — признак сбоя распознавания. Такое значение нельзя
+    ставить ни в карточку, ни в документы (паспорт клиента читался как «42.01.2001»)."""
+    s = str(CLIENT or '').strip()
+    m = _DATE_RE.fullmatch(s)
+    if not m:
+        return False
+    d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not (1 <= d <= 31 and 1 <= mo <= 12) or not (1900 <= y <= 2100):
+        return True
+    try:
+        CLIENT.date(y, mo, d)
+    except ValueError:
+        return True
+    return False
+
+
 def apply_CLIENT(app_id: int, results: list) -> dict:
     """Значения из документов -> карточка клиента (пустые поля) и значения документа заявки."""
     c = conn()
@@ -219,7 +267,9 @@ def apply_CLIENT(app_id: int, results: list) -> dict:
             if len(parts) < 2:
                 continue
             val, var = parts[0], parts[1].strip().strip("`").lower()
-            if not val or len(val) > 200 or _is_junk(val):
+            if not val or len(val) > 200 or _is_junk(val) or _bad_date(val):
+                if val and _bad_date(val):
+                    print('   [!] невозможная дата «%s» (%s) — не беру, нужно перечитать документ' % (val, var))
                 continue
             col = CLIENT_MAP.get(var)
             if col and col in cols and client is not None:
@@ -282,8 +332,7 @@ def apply_CLIENT(app_id: int, results: list) -> dict:
     return {"CLIENT": CLIENT, "doc_CLIENT": len(doc_CLIENT)}
 
 
-def main(app_id: int):
-    c = conn()
+def _run(c, app_id: int):
     a = c.execute('SELECT * FROM CLIENT WHERE id=?', (app_id,)).fetchone()
     if not a:
         print('заявка не найдена'); return
@@ -294,11 +343,18 @@ def main(app_id: int):
         c.execute("UPDATE CLIENT_CLIENT SET CLIENT='fail', docs_done=0, note=? WHERE CLIENT_id=? AND CLIENT='running'",
                   ('на Google CLIENT клиента не найдено документов', app_id))
         c.commit(); print('документов нет'); return
-    # если запускали вручную (без строки 'running') — создаём её сами
-    if not c.execute("SELECT 1 FROM CLIENT_CLIENT WHERE CLIENT_id=? AND CLIENT='running'", (app_id,)).fetchone():
-        c.execute("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) "
-                  "CLIENT(?,?,?,?,?,?)", (app_id, a['client_id'], 'running', len(docs), 0, 'разбор запущен'))
-    c.execute('UPDATE CLIENT_CLIENT SET docs_total=? WHERE CLIENT_id=? AND CLIENT=?', (len(docs), app_id, 'running'))
+    # Строку разбора запоминаем по номеру. Пока разбор идёт, сторож может
+    # пометить её прерванной — правки «по статусу running» тогда уйдут в пустоту
+    # и разбор потеряет и итог, и payload. Поэтому дальше пишем строго по id.
+    row = c.execute("SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND CLIENT='running' "
+                    "ORDER BY id DESC LIMIT 1", (app_id,)).fetchone()
+    if row:
+        scan_id = row['id']
+    else:
+        cur = c.execute("INSERT INTO CLIENT_CLIENT(CLIENT_id, client_id, CLIENT, docs_total, docs_done, note) "
+                        "CLIENT(?,?,?,?,?,?)", (app_id, a['client_id'], 'running', len(docs), 0, 'разбор запущен'))
+        scan_id = cur.lastrowid
+    c.execute("UPDATE CLIENT_CLIENT SET CLIENT='running', docs_total=? WHERE id=?", (len(docs), scan_id))
     c.commit()
     results, ok = [], 0
     for i, f in enumerate(docs, 1):
@@ -309,8 +365,8 @@ def main(app_id: int):
                 ok += 1
         except Exception as e:
             results.append({'file': f.name, 'error': str(e)[:200]})
-        c.execute('UPDATE CLIENT_CLIENT SET docs_done=?, payload=? WHERE CLIENT_id=? AND CLIENT=?',
-                  (ok, json.dumps(results, ensure_ascii=False), app_id, 'running'))
+        c.execute('UPDATE CLIENT_CLIENT SET docs_done=?, payload=? WHERE id=?',
+                  (ok, json.dumps(results, ensure_ascii=False), scan_id))
         c.commit()
         print(f'[{i}/{len(docs)}] {f.name}: {"ок" if results[-1].get("found") else "нет ответа"}', flush=True)
     res = apply_CLIENT(app_id, results)
@@ -322,10 +378,33 @@ def main(app_id: int):
     listing = ', '.join((f'{k} ×{v}' if v > 1 else k) for k, v in kinds.items())
     note = (f'в наличии {len(docs)} документ(ов): {listing}. '
             f'Прочитано {ok}, в карточку перенесено {res.get("CLIENT", 0)} значений')
-    c.execute('UPDATE CLIENT_CLIENT SET CLIENT=?, docs_done=?, note=? WHERE CLIENT_id=? AND CLIENT=?',
-              (CLIENT, ok, note, app_id, 'running'))
-    c.commit(); c.close()
+    c.execute('UPDATE CLIENT_CLIENT SET CLIENT=?, docs_done=?, note=? WHERE id=?',
+              (CLIENT, ok, note, scan_id))
+    c.commit()
     print(note)
+
+
+def main(app_id: int):
+    """Запуск разбора. Любая ошибка закрывает строку 'running' статусом 'fail'.
+
+    Иначе брошенный разбор (перезапуск сайта, нехватка памяти, снятый процесс)
+    остаётся 'running' навсегда, и сторож каждый обход ставит агенту одну и ту
+    же задачу-призрак о паузе, которой уже нет.
+    """
+    c = conn()
+    try:
+        _run(c, app_id)
+    except Exception as e:                                            # noqa: BLE001
+        try:
+            c.execute("UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? "
+                      "WHERE CLIENT_id=? AND CLIENT='running'",
+                      ('прервано: %s' % str(e)[:150], app_id))
+            c.commit()
+        except Exception:                                             # noqa: BLE001
+            pass
+        print('разбор прерван ошибкой: %s' % str(e)[:200])
+    finally:
+        c.close()
 
 
 if __name__ == '__main__':

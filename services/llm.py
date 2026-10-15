@@ -28,8 +28,7 @@ _BYNARA = "https://router.bynara.id/v1"
 
 # Бесплатные модели — основной контур (порядок = приоритет).
 FREE_PROVIDERS = [
-    ("bynara", _BYNARA, "ling-3.0-flash-sante-free", "NARAROUTER_API_KEY"),
-    ("bynara", _BYNARA, "nemotron-3-super-free", "NARAROUTER_API_KEY"),
+    ("bynara", _BYNARA, "nemotron-3.5-lightning-free", "NARAROUTER_API_KEY"),
     ("bynara", _BYNARA, "nemotron-3-ultra-free", "NARAROUTER_API_KEY"),
 ]
 

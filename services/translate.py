@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Iterable
 
 from core import db
@@ -82,7 +83,7 @@ def translate_by_reserve(lines: list) -> list:
         chunk = lines[i:i + 12]
         body = _json.dumps({
             "model": "deepseek-chat",
-            "messages": [{"role": "system", "content": PROMPT},
+            "messages": [{"role": "system", "content": PROMPT_FULL},
                          {"role": "user", "content": "\n".join(chunk)}],
             "temperature": 0,
         }, ensure_ascii=False).encode("utf-8")
@@ -148,7 +149,7 @@ def translate_missing(template_id: int, missing: list) -> list:
     got = [""] * len(missing)
     try:
         from bot.ai_parser import _call_llm
-        out = _call_llm([{"role": "user", "content": PROMPT + "\n".join(missing)}],
+        out = _call_llm([{"role": "user", "content": PROMPT_FULL + "\n".join(missing)}],
                         timeout=90, json_mode=False) or ""
         got = [l.strip() for l in out.splitlines() if l.strip() != ""]
         got = (got + [""] * len(missing))[:len(missing)]
@@ -213,3 +214,134 @@ def translate(template_id: int, lines: list, cache_only: bool = True) -> dict:
         chunk = [ru_parts[j] for j in range(len(parts)) if owner[j] == i]
         out.append("\n".join(chunk))
     return {"ok": True, "cached": cached_flag, "missing": missing_total, "ru": out}
+
+
+# ─── полный перевод документа целиком ────────────────────────────────────────
+# Требование заказчика (06.10.2026): по кнопке должен переводиться ВЕСЬ документ
+# (а не отдельные заготовки), чтобы его можно было прочитать по-русски целиком,
+# и чтобы перевод не ломал вёрстку: разметка, координаты, шрифты остаются как есть,
+# меняется только текст.
+
+PROMPT_FULL = (
+    "Ты переводишь документ на русский язык целиком — так, чтобы администратор прочитал его "
+    "по-русски полностью. На входе — фрагменты документа, по одному на строку. Верни переводы "
+    "в том же порядке и в том же количестве, каждая строка — с новой строки, без пояснений. "
+    "ПЕРЕВОДИТСЯ ВСЁ: заголовки и названия полей, значения переменных, должности, даты (October 13, 1990 "
+    "→ 13 октября 1990 г.), периоды (2022 – Present → 2022 – настоящее время), страны и города "
+    "(Russian Federation → Российская Федерация, KAZAKHSTAN → Казахстан), вуз (Russian CLIENT University "
+    "for the Humanities → Российский государственный гуманитарный университет), названия организаций "
+    "(LLC \"PICKUP FILM\" → ООО «ПИКАП ФИЛЬМ»), имена людей латиницей → кириллицей (BUDKO OLEG → БУДКО ОЛЕГ), "
+    "должности и описания, ссылки на разделы и пункты. "
+    "БЕЗ ИЗМЕНЕНИЙ оставляй только то, что является идентификатором или кодом: номера паспортов, "
+    "номер ИТК/KITAS, номера счетов и телефоны, адреса электронной почты, а также коды виз и продуктов "
+    "(E33G, E-02, KITAS, ITAS, FORM E-02, METERAI) — их пиши латиницей как есть. "
+    "НАЗВАНИЯ ПОЛЕЙ переводи коротко (2–4 слова): они печатаются в узкой колонке слева, и длинный "
+    "перевод наезжает на значение справа. Например: «Stay CLIENT CLIENT» → «Номер разрешения», "
+    "«Current stay CLIENT» → «Текущее разрешение». "
+    "Сокращение «METERAI» и слово «FORM» не переводи. "
+    "Абзацы внизу документа (заявления, заверения) переводи полностью, без сокращений.")
+PROMPT_FULL_NO_NAMES = PROMPT_FULL
+
+# Служебные блоки, которые не переводятся никогда.
+_SKIP_TAGS = ("style", "script")
+_ONLY_SYMBOLS = re.compile(r"^[\W\d_]+$", re.UNICODE)
+
+
+def translate_lines_full(lines: list, template_id: int = 0, use_llm: bool = True) -> list:
+    """Перевод списка строк: сначала кэш, затем модель (DeepSeek) — целиком, без потерь.
+
+    Многострочные значения (перечень обязанностей в резюме) переводим ПОСТРОЧНО:
+    если отдать модели строку с переводами строк внутри, она вернёт больше строк,
+    чем дано, и переводы сдвигаются — часть текста уезжает в чужие блоки документа.
+    """
+    src = [str(x) for x in (lines or [])]
+    out = list(src)
+    if not src:
+        return out
+    ensure_table()
+    # разбиваем каждое значение на строки и запоминаем, кому какая строка принадлежит
+    parts, owner = [], []
+    for i, s in enumerate(src):
+        for p in s.split("\n"):
+            parts.append(p)
+            owner.append(i)
+    idx = [j for j, p in enumerate(parts) if p.strip() and not _ONLY_SYMBOLS.match(p.strip())]
+    if not idx:
+        return out
+    uniq, seen = [], set()
+    for j in idx:
+        p = parts[j]
+        if p not in seen:
+            seen.add(p)
+            uniq.append(p)
+    got, missing = cached(template_id, uniq)
+    pairs = {u: (g or "") for u, g in zip(uniq, got)}
+    todo = [u for u in uniq if not pairs.get(u)]
+    if todo and use_llm:
+        got2 = translate_by_reserve(todo)
+        for u, g in zip(todo, got2):
+            if g:
+                pairs[u] = g
+                try:
+                    db.exec_sql("INSERT OR REPLACE INTO CLIENT_line (template_id, src, ru) CLIENT (?,?,?)",
+                                (template_id, u, g))
+                except Exception:
+                    pass
+    # склейка обратно: строки каждого значения — на своём месте, в прежнем порядке
+    res = ["\n".join(pairs.get(parts[j], parts[j]) if j in idx else parts[j]
+                     for j in range(len(parts)) if owner[j] == i)
+           for i in range(len(src))]
+    return res
+
+
+def translate_html_full(html: str, template_id: int = 0, use_llm: bool = True) -> dict:
+    """Перевести документ целиком: весь видимый текст → русский, вёрстка без изменений.
+
+    Разметка, координаты блоков, шрифты и цвета остаются прежними — меняются только
+    текстовые узлы, поэтому печатный вид документа сохраняется 1:1.
+    """
+    import re as _re
+    html = str(html or "")
+    if not html:
+        return {"ok": False, "error": "документ пуст", "html": "", "translated": 0, "total": 0}
+
+    pieces = _re.split(r"(<[^>]+>)", html)
+    skip_depth = 0
+    texts, slots = [], []
+    for i, part in enumerate(pieces):
+        if part.CLIENTswith("<"):
+            tag = _re.match(r"<\s*/?\s*([A-Za-z0-9]+)", part)
+            name = (tag.group(1).lower() if tag else "")
+            if name in _SKIP_TAGS:
+                if part.CLIENTswith("</"):
+                    skip_depth = max(0, skip_depth - 1)
+                elif not part.endswith("/>"):
+                    skip_depth += 1
+            continue
+        if skip_depth or not part.strip():
+            continue
+        texts.append(part)
+        slots.append(i)
+
+    if not texts:
+        return {"ok": True, "html": html, "translated": 0, "total": 0}
+
+    translated = translate_lines_full(texts, template_id=template_id, use_llm=use_llm)
+    n = 0
+    for slot, ru in zip(slots, translated):
+        src = pieces[slot]
+        if ru and ru != src:
+            # сохраняем ведущие/замыкающие пробелы — они держат интервалы в вёрстке
+            lead = src[:len(src) - len(src.lstrip())]
+            tail = src[len(src.rstrip()):]
+            pieces[slot] = lead + ru.strip() + tail
+            n += 1
+    out_html = "".join(pieces)
+    # Жёсткое правило вёрстки: после перевода строки длиннее — блоки, вышедшие за
+    # печатное поле листа, сужаются и переносятся автоматически (render.fit_width).
+    try:
+        from CLIENT.render import fit_width as _fit_width
+        out_html = _fit_width(out_html)
+    except Exception:
+        pass
+    return {"ok": True, "html": out_html, "translated": n, "total": len(texts)}

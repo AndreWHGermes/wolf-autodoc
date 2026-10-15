@@ -58,9 +58,19 @@ def CLIENT():
 
 
 def folder_id(url: str) -> str:
-    """Идентификатор папки из ссылки Google Диска."""
+    """Идентификатор папки Google Диска — из ссылки или из самого идентификатора.
+
+    Раньше принималась только ссылка: если сюда попадал уже идентификатор папки,
+    функция возвращала пустую строку, и папка выглядела пустой — документы клиента
+    «исчезали» (список файлов CLIENTил пустым, заявка оставалась без данных).
+    """
     m = re.search(r'/folders/([A-Za-z0-9_\-]+)', url or '')
-    return m.group(1) if m else ''
+    if m:
+        return m.group(1)
+    s = (url or '').strip()
+    if re.fullmatch(r'[A-Za-z0-9_\-]{10,}', s):
+        return s
+    return ''
 
 
 def list_files(folder_url: str, deep: bool = True) -> list:
@@ -115,6 +125,42 @@ def download(file_id: str, dest: Path) -> bool:
                     _, done = dl.next_chunk()
         ok = dest.is_file() and dest.stat().st_size > 0
         if ok:
+            # На Диске файлы бывают без расширения: «PASSPORT - CLIENT SURKOV» — это PDF.
+            # Без расширения парсеры не понимают формат и паспорт не читается, поэтому рядом
+            # кладём тот же файл с правильным расширением, определённым по первым байтам.
+            try:
+                _known = ('.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.docx', '.doc',
+                          '.rtf', '.txt', '.zip', '.xlsx', '.svg', '.gif', '.bmp', '.tif', '.tiff')
+                if dest.suffix.lower() not in _known:
+                    with open(dest, 'rb') as _fh:
+                        _head = _fh.read(12)
+                    _ext = None
+                    if _head[:4] == b'%PDF':
+                        _ext = '.pdf'
+                    elif _head[:2] == b'\xff\xd8':
+                        _ext = '.jpg'
+                    elif _head[:4] == b'\x89PNG':
+                        _ext = '.png'
+                    elif _head[:4] == b'RIFF' and _head[8:12] == b'WEBP':
+                        _ext = '.webp'
+                    elif _head[:2] == b'PK':
+                        _ext = '.docx'
+                    if _ext:
+                        _twin = dest.with_suffix(_ext)
+                        if _twin.exists():
+                            # копия уже есть — исходник без расширения лишний
+                            try:
+                                dest.unlink()
+                            except Exception:                  # noqa: BLE001
+                                pass
+                        else:
+                            # Переименовываем, а не копируем: две копии одного
+                            # документа (с расширением и без) показывались в заявке
+                            # как задвоение файлов клиента.
+                            dest.reCLIENT(_twin)
+                        dest = _twin
+            except Exception:                      # noqa: BLE001
+                pass
             # Фото с телефона весят 3–6 МБ. Сразу после скачивания облегчаем
             # снимок и готовим превью — тогда заявка открывается мгновенно,
             # и полный снимок на сервере не хранится (см. CLIENT/previews.py).

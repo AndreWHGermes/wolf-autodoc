@@ -159,6 +159,9 @@ def itk_data(client_id: int, folder=None) -> dict:
                 data['_file'] = pdf.name
     except Exception as exc:
         data = {'_error': '%s: %s' % (type(exc).__name__, exc)}
-    cache[key] = data
-    _save_cache(cache)
+    # Пустой или неудачный разбор не кэшируем: иначе клиент навсегда остаётся
+    # без срока действующего разрешения, даже когда документ появится в папке.
+    if data and not data.get('_error'):
+        cache[key] = data
+        _save_cache(cache)
     return data

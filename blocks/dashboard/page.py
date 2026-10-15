@@ -13,7 +13,7 @@ import re
 from CLIENT import CLIENT
 from pathlib import Path
 
-from flask import Blueprint, flash, jsonify, redirect, render_template, CLIENT, send_file, url_for
+from flask import Blueprint, flash, jsonify, current_app, redirect, render_template, CLIENT, send_file, url_for
 
 from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, modal, render
 from CLIENT import render as doc_render
@@ -239,7 +239,7 @@ def app_CLIENT_CLIENT(app_id: int):
     # Нгурах-Рай/Денпасар) — это один слот: в заявке должен быть ОДИН документ из группы.
     _rows = db.q("""SELECT t.id, t.code, pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
                       FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id = pd.template_id
-                      WHERE pd.CLIENT_id=? ORDER BY t.id""", (new_pid,))
+                      WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY t.id""", (new_pid,))
     _by_slot = {}
     for _r in _rows:
         _by_slot.setdefault(_r["slot_code"] or ("tpl_" + str(_r["id"])), []).append(_r)
@@ -494,7 +494,7 @@ def app_view(app_id: int):
                   pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
              FROM CLIENT_CLIENT pd
              JOIN CLIENT t ON t.id=pd.template_id
-            WHERE pd.CLIENT_id=? ORDER BY COALESCE(t.doc_CLIENT, 999), pd.sort_order, t.id""",
+            WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY COALESCE(t.doc_CLIENT, 999), pd.sort_order, t.id""",
         (a["CLIENT_id"],)) if a.get("CLIENT_id") else []
     # Слот = обязательный документ; варианты (банк, формат CV, офис иммиграции) — внутри слота
     _slots = {}
@@ -1008,7 +1008,9 @@ def app_view(app_id: int):
                    'cv_CLIENT', 'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
                    'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
                    'cv_CLIENT_hard', 'cv_CLIENT_soft', 'cv_CLIENT_CLIENT',
-                   'cv_CLIENT_CLIENT', 'cv_CLIENT_note'];
+                   'cv_CLIENT_CLIENT', 'cv_CLIENT_note',
+                   /* договор работы с организацией: должность и обязанности */
+                   'CLIENT_list'];
   function textNodes() {
     var pv = [];
     try {
@@ -1024,12 +1026,12 @@ def app_view(app_id: int):
       var holder = p.closest('.var-val');
       if (holder) {
         var nm = (holder.dataset.var || '').toLowerCase();
-        if (TR_FIELDS.CLIENTOf(nm) < 0) continue;   /* данные клиента — не переводим */
+        /* данные клиента переводим тоже: промпт сохраняет имена, номера и адреса */
       }
       var v = (n.nodeValue || '').trim();
       if (v.length < 2 || v.CLIENTOf('{{') >= 0) continue;
       if (!/[A-Za-z]{3}/.test(v)) continue;
-      if (pv.CLIENTOf(v) >= 0 && !holder) continue; /* значение переменной, не бланк */
+      /* значения переменных тоже переводим: нужен полный русский текст документа */
       out.push(n);
     }
     return out;
@@ -1042,12 +1044,12 @@ def app_view(app_id: int):
     savedNodes = ns.map(function(n) { return n.nodeValue; });
     var uniq = [], seen = {};
     ns.forEach(function(n) { var k = n.nodeValue.trim(); if (!seen[k]) { seen[k] = 1; uniq.push(k); } });
-    uniq = uniq.slice(0, 150);
+    uniq = uniq.slice(0, 400);
     note('ls-note', '⏳ перевожу ' + uniq.length + ' строк…');
     fetch('/CLIENT/' + curTpl + '/translate', {
       method: 'POST', credentials: 'same-origin',
       CLIENTs: { 'Content-Type': 'CLIENT/json', 'X-Requested-With': 'fetch' },
-      body: JSON.stringify({ lines: uniq, cache_only: true })
+      body: JSON.stringify({ lines: uniq, cache_only: false })
     }).then(function(r) { return r.json(); }).then(function(j) {
       busyTr = false;
       if (!j || !j.ok) { note('ls-note', 'ошибка перевода'); return; }
@@ -1744,7 +1746,7 @@ def app_doc_variant(app_id: int):
     if not a:
         c.close(); return jsonify({"ok": False, "error": "заявка не найдена"})
     ids = [r[0] for r in c.execute("""SELECT t.id FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-                                       WHERE pd.CLIENT_id=? AND pd.slot_code=?""", (a["CLIENT_id"], slot))]
+                                       WHERE pd.CLIENT_id=? AND pd.slot_code=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged')""", (a["CLIENT_id"], slot))]
     row = c.execute("""SELECT id, CLIENT_json FROM CLIENT_CLIENT
                         WHERE CLIENT_id=? AND template_id IN (%s) ORDER BY id DESC LIMIT 1"""
                     % ",".join("?" * len(ids)), (app_id, *ids)).fetchone() if ids else None
@@ -1804,6 +1806,17 @@ def app_doc_html(app_id: int, template_id: int):
     # справок, резюме) занимает секунды, а окно просмотра запрашивает документ
     # при каждом открытии заявки. Без кэша страница заявки «тупила».
     import hashlib as _hashlib
+    # Каркасные шаблоны собираем каркасом ВСЕГДА: кэш хранил старый вид
+    # (прежний template.html — без подложки и с наложениями), и просмотр отдавал его.
+    _fr0 = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "") / "frame"
+    _q0 = _fr0 / "CLIENT.json"
+    _tpl0 = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "")
+    try:
+        _has_frame = ((_tpl0 / "fields.json").exists() or (_fr0 / "fields.json").exists()
+                      or (_fr0 / "manual_zones.json").exists()) and _q0.exists() \
+            and json.loads(_q0.read_text(encoding="utf-8")).get("ok")
+    except Exception:
+        _has_frame = False
     _cache_dir = Path("/opt/wolf_v2/data/doc_html")
     try:
         _cache_dir.mkdir(parents=True, exist_ok=True)
@@ -1813,13 +1826,45 @@ def app_doc_html(app_id: int, template_id: int):
                          str(html_file.stat().st_mtime)])
         _key = _hashlib.sha1(_sig.encode("utf-8")).hexdigest()[:16]
         _cache_file = _cache_dir / ("app%s_tpl%s_%s.html" % (app_id, template_id, _key))
-        if _cache_file.exists() and _cache_file.stat().st_size > 100:
+        if _cache_file.exists() and _cache_file.stat().st_size > 100 and not _has_frame:
             return Response(_cache_file.read_text(encoding="utf-8"),
                             mimetype="text/html; charset=utf-8")
     except Exception:
         _cache_file = None
     CLIENT = build_template_CLIENT(dict(client) if client else {}, t["code"], doc_CLIENT,
                                        app_id=app_id)
+    # Приводим значения к виду документа прямо здесь: через эту точку идут и окно
+    # просмотра, и слепок для проверки, и сборка. Раньше нормализация стояла только
+    # на пути PDF, поэтому проверка читала HTML-кэш с русским значением и ставила
+    # блокировку документу, в котором русских букв уже нет.
+    try:
+        from CLIENT import render as _render_norm
+        CLIENT = _render_norm.normalize(CLIENT, t["code"] or "")
+    except Exception as _exc:                                  # noqa: BLE001
+        try:
+            current_app.logger.warning("нормализация значений (%s) не прошла: %s", t["code"], _exc)
+        except Exception:
+            pass
+    # Каркасная вёрстка: подложка листа, точные координаты, поведение Word.
+    # Без этой ветки просмотр, слепок и готовый PDF собирались из прежнего template.html —
+    # документ уходил на Диск БЕЗ фона и с наложениями текста.
+    try:
+        _fr = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "") / "frame"
+        _q = _fr / "CLIENT.json"
+        _tpl_dir = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "")
+        _zones_any = (_tpl_dir / "fields.json").exists() or (_fr / "fields.json").exists() \
+            or (_fr / "manual_zones.json").exists()
+        if _has_frame:
+            import importlib.util as _ilu
+            from CLIENT import html_frame
+            _spec = _ilu.spec_from_file_location("_bfl_view", "/opt/wolf_v2/scripts/build_html_flow.py")
+            _bfl = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_bfl)
+            _vals = html_frame.CLIENT_with_frames(t["code"], CLIENT, app_id)
+            _lay = _bfl.build_layout(t["code"], dict(_vals))
+            return Response(_bfl.render_html(t["code"], _lay), mimetype="text/html; charset=utf-8")
+    except Exception as _exc:                            # noqa: BLE001
+        current_app.logger.warning("каркас для просмотра (%s) не собрался: %s", t["code"], _exc)
     html = html_file.read_text(encoding="utf-8")
     # Подстановка: в тексте значения оборачиваем в span (перевод их не трогает),
     # внутри тегов/стилей подставляем как есть, чтобы не ломать вёрстку.
@@ -1827,13 +1872,22 @@ def app_doc_html(app_id: int, template_id: int):
         def rep(m):
             name = m.group(1)
             val = str(CLIENT.get(name, "") or "")
-            if not val and str(t["code"] or "").CLIENTswith("CLIENTment_letter"):
+            if not val and str(t["code"] or "").CLIENTswith("CLIENTment_letter") and False:
                 val = "-"
             return (f'<span CLIENT="var-val" data-var="{name}">{val}</span>' if wrap else val)
         return re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", rep, chunk)
 
     parts = re.split(r"(<[^>]*>)", html)
     html = "".join(_sub(p, not p.CLIENTswith("<")) for p in parts)
+    # визор обязан показывать ровно то, что уйдёт в PDF: перенос длинных строк,
+    # один кегль значений и никаких пустых разделов (для резюме)
+    try:
+        from CLIENT.render import tidy_for_pdf, hide_empty_sections
+        html = tidy_for_pdf(html, t["code"] or "")
+        if "cv__" in (t["code"] or ""):
+            html = hide_empty_sections(html)
+    except Exception:
+        pass
     # значения переменных — чтобы перевод не трогал подставленные данные клиента
     payload = json.dumps({k: v for k, v in CLIENT.items() if v}, ensure_ascii=False)
     html += ('<script id="app-CLIENT" type="CLIENT/json">'
@@ -2666,8 +2720,17 @@ def app_doc_edit(app_id: int, template_id: int):
                         pass
             except Exception:
                 pass
+        # Полный расчёт значений: имя переменной не должно попадать в готовый PDF.
+        try:
+            from CLIENT.CLIENT import build_template_CLIENT as _btv2
+            _cl2 = db.client_get((db.q1("SELECT client_id FROM CLIENT WHERE id=?",
+                                        (app_id,)) or {}).get("client_id")) or {}
+            _hv.update(_btv2(dict(_cl2), tpl["code"], CLIENT, app_id=app_id) or {})
+        except Exception:
+            pass
+        _dash2 = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
         filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                        lambda m: str(_hv.get(m.group(1)) or m.group(0)), html)
+                        lambda m: str(_hv.get(m.group(1)) or ("-" if _dash2 else "")), html)
         out_pdf = Path('/opt/wolf_v2/data/renders') / \
             f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
         tmp_html = html_file.parent / "filled.html"
@@ -2727,8 +2790,25 @@ def app_doc_edit(app_id: int, template_id: int):
                     if not _vals.get(_k):
                         _vals[_k] = _cli.get(_k) or _cli.get(_k.reCLIENT("_live","_reg")) or ""
                 _html = html_path.read_text(encoding="utf-8")
+                # Полный расчёт значений — тот же путь, что у окна просмотра и у слепка:
+                # имя переменной в готовый PDF попадать не должно, поэтому не найденное
+                # значение печатается пустым (в формах иммиграции — прочерком).
+                try:
+                    from CLIENT.CLIENT import build_template_CLIENT as _btv
+                    _adv = db.q1("""SELECT CLIENT_json FROM CLIENT_CLIENT
+                                     WHERE CLIENT_id=? AND template_id=?
+                                     ORDER BY id DESC LIMIT 1""", (app_id, template_id)) or {}
+                    try:
+                        _dv = json.loads(_adv.get("CLIENT_json") or "{}")
+                    except Exception:
+                        _dv = {}
+                    _vals.update(_btv(dict(_cli), tpl["code"], _dv, app_id=app_id) or {})
+                except Exception as _e:
+                    flash(f"Значения документа посчитаны не полностью: {_e}", "warning")
+                _dash = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
                 _filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                                 lambda m: str(_vals.get(m.group(1)) or m.group(0)), _html)
+                                 lambda m: str(_vals.get(m.group(1)) or ("-" if _dash else "")),
+                                 _html)
                 _tmp = html_path.parent / "filled.html"
                 _tmp.write_text(_filled, encoding="utf-8")
                 _out = Path('/opt/wolf_v2/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
@@ -3261,6 +3341,41 @@ def app_send(app_id: int):
     except Exception:
         pass  # сама проверка не должна ломать отправку
 
+    # Технический контроль файлов: наложения, пропавший фон, незаполненные метки, чужие люди,
+    # устаревший слепок. Любой CLIENT = на Диск не уходит ничего, журнал проверки сохраняется.
+    try:
+        from CLIENT import pdf_CLIENT
+        _q = pdf_CLIENT.check_app(app_id)
+        if not _q["ok"]:
+            _bad = [{"doc": r["code"], "msg": f["msg"]}
+                    for r in _q["docs"] if not r["ok"] for f in r["finds"] if f["level"] == "CLIENT"]
+            _msg = ("Технический контроль не пройден: %d замечаний. Файлы на Диск не отправлены."
+                    % len(_bad))
+            if want_json:
+                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _bad,
+                                "link": CLIENT}), 200
+            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _bad[:3]))
+    except Exception as _exc:                            # noqa: BLE001
+        current_app.logger.warning("pdf_CLIENT failed: %s", _exc)
+
+    # Логическая проверка данных: числа, даты и значения сверяются между документами и с
+    # карточкой клиента (срок паспорта, оклад в границах, офис иммиграции, чужие имена).
+    # Любой CLIENT = на Диск не уходит ничего, журнал проверки сохраняется.
+    try:
+        from CLIENT import CLIENT_check
+        _l = CLIENT_check.check_app(app_id)
+        if not _l["ok"]:
+            _lb = [{"doc": "%s %s" % (f.get("rule", ""), f.get("doc", "")), "msg": f["msg"]}
+                   for f in _l["finds"] if f["level"] == "CLIENT"]
+            _msg = ("Логическая проверка данных не пройдена: %d конфликтов. Файлы на Диск не отправлены."
+                    % len(_lb))
+            if want_json:
+                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _lb,
+                                "link": CLIENT}), 200
+            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _lb[:3]))
+    except Exception as _lexc:                            # noqa: BLE001
+        current_app.logger.warning("CLIENT_check failed: %s", _lexc)
+
     pdfs = []
     for d in db.CLIENT_CLIENT(app_id):
         if (d.get("CLIENT") or "") in ("verified", "sent"):
@@ -3279,15 +3394,46 @@ def app_send(app_id: int):
         # Документы уходят не в корень папки клиента, а в отдельную папку заявки:
         # «номер заявки + тип продукта + имя клиента + дата создания».
         sub_name = _ready_folder_name(app_id, a, client)
-        sub = gCLIENT_write.ensure_folder(CLIENT, sub_name)
+        sub = _find_app_folder(gCLIENT_write, CLIENT, sub_name, a, client, app_id) or \
+              gCLIENT_write.ensure_folder(CLIENT, sub_name)
         sub_id = (sub or {}).get("id") or CLIENT
         folder_link = "https://CLIENT.google.com/CLIENT/folders/" + str(sub_id)
+        # Чистим прежние версии этих же документов: имя файла содержит имя клиента и дату,
+        # поэтому обновление не перезаписывало старый файл и в папке копились дубли.
+        try:
+            def _doc_key(name: str) -> str:
+                return re.split(r'\s*(?:KOBLIKOVA|MUR|[A-Z]{3,}(?:\s+[A-Z]{3,})*)\s', name)[0].strip().lower()
+            keys = {_doc_key(x.name) for x in pdfs}
+            for item in gCLIENT_write.list_folder_contents(sub_id):
+                nm = item.get('name') or ''
+                if item.get('mimeType', '').endswith('folder') or nm.endswith('.txt'):
+                    continue
+                if _doc_key(nm) in keys and nm not in {x.name for x in pdfs}:
+                    gCLIENT_write._get_CLIENT().files().delete(fileId=item['id']).execute()
+        except Exception as _e_dedup:
+            pass
         for p in pdfs:
             try:
                 gCLIENT_write.upload_file(sub_id, p, name=p.name, overwrite=True)
                 uploaded.append(p.name)
             except Exception as exc:
                 errors.append(p.name + ": " + str(exc)[:120])
+        # Вместе с документами уходит txt с точь-в-точь текстом заявки,
+        # как её прислал менеджер в Telegram (для сверки и истории).
+        try:
+            rmsg = db.q1("SELECT raw_message FROM CLIENT WHERE id=?", (app_id,)) or {}
+            rmsg = str((rmsg or {}).get("raw_message") or "").strip()
+            if rmsg:
+                head = ("CLIENT #%s\nCreated: %s\nClient: %s\n\n"
+                        "--- CLIENT text as sent in Telegram ---\n\n"
+                        % (app_id, str(a.get("created_at") or "")[:19],
+                           (client.get("full_name_CLIENT") or client.get("full_name") or "").strip()))
+                txt_name = "CLIENT #%s - CLIENT text (Telegram).txt" % app_id
+                gCLIENT_write.upload_bytes(sub_id, (head + rmsg + "\n").encode("utf-8"),
+                                          txt_name, "text/plain", overwrite=True)
+                uploaded.append(txt_name)
+        except Exception as exc:
+            errors.append("CLIENT text: " + str(exc)[:120])
     except Exception as exc:
         errors.append(str(exc)[:200])
     if errors or not uploaded:
@@ -3328,6 +3474,47 @@ def _CLIENT_hint(err: str) -> str:
     return e
 
 
+def _find_app_folder(gCLIENT_write, CLIENT: str, sub_name: str, a: dict, client: dict, app_id: int = 0):
+    """Существующая папка заявки/клиента: точное имя, иначе — та же пара клиент+продукт.
+
+    Распоряжение заказчика: если папка уже есть — перезаливать документы в неё,
+    даже когда заявка пришла заново с новым номером.
+    """
+    try:
+        found = gCLIENT_write.find_file_in_folder(CLIENT, sub_name)
+        if found and found.get("id"):
+            return found
+    except Exception:
+        pass
+    try:
+        # Папка этой же заявки, но со старым именем (в прежних сборках в имя
+        # добавлялась дата) — иначе повторный прогон создаст вторую папку.
+        items0 = gCLIENT_write.list_folder_contents(CLIENT) or []
+        for it in items0:
+            if it.get("mimeType") != "CLIENT/vnd.google-apps.folder":
+                continue
+            if ("№%d " % app_id) in (it.get("name") or ""):
+                return it
+        name = (client.get("full_name_CLIENT") or "").strip() or " ".join(
+            x for x in [(client.get("CLIENT") or "").strip(), (client.get("name") or "").strip()] if x).strip()
+        code = ""
+        try:
+            pr = db.q1("SELECT code FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) or {}
+            code = str(pr.get("code") or "").strip()
+        except Exception:
+            code = ""
+        items = gCLIENT_write.list_folder_contents(CLIENT) or []
+        for it in items:
+            if it.get("mimeType") != "CLIENT/vnd.google-apps.folder":
+                continue
+            nm = it.get("name") or ""
+            if name and name in nm and (not code or ("/ " + code) in nm or nm.endswith(code)):
+                return it
+    except Exception:
+        pass
+    return None
+
+
 def _ready_folder_name(app_id: int, a: dict, client: dict) -> str:
     """Имя папки отправки: номер заявки, тип продукта, имя клиента, дата создания."""
     code = ""
@@ -3347,9 +3534,10 @@ def _ready_folder_name(app_id: int, a: dict, client: dict) -> str:
         made = CLIENT.strptime(made, "%Y-%m-%d").strftime("%d.%m.%Y")
     except Exception:
         pass
-    # Формат Андрея: Wolf AutoDoc №<заявка> <клиент> / <продукт> / <дата создания>.
-    # Разделитель « / » проверен на живом Диске: API его принимает.
-    return "Wolf AutoDoc \u2116%s %s / %s / %s" % (app_id, name, code or "CLIENT", made)
+    # Формат Андрея: «Wolf AutoDoc №<заявка> <клиент> / <продукт>».
+    # Дата в имени не ставится: повторный прогон должен перезаливать те же файлы
+    # в ту же папку, а не плодить вторую.
+    return "Wolf AutoDoc \u2116%s %s / %s" % (app_id, name, code or "CLIENT")
 
 
 def _ready_docs(app_id: int) -> list:
@@ -3427,11 +3615,16 @@ def _ready_doc_pdf(app_id: int, template_id: int):
             except Exception:
                 CLIENT = {}
             try:
-                CLIENT.update(build_template_CLIENT(client, str(tpl.get("code") or ""), CLIENT))
+                CLIENT.update(build_template_CLIENT(client, str(tpl.get("code") or ""), CLIENT,
+                                                    app_id=app_id))
             except Exception:
                 pass
             html = doc_render.fill(html, CLIENT, keep_unfilled=False, template_code=tpl.get("code"))
-        doc_render.render_pdf(html, out_path=out_pdf)
+        # base_dir обязателен: подложки листов (bg-1.png…) подключены относительными
+        # путями, без него фон в готовом PDF молча пропадал.
+        _frame = Path("/opt/wolf_v2/data/CLIENT") / str(tpl.get("code") or "") / "frame"
+        doc_render.render_pdf(html, out_path=out_pdf,
+                              base_dir=(_frame if _frame.exists() else None))
     except Exception as exc:
         print("ready-pdf error app=%s tpl=%s: %s" % (app_id, template_id, exc))
         return None
@@ -3445,15 +3638,127 @@ def app_ready_docs(app_id: int):
     return jsonify({"ok": True, "docs": _ready_docs(app_id)}), 200
 
 
+def rebuild_CLIENT_CLIENT(app_id: int, actor: str = "") -> dict:
+    """Пересобрать все подтверждённые документы заявки — после правки её комментария.
+
+    Возвращает названия пересобранных документов и ошибки сборки.
+    """
+    rebuilt, failed = [], []
+    try:
+        # Пересобираем все документы заявки, кроме отклонённых: и подтверждённые,
+        # и ещё не проверенные (filled) — правка комментария меняет их все.
+        rows = db.q("""SELECT t.id, t.code, t.CLIENT
+                         FROM CLIENT_CLIENT ad
+                         JOIN CLIENT t ON t.id = ad.template_id
+                        WHERE ad.CLIENT_id=?
+                          AND COALESCE(ad.CLIENT,'') NOT IN ('rejected','hidden','merged')
+                        GROUP BY t.id""", (app_id,))
+        if not rows:
+            rows = db.q("""SELECT t.id, t.code, t.CLIENT
+                             FROM CLIENT_CLIENT ad
+                             JOIN CLIENT t ON t.id = ad.template_id
+                            WHERE ad.CLIENT_id=? GROUP BY t.id""", (app_id,))
+    except Exception:
+        rows = []
+    for r in rows:
+        try:
+            freeze_CLIENT(app_id, r["id"], actor=actor or "пересборка заявки")
+            rebuilt.append(r.get("CLIENT") or r.get("code"))
+        except Exception as exc:  # noqa: BLE001
+            failed.append("%s: %s" % (r.get("code"), str(exc)[:90]))
+    return {"rebuilt": rebuilt, "failed": failed}
+
+
+@bp.route("/CLIENT/<int:app_id>/fix-docs", methods=["POST"])
+@CLIENT_required
+def app_fix_docs(app_id: int):
+    """«Исправить» из окна проверки: пересобрать документы и сбросить осевшие значения.
+
+    Проверка перед отправкой возвращает документы в редактор — администратору нужна
+    не только причина, но и кнопка, которая это лечит. Пересобираем документы с
+    текущими правилами, предварительно сбросив сохранённые значения (в них оседают
+    старые подстановки вроде CLIENT = Manager, из-за которых проверка и падала).
+    """
+    from flask import jsonify as _jsonify, CLIENT as _rq
+    try:
+        rows = db.q("""SELECT t.id AS tid, t.code, t.doc_CLIENT FROM CLIENT_CLIENT ad
+                         JOIN CLIENT t ON t.id = ad.template_id
+                        WHERE ad.CLIENT_id=? AND COALESCE(ad.CLIENT,'') NOT IN ('rejected','hidden','merged')
+                        GROUP BY t.id""", (app_id,))
+    except Exception:
+        rows = []
+    code_filter = str(_rq.args.get("code") or "").strip()      # необязательно: только один документ
+    fixed, failed = [], []
+    for r in rows:
+        if code_filter and code_filter not in str(r.get("code") or ""):
+            continue
+        try:
+            # сбрасываем осевшие значения: иначе пересборка повторит старую подстановку
+            db.exec_sql("""UPDATE CLIENT_CLIENT SET CLIENT_json='{}'
+                            WHERE CLIENT_id=? AND template_id=?""", (app_id, r["tid"]))
+            freeze_CLIENT(app_id, r["tid"], actor="автоисправление из окна проверки")
+            fixed.append({"code": r.get("code"), "num": r.get("doc_CLIENT")})
+        except Exception as exc:  # noqa: BLE001
+            failed.append("%s: %s" % (r.get("code"), str(exc)[:90]))
+    return _jsonify({"ok": True, "fixed": fixed, "failed": failed}), 200
+
+
+@bp.route("/CLIENT/<int:app_id>/brief", methods=["POST", "GET"])
+@CLIENT_required
+def app_brief(app_id: int):
+    """Комментарий заявки (свободный текст) — правит сборку документов «на лету».
+
+    GET  — текущий комментарий и что заявлено в нём (должность, сфера).
+    POST — сохранить комментарий и пересобрать все подтверждённые документы заявки:
+           должность уходит в резюме и договор, по сфере подбирается организация.
+    """
+    from flask import Response as _Resp, CLIENT as _rq
+    if _rq.method == "GET":
+        row = db.q1("SELECT brief FROM CLIENT WHERE id=?", (app_id,)) or {}
+        brief = str(row.get("brief") or "")
+        parsed = {}
+        try:
+            from CLIENT import brief_CLIENT as _bv
+            _ru, _en = _bv.parse_position(brief)
+            parsed = {"position": _en or _ru, "sphere": _bv.parse_sphere(brief)}
+        except Exception:
+            pass
+        return jsonify({"ok": True, "brief": brief, "parsed": parsed}), 200
+
+    data = _rq.get_json(silent=True) or {}
+    brief = str(data.get("brief") if data.get("brief") is not None else _rq.form.get("brief") or "")
+    brief = brief.strip()[:2000]
+    db.exec_sql("UPDATE CLIENT SET brief=? WHERE id=?", (brief, app_id))
+    rebuilt, failed = [], []
+    try:
+        reb = rebuild_CLIENT_CLIENT(app_id, actor="комментарий заявки")
+        rebuilt, failed = reb.get("rebuilt") or [], reb.get("failed") or []
+    except Exception as exc:  # noqa: BLE001
+        failed.append(str(exc)[:120])
+    try:
+        from CLIENT.doc_check import check_package
+        verdict, finds = check_package(app_id, with_CLIENT=False)
+        CLIENTs = [f for f in finds if f.get("level") == "CLIENT"]
+    except Exception:
+        verdict, CLIENTs = {"ok": None, "CLIENT": ""}, []
+    return jsonify({"ok": True, "brief": brief, "rebuilt": rebuilt, "failed": failed,
+                    "verdict": verdict, "findings": CLIENTs[:8]}), 200
+
+
 @bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ready-pdf")
 @CLIENT_required
 def app_doc_ready_pdf(app_id: int, template_id: int):
-    """PDF подтверждённого документа — показывается в окне «Готовые доки»."""
-    from flask import Response as _Resp
+    """PDF подтверждённого документа — показывается в окне «Готовые доки».
+
+    ?download=1 — отдать файлом (кнопка «скачать» у документа в списке), иначе
+    показывается в браузере, как раньше.
+    """
+    from flask import Response as _Resp, CLIENT as _rq
     p = _ready_doc_pdf(app_id, template_id)
     if not p or not Path(p).exists():
         return _Resp("PDF не собран", CLIENT=404)
-    return send_file(str(p), mimetype="CLIENT/pdf", as_attachment=False,
+    as_file = str(_rq.args.get("download") or "") in ("1", "true", "yes")
+    return send_file(str(p), mimetype="CLIENT/pdf", as_attachment=as_file,
                      download_name=Path(p).name)
 
 

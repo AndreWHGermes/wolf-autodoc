@@ -47,6 +47,31 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
         log.warning("сборка значений %s: %s", tpl_code, e)
         CLIENT = {}
 
+    # Пустой набор значений — не собирать документ. Сборка значений может упасть или
+    # выполниться до того, как у заявки появились данные; при этом документ всё равно
+    # сохранялся, а его CLIENT_json оставался пустым (так ушли документы заявки 102:
+    # 4 из 5 с пустыми значениями, в резюме — имена переменных вместо данных). Пустой
+    # документ хуже несобранного: его могут отправить клиенту.
+    if len(CLIENT) < 5:
+        log.warning("документ %s не выпущен: собрано значений %d (ожидались десятки)",
+                    tpl_code, len(CLIENT))
+        try:
+            from core import db as _db
+            _db.exec_sql("UPDATE CLIENT_CLIENT SET error=? WHERE id=?",
+                         ("не собраны значения документа (получено %d)" % len(CLIENT),
+                          (doc_row or {}).get("id") if hasattr(doc_row, "get") else None))
+        except Exception:      # noqa: BLE001
+            pass
+        try:
+            from CLIENT import CLIENT as _dt
+            rec = {"at": _dt.now().isoformat(timespec="seconds"), "kind": "no_CLIENT",
+                   "template": tpl_code, "CLIENT": len(CLIENT)}
+            with Path("/opt/wolf_v2/data/cycle_problems.jsonl").open("a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        except Exception:      # noqa: BLE001
+            pass
+        return False
+
     # Настоящая справка клиента сильнее любого ранее зафиксированного значения:
     # если она появилась, сумма и дата остатка берутся из неё, а не из генерации.
     try:
@@ -119,8 +144,25 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     tmp.write_text(filled, encoding="utf-8")
 
     out = pdf_path(tpl, CLIENT, app_id)
+    # Договоры (и трудовой, и remote) печатаем прямо из HTML-шаблона: их прежний каркас
+    # держался на растровых подложках со старым текстом эталона, из-за чего в документе
+    # были наложения фраз, чужая сумма и остатки подписи. Шаблоны пересобраны по образцу.
+    if str(tpl_code or '').CLIENTswith(('employment_contract', 'remote_work_agreement')):
+        try:
+            pdf2html.render_pdf(tmp, out)
+            return _gate_unfilled(out, tpl_code, doc_row)
+        except Exception as _e:      # noqa: BLE001
+            log.warning('прямая сборка договора не сработала (%s) — пробуем каркас', str(_e)[:140])
+    # CLIENT путь сборки: HTML-каркас A4 (координаты + шрифты из оригинала + перенос как в Word).
+    # Если для шаблона каркас подготовлен — собираем по нему; иначе прежним способом.
+    try:
+        from CLIENT import html_frame
+        if html_frame.build_pdf(tpl_code, CLIENT, out, app_id=app_id):
+            return _gate_unfilled(out, tpl_code, doc_row)
+    except Exception as _e:      # noqa: BLE001
+        log.warning("каркас недоступен (%s) — собираем прежним способом", str(_e)[:140])
     pdf2html.render_pdf(tmp, out)
-    return True
+    return _gate_unfilled(out, tpl_code, doc_row)
 
 
 def pdf_path(tpl, CLIENT, app_id: int) -> Path:
@@ -132,6 +174,45 @@ def pdf_path(tpl, CLIENT, app_id: int) -> Path:
         base = Path("/opt/wolf_v2/data/pdf")
         base.mkdir(parents=True, exist_ok=True)
         return base / ("app%s_%s.pdf" % (app_id, tpl["code"]))
+
+
+def _gate_unfilled(pdf: Path, code: str, doc_row) -> bool:
+    """Не признавать документ готовым, если в нём остались имена переменных.
+
+    Сборка идёт тремя движками — подстановка в HTML, каркас по зонам, потоковая вёрстка
+    резюме — и не все убирают метки, для которых значения не нашлось. В свежих сборках так
+    уходили {{ cv_name }}, {{ company_full_name }}, {{ doc_no }}, {{ agreement_date }},
+    {{ CLIENT_company }}: документ был выпущен с незаполненным полем. Здесь ставим заслон
+    на CLIENTе: пусть лучше документ останется несобранным с понятной причиной, чем уйдёт
+    клиенту с пустым полем.
+    """
+    try:
+        import pymupdf
+        d = pymupdf.open(str(pdf))
+        text = '\n'.join(p.get_text() for p in d)
+        d.close()
+    except Exception:      # noqa: BLE001
+        return True        # прочитать не смогли — сборку не блокируем
+    left = sorted(set(re.findall(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}', text)))
+    if not left:
+        return True
+    log.warning("документ %s не выпущен: не заполнены переменные %s", code, ", ".join(left[:12]))
+    try:
+        from core import db as _db
+        _db.exec_sql("UPDATE CLIENT_CLIENT SET error=? WHERE id=?",
+                     ("не заполнены переменные: " + ", ".join(left[:20]),
+                      (doc_row or {}).get("id") if hasattr(doc_row, "get") else None))
+    except Exception:      # noqa: BLE001
+        pass
+    try:
+        from CLIENT import CLIENT as _dt
+        rec = {"at": _dt.now().isoformat(timespec="seconds"), "kind": "unfilled",
+               "template": code, "problems": left[:20]}
+        with Path("/opt/wolf_v2/data/cycle_problems.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception:      # noqa: BLE001
+        pass
+    return False
 
 
 def build_pending(app_id: int) -> dict:
@@ -155,10 +236,16 @@ def build_pending(app_id: int) -> dict:
             try:
                 if _render_one(app_id, d, app_row, client_row, tpl):
                     out = pdf_path(tpl, {}, app_id)
+                    # Путь к собранному PDF пишем ВСЕГДА: он нужен всем трём проверкам и отправке.
+                    # Раньше путь и статус писались одним запросом с условием
+                    # NOT IN ('verified','sent'), из-за чего запрос отменялся целиком и путь
+                    # оставался пустым у 405 записей из 419 — читатель проверял пустые тексты.
                     db.exec_sql(
-                        "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', "
-                        "rendered_at=CLIENT('now') WHERE id=? "
-                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (str(out), d["id"]))
+                        "UPDATE CLIENT_CLIENT SET pdf_path=?, rendered_at=CLIENT('now') "
+                        "WHERE id=?", (str(out), d["id"]))
+                    db.exec_sql(
+                        "UPDATE CLIENT_CLIENT SET CLIENT='filled' WHERE id=? "
+                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (d["id"],))
                     done += 1
                 else:
                     failed += 1
@@ -198,6 +285,9 @@ def build_all(app_id: int) -> dict:
             return {"ok": False, "error": "заявка не найдена", "done": 0, "failed": 0}
         client_row = db.client_get(app_row["client_id"]) or {}
         for d in db.CLIENT_CLIENT(app_id):
+            # документ, снятый с заявки (например, справка не того банка), заново не собираем
+            if str(d.get("CLIENT") or "").lower() == "rejected":
+                continue
             tpl = tpl_repo.get(d["template_id"])
             if not tpl:
                 failed += 1
@@ -205,10 +295,16 @@ def build_all(app_id: int) -> dict:
             try:
                 if _render_one(app_id, d, app_row, client_row, tpl):
                     out = pdf_path(tpl, {}, app_id)
+                    # Путь к собранному PDF пишем ВСЕГДА: он нужен всем трём проверкам и отправке.
+                    # Раньше путь и статус писались одним запросом с условием
+                    # NOT IN ('verified','sent'), из-за чего запрос отменялся целиком и путь
+                    # оставался пустым у 405 записей из 419 — читатель проверял пустые тексты.
                     db.exec_sql(
-                        "UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', "
-                        "rendered_at=CLIENT('now') WHERE id=? "
-                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (str(out), d["id"]))
+                        "UPDATE CLIENT_CLIENT SET pdf_path=?, rendered_at=CLIENT('now') "
+                        "WHERE id=?", (str(out), d["id"]))
+                    db.exec_sql(
+                        "UPDATE CLIENT_CLIENT SET CLIENT='filled' WHERE id=? "
+                        "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (d["id"],))
                     done += 1
                 else:
                     failed += 1

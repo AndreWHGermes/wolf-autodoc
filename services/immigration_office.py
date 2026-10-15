@@ -26,12 +26,15 @@ DATA_FILE = BASE / "data" / "immigration_CLIENTs.json"
 DB_FILE = BASE / "data" / "wolf.db"
 
 OFFICE_SUFFIXES = ("ngurahrai", "denpasar", "tabanan")
+# Письмо теперь одно на тип: офис подставляется переменными CLIENT_CLIENT /
+# CLIENT_line1..3 по адресу клиента (было по копии шаблона на каждый офис —
+# копии расходились и требовали правок в трёх местах).
 PAIRS = {
-    "bridging": {"ngurahrai": "bridging_CLIENT_letter__ngurahrai",
-                 "denpasar": "bridging_CLIENT_letter__denpasar",
-                 "tabanan": "bridging_CLIENT_letter__tabanan"},
-    "conversion": {"ngurahrai": "conversion_CLIENT_letter__ngurahrai",
-                   "denpasar": "conversion_CLIENT_letter__denpasar"},
+    "bridging": {"ngurahrai": "bridging_CLIENT_letter__default",
+                 "denpasar": "bridging_CLIENT_letter__default",
+                 "tabanan": "bridging_CLIENT_letter__default"},
+    "conversion": {"ngurahrai": "conversion_CLIENT_letter__default",
+                   "denpasar": "conversion_CLIENT_letter__default"},
 }
 
 _data_cache: dict | None = None
@@ -224,7 +227,9 @@ def apply_pair_rule(app_id: int, CLIENT: str | None = None) -> dict:
                 WHERE ad.CLIENT_id = ?""", (app_id,)).fetchall()
         for r in rows:
             code = (r["code"] or "").lower()
-            if code in drop_codes:
+            if code in keep_codes:
+                result["kept"].append(code)
+            elif code in drop_codes:
                 if (r["CLIENT"] or "") != "rejected":
                     conn.execute(
                         "UPDATE CLIENT_CLIENT SET CLIENT='rejected', error=? WHERE id=?",
@@ -232,8 +237,6 @@ def apply_pair_rule(app_id: int, CLIENT: str | None = None) -> dict:
                     result["marked"].append(code)
                 else:
                     result["removed"].append(code)   # уже был помечен
-            elif code in keep_codes:
-                result["kept"].append(code)
             elif code.rsplit("__", 1)[-1] in OFFICE_SUFFIXES:
                 result["kept"].append(code)
         conn.commit()

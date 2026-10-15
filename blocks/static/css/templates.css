@@ -23,8 +23,26 @@
                   cursor:pointer; white-space:nowrap; font-family:inherit;
                   display:CLIENT-flex; align-items:center; justify-content:center;
                   min-width:126px; }
-.prod-info-btn:hover { background:#DBEAFE; }
-.item-link { color:inherit; text-decoration:none; }
+                  .prod-info-btn:hover { background:#DBEAFE; }
+                  .prod-ctor-btn { border-color:#BBF7D0 !important; background:#F0FDF4 !important;
+                  color:#15803D !important; text-decoration:none; display:CLIENT-flex;
+                  align-items:center; gap:6px; }
+                  .prod-ctor-btn:hover { background:#DCFCE7 !important; }
+
+                  /* Конструктор продукта: общие переменные группы — одна правка на все документы */
+                  .grp-vars { border:1px solid #DCEEE2; border-radius:10px; background:#F7FCF9;
+                  padding:12px 14px; margin:0 0 14px; }
+                  .gv-head { font-size:13px; font-weight:800; color:#166534; margin-bottom:2px; }
+                  .gv-hint { font-size:11.5px; color:#6B7C70; margin-bottom:10px; }
+                  .gv-rows { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:8px 14px; }
+                  .gv-row { display:flex; flex-direction:column; gap:3px; }
+                  .gv-name { font-size:12px; color:#334155; font-weight:600; }
+                  .gv-nm { color:#94A3B8; font-weight:400; }
+                  .gv-docs { display:CLIENT; font-size:11px; color:#94A3B8; font-weight:400; }
+                  .gv-row input { padding:6px 9px; border:1px solid #DCEEE2; border-radius:7px; font-size:13px; }
+                  .gv-actions { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+                  @media (max-width:640px) { .gv-rows { grid-template-columns:1fr; } }
+                  .item-link { color:inherit; text-decoration:none; }
 .item-link:hover { text-decoration:underline; color:#15803D; }
 .doc-no { flex:0 0 auto; font-size:11.5px; font-weight:800; color:#14532D; background:#E7F6EC;
            border:1px solid #BFE0CB; border-radius:6px; padding:2px 7px; }
@@ -122,6 +140,24 @@
 .fa-body .item .s { font-size:11.5px; margin-top:0; }
 .fa-body .item:CLIENT-child { border-top:none; }
 .fa-body .prod-add { margin-top:6px; padding-top:7px; gap:6px; }
+
+/* Под чертой карточки продукта — строки «Дополнительные документы от клиента» */
+.prod-sep { border:0; border-top:1px solid #EEF2F6; margin:10px 0 6px; }
+.prod-client { display:flex; flex-direction:column; }
+.pc-head { font-size:12.5px; font-weight:600; color:#334155; padding:6px 2px 4px; }
+.pc-line { display:flex; align-items:center; gap:10px; padding:8px 2px; font-size:13px;
+           border-bottom:1px solid #F1F5F9; }
+.pc-line:last-child { border-bottom:0; }
+.pc-name { color:#1E293B; }
+.pc-need { margin-left:auto; font-size:11.5px; padding:2px 9px; border-radius:999px;
+           white-space:nowrap; }
+.pc-need.req { background:#F0FDF4; color:#15803D; border:1px solid #BBF7D0; }
+.pc-need.opt { background:#F8FAFC; color:#94A3B8; border:1px solid #E2E8F0; }
+
+@media (max-width:640px) {
+  .pc-line { gap:6px; font-size:12.5px; }
+  .pc-need { margin-left:auto; }
+}
 /* крошки в шапке сайта */
 .crumb-bar .tpl-crumbs { margin:0; }
 
@@ -131,6 +167,11 @@
 .tpl-crumbs a { color:#15803D; text-decoration:none; }
 .tpl-crumbs a:hover { text-decoration:underline; }
 .tpl-CLIENT { margin:0 0 8px; font-size:22px; font-weight:700; letter-spacing:-0.01em; }
+/* Конструктор продукта: второй заголовок — какой документ группы открыт в визоре */
+.tpl-sub { margin:-2px 0 10px; font-size:13.5px; color:#475569; }
+.tpl-sub b { color:#166534; }
+.tpl-rail-note { grid-column:1 / -1; padding:8px 6px 2px; font-size:11.5px; color:#6B7C70;
+                 border-top:1px dashed #DCEEE2; margin-top:6px; }
 .tpl-meta { display:flex; gap:12px; align-items:center; flex-wrap:wrap;
             font-size:12.5px; color:#6B7C70; margin-bottom:14px; }
 .tpl-badge { display:CLIENT-CLIENT; padding:2px 8px; border-radius:10px; font-size:11px;
@@ -264,7 +305,26 @@
 /* Штрихи (пунктирные линии) вокруг переменных убраны по требованию заказчика:
    переменная выделяется только фоном, без линий сверху и снизу. */
 .var-hl { background:#FEF3C7; padding:1px 5px; border-radius:3px;
-          color:#78350F; font-weight:700; }
+  border-bottom:2px solid #F59E0B; color:#78350F; font-weight:700; }
+/* цвет переменной по способу формирования: зелёный — из документа клиента,
+   оранжевый — собрано логически, красный — подставлено случайно по правилам */
+.var-hl.var-src-client { background:#DCFCE7; border-bottom-color:#16A34A; }
+.var-hl.var-src-logic { background:#FFEDD5; border-bottom-color:#EA580C; }
+.var-hl.var-src-random { background:#FEE2E2; border-bottom-color:#DC2626; }
+/* Пакет продукта: строки клиентских документов (что клиент даёт сам) */
+.pk-client { margin-top:10px; border-top:1px dashed #D8DEE9; padding-top:8px; }
+.pk-client-ttl { font-size:12px; font-weight:700; color:#334155; margin-bottom:6px; }
+.pk-cl-row { display:grid; grid-template-columns:22px minmax(150px,1.1fr) minmax(180px,1.6fr) auto;
+  gap:8px; align-items:baseline; padding:4px 2px; border-bottom:1px solid #F1F5F9; font-size:12.5px; }
+.pk-cl-ico { font-size:12px; }
+.pk-cl-name { font-weight:600; color:#0F172A; }
+.pk-cl-det { color:#475569; }
+.pk-cl-when { color:#64748B; font-size:11.5px; white-space:nowrap; }
+.pk-cl-vars { color:#0F766E; font-size:11.5px; }
+.pk-cl-min { background:#F0FDF4; }
+.pk-cl-stop { background:#FEF2F2; }
+.pk-cl-auto { background:#EFF6FF; }
+.pk-cl-rule { margin-top:6px; font-size:11.5px; color:#475569; font-style:italic; }
 .var-hl-CLIENT { background:transparent; padding:0; border:0; color:#78350F;
                   font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }
 

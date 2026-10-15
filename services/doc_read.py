@@ -18,6 +18,23 @@ IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff")
 HEIC_EXT = (".heic", ".heif")
 OCR_LANGS = "rus+eng"
 
+# Скан паспорта бывает в огромном разрешении (лист PDF на 5000×7300 точек). Рендер
+# такого листа в 300 dpi даёт 150 мегапикселей: tesseract захлёбывается, память
+# уходит в swap, и распознавание выдаёт мусор вместо даты. Поэтому картинку перед
+# OCR приводим к разумному размеру.
+OCR_MAX_SIDE = 3000
+
+
+def _pixmap_for_ocr(page, dpi: int = 300, max_side: int = OCR_MAX_SIDE):
+    """Снимок страницы PDF с ограничением размера: длинная сторона ≤ max_side."""
+    rect = page.rect
+    long_pt = max(rect.width, rect.height)
+    if long_pt > 0:
+        px = long_pt * dpi / 72.0
+        if px > max_side:
+            dpi = max(100, int(dpi * max_side / px))
+    return page.get_pixmap(dpi=dpi)
+
 # Распознавание не должно тормозить интерфейс: tesseract запускается через
 # обёртку с пониженным приоритетом (nice 15) и одним потоком. Настройка живёт
 # в самом модуле pytesseract, поэтому действует для всех вызовов ниже.
@@ -43,8 +60,25 @@ def _ocr_image(path: Path) -> str:
     if img.width < 1600:                            # мелкий скан — увеличиваем
         k = 1600 / max(1, img.width)
         img = img.resize((int(img.width * k), int(img.height * k)))
-    img = ImageOps.grayscale(img)
-    return pytesseract.image_to_string(img, lang=OCR_LANGS)
+    gray = ImageOps.grayscale(img)
+    text = pytesseract.image_to_string(gray, lang=OCR_LANGS)
+
+    # Снимок экрана или фото с телефона часто не поддаётся с первого прохода:
+    # серый фон, блики, сжатие. Признак неудачи — в тексте нет ни одной даты в
+    # формате «13.06.2012»: печатные поля паспорта («Дата рождения», «Дата выдачи»,
+    # «Дата окончания») до первого прохода не доходят, текст обрывается на самой
+    # метке — хотя на снимке даты видны крупно и чётко. Тогда читаем ещё раз —
+    # с контрастом, увеличенным вдвое и без разбивки на абзацы (psm 6).
+    import re as _re
+    _has_date = bool(_re.search(r"\d{2}[.,]\d{2}[.,]\d{4}", text))
+    if len(text.strip()) < 40 or not _has_date:
+        big = ImageOps.grayscale(img)
+        big = ImageOps.autocontrast(big, cutoff=2)
+        big = big.resize((big.width * 2, big.height * 2), Image.LANCZOS)
+        second = pytesseract.image_to_string(big, lang=OCR_LANGS, config="--psm 6")
+        if len(second.strip()) > len(text.strip()):
+            text = second
+    return text
 
 
 def _ocr_heic(path: Path) -> str:
@@ -68,33 +102,62 @@ def _ocr_heic(path: Path) -> str:
 def mrz_text(path) -> str:
     """Машиночитаемая зона паспорта отдельным проходом.
 
-    В паспорте РФ MRZ — самый надёжный источник имени и фамилии латиницей.
-    Общее распознавание страницы эту полосу часто портит: мелкий шрифт, шум
-    голограммы. Поэтому читаем её отдельно: обрезаем нижнюю часть, увеличиваем
-    и распознаём только заглавными буквами и цифрами.
+    В паспорте РФ MRZ — самый надёжный источник данных: фамилия и имя латиницей,
+    номер паспорта, дата рождения, срок действия. Общее распознавание страницы
+    эту полосу портит (мелкий шрифт, голограмма), поэтому читаем низ отдельно,
+    с увеличением и белым списком символов.
+
+    Паспорта приходят и фотографией, и сканом внутри PDF — PDF сначала
+    разбираем на страницы картинками, иначе PIL его не откроет.
     """
     try:
         import pytesseract
         from PIL import Image, ImageOps
 
-        img = Image.open(path)
+        images = []
+        ext = ''
         try:
-            img = ImageOps.exif_transpose(img)
-        except Exception:
-            pass
-        if img.mode not in ("RGB", "L"):
-            img = img.convert("RGB")
-        w, h = img.size
-        crop = img.crop((0, int(h * 0.78), w, h))
-        crop = crop.resize((crop.width * 2, crop.height * 2), Image.LANCZOS)
-        crop = ImageOps.grayscale(crop)
-        out = pytesseract.image_to_string(
-            crop, lang="eng", config="--psm 6 "
-            "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
-        )
-        # Строки MRZ разделяем переводом строки: склеенные в одну, они дают
-        # мусор в разборе (третья часть ФИО захватывает цифры соседней строки).
-        return "\n".join(ln.strip() for ln in (out or "").splitlines() if ln.strip())
+            ext = sniff_ext(path)
+        except Exception:                              # noqa: BLE001
+            ext = ''
+        low = str(path).lower()
+        if ext == '.pdf' or low.endswith('.pdf'):
+            import pymupdf
+            doc = pymupdf.open(path)
+            for pg in doc:
+                pm = _pixmap_for_ocr(pg, dpi=300)
+                images.append(Image.frombytes('RGB', (pm.width, pm.height), pm.samples))
+        else:
+            img = Image.open(path)
+            try:
+                img = ImageOps.exif_transpose(img)
+            except Exception:                          # noqa: BLE001
+                pass
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            images.append(img)
+        if not images:
+            return ""
+
+        # полосу MRZ OCR-им по частям: страница целиком «слепнет» на мелком шрифте
+        chunks = []
+        for img in images:
+            w, h = img.size
+            for y0, y1 in ((0.78, 1.0), (0.70, 0.95), (0.55, 0.85)):
+                crop = img.crop((0, int(h * y0), w, int(h * y1)))
+                crop = crop.resize((crop.width * 2, crop.height * 2), Image.LANCZOS)
+                crop = ImageOps.grayscale(crop)
+                out = pytesseract.image_to_string(
+                    crop, lang="eng", config="--psm 6 "
+                    "-c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
+                )
+                # строки MRZ разделяем переводом строки: склеенные в одну, они дают
+                # мусор в разборе (третья часть ФИО захватывает цифры соседней строки)
+                for ln in (out or "").splitlines():
+                    ln = ln.strip()
+                    if len(ln) > 25:                       # похоже на строку MRZ
+                        chunks.append(ln)
+        return "\n".join(dict.fromkeys(chunks))
     except Exception:
         return ""
 
@@ -140,7 +203,7 @@ def _read_text_uncached(path) -> str:
                 t = doc[i].get_text() or ""
                 if len(t.strip()) < 40:                     # похоже на скан — читаем OCR
                     try:
-                        pix = doc[i].get_pixmap(dpi=220)
+                        pix = _pixmap_for_ocr(doc[i], dpi=220)
                         import io
                         from PIL import Image, ImageOps
                         img = Image.open(io.BytesIO(pix.tobytes("png")))

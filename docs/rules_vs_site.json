@@ -1,0 +1,1010 @@
+[
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "doc_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "card_mask",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Маска номера карты Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер банковской карты. Что это: Первые 6 цифр (БИН) указывают на банк-эмите",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "ref_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "balance_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (прописью) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: производная от остатка (сумма прописью) Как ставится: сумма остатка словами по-английски без названия валюты: «one million",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "CLIENT_from",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "CLIENT_to",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "contract_date",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Дата договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Дата подписания договора из заявки/карточки. Основной формат: \"Dth day of Month YYYY\" с порядк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "contract_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Номер договора банковского обслуживания. Только 10 цифр подряд, без пробелов и разделителей, ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "account_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер счёта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Номер счёта клиента (20 цифр) из банковской справки или карточки клиента Если данных нет: поле о",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__sber",
+  "CLIENT": "balance_rub",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (цифрами) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма остатка на счёте (рублях). Порядок заполнения: 1) если в заявк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "doc_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "card_mask",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Маска номера карты Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер банковской карты. Что это: Первые 6 цифр (БИН) указывают на банк-эмите",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "ref_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "balance_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (прописью) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: производная от остатка (сумма прописью) Как ставится: сумма остатка словами по-английски без названия валюты: «one million",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "CLIENT_from",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "CLIENT_to",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "contract_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Номер договора банковского обслуживания. Только 10 цифр подряд, без пробелов и разделителей, ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "account_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер счёта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Номер счёта клиента (20 цифр) из банковской справки или карточки клиента Если данных нет: поле о",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "balance_rub",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (цифрами) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма остатка на счёте (рублях). Порядок заполнения: 1) если в заявк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_12m__tbank",
+  "CLIENT": "contract_date",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Дата договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Дата подписания договора из заявки/карточки. Основной формат: \"Dth day of Month YYYY\" с порядк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "doc_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "card_mask",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Маска номера карты Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер банковской карты. Что это: Первые 6 цифр (БИН) указывают на банк-эмите",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "ref_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "balance_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (прописью) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: производная от остатка (сумма прописью) Как ставится: сумма остатка словами по-английски без названия валюты: «one million",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "CLIENT_from",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "CLIENT_to",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "balance_rub",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (цифрами) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма остатка на счёте (рублях). Порядок заполнения: 1) если в заявк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "account_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер счёта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Номер счёта клиента (20 цифр) из банковской справки или карточки клиента Если данных нет: поле о",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "contract_date",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Дата договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Дата подписания договора из заявки/карточки. Основной формат: \"Dth day of Month YYYY\" с порядк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__sber",
+  "CLIENT": "contract_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Номер договора банковского обслуживания. Только 10 цифр подряд, без пробелов и разделителей, ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "doc_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "card_mask",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Маска номера карты Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер банковской карты. Что это: Первые 6 цифр (БИН) указывают на банк-эмите",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "ref_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер документа Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер документа из строки «No » в справке банка. Формат в реальных справках: дв",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "balance_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (прописью) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: производная от остатка (сумма прописью) Как ставится: сумма остатка словами по-английски без названия валюты: «one million",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "CLIENT_from",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "CLIENT_to",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Период выписки банка Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: данные клиента из карточки заявки Как ставится: Начало периода выписки, ДД.ММ.ГГГГ. Для справки «3 мес.» период ровно 3 месяца (н",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bank_CLIENTment_3m__tbank",
+  "CLIENT": "balance_rub",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Остаток на счёте (цифрами) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма остатка на счёте (рублях). Порядок заполнения: 1) если в заявк",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "CLIENT_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "body_CLIENT_line",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "itk_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "itk_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "client_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__default",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "body_CLIENT_line",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "itk_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "itk_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "client_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "CLIENT_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__ngurahrai",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "body_CLIENT_line",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "client_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Гражданство клиента. В индонезийские документы (письма, форма E-02) пишется как в индонезийской записи — RUSIA; в англоязычные договоры — RUSSIAN FEDERATION.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "date_iso_2",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "",
+  "verdict": "нет описания на сайте"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "date_iso_3",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "",
+  "verdict": "нет описания на сайте"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "itk_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "itk_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "letter_CLIENT",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Номер и серия паспорта — переносятся из загранпаспорта клиента как есть, латиницей, без пробелов.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "CLIENT_line1",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "CLIENT_line2",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "CLIENT_line3",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "bridging_CLIENT_letter__tabanan",
+  "CLIENT": "CLIENT_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "CLIENT_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "body_CLIENT_line",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "itk_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "itk_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "bridging_visa_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер мостовой визы Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер текущего разрешения/визы (ITK) — из документа иммиграции клиента, вид",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "client_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "conversion_CLIENT_letter__default",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "CLIENT_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Адресат письма: офис иммиграции выбирается по адресу пребывания клиента — Ngurah Rai (юг Бадунга, аэропорт), Denpasar (город и Gianyar/Ubud), Tabanan (кабупатен Tabanan); три строки адреса — из справочника офисов. Пользователь может заменить офис вручную.",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "body_CLIENT_line",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Формулировка обращения зависит от типа продукта (мостовая / конверсия / продление) и одна и та же в письме и в форме E-02.",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "itk_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "itk_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Данные действующего разрешения (KITAS/ITK): номер и срок — из документа клиента; документа нет — поле пустое.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "client_CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "conversion_CLIENT_letter__denpasar",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "cv__format_detailed",
+  "CLIENT": "cv_passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "cv__format_detailed",
+  "CLIENT": "cv_passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "cv__format_short",
+  "CLIENT": "cv_passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "cv__format_short",
+  "CLIENT": "cv_passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "d12_cover_letter__default",
+  "CLIENT": "passport_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "d12_cover_letter__default",
+  "CLIENT": "job_and_position",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Профессия и должность клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Должность клиента: CLIENT.position. Формат для индонезийских док",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "d12_cover_letter__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "employment_contract__default",
+  "CLIENT": "CLIENT_law",
+  "method": "derived",
+  "site_source_kind": "derived",
+  "site_note": "",
+  "verdict": "нет описания на сайте"
+ },
+ {
+  "template": "employment_contract__default",
+  "CLIENT": "company_tail",
+  "method": "derived",
+  "site_source_kind": "derived",
+  "site_note": "",
+  "verdict": "нет описания на сайте"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "passport_CLIENT_date",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Паспортные данные: кем выдан, дата выдачи, действует до — из загранпаспорта клиента.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "passport_CLIENT_by",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Кем выдан паспорт Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Кем выдан паспорт — из карточки клиента (поле «Кем выдан»). В архивных договорах в шапке: ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "the_company_CLIENT_that",
+  "method": "llm",
+  "site_source_kind": "client",
+  "site_note": "Что это: Фраза подтверждения компании Тип: descriptive — обзорное описание — текст, который система подбирает по данным клиента (описание опыта, навыки, тема письма, цель) Откуда берётся: данные клиента из карточки заявки Как ставится: Список обязанностей по договору. Генерируется LLM-агентом: 3–4 п",
+  "verdict": "расхождение: сайт says «client», фактически llm"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_list",
+  "method": "llm",
+  "site_source_kind": "client",
+  "site_note": "Что это: Фраза подтверждения компании Тип: descriptive — обзорное описание — текст, который система подбирает по данным клиента (описание опыта, навыки, тема письма, цель) Откуда берётся: данные клиента из карточки заявки Как ставится: Список обязанностей по договору. Генерируется LLM-агентом: 3–4 п",
+  "verdict": "расхождение: сайт says «client», фактически llm"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "company_name_in_CLIENT",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Компания-работодатель Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Название компании из карточки/учредительных документов. Формат: LLC + название в кавыч",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "inn_kpp_ogrn",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Реквизиты компании (ИНН/КПП/ОГРН) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: ИНН компании-работодателя (10 цифр). Источник: документы клие",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "contract_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер договора Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки или клиента Как ставится: Номер договора банковского обслуживания. Только 10 цифр подряд, без пробелов и разделителей, ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_name",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Компания-работодатель Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Название компании из карточки/учредительных документов. Формат: LLC + название в кавыч",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "company_CLIENT_address",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Адрес компании Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Юридический адрес из карточки компании. Английская транслитерация, полный или сокращённый вар",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "company_inn",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Реквизиты компании (ИНН/КПП/ОГРН) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: ИНН компании-работодателя (10 цифр). Источник: документы клие",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "company_kpp",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Реквизиты компании (ИНН/КПП/ОГРН) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: ИНН компании-работодателя (10 цифр). Источник: документы клие",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "company_ogrn",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Реквизиты компании (ИНН/КПП/ОГРН) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: ИНН компании-работодателя (10 цифр). Источник: документы клие",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "position_CLIENT",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Профессия и должность клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Должность клиента: CLIENT.position. Формат для индонезийских док",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "method": "random_bounds",
+  "site_source_kind": "client",
+  "site_note": "Что это: Годовая сумма по договору Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма цифрами с разделителем тысяч-запятой, БЕЗ валюты: «6,540,000». ",
+  "verdict": "расхождение: сайт says «client», фактически random_bounds"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "method": "random_bounds",
+  "site_source_kind": "client",
+  "site_note": "Что это: Годовая сумма по договору Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Сумма цифрами с разделителем тысяч-запятой, БЕЗ валюты: «6,540,000». ",
+  "verdict": "расхождение: сайт says «client», фактически random_bounds"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "method": "random_bounds",
+  "site_source_kind": "client",
+  "site_note": "Что это: Месячная сумма по договору Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки (сумма) — месячная = годовая ÷ 12 Как ставится: сумма цифрами с запятыми-разделителями тысяч, без валюты: «",
+  "verdict": "расхождение: сайт says «client», фактически random_bounds"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "CLIENT_CLIENT_CLIENT",
+  "method": "random_bounds",
+  "site_source_kind": "client",
+  "site_note": "Что это: Месячная сумма по договору Тип: doc_CLIENT — служебное поле документа — номер, дата, срок, суммы: формирует система по правилу и фиксирует в документе Откуда берётся: карточка заявки (сумма) — месячная = годовая ÷ 12 Как ставится: сумма цифрами с запятыми-разделителями тысяч, без валюты: «",
+  "verdict": "расхождение: сайт says «client», фактически random_bounds"
+ },
+ {
+  "template": "remote_work_agreement__default",
+  "CLIENT": "passport_CLIENT_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client_fact",
+  "site_note": "Паспортные данные клиента: кем выдан / дата выдачи / действует до — из загранпаспорта.",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "date_of_CLIENT",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "Что это: Дата выдачи паспорта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Правило формирования пока не описано — требует уточнения при согласовании. Переменная `",
+  "verdict": "описание сайта неполное (обещает уточнить)"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "CLIENT_stay_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер разрешения на пребывание (ИТК) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер разрешения на пребывание (ITK) — строка вида `B12E21",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "CLIENT_of_CLIENT",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Что это: Цель обращения Тип: descriptive — обзорное описание — текст, который система подбирает по данным клиента (описание опыта, навыки, тема письма, цель) Откуда берётся: данные клиента из карточки заявки Как ставится: Формулировка цели: для мостовой — «Visa Bridging to E33G»; для конверсии — «Co",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "stay_CLIENT_to_be_CLIENT_for",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Что это: Что запрашиваем по заявке Тип: logic — логика оформления — люди, компании и адреса, которые участвуют в оформлении (спонсор, подписант, доверенное лицо, гарант, адресат) Откуда берётся: генерируется системой по продукту заявки Как ставится: формулировка по продукту заявки: «extension of sta",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "date_of_CLIENT",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "Что это: Срок действия паспорта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Правило формирования пока не описано — требует уточнения при согласовании. Переменная",
+  "verdict": "описание сайта неполное (обещает уточнить)"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "CLIENT",
+  "method": "pool",
+  "site_source_kind": "client",
+  "site_note": "Что это: Профессия и должность клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Должность клиента: CLIENT.position. Формат для индонезийских док",
+  "verdict": "расхождение: сайт says «client», фактически pool"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "stay_CLIENT_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер разрешения на пребывание (ИТК) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер разрешения на пребывание (ITK) — строка вида `B12E21",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__conversion",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "date_of_CLIENT",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "Что это: Дата выдачи паспорта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Правило формирования пока не описано — требует уточнения при согласовании. Переменная `",
+  "verdict": "описание сайта неполное (обещает уточнить)"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "date_of_CLIENT",
+  "method": "client_card",
+  "site_source_kind": "client",
+  "site_note": "Что это: Срок действия паспорта Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Правило формирования пока не описано — требует уточнения при согласовании. Переменная",
+  "verdict": "описание сайта неполное (обещает уточнить)"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "CLIENT_stay_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер разрешения на пребывание (ИТК) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер разрешения на пребывание (ITK) — строка вида `B12E21",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "CLIENT_of_CLIENT",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Что это: Цель обращения Тип: descriptive — обзорное описание — текст, который система подбирает по данным клиента (описание опыта, навыки, тема письма, цель) Откуда берётся: данные клиента из карточки заявки Как ставится: Формулировка цели: для мостовой — «Visa Bridging to E33G»; для конверсии — «Co",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "stay_CLIENT_to_be_CLIENT_for",
+  "method": "CLIENT_rule",
+  "site_source_kind": "client",
+  "site_note": "Что это: Что запрашиваем по заявке Тип: logic — логика оформления — люди, компании и адреса, которые участвуют в оформлении (спонсор, подписант, доверенное лицо, гарант, адресат) Откуда берётся: генерируется системой по продукту заявки Как ставится: формулировка по продукту заявки: «extension of sta",
+  "verdict": "расхождение: сайт says «client», фактически CLIENT_rule"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "CLIENT",
+  "method": "options",
+  "site_source_kind": "client",
+  "site_note": "Что это: Гражданство клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: карточка заявки или клиента Как ставится: Гражданство клиента в индонезийской записи: RUSIA (Россия), UKRAINE и т. п. Заглавными л",
+  "verdict": "расхождение: сайт says «client», фактически options"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "passport_CLIENT",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер паспорта клиента Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер паспорта из документа клиента. Для РФ: серия и номер через пробел ",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ },
+ {
+  "template": "CLIENTment_letter_e02__default",
+  "CLIENT": "stay_CLIENT_no",
+  "method": "client_doc",
+  "site_source_kind": "client",
+  "site_note": "Что это: Номер разрешения на пребывание (ИТК) Тип: client_fact — фактические данные клиента — берутся из реальных документов клиента или карточки, никогда не выдумываются Откуда берётся: документ клиента (папка на Google Диске) Как ставится: Номер разрешения на пребывание (ITK) — строка вида `B12E21",
+  "verdict": "уточнение: сайт says карточка, фактически — документ клиента"
+ }
+]

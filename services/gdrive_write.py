@@ -121,6 +121,23 @@ def list_folder_contents(folder_url_or_id: str) -> list[dict]:
     return out
 
 
+def _find_for_write(parent_id: str, name: str) -> Optional[dict]:
+    """Ищет файл в папке тем же доступом, которым пишем.
+
+    Раньше поиск шёл сервисом только для чтения (CLIENT.readonly): он не видит файлы,
+    созданные нашим пишущим доступом (CLIENT.file), поэтому повторная выгрузка не
+    находила свой же файл и каждый раз создавала новый — отсюда дубликаты в папке.
+    """
+    svc = _get_CLIENT()
+    resp = _retry_on_quota(svc.files().list,
+        q=f"'{parent_id}' in parents and name='{name}' and trashed=false",
+        fields='files(id,name,mimeType,size,parents)',
+        pageSize=10,
+        supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
+    files = resp.get('files', [])
+    return files[0] if files else None
+
+
 def find_file_in_folder(folder_url_or_id: str, name: str) -> Optional[dict]:
     """Ищет файл по точному имени в папке (не рекурсивно). Возвращает метаданные или None."""
     svc = _read_CLIENT()
@@ -176,7 +193,7 @@ def upload_file(
     name = name or file_path.name
     mime_type = mime_type or _guess_mime(file_path)
 
-    CLIENT = find_file_in_folder(parent_id, name)
+    CLIENT = _find_for_write(parent_id, name)
     media = MediaFileUpload(str(file_path), mimetype=mime_type, resumable=True)
 
     if CLIENT and overwrite:
@@ -207,7 +224,7 @@ def upload_bytes(
     svc = _get_CLIENT()
     parent_id = resolve_folder_id(folder_url_or_id)
 
-    CLIENT = find_file_in_folder(parent_id, name)
+    CLIENT = _find_for_write(parent_id, name)
     media = MediaIoBaseUpload(io.BytesIO(data), mimetype=mime_type, resumable=True)
 
     if CLIENT and overwrite:
@@ -228,7 +245,7 @@ def upload_html_as_gdoc(folder_url_or_id: str, html_path: Path, name: Optional[s
     parent_id = resolve_folder_id(folder_url_or_id)
     name = name or html_path.stem
 
-    CLIENT = find_file_in_folder(parent_id, name)
+    CLIENT = _find_for_write(parent_id, name)
     media = MediaFileUpload(str(html_path), mimetype='text/html', resumable=True)
     meta = {'name': name, 'parents': [parent_id], 'mimeType': GOOGLE_MIME['doc']}
 
@@ -322,3 +339,30 @@ if __name__ == '__main__':
     # 5. Экспорт Google Doc в PDF / DOCX
     # pdf_bytes = export_gdoc('FILE_ID_OF_GDOC', 'pdf')
     # docx_bytes = export_gdoc('FILE_ID_OF_GDOC', 'docx')
+
+def delete_item(folder_url_or_id: str, name: str = "") -> dict:
+    """Удалить элемент Диска (папку или файл) по ссылке/идентификатору.
+
+    Если задано name — удаляется элемент с таким именем внутри указанной папки.
+    Возвращает {'ok': bool, 'deleted': [...], 'error': str}.
+    """
+    try:
+        svc = _get_CLIENT()
+    except Exception as e:
+        return {"ok": False, "deleted": [], "error": "нет доступа на запись: %s" % str(e)[:120]}
+    targets = []
+    try:
+        if name:
+            parent = resolve_folder_id(folder_url_or_id)
+            found = find_file_in_folder(parent, name)
+            if not found:
+                return {"ok": False, "deleted": [], "error": "не найдено: %s" % name}
+            targets = [found["id"]]
+        else:
+            fid = resolve_folder_id(folder_url_or_id)
+            targets = [fid]
+        for fid in targets:
+            svc.files().delete(fileId=fid, supportsAllDrives=True).execute()
+        return {"ok": True, "deleted": targets, "error": ""}
+    except Exception as e:
+        return {"ok": False, "deleted": [], "error": str(e)[:200]}

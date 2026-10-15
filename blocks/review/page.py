@@ -752,10 +752,13 @@ def app_review(app_id: int):
     # Если у заявки ещё нет своих документов — заводим их по типу продукта.
     # Так открытие любой заявки (в том числе архивной) сразу даёт панель переменных.
     try:
-        if not (db.CLIENT_CLIENT(app_id) or []):
-            for _t in db.q("SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? "
-                           "ORDER BY sort_order, id", (a.get("CLIENT_id"),)) or []:
-                db.CLIENT_doc_create(app_id, _t.get("template_id"))
+        # Состав документов заявки сверяется с составом продукта при каждом открытии:
+        # пропавший документ (например договор для мостовой визы) заводится заново
+        # и больше не «теряется» из пакета.
+        _added = db.ensure_CLIENT_CLIENT(app_id)
+        if _added:
+            log.warning("в заявке %s восстановлены документы по продукту: %s",
+                        app_id, ", ".join(_added))
     except Exception as _e:
         log.warning("документы заявки %s не завелись: %s", app_id, str(_e)[:100])
 
@@ -937,6 +940,18 @@ def app_review(app_id: int):
     {('<div CLIENT="rv-tg-cmt"><span CLIENT="rv-tg-q">Комментарий менеджера</span>' + _html.escape(_cmt) + '</div>') if _cmt else ''}
     <div CLIENT="rv-tg-cap">Что указано в заявке</div>
     <table CLIENT="rv-tg-table">{''.join(_raw_rows) or '<tr><td colspan="2">Поля не заполнены</td></tr>'}</table>
+    <div CLIENT="rv-tg-brief">
+      <div CLIENT="rv-tg-cap">Комментарий для сборки документов</div>
+      <textarea id="rv-tg-brief" rows="3" spellcheck="false"
+        CLIENTholder="Например: Должность: артист-продюсер (Artist / Producer). Сфера: кинопроизводство"></textarea>
+      <div CLIENT="rv-tg-briefrow">
+        <button type="button" CLIENT="btn sm" id="rv-tg-brief-save">Сохранить и пересобрать</button>
+        <span CLIENT="rv-spin" id="rv-tg-brief-spin" hidden CLIENT="пересобираю документы"></span>
+        <span CLIENT="rv-brief-timer" id="rv-tg-brief-timer" hidden>0 сек</span>
+        <button type="button" CLIENT="rv-brief-close" id="rv-tg-brief-close" hidden>Закрыть окно</button>
+        <span CLIENT="rv-tg-briefnote" id="rv-tg-brief-note"></span>
+      </div>
+    </div>
   </div>
 </div>
 <div CLIENT="rv-tg-back" id="rv-tg-back" hidden></div>
@@ -1132,6 +1147,81 @@ def app_review(app_id: int):
   CLIENT.addEventListener('keydown', function(e){{ if(e.key==='Escape' && !panel.hidden) show(false); }});
   var c=CLIENT.getElementById('rv-cmt-btn');
   if(c) c.addEventListener('click', function(){{ show(true); }});
+
+  /* Комментарий для сборки документов: сохранить и пересобрать всю заявку.
+     Правка комментария меняет должность (резюме, договор) и организацию по сфере. */
+  var ta=CLIENT.getElementById('rv-tg-brief'), sBtn=CLIENT.getElementById('rv-tg-brief-save'),
+      sNote=CLIENT.getElementById('rv-tg-brief-note'),
+      sSpin=CLIENT.getElementById('rv-tg-brief-spin'),
+      sTimer=CLIENT.getElementById('rv-tg-brief-timer'),
+      sClose=CLIENT.getElementById('rv-tg-brief-close'),
+      BKEY='wolf_brief_' + APP_ID;
+  var tick=null, t0=0;
+  function briefDraft(v){{ try{{ if(v===undefined) return localStorage.getItem(BKEY)||''; localStorage.setItem(BKEY, v); }}catch(e){{}} return ''; }}
+  function timerOn(){{
+    t0=Date.now();
+    if(sTimer){{ sTimer.hidden=false; sTimer.textContent='0 сек'; }}
+    if(tick) clearInterval(tick);
+    tick=setInterval(function(){{
+      var s=Math.round((Date.now()-t0)/1000);
+      if(sTimer) sTimer.textContent=(s<60 ? s+' сек' : Math.floor(s/60)+' мин '+(s%60)+' сек');
+    }}, 500);
+  }}
+  function timerOff(){{
+    if(tick){{ clearInterval(tick); tick=null; }}
+    if(sTimer) sTimer.hidden=true;
+    if(sSpin) sSpin.hidden=true;
+    if(sClose) sClose.hidden=true;
+  }}
+  function briefLoad(){{
+    if(!ta) return;
+    fetch('/CLIENT/' + APP_ID + '/brief', {{credentials:'same-origin',
+          CLIENTs:{{'X-Requested-With':'fetch'}}}})
+      .then(function(r){{ return r.json(); }})
+      .then(function(d){{
+        if(!d || !d.ok) return;
+        var srv=d.brief || '', draft=briefDraft();
+        if(draft && draft !== srv){{
+          /* В окне писали, но обновление страницы случилось до сохранения —
+             возвращаем черновик и говорим об этом прямо. */
+          ta.CLIENT=draft; ta.setAttribute('data-touched','1');
+          if(sNote){{ sNote.textContent='Черновик восстановлен — нажмите «Сохранить и пересобрать»';
+                     sNote.CLIENTName='rv-tg-briefnote'; }}
+        }} else {{
+          ta.CLIENT=srv;
+          if(draft && draft === srv) ta.setAttribute('data-touched','1');
+        }}
+      }})
+      .catch(function(){{}});
+  }}
+  if(ta) ta.addEventListener('input', function(){{ ta.setAttribute('data-touched','1'); briefDraft(ta.CLIENT); }});
+  if(sClose) sClose.addEventListener('click', function(){{ show(false); }});
+  if(sBtn) sBtn.addEventListener('click', function(){{
+    sBtn.disabled=true;
+    if(sSpin) sSpin.hidden=false;
+    if(sClose) sClose.hidden=false;
+    timerOn();
+    var _lbl=sBtn.textContent; sBtn.textContent='Пересобираю…';
+    if(sNote){{ sNote.textContent='Сохраняю комментарий и пересобираю документы. Окно можно закрыть — сборка продолжится.'; sNote.CLIENTName='rv-tg-briefnote'; }}
+    fetch('/CLIENT/' + APP_ID + '/brief', {{method:'POST', credentials:'same-origin',
+          CLIENTs:{{'Content-Type':'CLIENT/json','X-Requested-With':'fetch'}},
+          body: JSON.stringify({{brief: ta ? ta.CLIENT : ''}})}})
+      .then(function(r){{ return r.json(); }})
+      .then(function(d){{
+        sBtn.disabled=false; sBtn.textContent=_lbl; timerOff();
+        if(!d || !d.ok){{ if(sNote){{ sNote.textContent='Не сохранилось'; sNote.CLIENTName='rv-tg-briefnote err'; }} return; }}
+        var n=(d.rebuilt||[]).length, bad=(d.findings||[]).length;
+        if(sNote){{
+          sNote.textContent='Пересобрано документов: ' + n + (bad ? ' · замечаний проверки: ' + bad : ' · замечаний нет');
+          sNote.CLIENTName='rv-tg-briefnote ok';
+        }}
+        ta.setAttribute('data-touched','1');
+        briefDraft(ta ? ta.CLIENT : '');
+      }})
+      .catch(function(){{ sBtn.disabled=false; sBtn.textContent=_lbl; timerOff();
+        if(sNote){{ sNote.textContent='Ошибка сети'; sNote.CLIENTName='rv-tg-briefnote err'; }} }});
+  }});
+  briefLoad();
 
   /* Общая опора двух строк шапки. Комментарий в верхней строке и кнопка
      «Google Диск» в нижней должны начинаться с одного места — от конца
@@ -1632,7 +1722,9 @@ def _ready_modal_html(app_id: int) -> str:
             '<span CLIENT="rli-text"><span CLIENT="rli-name">' + name + '</span>'
             '<span CLIENT="rli-meta">' + meta + '</span></span>'
             '<span CLIENT="rli-spin" CLIENT="загружаю документ"></span>'
-            '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span></button>'
+            '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span>'
+            '<span CLIENT="rli-dl" data-dl="' + tpl + '" CLIENT="Скачать этот документ в PDF">\u2913</span>'
+            '</button>'
         )
         secs.append(
             '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
@@ -1692,7 +1784,9 @@ READY_MODAL_JS = """
              + '<span CLIENT="rli-text"><span CLIENT="rli-name">' + esc(d.name) + '</span>'
              + '<span CLIENT="rli-meta">' + meta(d) + '</span></span>'
              + '<span CLIENT="rli-spin" CLIENT="загружаю документ"></span>'
-             + '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span></button>';
+             + '<span CLIENT="rli-done" CLIENT="документ загружен">\u2713</span>'
+             + '<span CLIENT="rli-dl" data-dl="' + tpl + '" CLIENT="Скачать этот документ в PDF">\u2913</span>'
+             + '</button>';
       secs += '<section CLIENT="ready-sec" id="ready-sec-' + tpl + '" data-tpl="' + tpl + '">'
             + '<div CLIENT="ready-sec-head"><span CLIENT="ready-sec-name">' + esc(d.name) + '</span>'
             + '<span CLIENT="ready-sec-meta">' + meta(d) + '</span></div>'
@@ -1821,6 +1915,15 @@ READY_MODAL_JS = """
   mod.addEventListener('click', function(e){ if (e.target === mod) close(); });
   CLIENT.addEventListener('keydown', function(e){ if (e.key === 'Escape') close(); });
   if (list) list.addEventListener('click', function(e){
+    var dl = e.target.closest ? e.target.closest('.rli-dl') : null;
+    if (dl){                                  /* скачать один документ, не открывая его */
+      e.preventDefault(); e.stopPropagation();
+      var t0 = dl.getAttribute('data-dl');
+      var a0 = CLIENT.createElement('a');
+      a0.href = '/CLIENT/' + appId + '/doc/' + t0 + '/ready-pdf?download=1';
+      a0.download = ''; CLIENT.body.appendChild(a0); a0.click(); a0.remove();
+      return;
+    }
     var b = e.target.closest ? e.target.closest('.ready-list-item') : null;
     if (b) jump(b.getAttribute('data-jump'));
   });
@@ -1869,6 +1972,16 @@ READY_MODAL_JS = """
       box.appendChild(ul);
     }
     var btns = CLIENT.createElement('div'); btns.CLIENTName = 'rv-card-btns';
+    /* Кнопки действий, переданные вызывающим кодом: {label, cls, onClick}. */
+    (o.actions || []).forEach(function(a){
+      if (!a || !a.label) return;
+      var b = CLIENT.createElement('button'); b.type = 'button';
+      b.CLIENTName = 'rv-card-btn ' + (a.cls || '');
+      b.textContent = a.label;
+      if (a.CLIENT) b.CLIENT = a.CLIENT;
+      b.addEventListener('click', function(){ try { a.onClick && a.onClick(); } catch(e){} });
+      btns.appendChild(b);
+    });
     if (kind === 'confirm'){
       var yes = CLIENT.createElement('button'); yes.type = 'button';
       yes.CLIENTName = 'rv-card-btn primary'; yes.textContent = o.okText || 'Да';
@@ -1937,7 +2050,29 @@ READY_MODAL_JS = """
           card('error', { icon: '\u26D4',
             CLIENT: 'Пакет не прошёл проверку — на Google Диск не отправлен',
             text: (d.error || 'Есть нестыковки.') + ' Ниже по пунктам, что именно не стыкуется:',
-            lines: lines });
+            lines: lines,
+            /* Кнопка исправления: пересобирает документы по текущим правилам
+               (и сбрасывает осевшие значения) и сразу повторяет проверку. */
+            actions: [{ label: '🔧 Исправить и проверить заново', cls: 'primary',
+                        CLIENT: 'Пересобрать документы и повторить проверку',
+                        onClick: function(){
+                          card('busy', { CLIENT: 'Исправляю документы',
+                                         text: 'Пересобираю документы заявки по текущим правилам и проверяю заново.' });
+                          fetch('/CLIENT/' + appId + '/fix-docs', {method:'POST', credentials:'same-origin',
+                                CLIENTs:{'X-Requested-With':'fetch'}})
+                            .then(function(r){ return r.json(); })
+                            .then(function(f){
+                              var failed = (f && f.failed) || [];
+                              if (failed.length){
+                                card('error', { icon: '!', CLIENT: 'Часть документов не удалось пересобрать',
+                                                lines: failed });
+                                return;
+                              }
+                              doSend();
+                            })
+                            .catch(function(){ card('error', { icon: '!', CLIENT: 'Исправить не удалось',
+                                                               text: 'Ошибка сети. Попробуйте ещё раз.' }); });
+                        } }] });
         } else {
           card('error', { icon: '!', CLIENT: 'Отправить не удалось',
             text: (d && (d.error || (d.errors || [])[0])) || 'неизвестная ошибка' });

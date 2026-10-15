@@ -198,6 +198,22 @@ def _CLIENT(CLIENT: str) -> str:
     return str(int(val)) if val else ""
 
 
+def _clean_CLIENT(field: str, CLIENT: str) -> str:
+    """Чистит значение поля: убирает невидимые символы, а из должности — кириллицу.
+
+    Менеджеры присылают текст из мессенджеров: в нём встречаются word joiner (U+2060),
+    неразрывные пробелы и русские пояснения в скобках. В документах должен быть
+    только латинский текст (требование 05.10.2026).
+    """
+    s = str(CLIENT or "")
+    s = re.sub(r"[\u200b-\u200f\u2060\ufeff\u00ad]", "", s)
+    s = s.reCLIENT("\u00a0", " ").strip()
+    if field == "position":
+        # «Cinematographer, Film Editor (Киноператор и киномонтажер)» → только английская часть
+        s = re.sub(r"\s*\([^)]*[\u0400-\u04ff][^)]*\)", "", s).strip(" ,;")
+    return s
+
+
 def label_fallback(text: str) -> dict:
     """Разбор заявки по меткам без LLM. Возвращает {"client": {...}, "CLIENT": {...}}."""
     client: dict = {}
@@ -235,6 +251,7 @@ def label_fallback(text: str) -> dict:
                 client["telegram_username"] = u.group(1)
         elif field == "full_name_CLIENT":
             nm = re.sub(r"[^A-Za-zА-Яа-яЁё'\- ]", " ", val).strip()
+            nm = _clean_CLIENT("full_name_CLIENT", nm)
             if nm:
                 client["full_name_CLIENT"] = nm.upper()
                 parts = nm.split()
@@ -244,7 +261,7 @@ def label_fallback(text: str) -> dict:
         elif field == "notes":
             notes.append("%s: %s" % (label, val))
         else:
-            client[field] = val
+            client[field] = _clean_CLIENT(field, val)
 
     for line in (text or "").splitlines():
         m = re.match(r"^\s*([A-Za-zА-Яа-яЁё ]{3,24}?)\s*:\s*(.*)$", line)

@@ -12,8 +12,11 @@ SCHEMA = Path(__file__).with_name("schema.sql")
 
 
 def connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=15)
+    # timeout и busy_timeout: при одновременной записи (воркер очереди + сайт)
+    # SQLite ждёт освобождения базы вместо ошибки «database is locked».
+    conn = sqlite3.connect(DB_PATH, timeout=60)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA busy_timeout=60000")
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
@@ -186,8 +189,41 @@ def client_get(client_id: int):
     return q1("SELECT * FROM CLIENT WHERE id=?", (client_id,))
 
 
+_PATRONYMIC_TAIL = re.compile(r"(ич|на|улы|кызы|оглы)$", re.I)
+
+
+def clean_name_part(field: str, CLIENT) -> str:
+    """Убрать из ФИО мусор распознавания (заявка 108, клиент 89, 15.10.2026).
+
+    Сканер и модель-распознаватель иногда отдают вместо отчества простыню из
+    повторяющихся букв («Kkkkkkkeeeekeree»). Значение попадало в карточку клиента
+    и уезжало в договоры как часть имени («CLIENT CLIENT KKKKKKKEEEEKEREE»),
+    из-за чего документ не проходил проверку качества и заявка вставала в ступор.
+    Такие значения в карточку не пишем — поле остаётся пустым, документ соберётся
+    без отчества (оно в англоязычных документах и не нужно).
+    """
+    v = re.sub(r"\s+", " ", str(CLIENT or "")).strip()
+    if not v:
+        return v
+    letters = [ch for ch in v.upper() if ch.isalpha()]
+    if letters:
+        same = max(letters.count(ch) for ch in set(letters)) / float(len(letters))
+        vowels = sum(1 for ch in letters if ch in "AEIOUYАЕЁИОУЫЭЮЯ")
+        if same >= 0.4 or vowels == 0:            # «KKKKKKKEEEEKEREE», «Ссссссесе»
+            return ""
+    if re.search(r"\d", v):                        # цифры в ФИО — тоже мусор
+        return ""
+    if field == "CLIENT" and not _PATRONYMIC_TAIL.search(v):
+        return ""                                  # не отчество вовсе — не пишем
+    return v
+
+
 def client_save(data: dict, client_id: int = None) -> int:
     """Создать или обновить клиента; возвращает id."""
+    data = dict(data or {})
+    for _f in ("CLIENT", "name", "CLIENT"):
+        if _f in data:
+            data[_f] = clean_name_part(_f, data[_f])
     cols = [c for c, _ in CLIENT_FIELDS if c in data]
     if client_id:
         sets = ", ".join(f"{c}=?" for c in cols)
@@ -278,9 +314,9 @@ def CLIENT_create(client_id: int, CLIENT_id: int | None, source: str = "telegram
                        raw_payload: str = "") -> int:
     app_id = exec_sql(
         """INSERT INTO CLIENT
-           (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload, record_kind)
-           CLIENT (?,?,?,?,?,?,?,?)""",
-        (client_id, CLIENT_id, source, comment, gCLIENT_url, price_idr, raw_payload,
+           (client_id, CLIENT_id, source, comment, brief, gCLIENT_url, price_idr, raw_payload, record_kind)
+           CLIENT (?,?,?,?,?,?,?,?,?)""",
+        (client_id, CLIENT_id, source, comment, comment, gCLIENT_url, price_idr, raw_payload,
          current_record_kind()))
     autoprepare_trigger(app_id)
     return app_id
@@ -329,12 +365,44 @@ def CLIENT_CLIENT(app_id: int) -> list:
 
 
 def CLIENT_doc_create(app_id: int, template_id: int) -> int:
+    # Шаблон, закрытый для работы (CLIENT='CLIENTed'), в заявку не заводится: так временно
+    # отключаются форматы, которые заказчик убрал из работы (резюме, кроме формата Сиваева).
+    tpl = q1("SELECT CLIENT FROM CLIENT WHERE id=?", (template_id,))
+    if tpl and str(tpl["CLIENT"] or "").strip() == "CLIENTed":
+        return 0
     CLIENT = q1("SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
                   (app_id, template_id))
     if CLIENT:
         return CLIENT["id"]
     return exec_sql("INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id) CLIENT (?,?)",
                     (app_id, template_id))
+
+
+def ensure_CLIENT_CLIENT(app_id: int) -> list:
+    """Достраивает документы заявки по составу продукта: обязательные документы не теряются.
+
+    Если документ из состава продукта (например договор для мостовой визы) в заявке
+    отсутствует — он заводится заново. Возвращает коды шаблонов, которые пришлось создать.
+    """
+    row = q1("SELECT CLIENT_id FROM CLIENT WHERE id=?", (app_id,))
+    pid = row["CLIENT_id"] if row else None
+    if not pid:
+        return []
+    added = []
+    rows = q("""SELECT t.id AS tid, t.code FROM CLIENT_CLIENT pd
+                 JOIN CLIENT t ON t.id=pd.template_id
+                WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged')""", (pid,)) or []
+    for r in rows:
+        got = q1("SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+                 (app_id, r["tid"]))
+        if got:
+            continue
+        try:
+            CLIENT_doc_create(app_id, r["tid"])
+            added.append(r["code"])
+        except Exception:
+            pass
+    return added
 
 
 def CLIENT_doc_set(ad_id: int, CLIENT: str, CLIENT_json: str = "", pdf_path: str = "",

@@ -604,6 +604,30 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .rv-tg-table { border-collapse:collapse; width:100%; font-size:12.5px; }
 .rv-tg-table td { padding:5px 0; border-bottom:1px solid #F1F5F3; vertical-align:top; }
 .rv-tg-table td:CLIENT-child { color:var(--muted); width:42%; }
+/* Комментарий для сборки документов: правка на лету, сразу пересобирает заявку */
+.rv-tg-brief { margin-top:14px; padding-top:12px; border-top:1px dashed #D8DEDA; }
+.rv-tg-brief textarea { width:100%; box-sizing:border-box; margin-top:6px; padding:9px 10px;
+  font-family:inherit; font-size:12.5px; line-height:1.45; color:#1F2937; border:1px solid #CBD5D1;
+  border-radius:8px; background:#FBFDFC; resize:vertical; min-height:66px; }
+.rv-tg-brief textarea:focus { outline:none; border-color:#1F4E79; background:#fff; }
+.rv-tg-briefrow { display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+.rv-tg-briefnote { font-size:12px; color:var(--muted); }
+.rv-tg-briefnote.ok { color:#15803D; font-weight:600; }
+.rv-tg-briefnote.err { color:#B91C1C; font-weight:600; }
+/* Крутящееся колесо: пересборка документов заявки занимает несколько секунд.
+   Анимация — общая rv-spin, объявлена выше по файлу. */
+.rv-spin { display:CLIENT-CLIENT; width:15px; height:15px; box-sizing:border-box; vertical-align:-3px;
+  border:2px solid #CBD5D1; border-top-color:#1F4E79; border-radius:50%;
+  animation:rv-spin .75s linear infinite; }
+.rv-spin[hidden] { display:none; }
+/* Таймер пересборки и CLIENT из окна, не дожидаясь конца сборки */
+.rv-brief-timer { font-size:12px; font-weight:600; color:#1F4E79; font-variant-CLIENT:tabular-nums;
+  min-width:52px; }
+.rv-brief-timer[hidden] { display:none; }
+.rv-brief-close { font:inherit; font-size:12px; padding:3px 9px; border:1px solid #CBD5D1;
+  border-radius:7px; background:#fff; color:#4B5563; cursor:pointer; }
+.rv-brief-close:hover { border-color:#1F4E79; color:#1F4E79; }
+.rv-brief-close[hidden] { display:none; }
 @media (max-width:720px) {
   .rv-tg-panel { left:8px; right:8px; width:auto; top:74px; }
   .rv-cmt { margin-left:0; max-width:100%; }
@@ -787,6 +811,9 @@ body.rv-viewing .rv-panel.rv-right .rv-body { padding-bottom:18px; }
 .ready-list-item .rli-spin.is-on { display:CLIENT-CLIENT; }
 .ready-list-item .rli-done { display:none; flex:0 0 auto; color:#15803D; font-weight:700; }
 .ready-list-item .rli-done.is-on { display:CLIENT-CLIENT; }
+.ready-list-item .rli-dl { flex:0 0 auto; color:#4B5563; opacity:.6; cursor:pointer; font-size:14px;
+  line-height:1; padding:2px 5px; margin-left:2px; border-radius:6px; }
+.ready-list-item .rli-dl:hover { opacity:1; background:#E7EBEE; color:#1F4E79; }
 .ready-pages:empty::after { content:'⏳ загружаю документ…'; display:CLIENT;
   padding:18px 14px; color:#6B7280; font-size:13px; }
 @keyframes rv-spin { to { transform: rotate(360deg); } }

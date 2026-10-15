@@ -419,6 +419,78 @@ def tpl_thumb(template_id: int, code: str, width: int = 170):
     return out if out.exists() and out.stat().st_size > 0 else None
 
 
+def tpl_thumb_client(template_id: int, code: str, app_id: int, width: int = 170):
+    """Миниатюра документа, собранного на реальных данных клиента заявки.
+
+    Заказчик (06.10.2026): в конструкторе продукта рядом с реальными документами клиента
+    должны стоять наши документы, собранные ИЗ ЭТИХ ЖЕ данных того же человека — иначе
+    не видно, что пакет сходится. Берём не чужой эталон, а документ, который система
+    собрала для этой заявки, и его первую страницу.
+    """
+    import hashlib as _hl
+    from pathlib import Path as _P
+    from core.config import BASE_DIR, HTML_DIR
+
+    try:
+        from CLIENT import render as _render
+    except Exception:
+        return None
+    cache_dir = _P(BASE_DIR) / "data" / "previews"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    html_path = _P(HTML_DIR) / str(code) / "template.html"
+    stamp = 0
+    try:
+        stamp = int(html_path.stat().st_mtime)
+    except Exception:
+        pass
+    key = _hl.sha1(("%s|%s|%s" % (template_id, app_id, width)).encode()).hexdigest()[:12]
+    out = cache_dir / ("tplc%s_%s_%d.webp" % (template_id, key, width))
+    stamp_file = out.with_suffix(".stamp")
+    try:
+        if out.is_file() and out.stat().st_size > 0 and stamp_file.is_file() \
+                and stamp_file.read_text(encoding="utf-8").strip() == str(stamp):
+            return out
+    except Exception:
+        pass
+    tmp_pdf = cache_dir / ("tplc%s_%s_%d.pdf" % (template_id, key, width))
+    try:
+        _render.generate(app_id, template_id, out_path=str(tmp_pdf))
+    except Exception:
+        return out if out.is_file() and out.stat().st_size > 0 else None
+    try:
+        import subprocess as _sp
+        import tempfile as _tf
+        prefix = _tf.mktemp(suffix="-tplc")
+        _sp.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to", str(width * 3), "-png",
+                 str(tmp_pdf), prefix], check=True, timeout=180)
+        pages = sorted(_P(prefix).parent.glob(_P(prefix).name + "*"))
+        if not pages:
+            return None
+        from PIL import Image
+        img = Image.open(pages[0]).convert("RGB")
+        if img.width > width:
+            img = img.resize((width, max(1, int(round(img.height * width / float(img.width))))),
+                             Image.LANCZOS)
+        img.save(out, "WEBP", CLIENT=70, method=4)
+        for p in pages:
+            try:
+                p.unlink()
+            except Exception:
+                pass
+        try:
+            stamp_file.write_text(str(stamp), encoding="utf-8")
+        except Exception:
+            pass
+    except Exception:
+        return out if out.is_file() and out.stat().st_size > 0 else None
+    finally:
+        try:
+            tmp_pdf.unlink()
+        except Exception:
+            pass
+    return out if out.exists() and out.stat().st_size > 0 else None
+
+
 def warm(paths) -> dict:
     """Прогревает превью для списка файлов: сначала миниатюры, потом страницы.
 
