@@ -99,7 +99,7 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
             _bdate = str(_cl.get('balance_date') or '').strip() or _real.get("balance_date")
             if _amt:
                 _amt_txt = str(_amt).replace("\u00a0", "").replace(" ", "").replace(",", ".")
-                _amt_fmt = _fmt_money(_amt)
+                _amt_fmt = _fmt_money(_amt, tpl_code)
                 doc_values["balance_rub"] = _amt_fmt
                 values["balance_rub"] = _amt_fmt
                 if _bdate:
@@ -110,6 +110,10 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
                     _kop = int(round((float(_amt_txt.replace(",", ".")) - _int) * 100))
                     values["balance_words"] = _num2words_en(_int)
                     doc_values["balance_words"] = values["balance_words"]
+                    # Копейки обязаны идти от той же суммы, что и цифры: иначе в строке
+                    # стоит «29 919,94», а прописью печатается «00 kopeks».
+                    values["balance_cents"] = "%02d" % _kop
+                    doc_values["balance_cents"] = values["balance_cents"]
                 except Exception:
                     pass
     except Exception:
