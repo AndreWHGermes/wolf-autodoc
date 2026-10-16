@@ -229,6 +229,14 @@ def _normalize_doc_values(out: dict) -> dict:
     и форма записи оклада из карточки («600000.00» → «600,000»).
     """
     import re as _re
+    # Пропись суммы приходит из разных источников то со скобками, то без, а шаблон
+    # ставит скобки сам («… rubles ({{ balance_words }})»). Внешние скобки снимаем,
+    # иначе в документе выходит «((one million … kopeks))».
+    for _kw, _vw in list(out.items()):
+        if any(x in str(_kw).lower() for x in ("words", "spelled")) and isinstance(_vw, str):
+            _sw = _vw.strip()
+            if _sw.startswith("(") and _sw.endswith(")") and _sw.count("(") == 1:
+                out[_kw] = _sw[1:-1].strip()
     try:
         _cb = str(out.get("company_block") or "")
         if _cb:
@@ -237,7 +245,12 @@ def _normalize_doc_values(out: dict) -> dict:
         # суммы печатаем как в подлинниках: «600,000» (без копеек). Значение может прийти
         # и как «600000.00», и как «600,000.00» — под любым именем с salary/amount/sum.
         for _k9 in list(out.keys()):
-            if not any(x in _k9.lower() for x in ("salary", "amount", "sum")):
+            _low9 = _k9.lower()
+            if any(x in _low9 for x in ("salary", "amount", "sum")) is False:
+                continue
+            # Пропись (…_words, …_text) и пояснения — не числа: автоформат их ломает
+            # («(one million … rubles 00 kopeks)» превращалось в «(0.00 rubles kopeks)»).
+            if any(x in _low9 for x in ("words", "text", "in_words", "spelled")):
                 continue
             _v9 = str(out.get(_k9) or "").strip()
             if not _v9 or _v9.lower().startswith(("the ", "ru")):
@@ -258,11 +271,23 @@ def _normalize_doc_values(out: dict) -> dict:
         # запись «640 426,42» в англоязычной справке читается как «640 426 42»
         # (пробел-разделитель тысяч, запятая-разделитель копеек). Приводим к
         # «640,426.42» — как в документах банков на английском.
+        # Остаток по счёту уже приходит из values.py в формате подлинника
+        # («1 730 400,00» — пробелы и запятая перед копейками, как в справках банков).
+        # Автопересчёт в английский формат ломал и сумму, и пропись: ключ balance_words
+        # попадал под то же правило и превращался в «(0.00 rubles kopeks)».
         for _kb in list(out.keys()):
             _low_kb = _kb.lower()
             if not any(x in _low_kb for x in ("balance", "deposit", "остаток", "balance_rub")):
                 continue
+            if any(x in _low_kb for x in ("words", "text", "spelled")):
+                continue
             _vb = str(out.get(_kb) or "").strip()
+            if not _vb:
+                continue
+            # Пересчитываем ТОЛЬКО «сырое» число без форматирования (1730400.00).
+            # Готовая запись подлинника («1 770 308,45» — пробелы и запятая) не трогается.
+            if " " in _vb or "," in _vb:
+                continue
             _nb = _re.sub(r"[^\d,.\s]", "", _vb).replace(" ", "")
             if not _nb:
                 continue

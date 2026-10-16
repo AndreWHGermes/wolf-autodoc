@@ -2870,11 +2870,36 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
         _auto = {}
         try:
             from services.values import build_template_values
+            from services.values import fio_full_for_display as _fio_disp
             _ctx = dict(default_values)
             _ctx.update({k: v for k, v in example_map.items() if v})
-            # ФИО показываем по нашим правилам — с отчеством (в оригинальном примере отчества нет)\n            try:\n                from services.values import fio_full_for_display as _fio_disp\n                for _k in ("client_name", "full_name", "full_name_latin", "cv_name",\n                           "employee_name", "employee_full_name", "employee_full_name_latin"):\n                    if _ctx.get(_k):\n                        _ctx[_k] = _fio_disp(str(_ctx[_k]))\n            except Exception:\n                pass\n        # ФИО в наших документах всегда с отчеством — в оригинальных примерах его нет\n        try:\n            from services.values import fio_full_for_display as _fio_disp\n            for _k in ("client_name", "full_name", "full_name_latin", "cv_name",\n                       "employee_name", "employee_full_name", "employee_full_name_latin"):\n                if example_map.get(_k):\n                    example_map[_k] = _fio_disp(str(example_map[_k]))\n                if default_values.get(_k):\n                    default_values[_k] = _fio_disp(str(default_values[_k]))\n        except Exception:\n            pass\n                    _auto = build_template_values(_ctx, t["code"], _ctx) or {}
+            for _k in ("client_name", "full_name", "full_name_latin", "cv_name",
+                       "employee_name", "employee_full_name", "employee_full_name_latin"):
+                if _ctx.get(_k):
+                    _ctx[_k] = _fio_disp(str(_ctx[_k]))
+                if example_map.get(_k):
+                    example_map[_k] = _fio_disp(str(example_map[_k]))
+                if default_values.get(_k):
+                    default_values[_k] = _fio_disp(str(default_values[_k]))
+            _auto = build_template_values(_ctx, t["code"], _ctx) or {}
         except Exception:
             _auto = {}
+
+        # Значения в окне просмотра приводим ТЕМ ЖЕ нормализатором, что и выпуск
+        # документа. Иначе один и тот же документ в HTML-вкладке и в сравнении
+        # выглядит по-разному (двойные скобки у суммы прописью, формат суммы).
+        _norm = {}
+        try:
+            _merged = dict(_auto)
+            _merged.update({k: v for k, v in default_values.items() if v})
+            _merged.update({k: v for k, v in example_map.items() if v})
+            _norm = doc_render.normalize(_merged, t["code"]) or {}
+        except Exception as _e:
+            _norm = {}
+            try:
+                print("нормализация значений визора не удалась: %r" % (_e,), flush=True)
+            except Exception:
+                pass
 
         # Фотография клиента — это <img src>, а не текст: обёртка подсветки сломала бы
         # атрибут (в src попадал <span>). Источник тот же, что у генерации документа —
@@ -2902,7 +2927,8 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
                 _is_form = False
             if nm in ("client_photo_url", "client_photo"):
                 return _photo_url
-            val = (example_map.get(nm) or default_values.get(nm) or _auto.get(nm) or "").strip()
+            # Порядок источников: нормализованные значения (как при выпуске) → пример → поля → авто.
+            val = (_norm.get(nm) or example_map.get(nm) or default_values.get(nm) or _auto.get(nm) or "").strip()
             # ФИО показываем по нашим правилам — с отчеством (в оригинальных примерах его нет)
             if val and nm in ("client_name", "full_name", "full_name_latin", "cv_name",
                               "employee_name", "employee_full_name", "employee_full_name_latin"):
@@ -3247,10 +3273,16 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     # Ширина пары равна ширине кнопки PDF (задаётся в CSS), отступы сверху и снизу одинаковые.
     _ls_note = ('<span class="ls-note" id="ls-note" role="status" aria-live="polite"></span>')
     # Сравнение открывается поверх страницы (модальный слой), без новой вкладки браузера.
+    # Доступно и в конструкторе документов (без заявки), и в заявке (Андрей, 16.10.2026):
+    # слева — оригинал, справа — наш документ, собранный тем движком, что закреплён за шаблоном.
+    _cmp_title = ("Документ №%s — %s" % ((t or {}).get("doc_index") or template_id,
+                                         (t or {}).get("title") or "")
+                  ).replace("&", "&amp;").replace("<", "&lt;")
     _cmp_btn = ""
     cmp_modal_html = ""
-    if _cli_src and app_id:
-        _cmp_url = f'/templates/compare/{template_id}?app={app_id}&embed=1&product={_product_id or ""}'
+    if True:
+        _cmp_url = (f'/templates/compare/{template_id}?embed=1&product={_product_id or ""}'
+                    + (f'&app={app_id}' if app_id else ''))
         _cmp_btn = (f'<button type="button" class="doc-tab" id="cmp-open" data-cmp="{_cmp_url}" '
                     f'data-cmp-note="{_cmp_ctx_esc}" '
                     f'title="Открыть поверх окна: слева оригинал клиента, справа сборка системы">'
@@ -3272,7 +3304,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
             '<div class="cmp-modal" id="cmp-modal" hidden>'
             '<div class="cmp-modal-back" data-cmp-close></div>'
             '<div class="cmp-modal-box">'
-            '<div class="cmp-modal-head"><b>Сравнение с оригиналом</b>'
+            '<div class="cmp-modal-head"><b>' + _cmp_title + '</b>'
             '<span class="muted" id="cmp-modal-note"></span>'
             '<span class="sp"><button class="btn sm ghost" type="button" data-cmp-close>✕ Закрыть</button></span>'
             '</div>'
@@ -3293,10 +3325,12 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
             'document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!modal.hidden)close();});'
             '})();'
             '</script>')
+    # Подпись вкладки = движок документа: Word-шаблон так и называется, HTML-шаблон — HTML (Андрей, 16.10.2026).
+    _engine_label = "Word" if str((t or {}).get("engine") or "").lower() == "word" else "HTML"
     mode_btns = ('<div class="doc-tabs" id="doc-tabs" role="tablist">' + _orig_btn + _cmp_btn +
                  '<button type="button" class="doc-tab js-docmode is-on" role="tab" data-mode="html" '
-                 'title="HTML-шаблон конструктора: переменные подсвечены, клик по полю = подсветка в документе">'
-                 'Наш документ</button>'
+                 'title="Наш документ: смотри, как он выйдет с подставленными значениями">'
+                 + _engine_label + '</button>'
                  + _pdf_btn + '</div>')
 
     # В полноэкранном просмотре PDF — те же две кнопки, слева от «Скачать»:
@@ -4155,6 +4189,15 @@ a.back-to-app:hover {{ background:#0F5230; }}
             .html-stage .sheet {{ position: relative; }}
 .var-hl {{ background:#FEF3C7; padding:1px 5px; border-radius:3px;
            color:#78350F; font-weight:700; }}
+/* Подсветка значений в визоре: цвет и фон — как были (бурый текст на светлом фоне),
+   убрано ТОЛЬКО подчёркивание (Андрей, 16.10.2026). Служебные data-var/data-src
+   остаются: подсказка и переход к переменной работают. */
+.html-stage .var-hl, .doc-html-stage .var-hl {{
+  background:#FEF3C7 !important; color:#78350F !important; padding:1px 5px !important;
+  border:0 !important; border-bottom:0 !important; box-shadow:none !important;
+  border-radius:3px !important; text-decoration:none !important;
+}}
+.html-stage .var-hl *{{ text-decoration:none !important; border-bottom:0 !important; }}
 .var-hl-inline {{ background:transparent; padding:0; border:0; color:#78350F;
                   font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }}
 
@@ -5294,11 +5337,27 @@ def preview_pdf(template_id: int):
     что сейчас стоит в полях страницы, и отдаём ссылку на файл.
     """
     t = _template(template_id)
+    if not t:
+        return jsonify({"ok": False, "error": "шаблон не найден"}), 404
+    raw = request.get_json(silent=True) or {}
+    values = {k: str(v or "").strip() for k, v in (raw.get("values") or {}).items()}
+    # Движок документа закреплён в базе: html — координатная сетка, word — DOCX-шаблон.
+    # Конструктор показывает тот же документ, который потом выпустит заявка (Андрей, 16.10.2026).
+    _eng = str((t or {}).get("engine") or "html").lower()
+    if _eng == "word":
+        from services import doc_engine, render as _render
+        _name = _render.doc_filename(t["title"] or t["code"], values, code=t["code"])
+        out_pdf = RENDER_DIR / (os.path.splitext(_name)[0] + ".pdf")
+        res = doc_engine.build_document(t["code"], values, RENDER_DIR, engine="word", name=out_pdf.stem)
+        if not res.get("ok"):
+            _why = "нет word/template.docx" if not doc_engine.word_template(t["code"]).exists() else "не собрался PDF"
+            return jsonify({"ok": False, "error": f"Word-документ: {_why}"}), 500
+        return jsonify({"ok": True, "url": f"/templates/file/renders/{os.path.basename(res['pdf'])}",
+                        "name": os.path.basename(res['pdf']),
+                        "engine": "word", "missing": res.get("missing") or []})
     html_file = HTML_DIR / t["code"] / "template.html"
     if not html_file.exists():
         return jsonify({"ok": False, "error": "HTML-шаблон не сконвертирован"}), 400
-    raw = request.get_json(silent=True) or {}
-    values = {k: str(v or "").strip() for k, v in (raw.get("values") or {}).items()}
     html = html_file.read_text(encoding="utf-8")
     filled = doc_render.fill(html, values, keep_unfilled=True, template_code=t["code"])
     out_pdf = RENDER_DIR / doc_render.doc_filename(t["title"] or t["code"], values, code=t["code"])
@@ -5512,6 +5571,67 @@ def htmlview(template_id: int):
     return body
 
 
+def _compare_without_app(t, template_id: int, ctx_line: str):
+    """Сравнение без заявки (конструктор документов): слева эталон шаблона, справа наша сборка.
+
+    Правый лист собирает тот же движок, что выпускает документы: html — координаты,
+    word — DOCX-шаблон. Так в конструкторе видно ровно то, что уйдёт клиенту.
+    """
+    import html as _hp
+    from services import doc_engine
+    code = t["code"]
+    vals = {}
+    try:
+        from services.previews import _example_values
+        vals = _example_values(template_id) or {}
+    except Exception:
+        vals = {}
+    ours_err = ""
+    ours_rel = ""
+    try:
+        res = doc_engine.build_document(code, vals, RENDER_DIR, name="cmp_%s" % code)
+        if res.get("pdf"):
+            ours_rel = os.path.relpath(res["pdf"], "/opt/wolf_v2/data")
+    except Exception as exc:                              # noqa: BLE001
+        ours_err = str(exc)[:200]
+    if not ours_rel:
+        ours_err = ours_err or "наш документ не собрался"
+    orig_file = HTML_DIR / code / "example_filled.pdf"
+    eng = (doc_engine.engine_of(code) or "html").upper()
+    left = (f'<iframe src="/templates/pdfview/{template_id}?kind=clean&fit=1"></iframe>' if orig_file.exists()
+            else '<div style="padding:20px;color:#B91C1C">Эталон не найден</div>')
+    right = (f'<iframe src="/templates/pdfview/{template_id}?kind=built&fit=1"></iframe>' if ours_rel
+             else f'<div style="padding:20px;color:#B91C1C">Готовый документ: {_hp.escape(ours_err)}</div>')
+    sync_js = ('<script>(function(){'
+               'var fr=[].slice.call(document.querySelectorAll(".cmp-col iframe"));'
+               'if(fr.length<2)return;'
+               'window.addEventListener("message",function(e){'
+               '  var d=e.data||{};if(d.t!=="cmp-scroll")return;'
+               '  fr.forEach(function(f){if(f.contentWindow!==e.source){'
+               '    try{f.contentWindow.postMessage(d,"*");}catch(x){}}});'
+               '});'
+               '})();</script>')
+    return (
+        '<style>'
+        '.cmp-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:12px;height:100vh;box-sizing:border-box}'
+        '.cmp-col{background:#fff;border:1px solid #E1E7E3;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}'
+        '.cmp-head{padding:8px 12px;font-weight:700;font-size:13px;background:#F4FAF6;color:#166534;'
+        'border-bottom:1px solid #E1E7E3}'
+        '.cmp-head span{font-weight:400;color:#64748B;font-size:11.5px}'
+        '.cmp-col .cmp-body{flex:1;overflow:hidden;background:#E7EBEE}'
+        '.cmp-col .cmp-body iframe{width:100%%;height:100%%;border:0;display:block}'
+        '</style>'
+        '<div class="cmp-title" style="padding:8px 14px;font-size:13.5px;font-weight:700;color:#14532D;background:#fff;'
+        'border-bottom:1px solid #E1E7E3">%s</div>'
+        '<div class="cmp-wrap">'
+        '<div class="cmp-col"><div class="cmp-head">Оригинал <span>%s</span></div>'
+        '<div class="cmp-body">%s</div></div>'
+        '<div class="cmp-col"><div class="cmp-head">Наш документ (%s) <span>собран шаблоном</span></div>'
+        '<div class="cmp-body">%s</div></div>'
+        '</div>'
+        % (_hp.escape(ctx_line), _hp.escape(orig_file.name), left, eng, right)) + sync_js
+
+
 @bp.route("/templates/compare/<int:template_id>")
 @login_required
 def compare(template_id: int):
@@ -5551,6 +5671,14 @@ def compare(template_id: int):
         else:
             _ctx.append('Документ вне пакета — %s' % (t["title"] or ""))
     _ctx_line = " · ".join(_ctx) or ("Документ: " + (t["title"] or ""))
+    if not app_id:
+        # Конструктор документов: заявки нет — сравниваем эталон шаблона с нашей сборкой.
+        body = _compare_without_app(t, template_id, _ctx_line)
+        if request.args.get("embed"):
+            return ('<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">'
+                    '<title>Сравнение</title></head><body style="margin:0;background:#E7EBEE">'
+                    + body + '</body></html>')
+        return render("Сравнение: " + (t["title"] or ""), "templates", body)
     app_row = db.application_get(app_id) if app_id else None
     cid = int(app_row["client_id"]) if app_row else None
     cname = ""
@@ -5634,6 +5762,26 @@ def pdfview(template_id):
         try:
             _render.generate(_app, template_id, out_path=src)
         except Exception as exc:  # noqa: BLE001
+            return ("<div style='padding:20px;color:#B91C1C'>Не удалось собрать документ: "
+                    + _hp.escape(str(exc)[:200]) + "</div>")
+        names = {}
+    elif kind.startswith("built"):
+        # Наш документ для сравнения в конструкторе (без заявки): собираем тем движком,
+        # который закреплён за шаблоном — html или word (Андрей, 16.10.2026).
+        from services import doc_engine
+        _vals = {}
+        try:
+            from services.previews import _example_values
+            _vals = _example_values(template_id) or {}
+        except Exception:
+            _vals = {}
+        cache_dir = Path(f"/opt/wolf_v2/data/cache/compare/{code}_built")
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        src = str(cache_dir / f"{code}.pdf")
+        try:
+            res = doc_engine.build_document(code, _vals, str(cache_dir), name=code)
+            src = res.get("pdf") or src
+        except Exception as exc:                          # noqa: BLE001
             return ("<div style='padding:20px;color:#B91C1C'>Не удалось собрать документ: "
                     + _hp.escape(str(exc)[:200]) + "</div>")
         names = {}
