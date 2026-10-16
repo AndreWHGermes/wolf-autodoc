@@ -237,6 +237,13 @@ def _normalize_doc_values(out: dict) -> dict:
             _sw = _vw.strip()
             if _sw.startswith("(") and _sw.endswith(")") and _sw.count("(") == 1:
                 out[_kw] = _sw[1:-1].strip()
+    # Составные числительные в подлинниках пишутся через дефис («twenty-one»), а в
+    # значениях из примеров он иногда теряется — приводим к форме банковского образца.
+    _tens_w = r"(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)"
+    _ones_w = r"(one|two|three|four|five|six|seven|eight|nine)"
+    for _kw, _vw in list(out.items()):
+        if any(x in str(_kw).lower() for x in ("words", "spelled")) and isinstance(_vw, str):
+            out[_kw] = _re.sub(r"\b%s +%s\b" % (_tens_w, _ones_w), r"\1-\2", _vw)
     try:
         _cb = str(out.get("company_block") or "")
         if _cb:
