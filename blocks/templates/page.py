@@ -3262,7 +3262,28 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
         _orig_btn = ''
     # Кнопка предпросмотра PDF стоит на одной горизонтали с вкладками, справа от них
     _pdf_btn = (f'<button type="button" class="tpl-pdf-btn" id="tpl-pdf-open" data-template="{template_id}" '
+                f'data-code="{t["code"]}" '
                 f'title="Открыть просмотр сформированного PDF">🔍 Просмотр PDF</button>')
+    # На вкладке «Оригинал» та же кнопка должна показывать ОРИГИНАЛ заказчика, а не нашу
+    # сборку (требование Андрея, 16.10.2026). Перехватываем клик в capture-фазе: если
+    # активна вкладка «Оригинал» — открываем data/originals/<code>.pdf и гасим основной
+    # обработчик (он собирает PDF по значениям формы).
+    pdf_origin_js = (
+        "<script>(function(){var b=document.getElementById('tpl-pdf-open');if(!b)return;"
+        "b.addEventListener('click',function(ev){"
+        "var on=document.querySelector('.doc-tab.is-on');"
+        "var t=on?(on.textContent||'').trim():'';"
+        "if(t.indexOf('Оригинал')!==0)return;"
+        "var code=b.getAttribute('data-code');if(!code)return;"
+        "ev.stopImmediatePropagation();ev.preventDefault();"
+        "var url='/templates/file/originals/'+code+'.pdf';"
+        "var m=document.getElementById('pdf-modal'),f=document.getElementById('pdf-modal-frame'),"
+        "n=document.getElementById('pdf-modal-note'),d=document.getElementById('pdf-modal-dl');"
+        "if(n)n.textContent='оригинал заказчика';"
+        "if(d){d.href=url;d.setAttribute('download',code+'.pdf');}"
+        "if(f)f.src=url+'#zoom=page-fit';"
+        "if(m)m.hidden=false;"
+        "},true);})();</script>")
     # Правая часть строки вкладок: пара «Оригинал / Перевод» и кнопка предпросмотра PDF.
     # Ширина пары равна ширине кнопки PDF (задаётся в CSS), отступы сверху и снизу одинаковые.
     # Пара «Оригинал / Перевод» — переехала из тулбара в строку вкладок (слово «Язык» убрано)
@@ -3744,7 +3765,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
   </section>
 
 </section>
-{pdf_modal_html}{cmp_modal_html}{pv_js_html}{cv_panel_html}
+{pdf_modal_html}{pdf_origin_js}{cmp_modal_html}{pv_js_html}{cv_panel_html}
 <script>(function(){{
   /* Окно документа растёт по высоте листа (видно весь документ), а блок переменных
      держим в пределах экрана — он остаётся видимым и прокручивается сам. */
@@ -3781,7 +3802,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
       host.style.setProperty('max-width','none','important');
       host.style.setProperty('margin','0 auto','important');
     }}
-    var box=Math.round(rh+28)+'px';
+    /* Минимум 340px: при малом масштабе окно просмотра не должно сжиматься в полоску
+       (Андрей, 16.10.2026: «визор превратился в узкую полоску»). */
+    var box=Math.max(340, Math.round(rh+28))+'px';
     host.style.setProperty('height', box, 'important');
     host.style.setProperty('max-height', box, 'important');
     host.style.setProperty('overflow-y','auto','important');
@@ -5533,6 +5556,16 @@ def htmlview(template_id: int):
     if not html_frame.available(code):
         abort(404)
     vals = html_frame.values_with_frames(code, {}, app_id)
+    # Значения приводим ТЕМ ЖЕ нормализатором, что печатает PDF (services.render.normalize):
+    # иначе в HTML-вкладке сумма прописью, скобки и формат суммы отличаются от того, что
+    # видно в сравнении и на бумаге (Андрей, 16.10.2026: «в сравнении правильно, в HTML — нет»).
+    try:
+        from services import render as _r
+        _vals_norm = _r.normalize(dict(vals or {}), code) or {}
+        if _vals_norm:
+            vals = {**dict(vals or {}), **_vals_norm}
+    except Exception:
+        pass
     # Приоритет — рабочий HTML-шаблон документа: он несёт подложку и шрифты внутри себя
     # (base64), поэтому в визоре видны логотип, печать и подпись, и документ совпадает с бумагой.
     tpl = HTML_DIR / code / "template.html"
@@ -5880,6 +5913,9 @@ def file(subpath: str):
         "renders": RENDER_DIR,
         "sources": SOURCES_DIR,
         "templates": str(BASE_DIR / "data" / "templates"),
+        # Оригиналы заказчика (data/originals/<code>.pdf) — для кнопки «Просмотр PDF»
+        # на вкладке «Оригинал»: она должна показывать именно оригинал, а не нашу сборку.
+        "originals": str(BASE_DIR / "data" / "originals"),
     }
     for root, base in mapping.items():
         if subpath.startswith(root + "/"):

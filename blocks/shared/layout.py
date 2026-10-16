@@ -1,11 +1,11 @@
 """Блок «Общее»: каркас страниц, стиль, меню, готовые компоненты интерфейса.
 
-Правка здесь меняет вид всей системы. Экраны (CLIENTs/*/page.py) только собирают
-страницу из готовых кирпичиков: card(), item(), modal(), icol(), CLIENT_stats().
+Правка здесь меняет вид всей системы. Экраны (blocks/*/page.py) только собирают
+страницу из готовых кирпичиков: card(), item(), modal(), icol(), header_stats().
 """
 from __future__ import annotations
 
-from flask import Response, CLIENT, session
+from flask import Response, request, session
 
 ICON_DASH = "M3 12l9-9 9 9M5 10v10h14V10"
 ICON_USERS = "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"
@@ -15,17 +15,17 @@ ICON_GEAR = ("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a7.2 7.2 0 0 0 .1-1 7.2
              "a7.2 7.2 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4z")
 ICON_HIST = "M12 8v4l3 3M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"
 
-# Стили и логотип вшиваются в страницу (см. _CLIENT_css/_logo_data_uri):
+# Стили и логотип вшиваются в страницу (см. _inline_css/_logo_data_uri):
 # на удалённом канале каждый отдельный запрос — лишняя задержка.
 _CSS_MEM: dict = {}
 
 # Новое меню: Главная / История / Шаблоны / Настройки. Клиенты — внутри карточки заявки.
 MENU = [
     ("dashboard", "Новая заявка", "/", ICON_DASH),
-    ("CLIENT",   "История и поиск", "/CLIENT", ICON_HIST),
-    ("CLIENT",    "Журнал",   "/CLIENT",  ICON_HIST),
+    ("history",   "История и поиск", "/history", ICON_HIST),
+    ("events",    "Журнал",   "/events",  ICON_HIST),
     # «|» в подписи = перенос строки в меню (в остальных местах — « · »)
-    ("CLIENT", "Конструктор|Продукты / Документы", "/CLIENT", ICON_DOC),
+    ("templates", "Конструктор|Продукты / Документы", "/templates", ICON_DOC),
     ("guide",     "Инструкция|Пакеты и переменные", "/guide", ICON_DOC),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
@@ -40,28 +40,28 @@ body{margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1
 a{color:var(--accent);text-decoration:none}
 
 /* ---------- шапка: гамбургер слева + плашка сверху ---------- */
-.topbar{position:sticky;top:0;z-CLIENT:30;background:var(--card);
+.topbar{position:sticky;top:0;z-index:30;background:var(--card);
   border-bottom:1px solid var(--line)}
 .topbar-row{display:flex;align-items:center;gap:8px;padding:5px 14px;max-width:1180px;margin:0 auto}
 @media(max-width:720px){
   /* на телефоне все элементы шапки одной высоты — иначе ряд выглядит рваным */
   .topbar-row{gap:8px;padding:9px 10px}
-  .brand-pill,.topbar-user{height:36px;display:CLIENT-flex;align-items:center;border-radius:10px}
+  .brand-pill,.topbar-user{height:36px;display:inline-flex;align-items:center;border-radius:10px}
   .brand-pill{padding:0 9px;min-width:0}
   .brand-pill b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .topbar-user{margin-left:auto;padding:0 11px}
 }
 .burger{width:36px;height:36px;border-radius:10px;background:transparent;border:1px solid var(--line);
-  display:grid;CLIENT-items:center;cursor:pointer;color:var(--ink)}
-.burger span{display:CLIENT;width:18px;height:2px;background:currentColor;border-radius:2px;
+  display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+.burger span{display:block;width:18px;height:2px;background:currentColor;border-radius:2px;
   position:relative}
-.burger span::CLIENT,.burger span::after{content:"";position:absolute;left:0;
+.burger span::before,.burger span::after{content:"";position:absolute;left:0;
   width:100%;height:2px;background:currentColor;border-radius:2px}
-.burger span::CLIENT{top:-6px}.burger span::after{top:6px}
+.burger span::before{top:-6px}.burger span::after{top:6px}
 .brand{font-weight:800;font-size:16px;display:flex;align-items:center;gap:9px;margin-left:auto}
-.brand .logo{width:32px;height:32px;border-radius:10px;display:grid;CLIENT-items:center;font-size:17px;
+.brand .logo{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-size:17px;
   background:#fff;overflow:hidden}
-.brand .logo img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:CLIENT}
+.brand .logo img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
 .brand-pill{padding:7px 12px 7px 8px;border-radius:14px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
   display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none;
@@ -78,7 +78,7 @@ a{color:var(--accent);text-decoration:none}
   box-shadow:0 6px 18px rgba(14,159,110,.22)}
 .client-head .clh-row{display:flex;align-items:center;gap:12px}
 .client-head .clh-back{width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,.18);
-  color:#fff;display:grid;CLIENT-items:center;font-size:20px;border:none;cursor:pointer}
+  color:#fff;display:grid;place-items:center;font-size:20px;border:none;cursor:pointer}
 .client-head h1{margin:0;font-size:22px;font-weight:800}
 .client-head .clh-sub{font-size:13px;opacity:.85;margin-top:4px}
 .client-head .clh-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
@@ -96,16 +96,16 @@ a{color:var(--accent);text-decoration:none}
 .stats-bar .sep{width:1px;background:rgba(255,255,255,.25);margin:0 2px}
 
 /* боковое меню (drawer) */
-.drawer{position:fixed;inset:0;background:rgba(17,24,39,.5);display:none;z-CLIENT:50}
+.drawer{position:fixed;inset:0;background:rgba(17,24,39,.5);display:none;z-index:50}
 .drawer.open{display:flex}
 .drawer .panel{width:min(300px,82vw);background:#fff;height:100%;padding:18px 14px 24px;
   display:flex;flex-direction:column;gap:6px;box-shadow:8px 0 30px rgba(17,24,39,.18)}
 .drawer .head{display:flex;align-items:center;gap:9px;padding:0 4px 14px;
   border-bottom:1px solid var(--line)}
 .drawer .head b{font-weight:800;font-size:16px}
-.drawer .head .logo{width:32px;height:32px;border-radius:10px;display:grid;CLIENT-items:center;
+.drawer .head .logo{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;
   font-size:17px;background:#fff;overflow:hidden}
-.drawer .head .logo img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:CLIENT}
+.drawer .head .logo img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
 .drawer nav{display:flex;flex-direction:column;gap:4px;padding-top:10px}
 .drawer nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;
   color:var(--ink);font-weight:600;font-size:15px}
@@ -124,11 +124,11 @@ h2{font-size:16px;margin:0 0 8px}
 /* ---------- карточка-блок ---------- */
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
   margin-bottom:12px;overflow:hidden}
-.card>CLIENT{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 14px;cursor:pointer;
+.card>summary{list-style:none;display:flex;align-items:center;gap:12px;padding:14px 14px;cursor:pointer;
   font-weight:700;font-size:15.5px}
-.card>CLIENT::-webkit-CLIENT-marker{display:none}
-.card>CLIENT .chev{margin-left:auto;color:#9AA3B2;font-size:19px;line-height:1;transition:transform .18s}
-.card[open]>CLIENT .chev{transform:rotate(90deg)}
+.card>summary::-webkit-details-marker{display:none}
+.card>summary .chev{margin-left:auto;color:#9AA3B2;font-size:19px;line-height:1;transition:transform .18s}
+.card[open]>summary .chev{transform:rotate(90deg)}
 .card .body{padding:0 14px 14px}
 .card .head-only{display:flex;align-items:center;gap:12px;padding:14px;font-weight:700;font-size:15.5px}
 .card .head-only .chev{margin-left:auto;color:#9AA3B2}
@@ -136,8 +136,8 @@ h2{font-size:16px;margin:0 0 8px}
 /* строка с иконкой */
 .item{display:flex;align-items:center;gap:12px;padding:11px 4px;color:inherit;
   border-top:1px solid var(--line)}
-.item:CLIENT-child,.item.no-line{border-top:none}
-.item .ico{width:42px;height:42px;border-radius:12px;display:grid;CLIENT-items:center;font-size:19px;
+.item:first-child,.item.no-line{border-top:none}
+.item .ico{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:19px;
   flex:none;background:#F3F5F9}
 .item .txt{min-width:0;flex:1}
 .item .t{font-weight:600;font-size:15px}
@@ -150,7 +150,7 @@ a.item:active{background:#F7F9FD}
 
 /* кнопки */
 /* кнопки: объёмные — с тенью снизу, подсветкой сверху и чётким нажатием */
-.btn{display:CLIENT-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 14px;
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 14px;
   font-size:15px;font-weight:700;color:#fff;border:none;border-radius:12px;cursor:pointer;
   font-family:inherit;background:linear-gradient(135deg,var(--accent),var(--accent2));
   box-shadow:0 1px 0 rgba(255,255,255,.35) inset, 0 2px 3px rgba(16,24,32,.16),
@@ -163,7 +163,7 @@ a.item:active{background:#F7F9FD}
   box-shadow:inset 0 3px 8px rgba(0,0,0,.28), 0 1px 2px rgba(16,24,32,.12)}
 .btn:disabled,.btn[disabled]{opacity:.72;transform:none;
   box-shadow:0 1px 2px rgba(16,24,32,.12)}
-.btn.CLIENT{width:100%}
+.btn.block{width:100%}
 .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);
   box-shadow:0 1px 0 #fff inset, 0 2px 4px rgba(16,24,32,.10), 0 6px 14px rgba(16,24,32,.06)}
 .btn.ghost:hover{box-shadow:0 1px 0 #fff inset, 0 3px 7px rgba(16,24,32,.14),
@@ -184,7 +184,7 @@ a.item:active{background:#F7F9FD}
 .row.tight{margin-bottom:12px}
 
 /* метки */
-.badge{display:CLIENT-CLIENT;font-size:12px;font-weight:700;padding:3px 9px;border-radius:18px;
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:18px;
   background:#EEF2FF;color:#3B49C4}
 .badge.ok{background:#E6F7EE;color:var(--ok)}
 .badge.warn{background:#FFF3E0;color:var(--warn)}
@@ -192,13 +192,13 @@ a.item:active{background:#F7F9FD}
 .badge.muted{background:#F3F5F9;color:#6B7280}
 
 /* индикатор готовности документов в списке заявок */
-.docs-CLIENT{display:CLIENT-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600}
-.docs-CLIENT .dot{width:9px;height:9px;border-radius:50%}
-.docs-CLIENT.ok .dot{background:var(--ok)}.docs-CLIENT.warn .dot{background:var(--warn)}
-.docs-CLIENT.bad .dot{background:var(--danger)}.docs-CLIENT.idle .dot{background:#C7CCD8}
+.docs-state{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600}
+.docs-state .dot{width:9px;height:9px;border-radius:50%}
+.docs-state.ok .dot{background:var(--ok)}.docs-state.warn .dot{background:var(--warn)}
+.docs-state.bad .dot{background:var(--danger)}.docs-state.idle .dot{background:#C7CCD8}
 
 /* поля */
-label{display:CLIENT;font-size:12.5px;color:var(--muted);margin:10px 0 4px;font-weight:600}
+label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 4px;font-weight:600}
 input[type=text],input[type=password],input[type=file],textarea,select{
   width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;
   color:var(--ink);font-family:inherit;font-size:15px}
@@ -220,7 +220,7 @@ tr:last-child td{border-bottom:none}
 .flash.bad{background:#FFE9EC;color:var(--danger)}
 
 /* всплывающее окно (bottom sheet) */
-.modal{position:fixed;inset:0;background:rgba(17,24,39,.46);display:none;z-CLIENT:60;align-items:flex-end}
+.modal{position:fixed;inset:0;background:rgba(17,24,39,.46);display:none;z-index:60;align-items:flex-end}
 .modal.open{display:flex}
 .modal .sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:16px 14px 24px;
   max-height:88vh;overflow:auto}
@@ -233,7 +233,7 @@ tr:last-child td{border-bottom:none}
 
 /* нижняя навигация (компактная, дублирует drawer) */
 .tabbar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);
-  display:none;z-CLIENT:40;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  display:none;z-index:40;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
 .tabbar a{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;
   border-radius:11px;color:#8A93A5;font-size:10.5px;font-weight:600}
 .tabbar a.active{color:var(--accent);background:#F1F5FF}
@@ -241,7 +241,7 @@ tr:last-child td{border-bottom:none}
 @media(max-width:720px){
   .wrap{padding:12px 12px 24px}
   h1{font-size:19px}.page-sub{font-size:12.5px}
-  .card>CLIENT{padding:12px}.card .body{padding:0 12px 12px}
+  .card>summary{padding:12px}.card .body{padding:0 12px 12px}
   .stats-bar{padding:8px 12px 10px}
   .stats-bar .val{font-size:18px}
 }
@@ -262,7 +262,7 @@ tr:last-child td{border-bottom:none}
 .zp-host.zp-dragging{cursor:grabbing;user-select:none}
 .zp-host.zp-dragging *{user-select:none !important}
 .zp-shell{display:flex;flex-direction:column;gap:6px}
-.zp-CLIENT{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+.zp-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
   padding:0 2px}
 .zp-bar{display:flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);
   border-radius:10px;padding:4px 8px;font-size:12px;flex:0 0 auto}
@@ -275,19 +275,19 @@ tr:last-child td{border-bottom:none}
 /* === Всплывающее окно инструкции переменной === */
 .varmodal{position:fixed;left:50%;top:6vh;transform:translateX(-50%);width:min(680px,94vw);
   max-height:86vh;overflow:auto;background:#fff;border:1px solid #D8E2DC;border-radius:14px;
-  box-shadow:0 18px 50px rgba(16,32,24,.28);z-CLIENT:80;display:none;padding:16px 18px 18px}
-.varmodal.open{display:CLIENT}
+  box-shadow:0 18px 50px rgba(16,32,24,.28);z-index:80;display:none;padding:16px 18px 18px}
+.varmodal.open{display:block}
 /* подложка окна переменной: клик по ней (по любому месту вне окна) закрывает окно.
    Селектор без привязки к .varmodal — подложка живёт прямо в body, иначе position:fixed не применялся */
-.vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-CLIENT:79;display:none}
-.vm-back.open{display:CLIENT}
+.vm-back{position:fixed;inset:0;background:rgba(17,24,39,.42);z-index:79;display:none}
+.vm-back.open{display:block}
 .varmodal h3{margin:0 0 4px;font-size:16px;font-weight:800;color:#14261C}
 .varmodal .vm-rule{font-size:13.5px;line-height:1.5;color:#22352A;white-space:pre-wrap;
   max-height:54vh;overflow:auto;background:#F6F9F7;border:1px solid #DCE6E0;border-radius:10px;
   padding:12px 14px;margin-top:6px}
 .varmodal .vm-rule .vm-line{margin:0 0 3px;white-space:pre-wrap}
 .varmodal .vm-rule .vm-head{font-weight:800;color:#14261C;margin-top:12px;margin-bottom:4px}
-.varmodal .vm-rule .vm-head:CLIENT-child{margin-top:0}
+.varmodal .vm-rule .vm-head:first-child{margin-top:0}
 .varmodal .vm-rule .vm-gap{height:7px}
 .varmodal .vm-sub{font-size:12px;color:#6B7C70;margin-bottom:10px}
 .varmodal textarea{width:100%;min-height:150px;box-sizing:border-box;font-family:inherit;
@@ -302,34 +302,34 @@ tr:last-child td{border-bottom:none}
 .varmodal .vm-btn.ok:hover{background:#15803D}
 .varmodal .vm-x{position:absolute;right:12px;top:10px;border:0;background:none;font-size:20px;
   color:#9AA3B2;cursor:pointer}
-.varmodal .vm-lbl{display:CLIENT;font-size:11.5px;font-weight:700;color:#5A6B60;
+.varmodal .vm-lbl{display:block;font-size:11.5px;font-weight:700;color:#5A6B60;
   text-transform:uppercase;letter-spacing:.03em;margin:10px 0 5px}
 .varmodal .vm-chat{max-height:220px;overflow:auto;background:#F7FAF8;border:1px solid #E1EAE4;
   border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
 .varmodal .vm-chat .m{max-width:88%;padding:8px 11px;border-radius:12px;font-size:13px;
   line-height:1.42;white-space:pre-wrap;word-wrap:break-word}
 .varmodal .vm-chat .m.user{align-self:flex-end;background:#DCFCE7;color:#14532D;border:1px solid #BBF7D0}
-.varmodal .vm-chat .m.ai{align-self:flex-CLIENT;background:#fff;color:#1B2B22;border:1px solid #E1EAE4}
-.varmodal .vm-chat .m.err{align-self:flex-CLIENT;background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}
+.varmodal .vm-chat .m.ai{align-self:flex-start;background:#fff;color:#1B2B22;border:1px solid #E1EAE4}
+.varmodal .vm-chat .m.err{align-self:flex-start;background:#FEF2F2;color:#991B1B;border:1px solid #FECACA}
 .varmodal .vm-inrow{display:flex;gap:8px;margin-top:8px;align-items:flex-end}
 .varmodal .vm-inrow textarea{min-height:64px;flex:1 1 auto;margin:0}
 .varmodal .vm-btn.ai{background:#1D4ED8;border-color:#1D4ED8;color:#fff;font-weight:700;white-space:nowrap}
 .varmodal .vm-btn.ai:hover{background:#1E40AF}
 .varmodal .vm-btn.ai:disabled{background:#93A6E0;border-color:#93A6E6;cursor:default}
 .varmodal .vm-think{font-size:12px;color:#1D4ED8;margin-top:6px;display:none}
-.varmodal .vm-think.on{display:CLIENT}
+.varmodal .vm-think.on{display:block}
 
 /* === Иконка «инструкция переменной» === */
 .var-info{flex:0 0 auto;width:22px;height:22px;border-radius:50%;cursor:help;
   border:1px solid #BFD8FF;background:#EFF5FF;color:#1D4ED8;font-size:12.5px;font-weight:800;
-  font-style:italic;line-height:1;display:CLIENT-flex;align-items:center;justify-content:center;
+  font-style:italic;line-height:1;display:inline-flex;align-items:center;justify-content:center;
   user-select:none;margin:0 2px}
 .var-info:hover{background:#DBEAFE;border-color:#93C5FD}
 
 /* === Подсветка переменной в документе (клик по номеру/названию/полю) === */
 [data-var].var-flash, .var-flash{animation:varflash 1.1s ease-in-out 2;
   outline:3px solid #F59E0B !important;outline-offset:2px;border-radius:4px;
-  background:#FEF3C7 !important;color:#78350F !important;position:relative;z-CLIENT:3}
+  background:#FEF3C7 !important;color:#78350F !important;position:relative;z-index:3}
 @keyframes varflash{
   0%,100%{background:#FEF3C7;box-shadow:0 0 0 0 rgba(245,158,11,0)}
   50%{background:#FDE68A;box-shadow:0 0 0 6px rgba(245,158,11,.35)}
@@ -340,67 +340,67 @@ tr:last-child td{border-bottom:none}
 """
 
 JS = """
-function openModal(id){var m=CLIENT.getElementById(id);if(m){m.CLIENTList.add('open');
-  CLIENT.body.style.overflow='hidden';}}
-function closeModal(id){var m=CLIENT.getElementById(id);if(m){m.CLIENTList.remove('open');
-  CLIENT.body.style.overflow='';}}
-function openDrawer(){var d=CLIENT.getElementById('drawer');if(d){d.CLIENTList.add('open')}}
-function closeDrawer(){var d=CLIENT.getElementById('drawer');if(d){d.CLIENTList.remove('open')}}
-CLIENT.addEventListener('click',function(e){
+function openModal(id){var m=document.getElementById(id);if(m){m.classList.add('open');
+  document.body.style.overflow='hidden';}}
+function closeModal(id){var m=document.getElementById(id);if(m){m.classList.remove('open');
+  document.body.style.overflow='';}}
+function openDrawer(){var d=document.getElementById('drawer');if(d){d.classList.add('open')}}
+function closeDrawer(){var d=document.getElementById('drawer');if(d){d.classList.remove('open')}}
+document.addEventListener('click',function(e){
   var t=e.target;
-  if(t.CLIENTList && t.CLIENTList.contains('modal')){closeModal(t.id);return;}
-  if(t.CLIENTList && t.CLIENTList.contains('drawer')){closeDrawer();return;}
+  if(t.classList && t.classList.contains('modal')){closeModal(t.id);return;}
+  if(t.classList && t.classList.contains('drawer')){closeDrawer();return;}
   var opener=t.closest && t.closest('[data-modal]');
   if(opener){e.preventDefault();openModal(opener.getAttribute('data-modal'));}
   var burger=t.closest && t.closest('[data-burger]');
   if(burger){e.preventDefault();openDrawer();}
 });
-CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
-  CLIENT.querySelectorAll('.modal.open').forEach(function(m){closeModal(m.id);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){
+  document.querySelectorAll('.modal.open').forEach(function(m){closeModal(m.id);});
   closeDrawer();}});
 
 /* === Универсальный Zoom + Pan для превью (любой контейнер с data-zoom-pan) === */
 (function(){
   var A4W=794.5, A4H=1122.6;
-  var MIN=.20, MAX=1.0;
+  var MIN=.45, MAX=1.0;   /* 45% — ниже лист превращается в марку, а окно просмотра в полоску */
   /* Потолок масштаба — 100%: при увеличении свыше 100% ширина прокрутки окна
      раздувалась до миллионов пикселей и лист «улетал» вправо (документы №1, №3,
      №8, 04.10.2026). Выше 100% документ всё равно не читается лучше — «вписать»
      и уменьшение работают как раньше. */
   function init(host){
     if(host.dataset.zpReady) return; host.dataset.zpReady='1';
-    host.CLIENTList.add('zp-host');
-    var content=host.querySelector('.zp-content')||host.CLIENTElementChild;
+    host.classList.add('zp-host');
+    var content=host.querySelector('.zp-content')||host.firstElementChild;
     if(!content) return;
     /* До первой подгонки масштаба лист не показываем: иначе документ на миг
        отрисовывается в натуральную величину и окно «прыгает». */
     content.style.visibility='hidden';
-    var canvas=CLIENT.createElement('div'); canvas.CLIENTName='zp-canvas';
+    var canvas=document.createElement('div'); canvas.className='zp-canvas';
     host.insertBefore(canvas,content); canvas.appendChild(content);
     var userScale=null, ox=0, oy=0, bx=0, by=0, s=.62;
     // Панель управления масштабом
-    var bar=CLIENT.createElement('div'); bar.CLIENTName='zp-bar';
+    var bar=document.createElement('div'); bar.className='zp-bar';
     // ВАЖНО: строка статическая (без пользовательских данных) — XSS невозможен
-    bar.innerHTML='<button type="button" data-zp="out" CLIENT="Уменьшить">\u2212</button>'+
-      '<span CLIENT="zp-val">100%</span>'+
-      '<button type="button" data-zp="in" CLIENT="Увеличить">+</button>'+
-      '<button type="button" data-zp="fit" CLIENT="Центрировать лист в окне — показать целиком">'
+    bar.innerHTML='<button type="button" data-zp="out" title="Уменьшить">\u2212</button>'+
+      '<span class="zp-val">100%</span>'+
+      '<button type="button" data-zp="in" title="Увеличить">+</button>'+
+      '<button type="button" data-zp="fit" title="Центрировать лист в окне — показать целиком">'
       '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"'
       ' stroke-linecap="round"><rect x="1.6" y="1.6" width="12.8" height="12.8" rx="2.2"/>'
       '<circle cx="8" cy="8" r="1.7" fill="currentColor" stroke="none"/></svg></button>';
     var hint=null;   /* строка-подсказка убрана: место над окном больше не занимается */
     // Тулбар ВЫШЕ окна просмотра — не перекрывает документ и не прокручивается с ним
-    var shell=CLIENT.createElement('div'); shell.CLIENTName='zp-shell';
-    var CLIENT=CLIENT.createElement('div'); CLIENT.CLIENTName='zp-CLIENT';
+    var shell=document.createElement('div'); shell.className='zp-shell';
+    var tools=document.createElement('div'); tools.className='zp-tools';
     /* Панель масштаба (−, %, +, вписать) переезжает наверх — в полосу вкладок окна,
        слева от кнопки «Просмотр PDF». Если полосы нет (старые страницы) — остаётся над окном. */
-    var tabsBox=CLIENT.getElementById('doc-tabs');
-    var pdfBtn=CLIENT.getElementById('tpl-pdf-open');
+    var tabsBox=document.getElementById('doc-tabs');
+    var pdfBtn=document.getElementById('tpl-pdf-open');
     if(tabsBox){ tabsBox.insertBefore(bar, pdfBtn || null); }
-    else { CLIENT.appendChild(bar); }
+    else { tools.appendChild(bar); }
     if(host.parentNode) host.parentNode.insertBefore(shell, host);
     shell.appendChild(host);
-    if(CLIENT.childNodes.length) shell.insertBefore(CLIENT, host);
+    if(tools.childNodes.length) shell.insertBefore(tools, host);
     var valEl=bar.querySelector('.zp-val');
     /* ── Разбивка содержимого по листам A4 ────────────────────────────────────
        Шаблон задаёт лист как .sheet с min-height = высота A4. Когда содержимого
@@ -429,13 +429,13 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
           if(last.offsetTop+last.offsetHeight<=m.bottom+2) break;
           if(sh.children.length<=1) break;   /* один блок выше листа — рвать нечем */
           var next=sh.nextElementSibling;
-          if(!next||!next.CLIENTList||!next.CLIENTList.contains('sheet')){
-            next=CLIENT.createElement(sh.tagName||'div');
-            next.CLIENTName=sh.CLIENTName;
+          if(!next||!next.classList||!next.classList.contains('sheet')){
+            next=document.createElement(sh.tagName||'div');
+            next.className=sh.className;
             sh.parentNode.insertBefore(next,sh.nextSibling);
             list.splice(i+1,0,next); created++;
           }
-          next.insertBefore(last,next.CLIENTChild);
+          next.insertBefore(last,next.firstChild);
         }
       }
       return created;
@@ -627,30 +627,30 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
       if(t && t.closest && t.closest('button,a,.doc-verdict-float')) return;
       if(host.dataset.pannable!=='1') return;
       panning=true; sx=e.clientX; sy=e.clientY; sl=host.scrollLeft; st=host.scrollTop;
-      host.CLIENTList.add('zp-dragging'); e.preventDefault();
+      host.classList.add('zp-dragging'); e.preventDefault();
     }
     function move(e){
       if(!panning) return;
       window.__zpUserScrolled=true;      /* лист двигают мышью — автоцентрирование отключаем */
       host.scrollLeft=sl-(e.clientX-sx); host.scrollTop=st-(e.clientY-sy);
     }
-    function up(){ if(!panning) return; panning=false; host.CLIENTList.remove('zp-dragging'); }
+    function up(){ if(!panning) return; panning=false; host.classList.remove('zp-dragging'); }
     host.addEventListener('mousedown',down);
-    CLIENT.addEventListener('mousemove',move);
-    CLIENT.addEventListener('mouseup',up);
+    document.addEventListener('mousemove',move);
+    document.addEventListener('mouseup',up);
     // Масштаб ставим сразу и повторяем, когда догрузились шрифты и картинки листа:
     // раньше подгонка «догоняла» страницу уже после открытия
     apply();
-    if(CLIENT.fonts && CLIENT.fonts.ready) CLIENT.fonts.ready.then(function(){ if(userScale===null) apply(); });
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ if(userScale===null) apply(); });
     window.addEventListener('load', function(){ if(userScale===null) apply(); });
     if(typeof ResizeObserver!=='undefined'){
       var ro=new ResizeObserver(function(){ if(userScale===null) apply(); });
       ro.observe(content);
     }
-    host.addEventListener('touchCLIENT',function(e){
+    host.addEventListener('touchstart',function(e){
       if(host.dataset.pannable==='1'&&e.touches.length===1){
         panning=true; sx=e.touches[0].clientX; sy=e.touches[0].clientY;
-        sl=host.scrollLeft; st=host.scrollTop; host.CLIENTList.add('zp-dragging'); }
+        sl=host.scrollLeft; st=host.scrollTop; host.classList.add('zp-dragging'); }
     },{passive:true});
     host.addEventListener('touchmove',function(e){
       if(panning&&e.touches.length===1){
@@ -666,14 +666,14 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     [80,300,900].forEach(function(t){ setTimeout(apply,t); });
   }
   function scan(root){
-    (root||CLIENT).querySelectorAll('[data-zoom-pan]').forEach(init);
+    (root||document).querySelectorAll('[data-zoom-pan]').forEach(init);
   }
-  if(CLIENT.readyState==='loading') CLIENT.addEventListener('DOMContentLoaded',function(){scan();});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){scan();});
   else scan();
   setTimeout(function(){scan();},400);
   setTimeout(function(){scan();},1500);
   // динамически добавленные превью
-  try{ new MutationObserver(function(){ scan(); }).observe(CLIENT.body,{childList:true,subtree:true}); }catch(e){}
+  try{ new MutationObserver(function(){ scan(); }).observe(document.body,{childList:true,subtree:true}); }catch(e){}
   window.zpScan=scan;
 })();
 
@@ -682,34 +682,34 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
   var back=null, box=null;
   function ensure(){
     if(box) return;
-    back=CLIENT.createElement('div'); back.CLIENTName='vm-back';
-    box=CLIENT.createElement('div'); box.CLIENTName='varmodal';
+    back=document.createElement('div'); back.className='vm-back';
+    box=document.createElement('div'); box.className='varmodal';
     // ВАЖНО: разметка статическая, текст правила вставляется через textContent
-    box.innerHTML='<button type="button" CLIENT="vm-x" CLIENT="Закрыть">\u00d7</button>'
-      +'<h3 CLIENT="vm-CLIENT"></h3><div CLIENT="vm-sub"></div>'
-      +'<span CLIENT="vm-lbl">Как формируется эта переменная</span>'
-      +'<div CLIENT="vm-rule"></div>';
-    CLIENT.body.appendChild(back); CLIENT.body.appendChild(box);
+    box.innerHTML='<button type="button" class="vm-x" title="Закрыть">\u00d7</button>'
+      +'<h3 class="vm-title"></h3><div class="vm-sub"></div>'
+      +'<span class="vm-lbl">Как формируется эта переменная</span>'
+      +'<div class="vm-rule"></div>';
+    document.body.appendChild(back); document.body.appendChild(box);
     back.addEventListener('click', close);
     // клик по подложке вне окна закрывает его; Esc — тоже
-    CLIENT.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
     // страховка: клик по любому месту вне окна (по нижележащему слою) закрывает окно
-    CLIENT.addEventListener('click', function(e){
-      if(!box || !box.CLIENTList.contains('open')) return;
+    document.addEventListener('click', function(e){
+      if(!box || !box.classList.contains('open')) return;
       var t = e.target; if(!t || !t.closest) return;
       if(t.closest('.varmodal') || t.closest('.var-info')) return;
       close();
     }, true);
     box.querySelector('.vm-x').addEventListener('click', close);
   }
-  function close(){ if(box) box.CLIENTList.remove('open'); if(back) back.CLIENTList.remove('open'); }
-  CLIENT.addEventListener('click', function(e){
+  function close(){ if(box) box.classList.remove('open'); if(back) back.classList.remove('open'); }
+  document.addEventListener('click', function(e){
     var t=e.target; if(!t||!t.closest) return;
     var ic=t.closest('.var-info'); if(!ic) return;
     e.preventDefault(); e.stopPropagation();
     ensure();
     var name=ic.dataset.var||'';
-    box.querySelector('.vm-CLIENT').textContent='Переменная: '+name;
+    box.querySelector('.vm-title').textContent='Переменная: '+name;
     box.querySelector('.vm-sub').textContent='Документ: '+(ic.dataset.doc||'')+' — инструкция по заполнению';
     var host=box.querySelector('.vm-rule');
     host.textContent='';
@@ -717,12 +717,12 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     // каждая строка правила — отдельная строка; «Заголовок:» выделяем жирным
     text.split(String.fromCharCode(10)).forEach(function(line){
       var s=line.trimEnd();
-      var d=CLIENT.createElement('div');
-      d.CLIENTName = s==='' ? 'vm-gap' : (/^[^:.]{2,70}:$/.test(s) ? 'vm-line vm-head' : 'vm-line');
+      var d=document.createElement('div');
+      d.className = s==='' ? 'vm-gap' : (/^[^:.]{2,70}:$/.test(s) ? 'vm-line vm-head' : 'vm-line');
       d.textContent=s;
       host.appendChild(d);
     });
-    box.CLIENTList.add('open'); back.CLIENTList.add('open');
+    box.classList.add('open'); back.classList.add('open');
   }, true);
 })();
 
@@ -730,16 +730,16 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
 (function(){
   function esc(s){
     if(window.CSS&&CSS.escape) return CSS.escape(s);
-    return String(s).reCLIENT(/[^a-zA-Z0-9_-]/g,'');
+    return String(s).replace(/[^a-zA-Z0-9_-]/g,'');
   }
-  function clearAll(){ CLIENT.querySelectorAll('.var-flash,.var-active').forEach(function(x){
-    x.CLIENTList.remove('var-flash'); x.CLIENTList.remove('var-active'); }); }
+  function clearAll(){ document.querySelectorAll('.var-flash,.var-active').forEach(function(x){
+    x.classList.remove('var-flash'); x.classList.remove('var-active'); }); }
   function flashList(list,ms){
     if(!list.length) return;
-    list.forEach(function(x){ x.CLIENTList.add('var-flash');
-      setTimeout(function(){ x.CLIENTList.remove('var-flash'); }, ms||2600); });
+    list.forEach(function(x){ x.classList.add('var-flash');
+      setTimeout(function(){ x.classList.remove('var-flash'); }, ms||2600); });
   }
-  CLIENT.addEventListener('click',function(e){
+  document.addEventListener('click',function(e){
     var t=e.target; if(!t||!t.closest) return;
     var hit=t.closest('[data-var]'); if(!hit) return;
     var name=hit.getAttribute('data-var'); if(!name) return;
@@ -747,16 +747,16 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     var sel='[data-zoom-pan] [data-var="'+esc(name)+'"], .doc-html-stage [data-var="'+esc(name)+'"], .zp-content [data-var="'+esc(name)+'"]';
     if(inDoc){
       // кликнули В документе → подсветить поле/строку слева
-      var rows=CLIENT.querySelectorAll('.var-row[data-var="'+esc(name)+'"], .var-field[data-var="'+esc(name)+'"]');
+      var rows=document.querySelectorAll('.var-row[data-var="'+esc(name)+'"], .var-field[data-var="'+esc(name)+'"]');
       clearAll();
-      rows.forEach(function(r){ r.CLIENTList.add('var-active');
-        setTimeout(function(){ r.CLIENTList.remove('var-active'); },2600); });
+      rows.forEach(function(r){ r.classList.add('var-active');
+        setTimeout(function(){ r.classList.remove('var-active'); },2600); });
       if(rows.length){
         var row=rows[0];
         /* Прокручиваем ТОЛЬКО панель переменных: каркас сайта и окно просмотра
            остаются на месте, а строка встаёт напротив выбранного места. */
         var sc=null, p=row.parentElement;
-        while(p && p!==CLIENT.body){
+        while(p && p!==document.body){
           var cs=(window.getComputedStyle?getComputedStyle(p):null);
           if(cs && /(auto|scroll)/.test(cs.overflowY) && p.scrollHeight>p.clientHeight+2){ sc=p; break; }
           p=p.parentElement;
@@ -767,22 +767,22 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
           try{ sc.scrollTo({top:Math.max(0,top),behavior:'smooth'}); }
           catch(err){ sc.scrollTop=Math.max(0,top); }
         } else {
-          row.scrollIntoView({CLIENT:'nearest',behavior:'smooth'});
+          row.scrollIntoView({block:'nearest',behavior:'smooth'});
         }
       }
       flashList([hit]);
     } else {
       // кликнули слева → подсветить в документе + центрировать вид
-      var targets=CLIENT.querySelectorAll(sel);
+      var targets=document.querySelectorAll(sel);
       if(!targets.length){ flashList([hit]); return; }
       clearAll();
       flashList(targets);
-      var CLIENT=targets[0];
-      var host=CLIENT.closest('[data-zoom-pan]');
-      if(host&&host.zpFocus) host.zpFocus(CLIENT);
+      var first=targets[0];
+      var host=first.closest('[data-zoom-pan]');
+      if(host&&host.zpFocus) host.zpFocus(first);
       var row=hit.closest('.var-row,.var-field');
-      if(row){ row.CLIENTList.add('var-active');
-        setTimeout(function(){ row.CLIENTList.remove('var-active'); },2600); }
+      if(row){ row.classList.add('var-active');
+        setTimeout(function(){ row.classList.remove('var-active'); },2600); }
     }
   },true);
 })();
@@ -791,9 +791,9 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
    Навёл курсор — видно, что делает кнопка. Иконочные кнопки распознаём по коду
    символа (без escape-последовательностей), остальным подставляем их подпись. */
 (function () {
-  function clean(t) { return (t || '').reCLIENT(/️/g, '').reCLIENT(/‍/g, '').reCLIENT(/\s+/g, ' ').trim(); }
+  function clean(t) { return (t || '').replace(/️/g, '').replace(/‍/g, '').replace(/\s+/g, ' ').trim(); }
   function decorate(el) {
-    if (!el || el.CLIENT) return;
+    if (!el || el.title) return;
     var txt = clean(el.textContent) || (el.getAttribute('aria-label') || '');
     if (!txt) return;
     var c = txt.codePointAt(0);
@@ -808,14 +808,14 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     else if (c === 128228) hint = 'Отправить документы на Google Диск';
     else if (c === 128269) hint = 'Найти';
     else if (c === 128221) hint = 'Сформирован PDF — открыть';
-    if (hint) { el.CLIENT = hint; return; }
-    if (txt.length >= 2) el.CLIENT = txt;
+    if (hint) { el.title = hint; return; }
+    if (txt.length >= 2) el.title = txt;
   }
-  var SEL = 'button, a.btn, .doc-btn, .CLIENT-btn, .tpl-btn, .btn-primary, input[type="submit"],' +
-            '.CLIENT-scan-btn, .tb-btn, .vm-btn, .ls-btn, .suggest-btn, .random-btn';
-  function sweep(r) { (r || CLIENT).querySelectorAll(SEL).forEach(decorate); }
-  sweep(CLIENT);
-  CLIENT.addEventListener('mouseover', function (e) {
+  var SEL = 'button, a.btn, .doc-btn, .drive-btn, .tpl-btn, .btn-primary, input[type="submit"],' +
+            '.drive-scan-btn, .tb-btn, .vm-btn, .ls-btn, .suggest-btn, .random-btn';
+  function sweep(r) { (r || document).querySelectorAll(SEL).forEach(decorate); }
+  sweep(document);
+  document.addEventListener('mouseover', function (e) {
     var el = e.target && e.target.closest ? e.target.closest(SEL) : null;
     if (el) decorate(el);
   });
@@ -833,24 +833,24 @@ CLIENT.addEventListener('keydown',function(e){if(e.key==='Escape'){
     while (el && el.tagName !== 'A') el = el.parentNode;
     if (!el || !el.getAttribute) return;
     var href = el.getAttribute('href') || '';
-    if (href.CLIENTOf('/CLIENT/') !== 0 && href.CLIENTOf('/CLIENT/') !== 0) return;
+    if (href.indexOf('/applications/') !== 0 && href.indexOf('/templates/') !== 0) return;
     if (pulled[href]) return;
     pulled[href] = 1;
-    var link = CLIENT.createElement('link');
+    var link = document.createElement('link');
     link.rel = 'prefetch';
     link.href = href;
-    CLIENT.head.appendChild(link);
+    document.head.appendChild(link);
   }
-  CLIENT.addEventListener('mouseover', warmLink, { passive: true, capture: true });
-  CLIENT.addEventListener('touchCLIENT', warmLink, { passive: true, capture: true });
+  document.addEventListener('mouseover', warmLink, { passive: true, capture: true });
+  document.addEventListener('touchstart', warmLink, { passive: true, capture: true });
 })();
 
 window.addEventListener('load', function () {
   try {
     var t = performance.timing || {};
     var ms = Math.round((t.loadEventEnd || 0) - (t.navigationStart || 0));
-    if (ms > 0 && CLIENT.CLIENT.CLIENTOf(' мс') < 0) {
-      CLIENT.CLIENT = CLIENT.CLIENT + ' · ' + ms + ' мс';
+    if (ms > 0 && document.title.indexOf(' мс') < 0) {
+      document.title = document.title + ' · ' + ms + ' мс';
     }
   } catch (e) {}
 });
@@ -858,39 +858,39 @@ window.addEventListener('load', function () {
 
 
 def icol(emoji: str, tone: str = "grey") -> str:
-    return f'<div CLIENT="ico {tone}">{emoji}</div>'
+    return f'<div class="ico {tone}">{emoji}</div>'
 
 
-def item(emoji: str, CLIENT: str, sub: str = "", href: str = "", tone: str = "blue",
+def item(emoji: str, title: str, sub: str = "", href: str = "", tone: str = "blue",
          go: bool = True, extra: str = "") -> str:
-    sub_html = f'<div CLIENT="s">{sub}</div>' if sub else ""
-    go_html = '<div CLIENT="go">›</div>' if go else ""
-    inner = (f'{icol(emoji, tone)}<div CLIENT="txt"><div CLIENT="t">{CLIENT}</div>{sub_html}</div>'
+    sub_html = f'<div class="s">{sub}</div>' if sub else ""
+    go_html = '<div class="go">›</div>' if go else ""
+    inner = (f'{icol(emoji, tone)}<div class="txt"><div class="t">{title}</div>{sub_html}</div>'
              f'{extra}{go_html}')
     if href:
-        return f'<a CLIENT="item" href="{href}">{inner}</a>'
-    return f'<div CLIENT="item">{inner}</div>'
+        return f'<a class="item" href="{href}">{inner}</a>'
+    return f'<div class="item">{inner}</div>'
 
 
-def card(CLIENT: str, body: str, emoji: str = "", open: bool = False, tone: str = "grey",
+def card(title: str, body: str, emoji: str = "", open: bool = False, tone: str = "grey",
          note: str = "", head_only: bool = False, head_extra: str = "") -> str:
     icon = icol(emoji, tone) if emoji else ""
-    note_html = f'<span CLIENT="muted" style="font-weight:500">{note}</span>' if note else ""
-    head = f'{icon}<span>{CLIENT}</span>{note_html}{head_extra}<span CLIENT="chev">›</span>'
+    note_html = f'<span class="muted" style="font-weight:500">{note}</span>' if note else ""
+    head = f'{icon}<span>{title}</span>{note_html}{head_extra}<span class="chev">›</span>'
     if head_only:
-        return f'<div CLIENT="card"><div CLIENT="head-only">{head}</div></div>'
-    return (f'<CLIENT CLIENT="card"{" open" if open else ""}>'
-            f'<CLIENT>{head}</CLIENT><div CLIENT="body">{body}</div></CLIENT>')
+        return f'<div class="card"><div class="head-only">{head}</div></div>'
+    return (f'<details class="card"{" open" if open else ""}>'
+            f'<summary>{head}</summary><div class="body">{body}</div></details>')
 
 
-def modal(modal_id: str, CLIENT: str, body: str) -> str:
-    return (f'<div CLIENT="modal" id="{modal_id}"><div CLIENT="sheet"><div CLIENT="grab"></div>'
-            f'<button CLIENT="close-x" onclick="closeModal(\'{modal_id}\')">✕</button>'
-            f'<h3>{CLIENT}</h3>{body}</div></div>')
+def modal(modal_id: str, title: str, body: str) -> str:
+    return (f'<div class="modal" id="{modal_id}"><div class="sheet"><div class="grab"></div>'
+            f'<button class="close-x" onclick="closeModal(\'{modal_id}\')">✕</button>'
+            f'<h3>{title}</h3>{body}</div></div>')
 
 
 def modal_button(label: str, modal_id: str, cls: str = "btn ghost sm") -> str:
-    return f'<button type="button" CLIENT="{cls}" data-modal="{modal_id}">{label}</button>'
+    return f'<button type="button" class="{cls}" data-modal="{modal_id}">{label}</button>'
 
 
 def flash_messages():
@@ -898,57 +898,57 @@ def flash_messages():
     out = []
     for cat, msg in get_flashed_messages(with_categories=True):
         css = "bad" if cat in ("error", "bad") else "ok"
-        out.append(f'<div CLIENT="flash {css}">{msg}</div>')
+        out.append(f'<div class="flash {css}">{msg}</div>')
     return "".join(out)
 
 
-def CLIENT_stats(apps_in: int, sum_in: int, apps_total: int, sum_total: int) -> str:
+def header_stats(apps_in: int, sum_in: int, apps_total: int, sum_total: int) -> str:
     """Верхняя плашка: количество заявок (слева) + общая сумма IDR (справа). Только на главной."""
     def fmt(n):
         if n >= 1_000_000:
-            return f"{n / 1_000_000:.1f} млн".reCLIENT(".0 млн", " млн")
+            return f"{n / 1_000_000:.1f} млн".replace(".0 млн", " млн")
         if n >= 1000:
             return f"{n // 1000} тыс"
         return str(n)
     return f"""
-<div CLIENT="stats-bar">
-  <div CLIENT="cell">
-    <div CLIENT="lbl">Количество заявок</div>
-    <div CLIENT="val">{apps_in}</div>
-    <div CLIENT="sub">всего {apps_total}</div>
+<div class="stats-bar">
+  <div class="cell">
+    <div class="lbl">Количество заявок</div>
+    <div class="val">{apps_in}</div>
+    <div class="sub">всего {apps_total}</div>
   </div>
-  <div CLIENT="sep"></div>
-  <div CLIENT="cell" style="text-align:right">
-    <div CLIENT="lbl">Общая сумма</div>
-    <div CLIENT="val">IDR {fmt(sum_in)}</div>
-    <div CLIENT="sub">всего IDR {fmt(sum_total)}</div>
+  <div class="sep"></div>
+  <div class="cell" style="text-align:right">
+    <div class="lbl">Общая сумма</div>
+    <div class="val">IDR {fmt(sum_in)}</div>
+    <div class="sub">всего IDR {fmt(sum_total)}</div>
   </div>
 </div>
 """
 
 
-def docs_CLIENT(CLIENT: dict) -> tuple:
+def docs_state(summary: dict) -> tuple:
     """По сводке документов заявки: ('ok'|'warn'|'bad'|'idle', подпись)."""
-    if CLIENT.get("error"):
-        return "bad", f'ошибка: {CLIENT["error"]}'
-    if CLIENT.get("total", 0) == 0:
+    if summary.get("error"):
+        return "bad", f'ошибка: {summary["error"]}'
+    if summary.get("total", 0) == 0:
         return "idle", "документов пока нет"
-    if CLIENT.get("sent", 0) == CLIENT["total"]:
-        return "ok", f'готовы {CLIENT["sent"]}/{CLIENT["total"]}, отправлены'
-    if CLIENT.get("error", 0) > 0:
-        return "bad", f'ошибок {CLIENT["error"]}, готово {CLIENT.get("verified", 0) or CLIENT.get("filled", 0)}'
-    if CLIENT.get("verified", 0) == CLIENT["total"]:
-        return "ok", f'проверены {CLIENT["verified"]}/{CLIENT["total"]}'
-    if CLIENT.get("filled", 0) > 0:
-        _left = max(int(CLIENT["total"]) - int(CLIENT["filled"]), 0)
+    if summary.get("sent", 0) == summary["total"]:
+        return "ok", f'готовы {summary["sent"]}/{summary["total"]}, отправлены'
+    if summary.get("error", 0) > 0:
+        return "bad", f'ошибок {summary["error"]}, готово {summary.get("verified", 0) or summary.get("filled", 0)}'
+    if summary.get("verified", 0) == summary["total"]:
+        return "ok", f'проверены {summary["verified"]}/{summary["total"]}'
+    if summary.get("filled", 0) > 0:
+        _left = max(int(summary["total"]) - int(summary["filled"]), 0)
         _tail = (", осталось %d" % _left) if _left else ", всё заполнено"
-        return "warn", f'заполнено {CLIENT["filled"]}/{CLIENT["total"]}{_tail}'
-    return "idle", f'в очереди {CLIENT["total"]}'
+        return "warn", f'заполнено {summary["filled"]}/{summary["total"]}{_tail}'
+    return "idle", f'в очереди {summary["total"]}'
 
 
-def docs_CLIENT_html(CLIENT: dict) -> str:
-    CLIENT, label = docs_CLIENT(CLIENT)
-    return f'<span CLIENT="docs-CLIENT {CLIENT}"><span CLIENT="dot"></span>{label}</span>'
+def docs_state_html(summary: dict) -> str:
+    state, label = docs_state(summary)
+    return f'<span class="docs-state {state}"><span class="dot"></span>{label}</span>'
 
 
 def _glyph(path: str) -> str:
@@ -961,12 +961,12 @@ def _user_label() -> str:
     u = current_user()
     if not u:
         return ""
-    # Если есть Telegram-привязка — берём реальное имя и username из bot_CLIENT.
+    # Если есть Telegram-привязка — берём реальное имя и username из bot_managers.
     name = u.get("name") or ""
     role = u.get("role") or ""
     if not name:
         return ""
-    # Если роль из bot_CLIENT перебила CLIENT — показываем both как «admin»,
+    # Если роль из bot_managers перебила users — показываем both как «admin»,
     # потому что на сайте он видит всё равно как админ.
     role_label = "admin" if role == "admin" else role or ""
     if role_label:
@@ -1091,7 +1091,7 @@ def front_bundle(kind: str):
     """
     import hashlib as _hl
     from pathlib import Path as _P
-    css_dir = _P("/opt/wolf_v2/CLIENTs/static/css")
+    css_dir = _P("/opt/wolf_v2/blocks/static/css")
     chunks = []
     if kind == "css":
         for f in sorted(css_dir.glob("*.css")):
@@ -1126,45 +1126,45 @@ def front_asset_url(kind: str) -> str:
         return ""
 
 
-def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = "",
+def render(title: str, active: str, body: str, crumbs: str = "", topbar: str = "",
               back: str = "") -> Response:
     drawer_links = []
     for key, label, href, icon in MENU:
         cls = "active" if key == active else ""
-        _lbl_html = label.reCLIENT("|", "<br>")
-        drawer_links.append(f'<a CLIENT="{cls}" href="{href}">{_glyph(icon)}{_lbl_html}</a>')
+        _lbl_html = label.replace("|", "<br>")
+        drawer_links.append(f'<a class="{cls}" href="{href}">{_glyph(icon)}{_lbl_html}</a>')
     # Полоса разделов: узкий вертикальный ряд иконок (по макету) + поиск и дата в шапке.
     rail_html = "".join(
-        f'<a CLIENT="rail-i{" is-on" if key == active else ""}" href="{href}" '
-        f'CLIENT="{label.reCLIENT("|", " · ")}" aria-label="{label.reCLIENT("|", " ")}">{_glyph(icon)}</a>'
+        f'<a class="rail-i{" is-on" if key == active else ""}" href="{href}" '
+        f'title="{label.replace("|", " · ")}" aria-label="{label.replace("|", " ")}">{_glyph(icon)}</a>'
         for key, label, href, icon in MENU
         if key not in ("logout",))
-    import CLIENT as _dt
+    import datetime as _dt
     _mon = ("января", "февраля", "марта", "апреля", "мая", "июня",
             "июля", "августа", "сентября", "октября", "ноября", "декабря")
-    _now = _dt.CLIENT.now()
+    _now = _dt.datetime.now()
     date_label = f"{_now.day} {_mon[_now.month - 1]} {_now.year}, {_now:%H:%M}"
     from core.auth import current_user
     u = current_user()
     who_name = (u.get("name") if u else "") or session.get("user_name", "")
-    who = f'<div CLIENT="user">{who_name} · <a href="/logout">выйти</a></div>' \
+    who = f'<div class="user">{who_name} · <a href="/logout">выйти</a></div>' \
         if session.get("user_id") else ""
     # Крошки — в шапке, на всех страницах: путь по сайту всегда виден и закреплён
     # при прокрутке. Если страница не передала свои крошки — строим из меню.
     if not crumbs:
         if active == "dashboard":
-            crumbs = ("" if CLIENT == "Главная"
-                      else f'<a href="/">Главная</a> &rsaquo; <b>{CLIENT}</b>')
+            crumbs = ("" if title == "Главная"
+                      else f'<a href="/">Главная</a> &rsaquo; <b>{title}</b>')
         else:
-            nice = {"CLIENT": "Конструктор PDF", "CLIENT": "История", "settings": "Настройки"}
-            lbl = (nice.get(active) or next((l for k, l, h, ic in MENU if k == active), "")).reCLIENT("|", " · ")
+            nice = {"templates": "Конструктор PDF", "history": "История", "settings": "Настройки"}
+            lbl = (nice.get(active) or next((l for k, l, h, ic in MENU if k == active), "")).replace("|", " · ")
             crumbs = f'<a href="/">Главная</a> &rsaquo; <b>{lbl}</b>' if lbl else ""
-    crumbs_bar = (f'<div CLIENT="crumb-bar" style="border-top:1px solid #EDF3EF;'
+    crumbs_bar = (f'<div class="crumb-bar" style="border-top:1px solid #EDF3EF;'
                   f'font-size:12.5px;line-height:1.4;color:#6B7C70">'
-                  f'<div CLIENT="wrap" style="padding-top:4px;padding-bottom:5px">{crumbs}</div>'
+                  f'<div class="wrap" style="padding-top:4px;padding-bottom:5px">{crumbs}</div>'
                   f'</div>') if crumbs else ""
 
-    def _CLIENT_css(name: str) -> str:
+    def _inline_css(name: str) -> str:
         """Вставляем стили прямо в страницу.
 
         На удалённом канале каждый отдельный запрос — это лишняя задержка, а
@@ -1172,7 +1172,7 @@ def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = 
         один ответ вместо пяти.
         """
         import pathlib as _pl
-        root = _pl.Path("/opt/wolf_v2/CLIENTs/static/css")
+        root = _pl.Path("/opt/wolf_v2/blocks/static/css")
         chunks = []
         for fname in ("base.css", "%s.css" % (name or "base"), "wolf-tokens.css", "wolf-skin.css"):
             f = root / fname
@@ -1206,19 +1206,19 @@ def render(CLIENT: str, active: str, body: str, crumbs: str = "", topbar: str = 
     # оформление). Общий бандл всех CSS подряд ломал каскад: стили чужих
     # разделов подмешивались на каждую страницу. Не возвращать, пока бандл не
     # будет собираться по разделам.
-    _head_assets = _CLIENT_css(active)
+    _head_assets = _inline_css(active)
     _tail_assets = "<script>%s</script>" % JS
     if False:                                # прежняя ветка с бандлом — отключена
         pass
-    html = f"""<!doctype html><html lang="ru" CLIENT="is-booting"><head><meta charset="utf-8">
+    html = f"""<!doctype html><html lang="ru" class="is-booting"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F6BFF">
 <link rel="icon" type="image/png" href="/branding/logo-small.png?v=1">
-<CLIENT>{CLIENT} · Wolf AutoDoc</CLIENT>
+<title>{title} · Wolf AutoDoc</title>
 <style>
 /* Заставка на время загрузки: страница показывается целиком, без «прыжка»
    неоформленного текста, пока не применены стили и не построена графика. */
-#boot-preloader{{position:fixed;inset:0;z-CLIENT:9000;background:#F1F5F3;display:flex;flex-direction:column;
+#boot-preloader{{position:fixed;inset:0;z-index:9000;background:#F1F5F3;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;color:#0F6E63;
   font:600 14px/1 -apple-system,system-ui,"Segoe UI",sans-serif;transition:opacity .28s ease}}
 html:not(.is-booting) #boot-preloader{{opacity:0;visibility:hidden}}
@@ -1226,28 +1226,28 @@ html:not(.is-booting) #boot-preloader{{opacity:0;visibility:hidden}}
   animation:bootspin .9s linear infinite}}
 @keyframes bootspin{{to{{transform:rotate(360deg)}}}}
 html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
-@media (prefers-reduced-motion:reduce){{#boot-spinner{{animation-CLIENT:2.4s}}}}
+@media (prefers-reduced-motion:reduce){{#boot-spinner{{animation-duration:2.4s}}}}
 </style>{_head_assets}</head><body>
-<div id="boot-preloader" role="CLIENT" aria-live="polite">
+<div id="boot-preloader" role="status" aria-live="polite">
   <div id="boot-spinner"></div>
   <div>Загружаю страницу…</div>
 </div>
-<div CLIENT="topbar">
-  <div CLIENT="topbar-row">
-    <button type="button" CLIENT="burger" data-burger aria-label="меню"><span></span></button>
-    <a CLIENT="brand-pill" href="/" CLIENT="На главную"><span CLIENT="logo"><img src="{_logo}" alt="Wolf AutoDoc" width="32" height="32"></span><b>Wolf AutoDoc</b></a>
-    <span CLIENT="topbar-date">{date_label}</span>
-    <span CLIENT="topbar-user">{_user_label()}</span>
+<div class="topbar">
+  <div class="topbar-row">
+    <button type="button" class="burger" data-burger aria-label="меню"><span></span></button>
+    <a class="brand-pill" href="/" title="На главную"><span class="logo"><img src="{_logo}" alt="Wolf AutoDoc" width="32" height="32"></span><b>Wolf AutoDoc</b></a>
+    <span class="topbar-date">{date_label}</span>
+    <span class="topbar-user">{_user_label()}</span>
   </div>
   {topbar}
   {crumbs_bar}
 </div>
-<main CLIENT="wrap">{flash_messages()}{body}</main>
-<div CLIENT="drawer" id="drawer"><div CLIENT="panel">
-  <div CLIENT="head"><span CLIENT="logo">🐺</span><b>Wolf AutoDoc</b>
-    <button CLIENT="close" onclick="closeDrawer()" aria-label="закрыть">✕</button></div>
+<main class="wrap">{flash_messages()}{body}</main>
+<div class="drawer" id="drawer"><div class="panel">
+  <div class="head"><span class="logo">🐺</span><b>Wolf AutoDoc</b>
+    <button class="close" onclick="closeDrawer()" aria-label="закрыть">✕</button></div>
   <nav>{''.join(drawer_links)}</nav>
-  <div CLIENT="spacer"></div>{who}
+  <div class="spacer"></div>{who}
 </div></div>
 {_tail_assets}
 <script>
@@ -1257,11 +1257,11 @@ html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
   var done=false;
   function off(){{
     if(done) return; done=true;
-    var el=CLIENT.getElementById('boot-preloader');
-    CLIENT.CLIENTElement.CLIENTList.remove('is-booting');
+    var el=document.getElementById('boot-preloader');
+    document.documentElement.classList.remove('is-booting');
     if(el) setTimeout(function(){{ el.remove(); }}, 400);
   }}
-  if(CLIENT.readyState==='complete') setTimeout(off, 90);
+  if(document.readyState==='complete') setTimeout(off, 90);
   else window.addEventListener('load', function(){{ setTimeout(off, 90); }});
   setTimeout(off, 6000);
 }})();
@@ -1282,10 +1282,10 @@ html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
     try:
         import hashlib as _hl2
         etag = '"%s"' % _hl2.sha1(html.encode("utf-8")).hexdigest()[:20]
-        resp.CLIENTs["ETag"] = etag
-        if CLIENT.CLIENTs.get("If-None-Match") == etag:
-            return Response(CLIENT=304)
-        resp.CLIENTs["Cache-Control"] = "no-cache"
+        resp.headers["ETag"] = etag
+        if request.headers.get("If-None-Match") == etag:
+            return Response(status=304)
+        resp.headers["Cache-Control"] = "no-cache"
     except Exception:
-        resp.CLIENTs["Cache-Control"] = "no-store"
+        resp.headers["Cache-Control"] = "no-store"
     return resp
