@@ -78,8 +78,10 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     # этого в готовую справку уходил чужой остаток из образца, а номер счёта не попадал вовсе).
     _cl = dict(client_row) or {}
     try:
-        for _k in ('account_no', 'contract_no', 'contract_date', 'card_mask', 'bank_name',
-                   'ref_no', 'doc_no'):
+        # ref_no и doc_no сюда НЕ входят намеренно: у них свои форматы
+        # (Ref. = заглавная + 8 цифр + 3 заглавные, No = две строчные + 8 цифр),
+        # их берут из настоящей справки с проверкой формата или генерируют.
+        for _k in ('account_no', 'contract_no', 'contract_date', 'card_mask', 'bank_name'):
             _v = str(_cl.get(_k) or '').strip()
             if _v:
                 values[_k] = _v
