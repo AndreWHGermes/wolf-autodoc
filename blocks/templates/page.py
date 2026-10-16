@@ -4190,12 +4190,13 @@ a.back-to-app:hover {{ background:#0F5230; }}
 .var-hl {{ background:#FEF3C7; padding:1px 5px; border-radius:3px;
            color:#78350F; font-weight:700; }}
 /* Подсветка значений в визоре: цвет и фон — как были (бурый текст на светлом фоне),
-   убрано ТОЛЬКО подчёркивание (Андрей, 16.10.2026). Служебные data-var/data-src
-   остаются: подсказка и переход к переменной работают. */
+   подчёркивание убрано по просьбе заказчика (Андрей, 16.10.2026).
+   padding = 0: плашка не должна сдвигать текст, иначе имя клиента и номер документа
+   в окне просмотра уезжают с одной вертикали относительно PDF (там подсветки нет). */
 .html-stage .var-hl, .doc-html-stage .var-hl {{
-  background:#FEF3C7 !important; color:#78350F !important; padding:1px 5px !important;
+  background:#FEF3C7 !important; color:#78350F !important; padding:0 !important;
   border:0 !important; border-bottom:0 !important; box-shadow:none !important;
-  border-radius:3px !important; text-decoration:none !important;
+  border-radius:0 !important; text-decoration:none !important;
 }}
 .html-stage .var-hl *{{ text-decoration:none !important; border-bottom:0 !important; }}
 .var-hl-inline {{ background:transparent; padding:0; border:0; color:#78350F;
