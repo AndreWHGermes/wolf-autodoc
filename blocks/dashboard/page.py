@@ -759,6 +759,7 @@ def _app_loader_frame(app_id: int, title: str):
     """
     frame = """
 <div id="wolf-content">
+  __PIPELINE__
   <div style="display:flex;align-items:center;gap:14px;padding:26px 18px;
        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#3C4A42">
     <span style="width:26px;height:26px;flex:0 0 26px;border:3px solid #D7E3DA;
@@ -798,6 +799,11 @@ def _app_loader_frame(app_id: int, title: str):
 })();
 </script>
 """.replace("__APPID__", str(app_id))
+    try:
+        from blocks.dashboard.pipeline import pipeline_visual
+        frame = frame.replace("__PIPELINE__", pipeline_visual(app_id))
+    except Exception:
+        frame = frame.replace("__PIPELINE__", "")
     return render(title, "dashboard", frame)
 
 
