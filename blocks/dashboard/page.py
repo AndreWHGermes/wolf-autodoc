@@ -3843,9 +3843,14 @@ def app_send(app_id: int):
                    in ("verified", "rejected", "sent"))
     if not _rows or _decided < len(_rows):
         return _fail("Не все документы проверены: согласовано %s из %s" % (_decided, len(_rows)))
-    _miss_send = sorted({m for d in db.application_documents(app_id)
-                         if (d.get("status") or "") not in ("verified", "sent", "rejected")
-                         for m in doc_missing_fields(app_id, d["template_id"])})
+    # Проверка готовности через единый фасад services.documents
+    try:
+        from services.documents import all_missing as _all_missing
+        _miss_send = sorted({m for entry in _all_missing(app_id) for m in entry["missing"]})
+    except Exception:
+        _miss_send = sorted({m for d in db.application_documents(app_id)
+                             if (d.get("status") or "") not in ("verified", "sent", "rejected")
+                             for m in doc_missing_fields(app_id, d["template_id"])})
     if _miss_send:
         return _fail("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]))
 
