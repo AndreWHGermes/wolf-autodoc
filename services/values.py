@@ -3318,6 +3318,75 @@ def build_template_values(*args, **kwargs):
         return _build_template_values_cached(*args, **kwargs)
 
 
+# Категории переменных — для журнала: чтобы админ видел, по какой группе
+# идёт подстановка (FIO/даты/банк/компания/адрес). В шаблон может попасть
+# не каждая переменная, но сводка по группам показывает, что уже готово.
+_VAR_CATEGORIES = {
+    'fio': ('ФИО клиента', ['full_name', 'surname', 'name', 'patronymic',
+                            'full_name_latin', 'client_name', 'cv_name',
+                            'employee_name', 'for_name']),
+    'personal': ('Личные данные', ['birth_date', 'date_of_birth', 'place_of_birth',
+                                  'birth_place', 'gender', 'citizenship', 'nationality',
+                                  'phone', 'email']),
+    'passport': ('Паспорт', ['passport_series', 'passport_number', 'passport_no',
+                             'passport_issued_by', 'passport_issue_date', 'passport_expiry',
+                             'intl_passport']),
+    'ids': ('ИНН/СНИЛС', ['inn', 'snils']),
+    'address': ('Адреса', ['address_reg', 'address_live', 'address_zip', 'city', 'country',
+                           'address_in_indonesia']),
+    'company': ('Работодатель', ['company_name', 'company_llc', 'company_name_in_quotes',
+                                 'company_full_name', 'company_address', 'company_inn',
+                                 'company_kpp', 'company_ogrn', 'company_director',
+                                 'position', 'profession', 'salary_amount', 'salary',
+                                 'salary_amount_raw']),
+    'bank': ('Банк и реквизиты', ['bank_name', 'account_no', 'contract_no', 'card_mask',
+                                  'balance_rub', 'balance_idr', 'balance_date', 'period_from',
+                                  'period_to', 'doc_no', 'ref_no', 'doc_date']),
+    'itk': ('ИТК', ['stay_permit_no', 'place', 'doc_no', 'expiry_date', 'doc_date',
+                    'record_kind', 'address_in_indonesia']),
+    'photo': ('Фото клиента', ['client_photo', 'client_photo_url']),
+    'contract': ('Договор (даты/№)', ['contract_date', 'contract_no', 'ref_no', 'doc_no']),
+}
+
+
+def values_summary(values: dict) -> list:
+    """Сводка по пулу значений для журнала: список категорий со статусом.
+
+    Возвращает: [(категория, заполнено, всего, процент), ...]
+    """
+    out = []
+    for code, (label, keys) in _VAR_CATEGORIES.items():
+        total = len(keys)
+        filled = sum(1 for k in keys if str(values.get(k) or '').strip())
+        pct = (filled * 100 // total) if total else 0
+        out.append((label, filled, total, pct))
+    return out
+
+
+def values_summary_text(values: dict) -> str:
+    """Компактная строка для журнала: «FIO 5/9, банк 3/12, …»."""
+    parts = []
+    for label, filled, total, pct in values_summary(values):
+        # Сокращаем длинные метки для журнала
+        short = {
+            'ФИО клиента':           'FIO',
+            'Личные данные':         'Личные',
+            'Паспорт':               'Паспорт',
+            'ИНН/СНИЛС':             'ИНН',
+            'Адреса':                'Адрес',
+            'Работодатель':          'Компания',
+            'Банк и реквизиты':      'Банк',
+            'ИТК':                   'ИТК',
+            'Фото клиента':          'Фото',
+            'Договор (даты/№)':      'Договор',
+        }.get(label, label)
+        if total and filled < total:
+            parts.append(f"{short} {filled}/{total}")
+        elif total:
+            parts.append(f"{short} ✓")
+    return ', '.join(parts) if parts else 'нет данных'
+
+
 def _time_now():
     import time as _t
     return _t.time()

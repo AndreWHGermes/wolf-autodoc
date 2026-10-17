@@ -263,8 +263,22 @@ with app.app_context():
                 c.close()
             # Журнал: начали собирать конкретный документ
             try:
+                # Сводка по пулу переменных ДО сборки — что знаем к этому моменту
+                try:
+                    from services.values import build_template_values, values_summary_text
+                    _client = _c_v = sqlite3.connect(DB)
+                    _client.row_factory = sqlite3.Row
+                    _cl_row = _client.execute(
+                        "SELECT * FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
+                        (APP_ID,)).fetchone()
+                    _client.close()
+                    _vals = build_template_values(dict(_cl_row) if _cl_row else {},
+                                                  d['code'], None, APP_ID)
+                    _summary = values_summary_text(_vals)
+                except Exception as _e_v:
+                    _summary = f"сводка недоступна: {str(_e_v)[:80]}"
                 _st_fill.step(APP_ID, 'fill', 'run',
-                              f"📝 {d['code']}: рендер HTML → PDF")
+                              f"📝 {d['code']}: пул — {_summary}")
             except Exception:
                 pass
             with app.test_request_context("/"):
@@ -275,10 +289,28 @@ with app.app_context():
                 m = re.search(r'"pdf_name"\s*:\s*"([^"]+)"', body)
                 pdf_name = (m.group(1) if m else body[:60])
                 print("   %-42s -> %s" % (d["code"], pdf_name))
-                # Журнал: документ собран, пишем факт
+                # Журнал: документ собран, пишем факт + кратко что в нём
                 try:
+                    # Считаем сколько {{ }} осталось в финальном PDF
+                    _remaining = 0
+                    try:
+                        import re as _re2
+                        from pathlib import Path as _P
+                        _pdf_path = ROOT / "data" / "renders" / str(APP_ID) / pdf_name
+                        if _pdf_path.exists() and _pdf_path.suffix.lower() == '.pdf':
+                            try:
+                                from pypdf import PdfReader as _PR
+                                _r = _PR(str(_pdf_path))
+                                for _pg in _r.pages:
+                                    _txt = _pg.extract_text() or ''
+                                    _remaining += len(_re2.findall(r'\{\{|\}\}', _txt))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                    _ok = '✓' if _remaining == 0 else f'⚠ осталось меток: {_remaining}'
                     _st_fill.step(APP_ID, 'fill', 'ok',
-                                  f"✓ {d['code']} → {pdf_name}")
+                                  f"{_ok} {d['code']} → {pdf_name} ({_summary})")
                 except Exception:
                     pass
         except Exception as exc:
