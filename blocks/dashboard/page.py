@@ -475,11 +475,21 @@ def page():
     if (m >= 60) { var h = Math.floor(m / 60); return '⏱ ' + h + ' ч ' + (m % 60) + ' мин'; }
     return m ? ('⏱ ' + m + ' мин ' + s2 + ' с') : ('⏱ ' + s2 + ' с');
   }
+  // ВАЖНО: раньше таймер тикал у любого элемента, у которого data-running='1' на момент
+  // загрузки страницы. Если администратор остановил цикл после рендера — таймер продолжал
+  // расти в DOM. Теперь каждую секунду пересчитываем running по .inbox-row[data-state]:
+  // только если state='running' (то есть заявка реально в работе) — таймер идёт.
   setInterval(function(){
-    document.querySelectorAll('.app-timer').forEach(function(el){
-      if (el.dataset.running !== '1') return;
-      el.dataset.elapsed = String(parseInt(el.dataset.elapsed || '0', 10) + 1);
-      el.textContent = fmt(parseInt(el.dataset.elapsed, 10));
+    document.querySelectorAll('.inbox-row').forEach(function(row){
+      var el = row.querySelector('.app-timer');
+      if (!el) return;
+      var live_running = (row.dataset.state === 'running');
+      // синхронизируем data-running с актуальным состоянием строки
+      el.dataset.running = live_running ? '1' : '0';
+      if (live_running) {
+        el.dataset.elapsed = String(parseInt(el.dataset.elapsed || '0', 10) + 1);
+        el.textContent = fmt(parseInt(el.dataset.elapsed, 10));
+      }
     });
   }, 1000);
   setInterval(check, 5000);
