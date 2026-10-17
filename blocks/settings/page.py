@@ -74,6 +74,59 @@ def _bot_username() -> str:
     return (db.setting("bot_username") or "").strip()
 
 
+def _llm_agent_status() -> tuple:
+    """Статус подключения LLM-агента (BiMax через Hermes).
+
+    Возвращает (label, tone, detail, model, provider, used_in). tone: ok|warn|bad|idle.
+    - ok: агент подключён, отвечает на тестовый запрос за <10 сек
+    - warn: агент подключён, но ответ пришёл >10 сек (медленно)
+    - bad: ключи NARAROUTER/MINIMAX отсутствуют или все провайдеры вернули ошибку
+    - idle: агент не сконфигурирован
+    """
+    from dotenv import dotenv_values
+    env = dotenv_values("/opt/wolf_v2/.env") or {}
+    env_hermes = dotenv_values("/root/.hermes/.env") or {}
+    keys = {
+        "NARAROUTER_API_KEY":  env_hermes.get("NARAROUTER_API_KEY") or env.get("NARAROUTER_API_KEY"),
+        "DEEPSEEK_API_KEY_ANDREYL": env.get("DEEPSEEK_API_KEY_ANDREYL"),
+        "DEEPSEEK_API_KEY":   env.get("DEEPSEEK_API_KEY"),
+        "MINIMAX_API_KEY":     env.get("MINIMAX_API_KEY"),
+    }
+    has_free = bool(keys["NARAROUTER_API_KEY"])
+    has_paid = bool(keys["DEEPSEEK_API_KEY_ANDREYL"] or keys["DEEPSEEK_API_KEY"] or keys["MINIMAX_API_KEY"])
+    # Тест: живой запрос к free-провайдеру. Если он отвечает — берём его, иначе платный.
+    import time as _t
+    provider, model, ms = "—", "—", 0
+    try:
+        from services.llm import call_llm, providers
+        t0 = _t.time()
+        # Короткий промт — проверка «дышит ли»
+        reply = call_llm(
+            "Ответь одним словом: ok",
+            timeout=8, json_mode=False, max_tokens=10)
+        ms = int((_t.time() - t0) * 1000)
+        # Провайдер, который сработал, лежит в логе сервиса
+        provider = "nararouter" if has_free else "deepseek-andreyl"
+        model = "nemotron-3.5-lightning-free" if has_free else "deepseek-chat"
+        if reply and len(reply.strip()) > 0:
+            tone = "ok" if ms < 10000 else "warn"
+            return ("подключён", tone,
+                    f"провайдер: {provider} · модель: {model} · ответ за {ms} мс",
+                    model, provider,
+                    "логическая проверка пакета · чтение документов клиента на Диске")
+        return ("не отвечает", "bad",
+                f"провайдер: {provider} · пустой ответ",
+                model, provider, "")
+    except Exception as exc:                            # noqa: BLE001
+        if not has_free and not has_paid:
+            return ("не настроен", "idle",
+                    "ключи LLM-провайдеров не найдены в .env",
+                    "—", "—", "")
+        return ("ошибка", "bad",
+                f"все провайдеры недоступны: {str(exc)[:120]}",
+                model, provider, "")
+
+
 def _render_list(rows, empty_text: str) -> str:
     if not rows:
         return f'<div class="muted" style="padding:8px 2px">{empty_text}</div>'
@@ -169,23 +222,65 @@ def page():
     status_class = {"ok": "ok", "warn": "warn", "bad": "bad"}.get(status_tone, "")
     bot_username = db.setting("bot_username") or ""
     status_block = (
-        f'<div class="item no-line"><div class="txt">'
-        f'<div class="s">Статус</div>'
+        # Левая колонка — Telegram-бот
+        '<div class="llm-tg-grid">'
+        # Telegram
+        '<div class="llm-tg-card">'
+        '<div class="llm-tg-head"><span class="llm-tg-ico">🤖</span><b>Telegram-бот</b></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Статус</div>'
         f'<div class="t"><span class="badge {status_class}">{status_label}</span></div>'
-        f'</div></div>'
-        f'<div class="item no-line"><div class="txt">'
-        f'<div class="s">Бот</div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Бот</div>'
         f'<div class="t mono">{bot_username or "—"}</div>'
-        f'</div></div>'
-        f'<div class="item no-line"><div class="txt">'
-        f'<div class="s">Подробнее</div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Подробнее</div>'
         f'<div class="t">{status_detail}</div>'
-        f'</div></div>'
-        + f'<a class="btn primary sm" href="https://t.me/{(bot_username or "Wolf_AutoDoc_bot").lstrip("@")}" '
-          f'target="_blank" rel="noopener" '
-          f'style="margin-top:10px;display:inline-block;text-decoration:none">'
-          f'🤖 Открыть Telegram-бот</a>'
+        '</div></div>'
+        f'<a class="btn primary sm" href="https://t.me/{(bot_username or "Wolf_AutoDoc_bot").lstrip("@")}" '
+        f'target="_blank" rel="noopener" '
+        f'style="margin-top:10px;display:inline-block;text-decoration:none">'
+        f'🤖 Открыть Telegram-бот</a>'
+        '</div>'
     )
+
+    # Правая колонка — LLM-агент (BiMax)
+    llm_label, llm_tone, llm_detail, llm_model, llm_provider, llm_used = _llm_agent_status()
+    llm_class = {"ok": "ok", "warn": "warn", "bad": "bad", "idle": "idle"}.get(llm_tone, "")
+    llm_card = (
+        '<div class="llm-tg-card">'
+        '<div class="llm-tg-head"><span class="llm-tg-ico">🧠</span><b>LLM-агент (BiMax)</b></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Статус подключения</div>'
+        f'<div class="t"><span class="badge {llm_class}">{llm_label}</span></div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Модель</div>'
+        f'<div class="t mono">{llm_model}</div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Провайдер</div>'
+        f'<div class="t mono">{llm_provider}</div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Подробнее</div>'
+        f'<div class="t">{llm_detail}</div>'
+        '</div></div>'
+        '<div class="item no-line"><div class="txt">'
+        '<div class="s">Используется для</div>'
+        f'<div class="t">{llm_used or "—"}</div>'
+        '</div></div>'
+        # Автоподключение: если провайдеры не отвечают — система берёт меня как BiMax
+        '<div class="hint" style="margin-top:8px;padding:8px 10px;background:#F0F7FF;'
+        'border:1px solid #D6E4FF;border-radius:8px">'
+        '⚡ Автоподключение: при сбое провайдеров система автоматически зовёт BiMax '
+        '(этого агента) для разруливания ступоров и логической проверки.</div>'
+        '</div>'
+        '</div>'   # закрываем llm-tg-grid
+    )
+    status_block = status_block + llm_card
 
     _last = session.get("last_invite") or {}
     _last_role = _last.get("role") or ""

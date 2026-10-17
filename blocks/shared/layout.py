@@ -201,11 +201,18 @@ a.item:active{background:#F7F9FD}
 
 /* метки */
 .badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:18px;
-  background:#EEF2FF;color:#3B49C4}
+  vertical-align:middle}
 .badge.ok{background:#E6F7EE;color:var(--ok)}
 .badge.warn{background:#FFF3E0;color:var(--warn)}
 .badge.bad{background:#FFE9EC;color:var(--danger)}
 .badge.muted{background:#F3F5F9;color:#6B7280}
+.badge.idle{background:#EEF2FF;color:#4F46E5}
+/* Двухколонная раскладка: Telegram-бот слева, LLM-агент справа. */
+.llm-tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+@media (max-width:760px){.llm-tg-grid{grid-template-columns:1fr;}}
+.llm-tg-card{background:#FAFBFC;border:1px solid #E4E7EE;border-radius:14px;padding:14px 16px}
+.llm-tg-head{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.llm-tg-ico{font-size:20px}
 
 /* индикатор готовности документов в списке заявок */
 .docs-state{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600}
