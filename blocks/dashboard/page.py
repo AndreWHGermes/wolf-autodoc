@@ -433,8 +433,15 @@ def page():
 {_mark_line}
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
 {_inbox_script()}
+{_timer_css}
 """
     known_ids = [a["id"] for a in new_apps]
+    # CSS крупного таймера + спиннера вставляется один раз на страницу.
+    try:
+        from blocks.dashboard.helpers import _emit_timer_css
+        _timer_css = _emit_timer_css()
+    except Exception:
+        _timer_css = ""
     live_js = """
 <div id="newapp-toast" style="display:none;position:fixed;left:50%;transform:translateX(-50%);
      top:14px;z-index:9998;background:#0E9F6E;color:#fff;border-radius:12px;padding:11px 16px;

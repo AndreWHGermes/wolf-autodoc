@@ -71,9 +71,11 @@ def inbox_row(a) -> str:
   <div class="inbox-top">
     <a class="inbox-main" href="/applications/{app_id}/review">
       <div class="inbox-title">Заявка #{app_id} · {esc(db.client_label(a))}{kind_badge(a)}
-        <span class="app-timer" data-elapsed="{_elapsed(a)}" data-running="{_is_running(a)}"
-          style="font-size:11.5px;font-weight:700;color:#1F3A93;background:#E8EEF9;
-          border-radius:6px;padding:1px 7px;margin-left:6px">⏱ {_fmt_elapsed(a)}</span>
+        <span class="app-timer{' running' if _is_running(a) else ''}" data-elapsed="{_elapsed(a)}" data-running="{_is_running(a)}"
+          title="{'идёт обработка — ' + _fmt_elapsed(a) if _is_running(a) else 'прошло с момента приёма — ' + _fmt_elapsed(a)}">
+          {_spinner_html(a)}
+          <span class="app-timer-text">⏱ {_fmt_elapsed(a)}</span>
+        </span>
       </div>
       <div class="inbox-sub">{esc(" · ".join(subs))}{price}</div>
       {progress_html(app_id)}
@@ -87,6 +89,77 @@ def inbox_row(a) -> str:
   </div>
   {steps_html(app_id)}
 </div>"""
+
+
+def render_spinner_html(a) -> str:
+    """Колёсико-спиннер рядом с таймером: крутится только когда заявка в работе."""
+    from blocks.dashboard import page as _page
+    running = bool(_page._is_running(a))
+    if running:
+        return ('<span class="app-spinner" aria-label="идёт обработка">'
+                '<span class="app-spinner-circle"></span></span>')
+    return '<span class="app-spinner-placeholder"></span>'
+
+
+# Алиас для краткости в inbox_row
+_spinner_html = render_spinner_html
+
+
+# CSS для крупного таймера + спиннера.
+# Вставляется на страницу через _emit_timer_css() при первом рендере inbox_row.
+_TIMER_CSS = """
+<style id="wolf-timer-css">
+  .app-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    padding: 4px 10px;
+    background: #E8EEF9;
+    color: #1F3A93;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .app-timer.running {
+    background: #DBEAFE;
+    color: #1D4ED8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.15);
+  }
+  .app-timer-text { white-space: nowrap; }
+  .app-spinner {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    position: relative;
+    display: inline-block;
+  }
+  .app-spinner-circle {
+    position: absolute;
+    inset: 0;
+    border: 2.5px solid #C7D5F0;
+    border-top-color: #1D4ED8;
+    border-radius: 50%;
+    animation: wolfspin .8s linear infinite;
+  }
+  .app-spinner-placeholder {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+  }
+  @keyframes wolfspin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+"""
+
+
+def _emit_timer_css() -> str:
+    """Возвращает CSS для таймера (один раз на страницу)."""
+    return _TIMER_CSS
 
 
 def progress_html(app_id: int) -> str:

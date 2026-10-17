@@ -952,16 +952,18 @@ def docs_state(summary: dict) -> tuple:
     if summary.get("total", 0) == 0:
         return "idle", "документов пока нет"
     if summary.get("sent", 0) == summary["total"]:
-        return "ok", f'готовы {summary["sent"]}/{summary["total"]}, отправлены'
+        return "ok", f'отправлено {summary["sent"]}/{summary["total"]} на Диск'
     if summary.get("error", 0) > 0:
         return "bad", f'ошибок {summary["error"]}, готово {summary.get("verified", 0) or summary.get("filled", 0)}'
     if summary.get("verified", 0) == summary["total"]:
-        return "ok", f'проверены {summary["verified"]}/{summary["total"]}'
+        return "ok", f'проверено {summary["verified"]}/{summary["total"]} · готово к отправке'
     if summary.get("filled", 0) > 0:
         _left = max(int(summary["total"]) - int(summary["filled"]), 0)
-        _tail = (", осталось %d" % _left) if _left else ", всё заполнено"
-        return "warn", f'заполнено {summary["filled"]}/{summary["total"]}{_tail}'
-    return "idle", f'в очереди {summary["total"]}'
+        if _left:
+            # Во время работы — пишем «этап: рендер» вместо «заполнено».
+            return "warn", f'📄 рендер документов: {summary["filled"]}/{summary["total"]} · осталось {_left}'
+        return "warn", f'заполнено {summary["filled"]}/{summary["total"]}, всё заполнено'
+    return "idle", f'⏳ в очереди · документов: {summary["total"]}'
 
 
 def docs_state_html(summary: dict) -> str:
