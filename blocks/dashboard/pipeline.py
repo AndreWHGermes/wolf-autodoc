@@ -71,6 +71,26 @@ def pipeline_visual(app_id: int) -> str:
     else:
         send_state = "pending"
 
+    # Текущий шаг GDrive-отправки (send_folder / send_upload / send_upload_file /
+    # send_upload_txt). Показываем прямо на плашке, чтобы админ видел прогресс.
+    send_substep = ""
+    try:
+        from services import app_steps as _steps
+        rows = _steps.trail(app_id, limit=8)
+        for r in reversed(rows):
+            step = r.get("step") or ""
+            if step in ("send_folder", "send_upload", "send_upload_file", "send_upload_txt"):
+                notes = {
+                    "send_folder":    "📁 создаю папку заявки на Диске",
+                    "send_upload":    "📤 загружаю PDF-документы",
+                    "send_upload_file": "📎 файл «" + (r.get("note") or "")[:40] + "»",
+                    "send_upload_txt": "📝 текст заявки (Telegram)",
+                }
+                send_substep = notes.get(step, step)
+                break
+    except Exception:
+        pass
+
     palette = {
         "done":    ("✅", "#DCFCE7", "#15803D", "пройдено"),
         "active":  ("⏳", "#DBEAFE", "#1D4ED8", "в работе"),
@@ -98,7 +118,7 @@ def pipeline_visual(app_id: int) -> str:
 
     r_sub = f"{done}/{total} документов" if total else "документов пока нет"
     v_sub = f"{verified}/{total} подтверждено" + (f" · {rejected} отклонено" if rejected else "")
-    s_sub = "отправлено на Google Диск" if sent else ("ошибка отправки" if has_error and verified >= total else "ожидает согласования всех документов")
+    s_sub = send_substep or ("отправлено на Google Диск" if sent else ("ошибка отправки" if has_error and verified >= total else "ожидает согласования всех документов"))
 
     html = (
         '<div class="pipeline-visual" id="pipeline-visual" '

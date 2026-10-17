@@ -3913,6 +3913,11 @@ def app_send(app_id: int):
         # Документы уходят не в корень папки клиента, а в отдельную папку заявки:
         # «номер заявки + тип продукта + имя клиента + дата создания».
         sub_name = _ready_folder_name(app_id, a, client)
+        try:
+            from services import app_steps as _steps
+            _steps.step(app_id, "send_folder", "ok", f"создаю папку «{sub_name}»", actor=actor)
+        except Exception:
+            pass
         sub = _find_app_folder(gdrive_write, drive, sub_name, a, client, app_id) or \
               gdrive_write.ensure_folder(drive, sub_name)
         sub_id = (sub or {}).get("id") or drive
@@ -3931,12 +3936,27 @@ def app_send(app_id: int):
                     gdrive_write._get_service().files().delete(fileId=item['id']).execute()
         except Exception as _e_dedup:
             pass
+        try:
+            from services import app_steps as _steps
+            _steps.step(app_id, "send_upload", "run", f"загружаю {len(pdfs)} PDF", actor=actor)
+        except Exception:
+            pass
         for p in pdfs:
             try:
                 gdrive_write.upload_file(sub_id, p, name=p.name, overwrite=True)
                 uploaded.append(p.name)
+                try:
+                    from services import app_steps as _steps
+                    _steps.step(app_id, "send_upload_file", "ok", p.name, actor=actor)
+                except Exception:
+                    pass
             except Exception as exc:
                 errors.append(p.name + ": " + str(exc)[:120])
+                try:
+                    from services import app_steps as _steps
+                    _steps.step(app_id, "send_upload_file", "fail", str(exc)[:120], actor=actor)
+                except Exception:
+                    pass
         # Вместе с документами уходит txt с точь-в-точь текстом заявки,
         # как её прислал менеджер в Telegram (для сверки и истории).
         try:
@@ -3951,6 +3971,11 @@ def app_send(app_id: int):
                 gdrive_write.upload_bytes(sub_id, (head + rmsg + "\n").encode("utf-8"),
                                           txt_name, "text/plain", overwrite=True)
                 uploaded.append(txt_name)
+                try:
+                    from services import app_steps as _steps
+                    _steps.step(app_id, "send_upload_txt", "ok", txt_name, actor=actor)
+                except Exception:
+                    pass
         except Exception as exc:
             errors.append("request text: " + str(exc)[:120])
     except Exception as exc:
