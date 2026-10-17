@@ -1332,9 +1332,14 @@ html.is-booting body>*:not(#boot-preloader){{visibility:hidden}}
         import hashlib as _hl2
         etag = '"%s"' % _hl2.sha1(html.encode("utf-8")).hexdigest()[:20]
         resp.headers["ETag"] = etag
-        if request.headers.get("If-None-Match") == etag:
+        # /settings — живой статус LLM/Telegram, всегда свежая (no-store),
+        # чтобы кеш ETag не прятал обновления статуса подключения.
+        if request.path == "/settings":
+            resp.headers["Cache-Control"] = "no-store, must-revalidate"
+        elif request.headers.get("If-None-Match") == etag:
             return Response(status=304)
-        resp.headers["Cache-Control"] = "no-cache"
+        else:
+            resp.headers["Cache-Control"] = "no-cache"
     except Exception:
         resp.headers["Cache-Control"] = "no-store"
     return resp
