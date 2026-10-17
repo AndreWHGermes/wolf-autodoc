@@ -808,16 +808,16 @@ def app_view(app_id: int):
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
-    # Первый заход отдаём мгновенно: шапка со спиннером, блоки приезжают fetch-запросом.
+    # === BLOCK 0: ранний выход (loader frame) ===
     if not request.args.get("full"):
         return _app_loader_frame(app_id, "Заявка #" + str(app_id))
-    # вернулись из редактора документа с сохранением значений
     if request.args.get("saved"):
         flash("Значения документа сохранены — документ соберётся заново при следующем просмотре PDF", "ok")
     # Автоматический take убран — заявка остаётся "new" во входящих,
     # пока админ сам не нажмёт "Взять в работу"
     a = db.application_get(app_id)
 
+    # === BLOCK 1: загрузка контекста (клиент, документы, сводка) ===
     client = db.client_get(a["client_id"]) or {}
     client_id_for_originals = a["client_id"]
     docs = db.application_documents(app_id)
@@ -831,6 +831,8 @@ def app_view(app_id: int):
     # кнопка «Взять в работу» (старт прогона), автоцикл воркера.
     # Если нужно дозаполнить pending-документы после правки переменных —
     # жмём «↻ Пересобрать» в карточке.
+
+    # === BLOCK 2: статус, менеджер, продукт, ссылка на Drive ===
 
     status_label = {"new": ("новая", "amber"), "in_progress": ("в работе", "blue"),
                     "ready": ("готова", "ok"), "sent": ("отправлена", "ok"),
@@ -900,6 +902,7 @@ def app_view(app_id: int):
                     raw_notes.append(line)
         raw_payload_text = ""
 
+    # === BLOCK 3: банк клиента и сырой payload (как пришло в заявке) ===
     client_bank = ""
     # --- банк клиента для фильтрации банковских справок ---
     # Приоритет: карточка клиента (clients.bank_name) → raw_payload заявки.
@@ -1053,6 +1056,7 @@ def app_view(app_id: int):
     _send_missing = sorted({m for _d in docs
                             if (_d.get("status") or "") not in ("verified", "sent", "rejected")
                             for m in doc_missing_fields(app_id, _d["template_id"])})
+    # === BLOCK 5: проверка готовности отправки (согласовано N из M, нет ли незаполненных полей) ===
     _blockers = []
     if _checked < _total:
         _blockers.append("согласовано " + str(_checked) + " из " + str(_total) + " документов")
@@ -1068,6 +1072,7 @@ def app_view(app_id: int):
 
     all_products = db.q("SELECT id, code, name FROM products ORDER BY id")
     product_select = ""
+    # === BLOCK 6: селектор смены продукта и скан Google Drive ===
     if all_products:
         opts = "".join(
             '<option value="' + str(p["id"]) + '"'
@@ -1203,8 +1208,9 @@ def app_view(app_id: int):
             + '</table>'
         )
     else:
-        _raw_payload_html = '<div class="muted">Нет данных</div>' 
+        _raw_payload_html = '<div class="muted">Нет данных</div>'
 
+    # === BLOCK 4: комментарий менеджера ===
     # ── комментарий менеджера: необязательное, но важное поле (ускорение, партнёр, сроки) ──
     _comment_txt = ""
     try:
@@ -1248,6 +1254,7 @@ def app_view(app_id: int):
     body = """
 <div class="app-card-green">
 
+# === BLOCK 7: HTML-тело страницы (шапка, этапы сбора, документы, визуализатор) ===
 <div class="app-head">
   <div class="app-head-left">
     <span class="app-head-id">Заявка #""" + str(app_id) + """</span>
