@@ -1044,6 +1044,17 @@ def _fio_full_latin(client: dict, tpl_code: str = "") -> str:
     # и сам текст «… hereby informs that … {{ client_name }}». Оба получают
     # одинаковое значение, потому что подставляются из одного `vals['client_name']`.
     _fio = _translit(" ".join(parts))
+    # Этап 1 рефакторинга: правила банковских справок вынесены в
+    # services/templates/bank_statements/_common.py. Если модуль доступен —
+    # берём name_title_case оттуда (одна реализация для всех банков).
+    # Fallback на _smart_title здесь — на случай если новый модуль ещё не
+    # подключён в окружение (миграция без перезапуска).
+    if (tpl_code or "").startswith("bank_statement"):
+        try:
+            from services.templates.bank_statements._common import name_title_case
+            return name_title_case(_fio)
+        except ImportError:
+            pass
     return _smart_title(_fio)
 # Документы, где адрес по смыслу ИНДОНЕЗИЙСКИЙ: письма в иммиграцию, заявления,
 # спонсорские и адвокатские адреса. Здесь генерация запрещена — только реальный
