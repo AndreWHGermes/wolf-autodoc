@@ -326,7 +326,17 @@ with app.app_context():
 
     print()
     _stage_begin("шаг 2: проверка до подтверждения")
+    from services import app_steps as _st_check
+    try:
+        _st_check.step(APP_ID, 'pack', 'run', 'проверка пакета (check_package + Drive)…')
+    except Exception:
+        pass
     verdict, finds = check_package(APP_ID, with_drive=True)
+    try:
+        _st_check.step(APP_ID, 'pack', 'ok' if verdict.get('ok') else 'fail',
+                       'проверка: %s' % (verdict.get('summary', '—')[:160]))
+    except Exception:
+        pass
     content = [f for f in finds if f["level"] == "BLOCK"
                and not any(h in f["msg"] for h in CONFIRM_HINTS)]
     for f in finds:
@@ -337,9 +347,19 @@ with app.app_context():
 
     # Этап 2.5: дополнительные проверки (логика, визуал, состав пакета)
     _stage_begin("шаг 2.5: логика, визуал, состав пакета")
+    from services import app_steps as _st_lv
     # logical_check: даты, суммы, должности, остатки. blocks — блокирующие, warns — нет.
+    try:
+        _st_lv.step(APP_ID, 'pack', 'run', 'логическая проверка (даты/суммы/должности)…')
+    except Exception:
+        pass
     from services import logical_check as _lc
     lc_res = _lc.check_app(APP_ID, save=True)
+    try:
+        _st_lv.step(APP_ID, 'pack', 'ok' if not lc_res.get('blocks') else 'fail',
+                    'логика: блок=%d, warn=%d' % (lc_res.get('blocks', 0), lc_res.get('warns', 0)))
+    except Exception:
+        pass
     for f in (lc_res.get("finds") or []):
         if f.get("level") == "BLOCK":
             print("   [LOGIC] %s — %s" % (f.get("doc"), str(f.get("msg"))[:104]))
@@ -347,9 +367,18 @@ with app.app_context():
         _stage_fail("ЛОГИКА: %d блокирующих замечаний" % lc_res["blocks"])
     print("   логика: ок (предупреждений %s)" % lc_res.get("warns", 0))
     # final_check: визуальное оформление листа + логика
+    try:
+        _st_lv.step(APP_ID, 'pack', 'run', 'визуальная проверка (макет/метки/оверлапы)…')
+    except Exception:
+        pass
     from services import final_check as _fc
     fc_res = _fc.run(APP_ID, verbose=False)
     vis = fc_res.get("visual") or {}
+    try:
+        _st_lv.step(APP_ID, 'pack', 'ok' if vis.get('ok', True) else 'fail',
+                    'визуал: проверено %s, замечаний %s' % (vis.get('checked', 0), len(vis.get('issues', []))))
+    except Exception:
+        pass
     if vis.get("issues"):
         for i in vis["issues"]:
             print("   [VISUAL] %s — %s" % (i.get("doc", "?"),

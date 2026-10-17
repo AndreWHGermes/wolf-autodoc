@@ -46,14 +46,23 @@ def email() -> str:
 
 
 def service():
-    """Клиент Google Drive API (создаётся один раз)."""
+    """Клиент Google Drive API (создаётся один раз).
+
+    HTTP-таймаут = 30 секунд на любой запрос к Google API. Без этого
+    медленный ответ Диска замораживал админку на минуты (цикл заявки
+    124 зависал на 10+ минут на check_package(with_drive=True), ждал
+    бесконечно). 17.10.2026: Андрей потребовал видеть, что происходит,
+    а не 'тишину'.
+    """
     global _svc
     if _svc is None:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
+        from googleapiclient.http import setHttpTimeout
         creds = service_account.Credentials.from_service_account_file(
             str(KEY_FILE), scopes=SCOPES)
         _svc = build('drive', 'v3', credentials=creds, cache_discovery=False)
+        setHttpTimeout(30)   # 30 секунд на любой HTTP-запрос
     return _svc
 
 
