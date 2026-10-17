@@ -102,7 +102,59 @@ with app.app_context():
     print("=== заявка #%d: автоматический цикл ===" % APP_ID)
     _stage_begin("полный цикл")
     _db_log(APP_ID, "start", "info", "запуск автоцикла")
-    
+
+    # Этап -1: Разбор Google Drive клиента — ОБЯЗАТЕЛЬНЫЙ шаг перед всем остальным.
+    # Без данных с Диска карточка клиента пустая, в договорах и справках остаются
+    # метки «{{ }}», цикл уходит в стоп на этапе «не хватает данных». Поэтому
+    # сначала качаем и распознаём документы клиента, и только потом идём к сборке.
+    _stage_begin("этап -1: разбор Google Drive клиента")
+    _drive_ok = False
+    _drive_note = ""
+    try:
+        from services import drive as _drive
+        from core import db as _c_db
+        # Смотрим, был ли успешный разбор ранее (в течение последних 30 минут).
+        # Если был — НЕ качаем заново, чтобы не терять время на повторный разбор.
+        _recent = _c_db.q1(
+            "SELECT status, note FROM drive_scans "
+            "WHERE application_id=? AND status='ok' "
+            "ORDER BY id DESC LIMIT 1", (APP_ID,))
+        if _recent:
+            _drive_ok = True
+            _drive_note = "разбор был выполнен ранее"
+            print("   [INFO] разбор Google Drive уже выполнен — пропускаю повторное скачивание")
+        else:
+            _started = _drive.start_scan(APP_ID, _row[0] if _row else 0) if '_row' in dir() else _drive.start_scan(APP_ID, 0)
+            print("   разбор Диска: %s" % (_started.get("note") or _started))
+            if _started.get("already") and not _started.get("running"):
+                _drive_ok = True
+                _drive_note = "разбор уже идёт в фоне, дождусь"
+            else:
+                # Ждём разбора, но НЕ БОЛЬШЕ 5 минут (раньше было 8, но без блока).
+                # Если за 5 минут не разобрал — продолжаем с тем что есть (старая логика).
+                _deadline = time.time() + 5 * 60
+                while time.time() < _deadline:
+                    _st = _drive.status(APP_ID)
+                    if (_st.get("status") or "").lower() in ("ok", "fail"):
+                        _drive_ok = (_st.get("status") or "").lower() == "ok"
+                        _drive_note = "%s, разобрано %s/%s" % (
+                            _st.get("status"), _st.get("done"), _st.get("total"))
+                        break
+                    time.sleep(3)
+                else:
+                    _drive_note = "разбор не завершился за 5 мин — продолжаем без него"
+    except Exception as _e_drive:
+        _drive_note = "ошибка запуска разбора: %s" % str(_e_drive)[:120]
+    _db_log(APP_ID, "drive_read", "ok" if _drive_ok else "fail",
+            "%s: %s" % ("данные с Google Drive получены" if _drive_ok else "продолжаем без разбора",
+                        _drive_note[:200]))
+    if not _drive_ok:
+        print("   [WARN] данные с Google Drive не получены — %s" % _drive_note)
+        print("   [WARN] карточка клиента может быть пустой, документы соберутся с пропусками")
+        # Не останавливаем — продолжаем, чтобы цикл был устойчив к временным сбоям Диска.
+        # Но логируем как предупреждение, чтобы админ видел проблему.
+    _stage_end(_drive_note[:80] or "разбор завершён")
+
     # Этап 0: Легенда клиента — перед сборкой
     _stage_begin("этап 0: легенда клиента")
     client_id = 0

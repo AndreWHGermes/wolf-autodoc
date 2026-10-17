@@ -38,7 +38,9 @@ PAID_PROVIDERS = [
     ("deepseek-andreyl", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY_ANDREYL"),
     ("deepseek", "https://api.deepseek.com/v1", "deepseek-flash", "DEEPSEEK_API_KEY"),
     ("deepseek-chat", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY"),
-    ("minimax", os.environ.get("MINIMAX_BASE_URL") or "https://api.minimax.io/v1",
+    # MiniMax-M3 через китайский регион (api.minimaxi.com) — проверен живым ключом.
+    # api.minimax.io возвращает 401 для этого ключа.
+    ("minimax", os.environ.get("MINIMAX_BASE_URL") or "https://api.minimaxi.com/v1",
      "MiniMax-M3", "MINIMAX_API_KEY"),
 ]
 
