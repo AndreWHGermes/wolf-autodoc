@@ -602,8 +602,21 @@ def app_queue(app_id: int, action: str):
     if action not in ("start", "pause"):
         return jsonify({"ok": False, "error": "unknown action"}), 400
     state = _queue_set(app_id, action)
-    if action == "start" and auto_mode() == AUTO_ON:
-        _wake_worker()                                 # пошла сразу, а не через 2 минуты
+    actor = (current_user() or {}).get("login", "") or "admin"
+    if action == "start":
+        # Ручной запуск работает НЕЗАВИСИМО от auto_mode: даже при глобальной паузе
+        # администратор может явно запустить обработку. Логируем — кто нажал.
+        db.log_event("application", app_id, "queue_start",
+                     actor=actor,
+                     payload={"mode": auto_mode(), "state": state})
+        if auto_mode() == AUTO_ON:
+            _wake_worker()                                 # пошла сразу, а не через 2 минуты
+        else:
+            db.log_event("application", app_id, "queue_start_paused",
+                         actor=actor,
+                         payload={"note": "автоматика на паузе, обработка встанет в очередь"})
+    elif action == "pause":
+        db.log_event("application", app_id, "queue_pause", actor=actor, payload={"state": state})
     return jsonify({"ok": True, "state": state, "queued": state in ("queued", "running"),
                     "progress": progress_html(app_id)})
 
@@ -1075,6 +1088,39 @@ def app_view(app_id: int):
         if _send_ready else
         '<div class="send-state warn">\u26d4 Отправить нельзя: ' + "; ".join(_blockers) + '</div>'
     )
+    # === BLOCK 5a: явная кнопка «Запустить обработку» на странице заявки ===
+    # Работает даже при глобальной паузе автоматики: ручной запуск — независимый путь.
+    _qstate = _queue_state(app_id)
+    _qpos = _queue_positions().get(int(app_id)) if _qstate == "queued" else None
+    _launch_btn = ""
+    if _qstate not in ("running",):
+        if _qstate == "paused":
+            _launch_btn = (
+                '<button type="button" class="ibtn go" id="launch-btn" '
+                'data-act="start" data-app="' + str(app_id) + '" '
+                'title="Снять с паузы и поставить в очередь">▶ Возобновить обработку</button>'
+            )
+        elif _qstate == "queued":
+            _launch_btn = (
+                '<button type="button" class="ibtn pause" id="launch-btn" '
+                'data-act="pause" data-app="' + str(app_id) + '" '
+                'title="Заявка уже в очереди №' + str(_qpos or "?") + ' — можно поставить на паузу">'
+                '\u23f8 В очереди №' + str(_qpos or "?") + ' — на паузу</button>'
+            )
+        else:
+            _launch_btn = (
+                '<button type="button" class="ibtn go" id="launch-btn" '
+                'data-act="start" data-app="' + str(app_id) + '" '
+                'title="Явный запуск обработки этой заявки">\U0001f680 Запустить обработку</button>'
+            )
+    launch_panel = (
+        '<div class="launch-panel" style="margin:10px 0;display:flex;gap:8px;align-items:center;'
+        'padding:10px 12px;background:#F8FAF9;border:1px solid #DCEEE2;border-radius:8px">'
+        + _launch_btn +
+        '<span style="font-size:12px;color:#6B7C70">'
+        'Эта кнопка работает и при глобальной паузе автоматики — действие записывается в лог.'
+        '</span></div>'
+    ) if _launch_btn else ""
 
     all_products = db.q("SELECT id, code, name FROM products ORDER BY id")
     product_select = ""
@@ -1341,7 +1387,7 @@ def app_view(app_id: int):
 
 <form method="post" action="/applications/""" + str(app_id) + """/send" class="stage-block send-block">
   <div class="stage-no">6</div>
-  """ + send_state + """
+  """ + launch_panel + send_state + """
   <div class="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b>.</div>
   """ + ('' if _send_ready else '<div class="send-hint send-todo">Чтобы кнопка стала активной, у каждого документа блока 4 нажмите <b>✓ Проверен</b> (документ нужен и согласован) или <b>✕</b> (документ не нужен). Счётчик блока 6 считает и то, и другое.</div>') + """
   <button class="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
