@@ -167,3 +167,168 @@ def steps_html(app_id: int) -> str:
               + "</div>")
     return (f'<details class="stages"><summary>этапы ({len(rows)}) · сейчас: {html.escape(now["label"])}</summary>'
             f'{banner}<ol reversed>{"".join(lines)}</ol></details>')
+
+
+def auto_switch_html() -> str:
+    """Кнопки управления всей автоматикой: Старт и Пауза.
+
+    Перенесено из blocks/dashboard/page.py:343 без правок.
+    """
+    from blocks.dashboard.page import auto_mode, AUTO_ON
+    on = auto_mode() == AUTO_ON
+    return f"""
+<div class="auto-switch" id="auto-switch" data-mode="{'on' if on else 'pause'}">
+  <span class="auto-lbl">Автоматика</span>
+  <button type="button" class="asw-btn start{' active' if on else ''}" data-mode="on"
+    title="Заявки уходят в работу сразу после поступления">▶ Старт</button>
+  <button type="button" class="asw-btn stopr{' active' if not on else ''}" data-mode="pause"
+    title="Новые заявки стоят и ждут запуска">⏸ Пауза</button>
+  <span class="auto-state" id="auto-state">{'включена' if on else 'на паузе'}</span>
+</div>"""
+
+
+def _inbox_script() -> str:
+    """Кнопки главной работают без перезагрузки: страница не «моргает».
+
+    Перенесено из blocks/dashboard/page.py:357 без правок.
+    """
+    return """
+<script>
+(function () {
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body || '', credentials: 'same-origin'
+    }).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+  function applyRow(row, res) {
+    if (!row || !res || !res.ok) return;
+    row.dataset.state = res.state || '';
+    var chip = row.querySelector('.prow');
+    if (chip && res.progress) { chip.outerHTML = res.progress; }
+    var btn = row.querySelector('.ibtn.go, .ibtn.pause');
+    if (btn) {
+      if (res.queued) {
+        btn.dataset.act = 'pause'; btn.className = 'ibtn pause'; btn.textContent = '⏸ Пауза';
+      } else {
+        btn.dataset.act = 'start'; btn.className = 'ibtn go'; btn.textContent = '▶ В работу';
+      }
+    }
+  }
+  function syncRow(row, d) {
+    if (!row) return;
+    row.dataset.state = d.state || '';
+    var pr = row.querySelector('.prow');
+    if (pr && d.progress && pr.outerHTML !== d.progress) { pr.outerHTML = d.progress; }
+    var det = row.querySelector('details.stages');
+    if (d.steps) {
+      if (!det) {
+        var host = row.querySelector('.inbox-top');
+        if (host) { host.insertAdjacentHTML('afterend', d.steps); }
+      } else {
+        var open = det.open;
+        det.outerHTML = d.steps;
+        var nd = row.querySelector('details.stages');
+        if (nd) { nd.open = open; }
+      }
+    }
+    var b = row.querySelector('.ibtn.go, .ibtn.pause');
+    if (b) {
+      if (d.queued) { b.dataset.act = 'pause'; b.className = 'ibtn pause'; b.textContent = '⏸ Пауза'; }
+      else { b.dataset.act = 'start'; b.className = 'ibtn go'; b.textContent = '▶ В работу'; }
+    }
+  }
+  var _busy = false;
+  function tick() {
+    if (_busy || document.hidden) { return; }
+    _busy = true;
+    fetch('/live', {headers: {'X-Requested-With': 'fetch'}, credentials: 'same-origin'})
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) { return; }
+        (res.apps || []).forEach(function (d) {
+          syncRow(document.querySelector('.inbox-row[data-app="' + d.id + '"]'), d);
+        });
+        var shown = document.querySelectorAll('.inbox-row').length;
+        var got = (res.apps || []).length;
+        if (got > shown) {
+          var tip = document.getElementById('live-new');
+          if (!tip) {
+            tip = document.createElement('button');
+            tip.id = 'live-new'; tip.type = 'button';
+            tip.className = 'ibtn go';
+            tip.style.cssText = 'margin:6px 2px;';
+            tip.addEventListener('click', function () { location.reload(); });
+            var head = document.querySelector('.inbox-head');
+            if (head) { head.appendChild(tip); } else { document.body.prepend(tip); }
+          }
+          tip.textContent = '📥 Новая заявка (' + (got - shown) + ') — показать';
+        } else {
+          var t2 = document.getElementById('live-new');
+          if (t2) { t2.remove(); }
+        }
+        var box = document.getElementById('auto-switch');
+        if (box && res.mode) {
+          if (box.dataset.mode !== res.mode) {
+            box.dataset.mode = res.mode;
+            box.querySelectorAll('.asw-btn').forEach(function (b) {
+              b.classList.toggle('active', b.dataset.mode === res.mode);
+            });
+            var st = document.getElementById('auto-state');
+            if (st) { st.textContent = (res.mode === 'on') ? 'включена' : 'на паузе'; }
+          }
+        }
+      })
+      .catch(function () {})
+      .then(function () { _busy = false; });
+  }
+  setInterval(tick, 3000);
+  setTimeout(tick, 800);
+
+  document.addEventListener('click', function (ev) {
+    var sw = ev.target.closest ? ev.target.closest('.asw-btn') : null;
+    if (sw) {
+      ev.preventDefault();
+      var box = document.getElementById('auto-switch');
+      post('/auto/mode', 'mode=' + encodeURIComponent(sw.dataset.mode)).then(function (res) {
+        if (!res || !res.ok) { return; }
+        box.dataset.mode = res.mode;
+        box.querySelectorAll('.asw-btn').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.mode === res.mode);
+        });
+        var st = document.getElementById('auto-state');
+        if (st) { st.textContent = (res.mode === 'on') ? 'включена' : 'на паузе'; }
+      });
+      return;
+    }
+    var btn = ev.target.closest ? ev.target.closest('.ibtn') : null;
+    if (!btn) { return; }
+    ev.preventDefault();
+    ev.stopPropagation();
+    var app = btn.dataset.app, act = btn.dataset.act;
+    var row = document.querySelector('.inbox-row[data-app="' + app + '"]');
+    if (act === 'archive') {
+      post('/applications/' + app + '/archive', '').then(function (res) {
+        if (!res || !res.ok || !row) { return; }
+        row.style.opacity = '0';
+        setTimeout(function () { row.remove(); }, 220);
+      });
+      return;
+    }
+    if (act === 'restart') {
+      post('/applications/' + app + '/restart', '').then(function (res) {
+        if (!res || !res.ok || !row) { return; }
+        row.dataset.state = res.state || 'queued';
+        var pr = row.querySelector('.prow');
+        if (pr && res.progress) { pr.outerHTML = res.progress; }
+        var b = row.querySelector('.ibtn.go, .ibtn.pause');
+        if (b) { b.dataset.act = 'pause'; b.className = 'ibtn pause'; b.textContent = '⏸ Пауза'; }
+      });
+      return;
+    }
+    post('/applications/' + app + '/queue/' + act, '').then(function (res) { applyRow(row, res); });
+  }, true);
+})();
+</script>
+"""
