@@ -249,7 +249,46 @@ def _bad_date(value) -> bool:
 
 
 def apply_values(app_id: int, results: list) -> dict:
-    """Значения из документов -> карточка клиента (пустые поля) и значения документа заявки."""
+    """Значения из документов -> карточка клиента (пустые поля) и значения документа заявки.
+
+    Перед сборкой значений — фильтруем ИТК: если в папке клиента два файла ITK,
+    берём данные только из самого свежего (по дате из текста/имени). Остальные
+    ИТК не участвуют ни в карточке, ни в doc_values — администратору они
+    не нужны, а двойные записи портят сборку.
+    """
+    # 1. Из всех результатов выделяем именно ИТК
+    itks = [(i, r) for i, r in enumerate(results) if (r.get('doc_type') or '') == 'itk']
+    if len(itks) > 1:
+        def _itk_sort_key(pair):
+            _idx, r = pair
+            txt = (r.get('found') or '').lower()
+            from services.doc_read import read_text
+            # Пытаемся достать дату выпуска/срока из найденных значений
+            dates = []
+            for line in (r.get('found') or '').splitlines():
+                if '|' not in line:
+                    continue
+                parts = [x.strip() for x in line.split('|')]
+                if len(parts) < 2:
+                    continue
+                val, var = parts[0], parts[1].strip().lower()
+                if any(k in var for k in ('date', 'date_of', 'issued', 'expiry', 'expir', 'period')):
+                    from datetime import datetime
+                    for fmt in ('%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y'):
+                        try:
+                            dates.append(datetime.strptime(val, fmt))
+                            break
+                        except (ValueError, TypeError):
+                            pass
+            return (max(dates) if dates else datetime.min,
+                    (r.get('file') or ''))
+        itks.sort(key=_itk_sort_key, reverse=True)
+        # Оставляем первую (самую свежую), остальные помечаем как 'skipped_old_itk'
+        for _idx, r in itks[1:]:
+            r['_skipped'] = 'более старая ИТК (выбрана другая, более свежая)'
+        # Убираем её значения из выборки ниже — проще всего сделать копию
+        results = [r for r in results if not r.get('_skipped')]
+
     c = conn()
     a = c.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
     if not a:
@@ -376,8 +415,13 @@ def _run(c, app_id: int):
     from collections import Counter
     kinds = Counter(DOC_KIND_RU.get(r.get('doc_type') or 'other', 'Документ') for r in results)
     listing = ', '.join((f'{k} ×{v}' if v > 1 else k) for k, v in kinds.items())
+    # Если были отброшены старые ИТК — сообщаем администратору, какие именно
+    skipped = [r for r in results if r.get('_skipped')]
+    skipped_note = ''
+    if skipped:
+        skipped_note = ' Старые ИТК не участвуют в сборке: ' + ', '.join(r.get('file', '?') for r in skipped) + '.'
     note = (f'в наличии {len(docs)} документ(ов): {listing}. '
-            f'Прочитано {ok}, в карточку перенесено {res.get("applied", 0)} значений')
+            f'Прочитано {ok}, в карточку перенесено {res.get("applied", 0)} значений.' + skipped_note)
     c.execute('UPDATE drive_scans SET status=?, docs_done=?, note=? WHERE id=?',
               (status, ok, note, scan_id))
     c.commit()
