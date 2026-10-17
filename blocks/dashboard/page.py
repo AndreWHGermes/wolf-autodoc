@@ -601,7 +601,9 @@ def app_queue(app_id: int, action: str):
     """Кнопка на заявке: «в работу» или «пауза»."""
     if action not in ("start", "pause"):
         return jsonify({"ok": False, "error": "unknown action"}), 400
-    state = _queue_set(app_id, action)
+    # Используем единый фасад services.queue (вместо прямого _queue_set)
+    from services.queue import set_state as _qset, is_active_elsewhere as _ia
+    state = _qset(app_id, action)
     actor = (current_user() or {}).get("login", "") or "admin"
     if action == "start":
         # Ручной запуск работает НЕЗАВИСИМО от auto_mode: даже при глобальной паузе
@@ -617,7 +619,7 @@ def app_queue(app_id: int, action: str):
                          payload={"note": "автоматика на паузе, обработка встанет в очередь"})
     elif action == "pause":
         db.log_event("application", app_id, "queue_pause", actor=actor, payload={"state": state})
-    return jsonify({"ok": True, "state": state, "queued": state in ("queued", "running"),
+    return jsonify({"ok": True, "state": state, "queued": state in ("queued", "running") or _ia(app_id),
                     "progress": progress_html(app_id)})
 
 
