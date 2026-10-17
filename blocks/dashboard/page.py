@@ -1303,24 +1303,28 @@ def app_view(app_id: int):
                 '<span class="paper-watermark-sub">' + _wm_note + '</span></div></div>')
     _data_ready_js = "true" if _data_ready else "false"
 
+    # === BLOCK 7 prep: сборка именованных HTML-блоков верхней части страницы.
+    # Позволяет расширять страницу заявки новыми блоками в views.py без правки тела app_view.
+    _blocks_top = ""
+    try:
+        from blocks.dashboard.views import render_blocks as _render_blocks
+        _ctx = {
+            "app_id": app_id,
+            "client": client,
+            "a": a,
+            "status_label": status_label,
+            "manager_btn": manager_btn,
+            "_comment_html": _comment_html,
+        }
+        _blocks_top = _render_blocks(_ctx, "comment", "header", "intro")
+    except Exception:                                       # noqa: BLE001
+        _blocks_top = ""
+
     body = """
 <div class="app-card-green">
 
 # === BLOCK 7: HTML-тело страницы (шапка, этапы сбора, документы, визуализатор) ===
-<div class="app-head">
-  <div class="app-head-left">
-    <span class="app-head-id">Заявка #""" + str(app_id) + """</span>
-    <span class="app-head-client">· """ + (db.client_label(client) or '—') + """</span>
-    <span class="badge """ + status_label[1] + """>""" + status_label[0] + """</span>""" + kind_badge(a) + """
-  </div>
-  <div class="app-head-right">
-    <span class="from-label">👤 Откуда:</span>
-    """ + manager_btn + """
-  </div>
-</div>
-
-""" + _comment_html + """<div class="stage-title">Этапы сбора данных</div>
-
+""" + _blocks_top + """
 <div class="row two-col stage-grid">
   <div class="kv-cell stage-block">
     <div class="stage-no">1</div>
