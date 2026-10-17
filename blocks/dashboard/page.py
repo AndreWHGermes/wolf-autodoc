@@ -3822,6 +3822,11 @@ def app_send(app_id: int):
     drive = (a.get("gdrive_url") or client.get("gdrive_folder_url") or "").strip()
     db.log_event("application", app_id, "send_start",
                  actor=actor, payload={"want_json": want_json, "drive": bool(drive)})
+    # Единый импорт фасада шагов — замена 5 повторяющихся блоков from+step.
+    try:
+        from services.steps import ok as _st_ok, run as _st_run, fail as _st_fail
+    except Exception:
+        _st_ok = _st_run = _st_fail = (lambda *a, **kw: None)
 
     def _fail(msg: str):
         # Каждая ошибка отправки логируется — иначе в логе только успехи.
@@ -3883,8 +3888,7 @@ def app_send(app_id: int):
         # «номер заявки + тип продукта + имя клиента + дата создания».
         sub_name = _ready_folder_name(app_id, a, client)
         try:
-            from services import app_steps as _steps
-            _steps.step(app_id, "send_folder", "ok", f"создаю папку «{sub_name}»", actor=actor)
+            _st_ok(app_id, "send_folder", f"создаю папку «{sub_name}»", actor=actor)
         except Exception:
             pass
         sub = _find_app_folder(gdrive_write, drive, sub_name, a, client, app_id) or \
@@ -3906,8 +3910,7 @@ def app_send(app_id: int):
         except Exception as _e_dedup:
             pass
         try:
-            from services import app_steps as _steps
-            _steps.step(app_id, "send_upload", "run", f"загружаю {len(pdfs)} PDF", actor=actor)
+            _st_run(app_id, "send_upload", f"загружаю {len(pdfs)} PDF", actor=actor)
         except Exception:
             pass
         for p in pdfs:
@@ -3915,15 +3918,13 @@ def app_send(app_id: int):
                 gdrive_write.upload_file(sub_id, p, name=p.name, overwrite=True)
                 uploaded.append(p.name)
                 try:
-                    from services import app_steps as _steps
-                    _steps.step(app_id, "send_upload_file", "ok", p.name, actor=actor)
+                    _st_ok(app_id, "send_upload_file", p.name, actor=actor)
                 except Exception:
                     pass
             except Exception as exc:
                 errors.append(p.name + ": " + str(exc)[:120])
                 try:
-                    from services import app_steps as _steps
-                    _steps.step(app_id, "send_upload_file", "fail", str(exc)[:120], actor=actor)
+                    _st_fail(app_id, "send_upload_file", str(exc)[:120], actor=actor)
                 except Exception:
                     pass
         # Вместе с документами уходит txt с точь-в-точь текстом заявки,
@@ -3941,8 +3942,7 @@ def app_send(app_id: int):
                                           txt_name, "text/plain", overwrite=True)
                 uploaded.append(txt_name)
                 try:
-                    from services import app_steps as _steps
-                    _steps.step(app_id, "send_upload_txt", "ok", txt_name, actor=actor)
+                    _st_ok(app_id, "send_upload_txt", txt_name, actor=actor)
                 except Exception:
                     pass
         except Exception as exc:
