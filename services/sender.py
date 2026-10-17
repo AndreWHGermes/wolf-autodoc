@@ -269,7 +269,12 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
         for r in sendable:
             con.execute("UPDATE application_documents SET status='sent' WHERE id=? AND status IN ('filled','verified')",
                         (r['id'],))
-        con.execute("UPDATE applications SET status='sent', sent_at=datetime('now') WHERE id=?", (app_id,))
+        # Заявка → в архив (история) ТОЛЬКО при чистой отправке.
+        # Правило 17.10.2026: в архив попадают только полностью прошедшие цикл
+        # заявки без ошибок. Если документы отправлены с ошибкой или некорректно —
+        # админ достаёт вручную через app_restart.
+        con.execute("UPDATE applications SET status='sent', sent_at=datetime('now'), "
+                    "record_kind='archive' WHERE id=?", (app_id,))
         con.commit()
         con.close()
     except Exception as e:      # noqa: BLE001

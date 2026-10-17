@@ -626,15 +626,22 @@ def app_queue(app_id: int, action: str):
 @bp.route("/applications/<int:app_id>/restart", methods=["POST"])
 @login_required
 def app_restart(app_id: int):
-    """Кнопка «Прогнать ещё раз»: заявка, остановленная проверкой, идёт по кругу заново."""
-    db.exec_sql("UPDATE applications SET status='new', sent_at=NULL WHERE id=?", (app_id,))
+    """Кнопка «Прогнать ещё раз»: заявка, остановленная проверкой, идёт по кругу заново.
+
+    Также используется админом, чтобы ДОСТАТЬ заявку из архива:
+    record_kind='archive' → record_kind='inbox', статус → new, документы
+    sent → verified. Заявка снова попадает в цикл.
+    """
+    db.exec_sql("UPDATE applications SET status='new', sent_at=NULL, "
+                "record_kind='inbox' WHERE id=?", (app_id,))
     # подтверждённые документы остаются подтверждёнными, сброс — только у отправленных
     db.exec_sql("UPDATE application_documents SET status='verified' "
                 "WHERE application_id=? AND status='sent'", (app_id,))
     state = _queue_set(app_id, "start")
     if auto_mode() == AUTO_ON:
         _wake_worker()
-    db.log_event("application", app_id, "restart", payload=state)
+    db.log_event("application", app_id, "restart", actor=(current_user() or {}).get("login", "") or "admin",
+                 payload={"state": state, "from_archive": True})
     return jsonify({"ok": True, "state": state, "progress": progress_html(app_id)})
 
 
@@ -3960,7 +3967,10 @@ def app_send(app_id: int):
     for d in db.application_documents(app_id):
         if d["status"] in ("filled", "verified"):
             db.application_doc_set(d["id"], "sent")
+    # Заявка → в архив только при ЧИСТОЙ отправке (правило 17.10.2026).
+    # Если были ошибки — _fail() выше уже ушёл, мы сюда не дошли.
     db.application_set_status(app_id, "sent")
+    db.exec_sql("UPDATE applications SET record_kind='archive' WHERE id=?", (app_id,))
     # Тому, кто прислал заявку: документы готовы и лежат на Google Диске (со ссылкой).
     try:
         from services.notifier import notify as _notify
