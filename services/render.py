@@ -694,6 +694,27 @@ def render_pdf(html: str, base_dir: str | None = None, out_path: str | Path | No
     # не ходит, поэтому подставляем путь к файлам на диске
     assets = str(Path(__file__).resolve().parent.parent / 'blocks' / 'static' / 'tpl_assets') + '/'
     html = html.replace('/static/tpl_assets/', assets)
+    # резюме — потоковый документ с подложкой бланка. html_frame.build_pdf ставит
+    # CSS @page background для шаблона cv__format_*, но другие пути сборки
+    # (previews, ручной рендер из админки, авто-пересбор) вызывают render_pdf
+    # напрямую — тогда подложка теряется, и проверка качества справедливо
+    # видит «нет фона». Подмешиваем фон здесь, чтобы любой путь сборки CV
+    # давал одинаково корректный результат
+    if base_dir:
+        frame_dir = Path(base_dir) / 'frame'
+        is_cv = (frame_dir.parent.name.startswith('cv__format')
+                 or 'cv__format' in html)
+        if is_cv:
+            for bg_name in ('bg.png', 'blank.png'):
+                bg = frame_dir / bg_name
+                if bg.exists():
+                    css = ('<style>@page{background-image:url("%s");background-size:100%% 100%%;'
+                           'background-repeat:no-repeat;}</style>' % bg.name)
+                    if '</head>' in html:
+                        html = html.replace('</head>', css + '</head>', 1)
+                    else:
+                        html = css + html
+                    break
     base = str(base_dir or Path(__file__).resolve().parent.parent)
     if not base.startswith('file://'):
         base = 'file://' + str(Path(base).resolve()) + '/'

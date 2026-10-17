@@ -205,12 +205,91 @@ def progress_html(app_id: int) -> str:
     return '<div class="prow">' + "".join(parts) + '</div>'
 
 
-def steps_html(app_id: int) -> str:
-    """Этапы обработки заявки: сверху свежий этап, снизу первый; плюс текущее состояние.
+# Группы этапов + значки (логические символы, не просто цветные галочки).
+# Каждой группе — своя иконка, чтобы админ видел категорию работы.
+_STEP_GROUPS = {
+    # A. Подготовка
+    'received':      ('A', '📥'),
+    'taken':         ('A', '🚀'),
+    'product':       ('A', '🎯'),
+    'bank_choice':   ('A', '🏦'),
+    'org_assigned':  ('A', '🏢'),
+    'address_assigned': ('A', '📍'),
+    'uni_assigned':  ('A', '🎓'),
+    'docs_plan':     ('A', '📋'),
+    'read_drive':    ('A', '📂'),
+    'read_request':  ('A', '📄'),
+    # B. Работа с документами и переменными
+    'legend':        ('B', '✨'),
+    'fill':          ('B', '✍️'),
+    'visual':        ('B', '🔍'),
+    'pack':          ('B', '📦'),
+    # C. Проверки
+    'logic':         ('C', '🧪'),
+    'verify_docs':   ('C', '✅'),
+    'final':         ('C', '🏁'),
+    'read':          ('C', '👁'),
+    'route':         ('C', '🛣'),
+    # D. Отправка и архив
+    'collect':       ('D', '📤'),
+    'upload':        ('D', '☁️'),
+    'notify':        ('D', '🔔'),
+    'archive':       ('D', '🗄'),
+    'send':          ('D', '☁️'),
+    # E. Завершение
+    'done':          ('E', '🏆'),
+}
+# Сокращения для длинных меток (одна строка — без переноса)
+_STEP_SHORT = {
+    'read_drive':  'Чтение Диска',
+    'read_request':'Чтение заявки',
+    'org_assigned':'Назначение организации',
+    'address_assigned':'Назначение адреса',
+    'uni_assigned':'Назначение ВУЗа',
+    'bank_choice': 'Выбор банка',
+    'verify_docs': 'Подтверждение',
+    'final':       'Финальная проверка',
+    'route':       'Маршрутизация',
+    'docs_plan':   'Набор документов',
+    'read':        'Смысловая проверка',
+}
 
-    Перенесено из blocks/dashboard/page.py:247 без правок.
+
+def _short_label(step: str) -> str:
+    """Короткая метка этапа: до 30 символов, чтобы влезала в строку без переноса."""
+    if step in _STEP_SHORT:
+        return _STEP_SHORT[step]
+    # Иначе берём из STAGES
+    try:
+        from services import app_steps as _steps
+        full = _steps.STAGES.get(step, str(step or ""))
+    except Exception:                                  # noqa: BLE001
+        full = str(step or "")
+    # Укорачиваем — оставляем до первого ' (' или ': '
+    for sep in [' (', ': ']:
+        if sep in full:
+            full = full.split(sep, 1)[0]
+    return full[:32]
+
+
+def _llm_in_note(note: str) -> bool:
+    """Была ли в строке подсказка про LLM-вызов (BiMax, deepseek, nemotron, ответ модели)."""
+    n = (note or '').lower()
+    return any(k in n for k in ('llm', 'модел', 'reader', 'biMax', 'bimax', 'deepseek',
+                                'nemotron', 'nararouter', 'minimax'))
+
+
+def steps_html(app_id: int) -> str:
+    """Этапы обработки заявки: группы + значки + подсветка текущего, без времени.
+
+    Андрей 17.10.2026:
+    - убрать время из строк этапов
+    - длина одной строки ≤ ширины колонки
+    - логические группы (Подготовка / Документы / Проверки / Отправка / Архив)
+    - подсветить текущий этап ярче/жирнее
+    - значок рядом со строкой, если подключался LLM (BiMax / free / paid)
     """
-    from blocks.dashboard.page import now_state, _ts_fmt, _steps_label
+    from blocks.dashboard.page import now_state, _steps_label
     try:
         from services import app_steps as _steps
         rows = _steps.trail(app_id, limit=40)
@@ -218,29 +297,65 @@ def steps_html(app_id: int) -> str:
         rows = []
     now = now_state(app_id)
     if not rows:
+        if not now.get("label"):
+            return ""
         return (f'<div class="now-state {html.escape(now["tone"])}">'
-                f'<b>Сейчас: {html.escape(now["label"])}</b>'
-                + (f'<span>{html.escape(now["note"])}</span>' if now["note"] else "") + "</div>") if now.get("label") else ""
-    icon = {"ok": "✅", "warn": "⚠", "fail": "❌", "run": "⏳"}
+                f'<b>Сейчас: {html.escape(now["label"])}</b></div>')
+    # Иконка по статусу (без цвета — для совместимости с тёмной темой)
+    icon = {"ok": "✓", "warn": "!", "fail": "✗", "run": "▶", "skip": "·"}
+    # Находим самый свежий «run» — это текущий этап
+    current_idx = None
+    for i, r in enumerate(reversed(rows)):
+        if (r.get("status") or "") == "run":
+            current_idx = len(rows) - 1 - i
+            break
     lines = []
     _prev = None
-    for r in reversed(rows):
+    # rows идут DESC (свежие сверху) → для отображения переворачиваем
+    for idx, r in enumerate(reversed(rows)):
         _key = (r.get("step"), str(r.get("note") or "")[:80])
         if _key == _prev:
             continue
         _prev = _key
-        ic = icon.get(r.get("status"), "•")
-        note = html.escape(str(r.get("note") or ""))
-        lines.append(f'<li>{ic} <b>{html.escape(_steps_label(r.get("step")))}</b> '
-                     f'<span class="muted">{_ts_fmt(r.get("created_at"))}</span>'
-                     + (f' — {note}' if note else '') + '</li>')
-    banner = (f'<div class="now-state {html.escape(now["tone"])}">'
-              f'<b>Сейчас: {html.escape(now["label"])}</b>'
-              + (f'<span>{html.escape(now["note"])}</span>' if now["note"] else "")
-              + (f'<span class="muted">{html.escape(now["docs"])}</span>' if now.get("docs") else "")
-              + "</div>")
-    return (f'<details class="stages"><summary>этапы ({len(rows)}) · сейчас: {html.escape(now["label"])}</summary>'
-            f'{banner}<ol reversed>{"".join(lines)}</ol></details>')
+        step = r.get("step") or ""
+        st = r.get("status") or ""
+        ic = icon.get(st, "·")
+        group, g_icon = _STEP_GROUPS.get(step, ('?', '○'))
+        lbl = _short_label(step)
+        note = str(r.get("note") or "").strip()
+        # Если строка слишком длинная — обрезаем
+        if len(note) > 90:
+            note = note[:87] + '…'
+        is_current = (idx == current_idx)
+        cls = ['srow']
+        if is_current:
+            cls.append('srow-current')
+        if st == 'fail':
+            cls.append('srow-fail')
+        elif st == 'warn':
+            cls.append('srow-warn')
+        # Значок LLM: эта строка была про вызов модели
+        llm_mark = ' <span class="llm-mark" title="этот шаг вызвал LLM-агента">🧠</span>' if _llm_in_note(note) else ''
+        # Одна строка: группа + значок + метка + опционально примечание
+        # Если есть note — компактно в подсказку (title), а в видимой части только метка
+        line = (f'<li class="{" ".join(cls)}">'
+                f'<span class="sg sg-{group}" title="группа {group}">{group}</span>'
+                f'<span class="sicon">{g_icon}</span>'
+                f'<span class="sic">{ic}</span>'
+                f'<b class="slbl">{html.escape(lbl)}</b>{llm_mark}')
+        if note:
+            line += f'<span class="snote" title="{html.escape(note)}">· {html.escape(note[:70])}</span>'
+        line += '</li>'
+        lines.append(line)
+    banner = ''
+    if now.get("label"):
+        banner = (f'<div class="now-state {html.escape(now["tone"])}">'
+                  f'<b>Сейчас: {html.escape(now["label"])}</b>'
+                  + (f'<span>{html.escape(now["note"])}</span>' if now.get("note") else '')
+                  + (f'<span class="muted">{html.escape(now["docs"])}</span>' if now.get("docs") else '')
+                  + '</div>')
+    return (f'<details class="stages" open><summary>этапы ({len(rows)})</summary>'
+            f'{banner}<ol class="srows">{"".join(lines)}</ol></details>')
 
 
 def auto_switch_html() -> str:

@@ -73,10 +73,24 @@ def providers(include_paid: bool = True) -> list:
 
 
 def call_llm(messages: list, timeout: int = 60, json_mode: bool = True,
-             include_paid: bool = True, max_rounds: int = 1, max_tokens: int = 0) -> str:
-    """Вызов LLM по цепочке провайдеров. Бросает RuntimeError, если не ответил никто."""
+             include_paid: bool = True, only_free: bool = False,
+             only_paid: bool = False, max_rounds: int = 1,
+             max_tokens: int = 0) -> str:
+    """Вызов LLM по цепочке провайдеров. Бросает RuntimeError, если не ответил никто.
+
+    Параметры маршрутизации:
+      include_paid=True  — все провайдеры (по умолчанию)
+      only_free=True     — только бесплатные (nararouter)
+      only_paid=True     — только платные (deepseek, minimax)
+    """
     last_err = None
-    chain = providers(include_paid)
+    if only_free:
+        chain = providers(include_paid=False)
+    elif only_paid:
+        chain = [p for p in providers(include_paid=True)
+                 if 'nararouter' not in p[0].lower()]
+    else:
+        chain = providers(include_paid)
     for _round in range(max(1, max_rounds)):
         for name, base, model, key_name in chain:
             key = read_env(key_name)
@@ -115,3 +129,36 @@ def call_llm(messages: list, timeout: int = 60, json_mode: bool = True,
                     log.warning("llm: %s не сработал — %s", model, exc)
                     break
     raise RuntimeError(f"все LLM-провайдеры недоступны ({last_err})")
+
+
+def call_agent(messages_or_prompt, timeout: int = 60) -> str:
+    """Канал 3: BiMax (этот агент через Hermes).
+
+    Используется как fallback если все внешние провайдеры упали.
+    Под капотом — delegate_task на субагента с claude-haiku-5-5.
+
+    Принимает либо список сообщений (как в chat completions), либо str.
+    """
+    if isinstance(messages_or_prompt, str):
+        prompt = messages_or_prompt
+    else:
+        # Склеиваем последние сообщения в один промт
+        parts = []
+        for m in (messages_or_prompt or []):
+            role = m.get('role') or 'user'
+            content = m.get('content') or ''
+            parts.append(f"[{role}] {content}")
+        prompt = '\n\n'.join(parts)
+    try:
+        # Subprocess путь: используем ask_free.py если он есть
+        import subprocess as _sp
+        _ask = '/root/scripts/ask_free.py'
+        if not __import__('os').path.exists(_ask):
+            return ''
+        r = _sp.run(['/usr/bin/python3', _ask, prompt],
+                    capture_output=True, text=True, timeout=timeout)
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    except Exception:
+        pass
+    return ''

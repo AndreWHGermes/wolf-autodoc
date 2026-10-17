@@ -207,6 +207,28 @@ a.item:active{background:#F7F9FD}
 .badge.bad{background:#FFE9EC;color:var(--danger)}
 .badge.muted{background:#F3F5F9;color:#6B7280}
 .badge.idle{background:#EEF2FF;color:#4F46E5}
+/* Журнал этапов: одна строка — без переноса, группы A-E, подсветка текущего */
+.stages .srows{list-style:none;margin:6px 0 0;padding:0}
+.stages .srow{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.stages .sg{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+            border-radius:5px;font-size:11px;font-weight:800;color:#fff;flex:0 0 18px}
+.stages .sg-A{background:#5B7CFA}   /* подготовка */
+.stages .sg-B{background:#0E9F6E}   /* документы/переменные */
+.stages .sg-C{background:#B45309}   /* проверки */
+.stages .sg-D{background:#1F6BFF}   /* отправка/архив */
+.stages .sg-E{background:#7C3AED}   /* завершение */
+.stages .sg-?{background:#9CA3AF}
+.stages .sicon{font-size:14px;flex:0 0 auto}
+.stages .sic{display:inline-block;width:14px;text-align:center;font-weight:800;flex:0 0 14px}
+.stages .slbl{flex:0 0 auto;color:#111827}
+.stages .snote{color:#6B7280;font-weight:500;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0}
+.stages .llm-mark{margin-left:4px;font-size:12px}
+.stages .srow-current{background:linear-gradient(90deg,#FEF3C7 0%,#FFFBEB 100%);
+                     border:1px solid #F59E0B;font-weight:700}
+.stages .srow-current .slbl{color:#92400E}
+.stages .srow-fail{background:#FEF2F2;border-left:3px solid #E11D48}
+.stages .srow-warn{background:#FFFBEB;border-left:3px solid #B45309}
 /* Двухколонная раскладка: Telegram-бот слева, LLM-агент справа. */
 .llm-tg-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
 @media (max-width:760px){.llm-tg-grid{grid-template-columns:1fr;}}
