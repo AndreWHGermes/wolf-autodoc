@@ -58,8 +58,27 @@ def product_from_text(text: str):
 
 
 def _client_dir(client_id) -> Path | None:
-    for base in ('data/gdrive_cache/client_%s' % client_id,):
-        p = ROOT / base
+    """Папка документов клиента: кэш → архив выгрузок → папка из photo_path.
+
+    Раньше смотрели только кэш, и по клиентам, чьи папки скачаны в архив
+    (data/gdrive_archive/<ФИО>), приёмка честно врала: «нет паспорта и фото»,
+    хотя файлы лежат на диске. Проверка «есть ли минимум» должна видеть все
+    известные места, где система уже держит документы клиента.
+    """
+    cands = [ROOT / 'data/gdrive_cache' / ('client_%s' % client_id)]
+    try:
+        con = _con()
+        row = con.execute('SELECT full_name_latin, full_name_title, photo_path FROM clients WHERE id=?',
+                          (client_id,)).fetchone()
+    except Exception:                                              # noqa: BLE001
+        row = None
+    if row:
+        for nm in (row['full_name_latin'], row['full_name_title']):
+            if nm:
+                cands.append(ROOT / 'data/gdrive_archive' / nm)
+        if row['photo_path']:
+            cands.append(Path(row['photo_path']).parent)
+    for p in cands:
         if p.is_dir():
             return p
     return None
@@ -79,7 +98,8 @@ def client_docs_status(app_id) -> dict:
     folder = _client_dir(cid) if cid else None
     names = []
     if folder:
-        names = [f.name.lower() for f in folder.rglob('*') if f.is_file()]
+        names = [f.name.lower() for f in folder.rglob('*') if f.is_file()
+                 and 'wolf autodoc' not in f.name.lower()]
     try:
         from services import doc_overrides as do
         doc_vals = do.for_application(app_id)
@@ -100,7 +120,7 @@ def client_docs_status(app_id) -> dict:
     has_photo = bool(any(re.search(r'photo|фото|personal|foto', n) for n in names)
                      or (doc_vals.get('client_photo') or ''))
     has_bank = bool(doc_vals.get('balance_rub') or doc_vals.get('account_no')
-                    or any(re.search(r'bank|statement|выписка|справк.*банк', n) for n in names)
+                    or any(re.search(r'bank|statement|выписка|справк.*банк|остатк', n) for n in names)
                     or 'balance' in scan_text)
     has_kitas = bool(doc_vals.get('itk_no') or app['passport_expiry'] and False
                      or any(re.search(r'kitas|itk|\bkit\b|permit', n) for n in names)

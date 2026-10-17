@@ -389,6 +389,19 @@ with app.app_context():
                 print("   причина: %s" % str(_res.get("error"))[:200])
             if _res.get("link"):
                 print("   папка: %s" % _res["link"])
+            # Подробный этап загрузки: что именно легло в папку заявки и куда.
+            try:
+                _ups = _res.get("uploaded") or []
+                _msg = ("на Google Диск загружено файлов: %d" % len(_ups))
+                if _ups:
+                    _msg += " — " + "; ".join(str(x) for x in _ups[:15])
+                if _res.get("link"):
+                    _msg += " | папка: " + str(_res["link"])
+                if not _res.get("ok"):
+                    _msg = ("загрузка НЕ выполнена: %s" % str(_res.get("error") or _res.get("stops"))[:300])
+                _db_log(APP_ID, "upload", "ok" if _res.get("ok") else "fail", _msg)
+            except Exception:
+                pass
             if not _res.get("ok"):
                 # Сбой отправки не должен проходить молча: иначе система «работает», а документы
                 # сутками лежат только локально (именно так всё и было, пока доступ к Диску был

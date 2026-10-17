@@ -33,7 +33,11 @@ GARBAGE = [
     (re.compile(r"\s,|\s;|\s\.(?!\d)"), "пробел перед знаком препинания"),
     (re.compile(r",,|\.\.|\(\s*\)|\[\s*\]"), "пустая конструкция или двойной знак"),
     (re.compile(r"[А-Яа-яЁё]"), None),                    # кириллица в англоязычном документе — WARN
-    (re.compile(r"\S{28,}"), "слипшееся или неперенесённое длинное слово"),
+    # Длинная «склейка» ловится только по буквам и цифрам: строки подчёркиваний,
+    # точек и дефисов — это обычные линии для подписи и разделители в бланках
+    # банка. Раньше правило срабатывало на них («___…» = слипшееся слово) и
+    # блокировало отправку правильной справки (задача #22, 17.10.2026).
+    (re.compile(r"[^\W_]{28,}"), "слипшееся или неперенесённое длинное слово"),
 ]
 
 # Пустая подстановка: обвязка шаблона напечатана, а значение не пришло — «No. »,
@@ -253,12 +257,29 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
         try:
             out_dir = Path('/opt/wolf_v2/data/out') / str(app_id)
             if out_dir.exists():
+                # Только точное совпадение имени файла с кодом шаблона: раньше
+                # брали префикс до «__» («bank_statement»), и 12-месячная справка
+                # Сбера проверялась по файлу 3-месячной справки Т-Банка — одно и
+                # то же замечание прилетало трижды и блокировало отправку.
                 cands = [x for x in sorted(out_dir.glob('*.pdf'))
-                         if x.stat().st_size > 1000 and (d['code'] or '')[:14].split('__')[0] in x.name.lower().replace(' ', '_')]
+                         if x.stat().st_size > 1000
+                         and x.stem == (d['code'] or '')]
                 if cands:
                     p = str(max(cands, key=lambda x: x.stat().st_mtime))
         except Exception:                                             # noqa: BLE001
             p = None
+        # Карточка документа — источник истины: data/out может содержать копии
+        # прежних прогонов, из-за которых проверка ругалась на уже исправленный
+        # документ и блокировала отправку (кейс 120, 17.10.2026).
+        try:
+            _bp = d["pdf_path"]
+            if _bp:
+                _bp = Path(str(_bp)) if str(_bp).startswith("/") else ROOT / str(_bp)
+                if _bp.exists() and _bp.stat().st_size > 1000:
+                    if (not p) or _bp.stat().st_mtime >= Path(p).stat().st_mtime:
+                        p = str(_bp)
+        except Exception:
+            pass
         if not p:
             try:
                 sys.path.insert(0, str(ROOT))

@@ -170,7 +170,11 @@ def _slot_key(row: dict) -> str:
         if not src:
             continue
         if "bank" in src:
-            return "bank_statement"
+            # Период справки — часть слота. Раньше 3m и 12m сваливались в один
+            # «bank_statement», и заявка E33G (нужен период 12 месяцев) получала
+            # 3-месячную справку: проверка приёмки вечно ругалась «нет справки
+            # за 12 месяцев», а сборка считала набор готовым (задача #28/#30).
+            return "bank_statement_12m" if ("12" in src) else "bank_statement_3m"
         if "e02" in src or "statement_letter" in src:
             return "e02"             # форма клиента — свой слот, не альтернатива письму
         if "letter" in src:
@@ -187,6 +191,16 @@ def _slot_key(row: dict) -> str:
         if "photo" in src:
             return "photo"
     return slot or code
+
+
+def _bank_period_months(product_code: str) -> int:
+    """Сколько месяцев выписки требует продукт (единый источник — приёмка)."""
+    try:
+        from services.intake_gate import BANK_PERIOD
+        txt = str(BANK_PERIOD.get((product_code or "").upper(), "3 месяца"))
+        return 12 if txt.strip().startswith("12") else 3
+    except Exception:                                          # noqa: BLE001
+        return 0
 
 
 def selected(product_code: str, client_id=None) -> list:
@@ -206,24 +220,32 @@ def selected(product_code: str, client_id=None) -> list:
         by_slot[slot].append(r)
 
     out = []
+    _want_m = _bank_period_months(product_code)
     for slot in order:
         group = by_slot[slot]
         # Документ слота не требуется регламентом продукта (например договор для
         # визитной визы) — в подачу он не идёт.
         if _slot_off_by_product(product_code, slot):
             continue
+        # Справка не того периода в пакет не идёт: у E33G нужен 12 месяцев,
+        # у визитных — 3. Иначе в пакет попадала 3-месячная справка и приёмка
+        # блокировала заявку.
+        if slot.startswith("bank_statement") and _want_m:
+            if (12 if "12" in slot else 3) != _want_m:
+                continue
         pick = None
         if len(group) == 1:
             pick = group[0]
-        elif slot == "bank_statement" and bank:
+        elif slot.startswith("bank_statement") and bank:
             want = BANK_TEMPLATES.get(bank, "")
             if want:
-                pick = next((g for g in group if g["tcode"] == want), None)
+                alt = want.replace("_3m__", "_%s__" % ("12m" if "12" in slot else "3m"))
+                pick = next((g for g in group if g["tcode"] in (want, alt)), None)
             if pick is None:
                 # банк клиента не совпал ни с одним шаблоном: берём по умолчанию,
                 # чтобы справка вообще была (лучше один документ, чем ни одного)
                 pick = next((g for g in group if g.get("is_default")), None)
-        elif slot == "bank_statement" and not bank:
+        elif slot.startswith("bank_statement") and not bank:
             pick = next((g for g in group if g.get("is_default")), None)
         elif slot == "contract":
             want = (CONTRACT_BY_PRODUCT.get((product_code or "").upper(), "")
@@ -254,7 +276,7 @@ def excluded(product_code: str, client_id=None) -> list:
         if r["tcode"] in keep:
             continue
         slot = _slot_key(r)
-        if slot == "bank_statement" and bank:
+        if slot.startswith("bank_statement") and bank:
             reason = ("у клиента банк %s — справка другого банка в пакет не входит "
                       "(справка об остатке нужна одна)" % bank)
         elif slot == "contract":
@@ -270,6 +292,6 @@ def statement_template(client_id=None) -> str:
     """Какой шаблон банковской справки подаём этому клиенту (или '')."""
     for code in ("C1-EXT", "C1", "E33G-NEW", "E33G-EXT", "BRIDGING", "CONV", "D12"):
         for d in selected(code, client_id):
-            if d["slot"] == "bank_statement" and d["code"]:
+            if d["slot"].startswith("bank_statement") and d["code"]:
                 return d["code"]
     return ""

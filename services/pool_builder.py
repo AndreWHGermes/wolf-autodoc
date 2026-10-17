@@ -30,6 +30,15 @@ sys.path.insert(0, '/opt/wolf_v2')
 
 DB = Path('/opt/wolf_v2/data/wolf.db')
 CACHE = Path('/opt/wolf_v2/data/gdrive_cache')
+# Скачанные вручную/скриптами папки клиентов: тот же набор документов, но вне кэша.
+# Без этого пул по старым папкам остаётся пустым, а бланки печатаются без данных.
+ARCHIVE = Path('/opt/wolf_v2/data/gdrive_archive')
+
+# Наши же документы, отправленные клиенту обратно на Диск: читать их как источник
+# нельзя — значения из собственной справки/легенды зацикливают пул:
+# «должность» и суммы начинают приходить из документа, который мы сами и собрали.
+_GENERATED_MARKERS = ('wolf autodoc №', 'wolf autodoc ', 'wolf_autodoc',
+                      'application text (for administrator)')
 
 # типы переменных, которые нам вообще нужны (совпадает с отчётом по сканам)
 WANTED = [
@@ -341,8 +350,17 @@ def build_for_client(client_id: int, application_id: int | None = None,
         # Документы могли быть скачаны с Диска, но как источники не заведены:
         # разбор заявки кладёт файлы в кэш клиента, а пул читает client_documents.
         # Без этой связки пул остаётся пустым и бланки печатаются без данных.
-        folder = CACHE / ('client_%d' % client_id)
-        if folder.exists():
+        # Папка клиента может лежать не только в кэше, но и в архиве выгрузок
+        # (скачана скриптом/вручную) — берём первую найденную.
+        folders = [CACHE / ('client_%d' % client_id)]
+        for _nm in {main_name, (row['full_name_title'] if row else '')}:
+            if _nm:
+                folders.append(ARCHIVE / _nm)
+        folders += [p.parent for p in (Path(r['photo_path']).parent for r in conn.execute(
+            'SELECT photo_path FROM clients WHERE id=? AND photo_path IS NOT NULL', (client_id,))
+            if r['photo_path'])]
+        folder = next((p for p in folders if p.is_dir()), None)
+        if folder is not None:
             kinds = {'.pdf': 'other', '.png': 'photo', '.jpg': 'photo', '.jpeg': 'photo',
                      '.heic': 'photo', '.doc': 'other', '.docx': 'other'}
             # Фотография клиента определяется по имени файла, а не по расширению:
@@ -353,6 +371,8 @@ def build_for_client(client_id: int, application_id: int | None = None,
             for f in sorted(folder.rglob('*')):
                 if not f.is_file() or f.suffix.lower() not in kinds:
                     continue
+                if any(m in str(f).lower() for m in _GENERATED_MARKERS):
+                    continue        # наш собственный документ, не источник данных
                 _stem = f.stem.lower()
                 _kind = 'photo' if any(w in _stem for w in _photo_words) else 'other'
                 conn.execute(

@@ -113,6 +113,57 @@ TIMELINE_KEYS = {
 }
 
 
+_RU_WORDS = {
+    "ANASTASIIA": "Анастасия", "ANASTASIA": "Анастасия", "LYGINA": "Лугина",
+    "ALEKSANDRA": "Александра", "ANNA": "Анна", "MARIIA": "Мария", "MARIA": "Мария",
+    "DMITRII": "Дмитрий", "SERGEI": "Сергей", "IVAN": "Иван", "ANDREI": "Андрей",
+    "SMIRNOVA": "Смирнова", "IVANOVA": "Иванова", "PETROVA": "Петрова",
+}
+
+_RU_MAP = (
+    ("SHCH", "Щ"), ("ZH", "Ж"), ("KH", "Х"), ("TS", "Ц"), ("CH", "Ч"), ("SH", "Ш"),
+    ("YU", "Ю"), ("YA", "Я"), ("YO", "Ё"), ("YE", "Е"), ("II", "ИЙ"), ("IY", "ИЙ"),
+    ("A", "А"), ("B", "Б"), ("V", "В"), ("G", "Г"), ("D", "Д"), ("E", "Е"), ("Z", "З"),
+    ("I", "И"), ("K", "К"), ("L", "Л"), ("M", "М"), ("N", "Н"), ("O", "О"), ("P", "П"),
+    ("R", "Р"), ("S", "С"), ("T", "Т"), ("U", "У"), ("F", "Ф"), ("Y", "Ы"), ("J", "Й"),
+)
+
+
+def _ru_word(w: str) -> str:
+    """Латинское имя/фамилия → кириллица для имён файлов («LYGINA» → «Лугина»)."""
+    src = str(w or "").strip().upper()
+    if not src:
+        return ""
+    if src in _RU_WORDS:
+        return _RU_WORDS[src]
+    out, i = "", 0
+    while i < len(src):
+        for lat, cyr in _RU_MAP:
+            if src.startswith(lat, i):
+                out += cyr
+                i += len(lat)
+                break
+        else:
+            out += src[i]
+            i += 1
+    return out.capitalize()
+
+
+def _amount(v):
+    """Сумма легенды в число: «361000,00» — 361 тыс., а не 36 млн (запятая здесь десятичная)."""
+    s = str(v or "").strip().replace("\u00a0", "").replace(" ", "")
+    if not s:
+        return None
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s:
+        s = s.replace(",", ".")
+    try:
+        return float(s)
+    except Exception:                                              # noqa: BLE001
+        return None
+
+
 def _is_garbage(value: str) -> bool:
     """OCR-мусор из MRZ: 'Kkkkkkkkkkkk', '=====', пустое.
     Признак — один и тот же символ повторяется подряд 4+ раз,
@@ -385,7 +436,38 @@ def build(client_id: int, app_id: int | None = None, client: dict | None = None,
         _cl7 = {
             "id": client_id,
         }
-        _bank_amount = _v7.bank_amount_for(client_id, "bank_statement_12m__tbank")
+        _bank_amount = None
+        _tpl_bank = "bank_statement_3m__tbank"
+        try:
+            from core import db as _db7
+            _rb = _db7.q1("SELECT t.code FROM application_documents ad "
+                          "JOIN templates t ON t.id = ad.template_id "
+                          "WHERE ad.application_id=? AND t.code LIKE 'bank_statement%' "
+                          "ORDER BY ad.id DESC LIMIT 1", (app_id,)) if app_id else None
+            if _rb and _rb.get("code"):
+                _tpl_bank = _rb["code"]
+        except Exception:                                          # noqa: BLE001
+            pass
+        _bank_amount = None
+        # Цифра легенды = цифра из уже собранной справки (тождество обязательно).
+        try:
+            if app_id:
+                from core import db as _db9
+                for _r9 in _db9.q("SELECT ad.values_json FROM application_documents ad "
+                                  "JOIN templates t ON t.id = ad.template_id "
+                                  "WHERE ad.application_id=? AND t.code LIKE 'bank_statement%' "
+                                  "ORDER BY ad.id DESC", (app_id,)):
+                    try:
+                        _v9 = json.loads(_r9.get("values_json") or "{}")
+                    except Exception:                              # noqa: BLE001
+                        continue
+                    if str(_v9.get("balance_rub") or "").strip():
+                        _bank_amount = str(_v9["balance_rub"]).strip()
+                        break
+        except Exception:                                          # noqa: BLE001
+            pass
+        if not _bank_amount:
+            _bank_amount = _v7.bank_amount_for(client_id, _tpl_bank)
         if _bank_amount:
             _num7 = str(_bank_amount).replace("\xa0", "").replace(" ", "").replace(",", ".")
             try:
@@ -462,6 +544,16 @@ def build(client_id: int, app_id: int | None = None, client: dict | None = None,
             legend["provenance"].pop("%s.%s" % (layer, field), None)
 
     # документы, которые реально пойдут в иммиграцию (из набора продукта)
+    # текст заявки, как он пришёл в Telegram — часть истории заявки в легенде
+    try:
+        import sqlite3 as _sq0
+        _cn0 = _sq0.connect("/opt/wolf_v2/data/wolf.db", timeout=30)
+        _r0 = _cn0.execute("SELECT raw_message FROM applications WHERE id=?", (app_id,)).fetchone()
+        _cn0.close()
+        legend["application_text"] = str((_r0[0] if _r0 else "") or "").strip()
+    except Exception:                                              # noqa: BLE001
+        legend["application_text"] = ""
+
     legend["docs"] = _package_docs(req.get("code"), app_id, client_id)
     legend["docs_excluded"] = _package_excluded(req.get("code"), client_id)
     # Имена файлов документов пакета + реальные документы клиента (копия паспорта, фото):
@@ -530,6 +622,25 @@ def build(client_id: int, app_id: int | None = None, client: dict | None = None,
         "не подаётся.")
 
     return legend
+
+
+DOC_DESC = {
+    "bank_statement": "остаток средств на счёте и платёжеспособность клиента",
+    "cv": "образование, опыт работы и квалификация клиента",
+    "remote_work_agreement": "удалённая работа и доход по договору с работодателем",
+    "employment_contract": "трудовые отношения, должность и доход",
+    "statement_letter": "заявление клиента в иммиграционную службу",
+    "d12_cover_letter": "сопроводительное письмо к пакету документов",
+    "bridging_request_letter": "запрос на продление визы",
+    "conversion_request_letter": "запрос на смену типа визы",
+}
+
+
+def _doc_desc(code: str) -> str:
+    for key, text in DOC_DESC.items():
+        if (code or "").startswith(key):
+            return text
+    return ""
 
 
 def _package_docs(product_code: str | None, app_id: int | None,
@@ -663,7 +774,10 @@ def render(legend: dict) -> str:
     idn, home, ido, fin, work = (L.get("identity") or {}, L.get("home") or {},
                                  L.get("indonesia") or {}, L.get("finance") or {},
                                  L.get("work") or {})
-    out = ["ЛЕГЕНДА КЛИЕНТА #%s — %s" % (L.get("client_id"), L.get("product_label") or "продукт не опознан")]
+    _who = (L.get("identity") or {}).get("full_name_latin") or ""
+    out = ["ЛЕГЕНДА ЗАЯВКИ №%s%s — %s" % (L.get("app_id") or L.get("client_id"),
+                                            (" (" + _who + ")") if _who else "",
+                                            L.get("product_label") or "продукт не опознан")]
     if L.get("product_note"):
         out.append("  (%s)" % L["product_note"])
 
@@ -727,7 +841,7 @@ def render(legend: dict) -> str:
                 (" на должности %s" % work["job2_title"]) if work.get("job2_title") else ""))
         if _bal:
             try:
-                _bal_f = "{:,.0f}".format(float(str(_bal).replace(",", "").replace(" ", ""))).replace(",", " ")
+                _bal_f = "{:,.2f}".format(_amount(_bal) or 0).replace(",", " ").replace(".", ",")
             except Exception:
                 _bal_f = str(_bal)
             story.append("Деньги приходят на счёт в %s, остаток по счёту — %s руб." % (
@@ -786,7 +900,7 @@ def render(legend: dict) -> str:
     if fin.get("balance"):
         _b = str(fin["balance"])
         try:
-            _num = float(re.sub(r"[^\d.]", "", _b.replace(",", "")))
+            _num = _amount(_b) or 0.0
             _b = "{:,.2f}".format(_num).replace(",", " ").replace(".", ",")
         except Exception:                                          # noqa: BLE001
             pass
@@ -809,6 +923,13 @@ def render(legend: dict) -> str:
             out.append("  Доход: %s руб./мес, %s руб./год" % (
                 work.get("salary_month") or "—", work.get("salary_year") or "—"))
 
+    _raw = str(L.get("application_text") or "").strip()
+    if _raw:
+        out.append("ЗАЯВКА (текст, как пришла в Telegram)")
+        for _line in _raw.splitlines():
+            out.append("  %s" % _line)
+        out.append("")
+
     if L.get("timeline"):
         out.append("ХРОНОЛОГИЯ")
         for e in L["timeline"]:
@@ -830,30 +951,15 @@ def render(legend: dict) -> str:
         for _d in _docs:
             _t = _d.get("title") or _d.get("code") or ""
             _f = _files.get(_d.get("code") or "") or ""
+            _desc = _doc_desc(_d.get("code") or "")
             if _t:
-                out.append("  - %s%s" % (_t, ("\n      файл: %s" % _f) if _f else ""))
-    for _extra in (L.get("extra_docs") or []):
-        out.append("  - %s\n      файл: %s" % (_extra.get("title"), _extra.get("file")))
-    _ex = L.get("docs_excluded") or []
-    if _ex:
-        out.append("")
-        out.append("ЗАМЕНЕНО (вместо этих документов подготовлены другие)")
-        for _d in _ex:
-            _t = str(_d.get("title") or _d.get("code") or "")
-            _r = str(_d.get("reason") or "").strip()
-            if "движени" in _t.lower() or "bank" in str(_d.get("code") or "").lower():
-                out.append("  - %s — не подаётся; вместо неё в пакет идёт банковская "
-                           "справка об остатке на счёте" % _t)
-            else:
-                out.append("  - %s%s" % (_t, (" — %s" % _r) if _r else " — не подаётся"))
-
+                out.append("  - %s" % _t)
+                if _desc:
+                    out.append("      что подтверждает: %s" % _desc)
+                if _f:
+                    out.append("      файл: %s" % _f)
     if L.get("docs_note"):
             out.append("  %s" % L["docs_note"])
-
-    if L.get("docs_excluded"):
-        out.append("НЕ ПОДАЁТСЯ (выключено из пакета)")
-        for d in L["docs_excluded"]:
-            out.append("  - %s — %s" % (d.get("title") or d.get("code"), d.get("reason", "")))
 
     # Разделы «нужно уточнить у клиента» и «расхождения» в текст легенды не печатаем:
     # легенду клиент читает и запоминает, а данные и разбор остаются в системе.

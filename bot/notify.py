@@ -104,16 +104,16 @@ def notify_admins_new_app(app_id: int, manager_name: str | None = None) -> None:
             + (f"Папка клиента: {client_folder}\n" if client_folder else "")
             + f"Открыть: {BASE_URL}/applications/{a['id']}/review")
     conn = _conn()
-    rows = conn.execute(
-        "SELECT telegram_id FROM bot_managers WHERE role IN ('admin','both')").fetchall()
+    rows = [r[0] for r in conn.execute(
+        "SELECT telegram_id FROM bot_managers WHERE role IN ('admin','both')").fetchall()]
     conn.close()
     buttons = []
     if client_folder:
         buttons.append([{"text": "📂 Папка клиента", "url": client_folder}])
     buttons.append([{"text": f"📂 Открыть заявку #{a['id']}",
                      "url": f"{BASE_URL}/applications/{a['id']}/review"}])
-    for r in rows:
-        send(r["telegram_id"], text, reply_markup={"inline_keyboard": buttons})
+    for tg_id in rows:
+        send(tg_id, text, reply_markup={"inline_keyboard": buttons})
 
 
 def notify_manager_done(app_id: int, folder_link: str | None = None,

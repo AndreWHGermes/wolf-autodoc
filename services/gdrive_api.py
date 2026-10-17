@@ -73,8 +73,27 @@ def folder_id(url: str) -> str:
     return ''
 
 
+_LIST_CACHE = {}
+
+
 def list_files(folder_url: str, deep: bool = True) -> list:
-    """Файлы папки клиента: [{id, name, mime, size, path}] — с обходом подпапок."""
+    """Файлы папки клиента: [{id, name, mime, size, path}] — с обходом подпапок.
+
+    Список кэшируется на 2 минуты: страница заявки и модалка готовых документов
+    запрашивали Диск по несколько раз за открытие, из-за чего страница грузилась
+    по 15 секунд (Андрей, 17.10.2026).
+    """
+    import time as _t
+    _key = (folder_url, bool(deep))
+    _hit = _LIST_CACHE.get(_key)
+    if _hit and (_t.time() - _hit[0]) < 120:
+        return [dict(x) for x in _hit[1]]
+    _res = _list_files_uncached(folder_url, deep)
+    _LIST_CACHE[_key] = (_t.time(), [dict(x) for x in _res])
+    return _res
+
+
+def _list_files_uncached(folder_url: str, deep: bool = True) -> list:
     out = []
     svc = service()
     root = folder_id(folder_url)

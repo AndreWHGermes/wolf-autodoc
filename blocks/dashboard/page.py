@@ -6,6 +6,8 @@
 from __future__ import annotations
 from urllib.parse import quote
 import html
+
+esc = html.escape
 import re
 import subprocess
 
@@ -47,13 +49,21 @@ def _app_pdf_path(tpl: dict, values: dict, app_id: int) -> Path:
 
     Если файл с таким именем уже есть — добавляем время, чтобы не перезаписать.
     """
+    # Имя файла — по ЗАЯВКЕ: ФИО берём из её клиента, а не из values (там могло
+    # оказаться имя из образца — так появлялись файлы «KOTETS VIACHESLAV» в чужих
+    # заявках). Время в имени не добавляем: документ перезаписывается, дублей нет.
+    _v = dict(values or {})
+    try:
+        _cl = db.q1("SELECT c.surname, c.name, c.full_name_latin FROM applications a "
+                    "JOIN clients c ON c.id=a.client_id WHERE a.id=?", (app_id,)) or {}
+        _fio = " ".join(x for x in (_cl.get("surname"), _cl.get("name")) if x).strip()
+        if _fio:
+            _v["full_name_latin"] = _fio
+    except Exception:
+        pass
     base = doc_render.doc_filename((tpl or {}).get("title") or (tpl or {}).get("code") or "document",
-                                   values or {}, code=(tpl or {}).get("code"))
-    out = Path('/opt/wolf_v2/data/renders') / base
-    if out.exists():
-        stem, ext = base.rsplit(".", 1)
-        out = Path('/opt/wolf_v2/data/renders') / f"{stem} {datetime.now():%H%M%S}.{ext}"
-    return out
+                                   _v, code=(tpl or {}).get("code"))
+    return Path('/opt/wolf_v2/data/renders') / base
 
 
 def human_value(text: str) -> str:
@@ -174,30 +184,123 @@ def _is_active_elsewhere(app_id: int) -> bool:
         return False
 
 
+def now_state(app_id: int) -> dict:
+    """Что происходит с заявкой прямо сейчас — одной строкой для менеджера."""
+    try:
+        from services import app_steps as _steps
+        rows = _steps.trail(app_id, limit=12)
+    except Exception:                                  # noqa: BLE001
+        rows = []
+    last = rows[-1] if rows else {}
+    try:
+        a = db.q1("SELECT status, sent_at FROM applications WHERE id=?", (app_id,)) or {}
+    except Exception:                                  # noqa: BLE001
+        a = {}
+    try:
+        docs = db.application_doc_summary(app_id) or {}
+    except Exception:                                  # noqa: BLE001
+        docs = {}
+    verified = int(docs.get("verified") or 0) + int(docs.get("sent") or 0)
+    draft = (int(docs.get("filled") or 0) + int(docs.get("pending") or 0)
+             + int(docs.get("draft") or 0))
+    bad = int(docs.get("error") or 0) + int(docs.get("rejected") or 0)
+    total = int(docs.get("total") or 0)
+    docs_note = "документы: %d готово · %d в работе · %d отклонено" % (verified, draft, bad) if total else ""
+
+    state = _queue_state(app_id)
+    if state == "running":
+        return {"tone": "run", "label": "В работе",
+                "note": "сейчас идёт этап: %s" % (_steps_label(last.get("step")) or "—"), "docs": docs_note}
+    if state == "queued":
+        return {"tone": "wait", "label": "В очереди", "note": "ждёт запуска вместе с остальными", "docs": docs_note}
+    if a.get("sent_at") or (a.get("status") or "") == "sent":
+        return {"tone": "ok", "label": "Отправлено на Диск",
+                "note": "пакет ушёл, заявка закрыта", "docs": docs_note}
+    status = (last.get("status") or "")
+    if status in ("fail", "warn"):
+        return {"tone": "bad", "label": "Остановлена на этапе: %s" % (_steps_label(last.get("step")) or last.get("step") or "—"),
+                "note": str(last.get("note") or "").strip(), "docs": docs_note}
+    if total and verified == total:
+        return {"tone": "ok", "label": "Готова к отправке",
+                "note": "все документы проверены — нажмите отправку на Диск", "docs": docs_note}
+    # причина остановки: последнее предупреждение или ошибка в ленте
+    reason = ""
+    for r in reversed(rows):
+        if (r.get("status") or "") in ("fail", "warn") and str(r.get("note") or "").strip():
+            reason = str(r.get("note")).strip()
+            break
+    if total:
+        return {"tone": "wait", "label": "Не обрабатывается",
+                "note": ("цикл завершён, но пакет не готов — нужен повторный прогон"
+                         + (": " + reason if reason else "")), "docs": docs_note}
+    return {"tone": "wait", "label": "Ждёт обработки", "note": "цикл ещё не запускался", "docs": ""}
+
+
+def _steps_label(step) -> str:
+    try:
+        from services import app_steps as _steps
+        return _steps.STAGES.get(step, str(step or ""))
+    except Exception:                                  # noqa: BLE001
+        return str(step or "")
+
+
 def steps_html(app_id: int) -> str:
-    """Этапы обработки заявки: что сделано, что идёт, где ступор. Раскрывается по клику."""
+    """Этапы обработки заявки: сверху свежий этап, снизу первый; плюс текущее состояние."""
     try:
         from services import app_steps as _steps
         rows = _steps.trail(app_id, limit=40)
     except Exception:                                  # noqa: BLE001
         rows = []
+    now = now_state(app_id)
     if not rows:
-        return ""
+        return (f'<div class="now-state {html.escape(now["tone"])}">'
+                f'<b>Сейчас: {html.escape(now["label"])}</b>'
+                + (f'<span>{html.escape(now["note"])}</span>' if now["note"] else "") + "</div>") if now.get("label") else ""
     icon = {"ok": "✅", "warn": "⚠", "fail": "❌", "run": "⏳"}
     lines = []
-    for r in rows:
+    # Свежий этап — сверху, первый шаг — внизу: нумерация идёт от последнего к первому.
+    # Одинаковые подряд записи (например, «ждёт обработки») не дублируем — один флаг.
+    _prev = None
+    for r in reversed(rows):
+        _key = (r.get("step"), str(r.get("note") or "")[:80])
+        if _key == _prev:
+            continue
+        _prev = _key
         ic = icon.get(r.get("status"), "•")
         note = html.escape(str(r.get("note") or ""))
-        lines.append(f'<li>{ic} <b>{html.escape(str(r.get("step") or ""))}</b> '
+        lines.append(f'<li>{ic} <b>{html.escape(_steps_label(r.get("step")))}</b> '
                      f'<span class="muted">{_ts_fmt(r.get("created_at"))}</span>'
                      + (f' — {note}' if note else '') + '</li>')
-    return (f'<details class="stages"><summary>этапы ({len(rows)})</summary>'
-            f'<ol>{"".join(lines)}</ol></details>')
+    banner = (f'<div class="now-state {html.escape(now["tone"])}">'
+              f'<b>Сейчас: {html.escape(now["label"])}</b>'
+              + (f'<span>{html.escape(now["note"])}</span>' if now["note"] else "")
+              + (f'<span class="muted">{html.escape(now["docs"])}</span>' if now.get("docs") else "")
+              + "</div>")
+    return (f'<details class="stages"><summary>этапы ({len(rows)}) · сейчас: {html.escape(now["label"])}</summary>'
+            f'{banner}<ol reversed>{"".join(lines)}</ol></details>')
+
+
+def _queue_positions() -> dict:
+    """Динамическая очередь: позиция заявки = её место среди активных (queued) входящих.
+
+    Пауза исключает заявку из нумерации, следующая сразу становится №1; новая заявка
+    или снятая с паузы встаёт в конец. Считается на каждый показ, не хранится в базе.
+    """
+    try:
+        rows = db.q("""SELECT q.application_id
+                         FROM auto_queue q
+                         JOIN applications a ON a.id = q.application_id
+                        WHERE q.status='queued' AND a.status='new'
+                        ORDER BY q.id""")
+    except Exception:                                  # noqa: BLE001
+        return {}
+    return {int(r["application_id"]): i for i, r in enumerate(rows, 1)}
 
 
 def progress_html(app_id: int) -> str:
     """Ход работы заявки: очередь, обработка, ошибка, отправка на Google Диск."""
     q = _queue_state(app_id)
+    pos = _queue_positions().get(int(app_id)) if q == "queued" else None
     run = _last_run(app_id) or {}
     errs = _err_list(run)
     parts = []
@@ -207,9 +310,10 @@ def progress_html(app_id: int) -> str:
         parts.append('<span class="pchip run">⏳ обрабатывается'
                      + (f' · этап: {html.escape(step)}' if step else '') + '</span>')
     if q == "queued" and _is_active_elsewhere(app_id):
-        parts.append('<span class="pchip wait">🕓 ждёт: сейчас обрабатывается другая заявка</span>')
+        parts.append('<span class="pchip wait">🕓 очередь №%s · сейчас обрабатывается другая заявка'
+                     '</span>' % (pos or "?"))
     elif q == "queued":
-        parts.append('<span class="pchip wait">🕓 в очереди</span>')
+        parts.append('<span class="pchip wait">🕓 очередь №%s</span>' % (pos or "?"))
     elif q == "paused":
         parts.append('<span class="pchip paused">⏸ пауза</span>')
     if run.get("sent"):
@@ -248,22 +352,96 @@ def inbox_row(a) -> str:
                 '<button type="button" class="ibtn go" data-act="start"'
                 f' data-app="{app_id}" title="Поставить эту заявку в работу">▶ В работу</button>')
     price = f' · IDR {a["price_idr"]:,}' if a.get("price_idr") else ''
+    # Заявка, остановленная проверкой: даём кнопку повторного прогона по системе.
+    _errs = _err_list(_last_run(app_id) or {})
+    btn_restart = ('<button type="button" class="ibtn redo" data-act="restart"'
+                   f' data-app="{app_id}" title="Прогнать заявку заново по системе">'
+                   '🔄 Ещё раз</button>' if _errs else '')
+    # Индикатор процесса слева от кнопки: крутится, пока заявка в работе;
+    # замер на ошибке (крестик) или на завершении (галочка); часы — в очереди.
+    if state == "running":
+        _ind = ('<span class="spin" title="идёт обработка" style="display:inline-block;'
+                'width:16px;height:16px;border:2px solid #C7D2FE;border-top-color:#1F6BFF;'
+                'border-radius:50%;animation:spin 0.8s linear infinite"></span>')
+    elif _errs:
+        _ind = '<span title="остановлено по ошибке" style="font-size:15px">❌</span>'
+    elif state in ("done", "sent"):
+        _ind = '<span title="готово" style="font-size:15px">✅</span>'
+    else:
+        _ind = '<span title="в очереди" style="font-size:15px">🕓</span>'
+
     return f"""
 <div class="inbox-row" data-app="{app_id}" data-state="{esc(state)}">
   <div class="inbox-top">
     <a class="inbox-main" href="/applications/{app_id}/review">
-      <div class="inbox-title">Заявка #{app_id} · {esc(db.client_label(a))}{kind_badge(a)}</div>
+      <div class="inbox-title">Заявка #{app_id} · {esc(db.client_label(a))}{kind_badge(a)}
+        <span class="app-timer" data-elapsed="{_elapsed(a)}" data-running="{_is_running(a)}"
+          style="font-size:11.5px;font-weight:700;color:#1F3A93;background:#E8EEF9;
+          border-radius:6px;padding:1px 7px;margin-left:6px">⏱ {_fmt_elapsed(a)}</span>
+      </div>
       <div class="inbox-sub">{esc(" · ".join(subs))}{price}</div>
       {progress_html(app_id)}
-      {docs_state_html(db.application_doc_summary(app_id))}
+      {('<span class="dchip wait">📄 черновики документов собраны при приёме — проверка запустится, когда заявка дойдёт до обработки</span>') if _queue_state(app_id) == 'queued' else docs_state_html(db.application_doc_summary(app_id))}
     </a>
-    <div class="inbox-actions">{btn_main}
+    <div class="inbox-actions">{_ind}{btn_main}
+      {btn_restart}
       <button type="button" class="ibtn arch" data-act="archive" data-app="{app_id}"
         title="Убрать из входящих: заявка останется в истории">🗄 В архив</button>
     </div>
   </div>
   {steps_html(app_id)}
 </div>"""
+
+
+def _work_seconds(app_id: int) -> tuple[int, bool]:
+    """Рабочее время заявки: суммарно по прогонам обработчика.
+
+    Время в очереди НЕ считается: пока заявка ждёт, таймер стоит. Идёт только
+    тогда, когда обработчик реально её выполняет (auto_queue.status='running').
+    """
+    from datetime import datetime as _d
+    try:
+        rows = db.q("SELECT status, started_at, finished_at FROM auto_queue "
+                    "WHERE application_id=? ORDER BY id", (app_id,))
+    except Exception:                                  # noqa: BLE001
+        return 0, False
+    total, running = 0, False
+
+    def _p(v):
+        try:
+            return _d.fromisoformat(str(v).replace("Z", ""))
+        except Exception:
+            return None
+
+    for r in rows:
+        t0 = _p(r.get("started_at"))
+        if not t0:
+            continue
+        t1 = _p(r.get("finished_at"))
+        st = str(r.get("status") or "")
+        if st == "running" and not t1:
+            t1 = _d.utcnow()
+            running = True
+        elif not t1:
+            continue
+        total += max(0, int((t1 - t0).total_seconds()))
+    return total, running
+
+
+def _elapsed(a: dict) -> int:
+    return _work_seconds(int(a.get("id") or 0))[0]
+
+
+def _is_running(a: dict) -> int:
+    return 1 if _work_seconds(int(a.get("id") or 0))[1] else 0
+
+
+def _fmt_elapsed(a: dict) -> str:
+    sec = _elapsed(a)
+    m, s_ = divmod(sec, 60)
+    if m >= 60:
+        return "%d ч %d мин" % (m // 60, m % 60)
+    return ("%d мин %d с" % (m, s_)) if m else ("%d с" % s_)
 
 
 def auto_switch_html() -> str:
@@ -306,6 +484,78 @@ def _inbox_script() -> str:
       }
     }
   }
+  // Живое обновление: очередь и этапы двигаются прямо на странице, без перезагрузки.
+  function syncRow(row, d) {
+    if (!row) return;
+    row.dataset.state = d.state || '';
+    var pr = row.querySelector('.prow');
+    if (pr && d.progress && pr.outerHTML !== d.progress) { pr.outerHTML = d.progress; }
+    var det = row.querySelector('details.stages');
+    if (d.steps) {
+      if (!det) {
+        var host = row.querySelector('.inbox-top');
+        if (host) { host.insertAdjacentHTML('afterend', d.steps); }
+      } else {
+        var open = det.open;
+        det.outerHTML = d.steps;
+        var nd = row.querySelector('details.stages');
+        if (nd) { nd.open = open; }
+      }
+    }
+    var b = row.querySelector('.ibtn.go, .ibtn.pause');
+    if (b) {
+      if (d.queued) { b.dataset.act = 'pause'; b.className = 'ibtn pause'; b.textContent = '⏸ Пауза'; }
+      else { b.dataset.act = 'start'; b.className = 'ibtn go'; b.textContent = '▶ В работу'; }
+    }
+  }
+  var _busy = false;
+  function tick() {
+    if (_busy || document.hidden) { return; }
+    _busy = true;
+    fetch('/live', {headers: {'X-Requested-With': 'fetch'}, credentials: 'same-origin'})
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res || !res.ok) { return; }
+        (res.apps || []).forEach(function (d) {
+          syncRow(document.querySelector('.inbox-row[data-app="' + d.id + '"]'), d);
+        });
+        // Новая заявка пришла, пока страница открыта: предлагаем показать её, не моргая сама.
+        var shown = document.querySelectorAll('.inbox-row').length;
+        var got = (res.apps || []).length;
+        if (got > shown) {
+          var tip = document.getElementById('live-new');
+          if (!tip) {
+            tip = document.createElement('button');
+            tip.id = 'live-new'; tip.type = 'button';
+            tip.className = 'ibtn go';
+            tip.style.cssText = 'margin:6px 2px;';
+            tip.addEventListener('click', function () { location.reload(); });
+            var head = document.querySelector('.inbox-head');
+            if (head) { head.appendChild(tip); } else { document.body.prepend(tip); }
+          }
+          tip.textContent = '📥 Новая заявка (' + (got - shown) + ') — показать';
+        } else {
+          var t2 = document.getElementById('live-new');
+          if (t2) { t2.remove(); }
+        }
+        var box = document.getElementById('auto-switch');
+        if (box && res.mode) {
+          if (box.dataset.mode !== res.mode) {
+            box.dataset.mode = res.mode;
+            box.querySelectorAll('.asw-btn').forEach(function (b) {
+              b.classList.toggle('active', b.dataset.mode === res.mode);
+            });
+            var st = document.getElementById('auto-state');
+            if (st) { st.textContent = (res.mode === 'on') ? 'включена' : 'на паузе'; }
+          }
+        }
+      })
+      .catch(function () {})
+      .then(function () { _busy = false; });
+  }
+  setInterval(tick, 3000);
+  setTimeout(tick, 800);
+
   document.addEventListener('click', function (ev) {
     var sw = ev.target.closest ? ev.target.closest('.asw-btn') : null;
     if (sw) {
@@ -336,6 +586,17 @@ def _inbox_script() -> str:
       });
       return;
     }
+    if (act === 'restart') {
+      post('/applications/' + app + '/restart', '').then(function (res) {
+        if (!res || !res.ok || !row) { return; }
+        row.dataset.state = res.state || 'queued';
+        var pr = row.querySelector('.prow');
+        if (pr && res.progress) { pr.outerHTML = res.progress; }
+        var b = row.querySelector('.ibtn.go, .ibtn.pause');
+        if (b) { b.dataset.act = 'pause'; b.className = 'ibtn pause'; b.textContent = '⏸ Пауза'; }
+      });
+      return;
+    }
     post('/applications/' + app + '/queue/' + act, '').then(function (res) { applyRow(row, res); });
   }, true);
 })();
@@ -350,6 +611,33 @@ def page():
     # Архивные заявки в «Входящих» не показываем — они уехали в историю.
     new_apps = [a for a in db.application_list("new")
                 if (a.get("record_kind") or "") != "archive"]
+    # Порядок в «Входящих»: сверху та заявка, с которой СЕЙЧАС идёт работа,
+    # под ней — очередь по порядку (№1, №2…), ниже — остальные (пауза/ошибка),
+    # старые выше новых. Отработала верхняя и ушла — список сдвигается вверх.
+    try:
+        _q_rows = db.q("SELECT application_id, status, id FROM auto_queue ORDER BY id")
+        _q_state = {}
+        for _r in _q_rows:                      # последняя запись по заявке — актуальна
+            _q_state[int(_r["application_id"])] = str(_r["status"] or "")
+        _q_order = {}
+        _n = 0
+        for _r in _q_rows:
+            if str(_r["status"] or "") == "queued":
+                _n += 1
+                _q_order[int(_r["application_id"])] = _n
+
+        def _rank(a):
+            _id = int(a.get("id") or 0)
+            _st = _q_state.get(_id, "")
+            if _st == "running":
+                return (0, 0, _id)
+            if _st == "queued":
+                return (1, _q_order.get(_id, 999), _id)
+            return (2, 0, _id)
+
+        new_apps.sort(key=_rank)
+    except Exception:                                  # noqa: BLE001
+        pass
 
     def _fmt_time(ts):
         if not ts:
@@ -392,7 +680,88 @@ def page():
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
 {_inbox_script()}
 """
+    known_ids = [a["id"] for a in new_apps]
+    live_js = """
+<div id="newapp-toast" style="display:none;position:fixed;left:50%;transform:translateX(-50%);
+     top:14px;z-index:9998;background:#0E9F6E;color:#fff;border-radius:12px;padding:11px 16px;
+     font-weight:600;box-shadow:0 12px 30px rgba(14,159,110,.35);font-size:14px"></div>
+<script>
+(function(){
+  var KNOWN = __KNOWN__;
+  var busy = false;
+  function show(list){
+    var t = document.getElementById('newapp-toast');
+    var a = list[0];
+    t.style.display = 'block';
+    t.innerHTML = '🔔 Новая заявка #' + a.id + ' · ' + a.client + ' · ' + a.product;
+    setTimeout(function(){ location.reload(); }, 2200);
+  }
+  function check(){
+    if (busy) return; busy = true;
+    fetch('/api/inbox-ids', {headers: {'X-Requested-With': 'fetch'}, credentials: 'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        busy = false;
+        var fresh = (d.items || []).filter(function(x){ return KNOWN.indexOf(x.id) < 0; });
+        if (fresh.length) { show(fresh); return; }
+        // заявка ушла из «новых» (взята в работу) — тоже обновим список
+        if ((d.ids || []).length !== KNOWN.length) { location.reload(); }
+      })
+      .catch(function(){ busy = false; });
+  }
+  function fmt(sec){
+    var m = Math.floor(sec / 60), s2 = sec % 60;
+    if (m >= 60) { var h = Math.floor(m / 60); return '⏱ ' + h + ' ч ' + (m % 60) + ' мин'; }
+    return m ? ('⏱ ' + m + ' мин ' + s2 + ' с') : ('⏱ ' + s2 + ' с');
+  }
+  setInterval(function(){
+    document.querySelectorAll('.app-timer').forEach(function(el){
+      if (el.dataset.running !== '1') return;
+      el.dataset.elapsed = String(parseInt(el.dataset.elapsed || '0', 10) + 1);
+      el.textContent = fmt(parseInt(el.dataset.elapsed, 10));
+    });
+  }, 1000);
+  setInterval(check, 5000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) check(); });
+})();
+</script>
+""".replace("__KNOWN__", str(known_ids))
+    body = body + live_js
     return render("Главная", "dashboard", body, topbar=topbar)
+
+
+@bp.route("/api/inbox-ids")
+@login_required
+def api_inbox_ids():
+    """Список новых заявок для автообновления главной страницы (без перезагрузки)."""
+    rows = [a for a in db.application_list("new")
+            if (a.get("record_kind") or "") != "archive"]
+    data = [{"id": a["id"],
+             "client": " ".join(x for x in (a.get("surname"), a.get("name")) if x) or "—",
+             "product": a.get("product_name") or "—",
+             "mgr": a.get("manager_name") or a.get("manager_username") or "",
+             "time": (a.get("created_at") or "")[:16]} for a in rows]
+    return jsonify({"ids": [d["id"] for d in data], "items": data, "count": len(data)})
+
+
+@bp.route("/live")
+@login_required
+def live_state():
+    """Живое состояние входящих: этапы и очередь обновляются без перезагрузки страницы."""
+    rows = [a for a in db.application_list("new")
+            if (a.get("record_kind") or "") != "archive"]
+    apps = []
+    for a in rows:
+        aid = a["id"]
+        st = _queue_state(aid)
+        apps.append({
+            "id": aid,
+            "state": st,
+            "progress": progress_html(aid),
+            "steps": steps_html(aid),
+            "queued": st in ("queued", "running"),
+        })
+    return jsonify({"ok": True, "mode": auto_mode(), "apps": apps})
 
 
 @bp.route("/applications/<int:app_id>/take", methods=["POST"])
@@ -416,6 +785,8 @@ def auto_mode_set():
     """Кнопка «Старт/Пауза» на главной: включает и выключает автоматику."""
     want = AUTO_ON if (request.form.get("mode") or "").strip() == AUTO_ON else AUTO_PAUSE
     db.set_setting("auto_mode", want)
+    if want == AUTO_ON:
+        _wake_worker()                      # «Старт» сразу запускает очередь, без ожидания крона
     db.log_event("system", 0, "auto_mode", payload=want,
                  actor=(current_user() or {}).get("login", ""))
     return jsonify({"ok": True, "mode": want})
@@ -432,15 +803,42 @@ def _queue_ensure() -> None:
 
 
 def _queue_set(app_id: int, action: str) -> str:
-    """Поставить заявку в работу или остановить её."""
+    """Поставить заявку в работу или остановить её.
+
+    «В работу» — заявка встаёт В КОНЕЦ очереди: прежняя строка закрывается, создаётся
+    новая, поэтому номер очереди у остальных пересчитывается (динамическая очередь).
+    «Пауза» — заявка выходит из нумерации, следующая сразу становится первой.
+    """
     _queue_ensure()
-    state = "queued" if action == "start" else "paused"
-    row = db.q1("SELECT id FROM auto_queue WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
-    if row:
-        db.exec_sql("UPDATE auto_queue SET status=?, last_error=NULL WHERE id=?", (state, row["id"]))
+    if action == "start":
+        db.exec_sql("UPDATE auto_queue SET status='closed' WHERE application_id=? "
+                    "AND status IN ('queued','paused','failed','done','closed')", (app_id,))
+        db.exec_sql("INSERT INTO auto_queue (application_id, status) VALUES (?, 'queued')", (app_id,))
+        state = "queued"
     else:
-        db.exec_sql("INSERT INTO auto_queue (application_id, status) VALUES (?,?)", (app_id, state))
+        state = "paused"
+        row = db.q1("SELECT id FROM auto_queue WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+        if row:
+            db.exec_sql("UPDATE auto_queue SET status=?, last_error=NULL WHERE id=?", (state, row["id"]))
+        else:
+            db.exec_sql("INSERT INTO auto_queue (application_id, status) VALUES (?,?)", (app_id, state))
+    db.log_event("application", app_id, "queue_" + action, payload=state)
     return state
+
+
+def _wake_worker() -> None:
+    """Разбудить очередь сразу после нажатия «Старт»/«В работу», не ожидая тика крона."""
+    try:
+        import subprocess
+        import sys
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[2]
+        subprocess.Popen([sys.executable or "/usr/bin/python3",
+                          str(root / "scripts" / "auto_queue.py"), "worker"],
+                         cwd=str(root), stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+    except Exception:                                  # noqa: BLE001
+        pass
 
 
 @bp.route("/applications/<int:app_id>/queue/<action>", methods=["POST"])
@@ -450,10 +848,25 @@ def app_queue(app_id: int, action: str):
     if action not in ("start", "pause"):
         return jsonify({"ok": False, "error": "unknown action"}), 400
     state = _queue_set(app_id, action)
-    db.log_event("application", app_id, "queue_" + action,
-                 actor=(current_user() or {}).get("login", ""))
+    if action == "start" and auto_mode() == AUTO_ON:
+        _wake_worker()                                 # пошла сразу, а не через 2 минуты
     return jsonify({"ok": True, "state": state, "queued": state in ("queued", "running"),
                     "progress": progress_html(app_id)})
+
+
+@bp.route("/applications/<int:app_id>/restart", methods=["POST"])
+@login_required
+def app_restart(app_id: int):
+    """Кнопка «Прогнать ещё раз»: заявка, остановленная проверкой, идёт по кругу заново."""
+    db.exec_sql("UPDATE applications SET status='new', sent_at=NULL WHERE id=?", (app_id,))
+    # подтверждённые документы остаются подтверждёнными, сброс — только у отправленных
+    db.exec_sql("UPDATE application_documents SET status='verified' "
+                "WHERE application_id=? AND status='sent'", (app_id,))
+    state = _queue_set(app_id, "start")
+    if auto_mode() == AUTO_ON:
+        _wake_worker()
+    db.log_event("application", app_id, "restart", payload=state)
+    return jsonify({"ok": True, "state": state, "progress": progress_html(app_id)})
 
 
 @bp.route("/applications/<int:app_id>/archive", methods=["POST"])
@@ -599,7 +1012,8 @@ def _app_loader_frame(app_id: int, title: str):
     <span style="font-size:15px"><b>Заявка #__APPID__</b> — загружаю блоки…<br>
       <span style="font-size:12.5px;color:#6B7C70">Собираю данные заявки, документы и предпросмотр</span></span>
   </div>
-  <style>@keyframes wolfflip{to{transform:rotate(360deg)}}</style>
+  <style>
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes wolfflip{to{transform:rotate(360deg)}}</style>
 </div>
 <script>
 (function(){
@@ -655,17 +1069,14 @@ def app_view(app_id: int):
     docs = db.application_documents(app_id)
     summary = db.application_documents_summary(app_id) if hasattr(db, 'application_documents_summary') else None
 
-    # === АВТО-ГЕНЕРАЦИЯ PDF для всех pending-документов этой заявки ===
-    # Срабатывает один раз: если у документа status='pending' и нет PDF — генерируем сразу
-    # Авто-сборка PDF идёт В ФОНЕ: раньше она выполнялась прямо здесь,
-    # последовательно по каждому документу, и открытие карточки ждало
-    # 9-40 секунд. Теперь страница отвечает сразу, документы доводятся
-    # отдельным потоком теми же значениями, что и в редакторе.
-    try:
-        from services.autofill import build_pending_async as _build_async
-        _build_async(app_id)
-    except Exception as _exc:
-        current_app.logger.warning("авто-сборка не запущена для заявки %s: %s", app_id, _exc)
+    # АВТО-ГЕНЕРАЦИЯ PDF на заходе админа ОТКЛЮЧЕНА.
+    # Каждый визит на /applications/<id>/view запускал build_pending_async,
+    # что пересобирало все pending-документы в фоне и порождало расхождение
+    # «комплект на Диске старше рендеров на N минут»: out/ собирает только воркер.
+    # Сборка теперь идёт ТОЛЬКО из трёх мест: кнопка «↻ Пересобрать» админа,
+    # кнопка «Взять в работу» (старт прогона), автоцикл воркера.
+    # Если нужно дозаполнить pending-документы после правки переменных —
+    # жмём «↻ Пересобрать» в карточке.
 
     status_label = {"new": ("новая", "amber"), "in_progress": ("в работе", "blue"),
                     "ready": ("готова", "ok"), "sent": ("отправлена", "ok"),
@@ -3032,7 +3443,14 @@ def app_doc_edit(app_id: int, template_id: int):
         # обновим/создадим application_document
         ad = db.q1("SELECT id FROM application_documents WHERE application_id=? AND template_id=?",
                    (app_id, template_id))
-        new_status = "verified" if action == "verify" else "filled"
+        _prev_st = (db.q1("SELECT status FROM application_documents WHERE application_id=? AND template_id=?",
+                          (app_id, template_id)) or {}).get("status")
+        if action == "verify":
+            new_status = "verified"
+        elif (_prev_st or "") in ("verified", "sent"):
+            new_status = _prev_st          # уже проверен — пересборка галочку не снимает
+        else:
+            new_status = "filled"
         if ad:
             db.application_doc_set(ad["id"], new_status,
                                    values_json=json.dumps(values, ensure_ascii=False),

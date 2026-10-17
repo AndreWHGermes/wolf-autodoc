@@ -177,7 +177,8 @@ def _default_org(app_id=None) -> str:
 
 
 def build(cv_vars: list, profession: str = '', sector: str = '',
-          org_name: str = '', app_id=None, signed: dt.date | None = None) -> dict:
+          org_name: str = '', app_id=None, signed: dt.date | None = None,
+          city: str = '') -> dict:
     """Собрать значения для переменных резюме, которых нет в данных клиента.
 
     Возвращает {переменная: значение}; каждая подставляется со статусом
@@ -230,7 +231,14 @@ def build(cv_vars: list, profession: str = '', sector: str = '',
     if 'cv_education_degree' in want:
         out['cv_education_degree'] = pack['degree']
     if 'cv_education_school' in want:
-        out['cv_education_school'] = pack['school']
+        school = ''
+        try:
+            from services import pool_uni
+            uni = pool_uni.pick(sector, city) or {}
+            school = uni.get('name_en') or ''
+        except Exception:                                             # noqa: BLE001
+            school = ''
+        out['cv_education_school'] = school or pack['school']
     if 'cv_education_years' in want:
         out['cv_education_years'] = '%d — %d' % (signed.year - 15, signed.year - 11)
     if 'cv_languages' in want:

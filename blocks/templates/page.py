@@ -1180,7 +1180,21 @@ _LANG_JS = """<script>
     if(pl) pl.classList.add('is-loading','is-collapsing');
     varsPanel.classList.add('is-swapping');
     var foldDone=new Promise(function(res){ setTimeout(res, 620); });
-    Promise.all([fetch(url,{credentials:'same-origin'}).then(function(r){ return r.text(); }), foldDone])
+    Promise.all([fetch(url,{credentials:'same-origin'}).then(function(r){
+        /* Ошибку сборки документа показываем словами: раньше страница молча
+           возвращала прежний документ, и переключение выглядело «не работает»
+           (Андрей, 17.10.2026). */
+        if(!r.ok){ throw new Error('документ не собрался ('+r.status+')'); }
+        return r.text();
+      }).catch(function(err){
+        var host=document.querySelector('#html-stage');
+        if(host){ host.innerHTML='<div style="padding:24px;color:#B91C1C;font:600 13px Arial">'
+            + 'Не удалось открыть документ: ' + (err && err.message ? err.message : err) + '</div>'; }
+        if(pl) pl.classList.remove('is-loading','is-collapsing');
+        varsPanel.classList.remove('is-swapping');
+        busy=false;
+        return '';
+      }), foldDone])
       .then(function(res){ return res[0]; })
       .then(function(h){
       var doc=new DOMParser().parseFromString(h,'text/html');
@@ -2501,7 +2515,8 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
             '<script>(function(){'
             'var fr=document.getElementById("word-preview-frame");if(!fr)return;var tm=null;'
             'function url(){var q=[];document.querySelectorAll("input[data-var]").forEach(function(i){'
-            'q.push(encodeURIComponent(i.dataset.var)+"="+encodeURIComponent(i.value||""));});'
+            'if(!(i.value||"").trim())return;'
+            'q.push(encodeURIComponent(i.dataset.var)+"="+encodeURIComponent(i.value));});'
             'return "/templates/%d/word_preview?"+q.join("&");}'
             'function reload(){fr.src=url();}'
             'document.addEventListener("input",function(e){'
@@ -3415,8 +3430,11 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
 
     # Вкладка «Word»: DOCX-страница + span-ы переменных (тот же механизм, что у банковских справок)
     if str((t or {}).get("engine") or "").lower() == "word":
+        _pdf_html = _pdf_layer_html(template_id, app_id)
         _word_view = ('<div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage" style="background:#E7EBEE">'
-                      + _word_layer_html(template_id, t["code"], variables) + '</div></div>')
+                      + (_pdf_html if _pdf_html else
+                         _word_layer_html(template_id, t["code"], variables, app_id=app_id))
+                      + '</div></div>')
     else:
         _word_view = ('<div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage">' + html_render + '</div></div>')
 
@@ -5454,7 +5472,59 @@ def tpl_cv_remember(template_id: int):
     return jsonify({"ok": True, "en": en, "ru": ru, "value": en})
 
 
-def _word_layer_html(template_id: int, code: str, variables) -> str:
+def _pdf_layer_html(template_id: int, app_id) -> str:
+    """Страницы собранного PDF картинками — визор показывает ровно то, что в PDF.
+
+    Подложка со span-ами расходилась с бумагой: значения уезжали за край листа,
+    на больших документах ломалась прокрутка (Андрей, 17.10.2026). PDF-страницы
+    масштабируются как обычная картинка и всегда совпадают с файлом.
+    """
+    if not app_id:
+        return ""
+    try:
+        import base64 as _b64
+        import pymupdf
+        from core import db as _dbp
+        row = _dbp.q1("""SELECT ad.pdf_path FROM application_documents ad
+                          WHERE ad.application_id=? AND ad.template_id=?""",
+                      (app_id, template_id))
+        path = (row or {}).get("pdf_path") or ""
+        if not path:
+            return ""
+        doc = pymupdf.open(path)
+        out = []
+        for i, pg in enumerate(doc):
+            if i > 8:
+                break
+            png = pg.get_pixmap(dpi=150, alpha=False).tobytes("png")
+            b64 = _b64.b64encode(png).decode("ascii")
+            out.append('<div class="wl-page" style="position:relative;width:820px;max-width:100%;'
+                       'margin:0 auto 14px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)">'
+                       '<img src="data:image/png;base64,%s" style="width:100%%;display:block" alt=""></div>'
+                       % b64)
+        return "".join(out)
+    except Exception:
+        return ""
+
+
+def _word_layer_html(template_id: int, code: str, variables, app_id=None) -> str:
+    """Подложка Word-шаблона со значениями заявки.
+
+    Раньше здесь всегда печатался текст «пример значения «имя»», поэтому в визоре
+    карточки был бланк без данных, хотя в блоке переменных значения уже стояли
+    (Андрей, 17.10.2026).
+    """
+    _vals = {}
+    if app_id:
+        try:
+            from core import db as _dbv
+            from services import values as _vv
+            _a = _dbv.q1("SELECT client_id FROM applications WHERE id=?", (app_id,))
+            _c = dict(_dbv.q1("SELECT * FROM clients WHERE id=?", (_a["client_id"],))) if _a else {}
+            _vals = _vv.build_template_values(_c, code, {}, app_id=app_id) or {}
+        except Exception:
+            _vals = {}
+
     """Вкладка «Word» — тот же механизм связки, что у банковских справок.
 
     Фон — страница DOCX без маркеров (из PDF). Поверх — span.var-hl[data-var] на координатах
@@ -5503,7 +5573,9 @@ def _word_layer_html(template_id: int, code: str, variables) -> str:
         spans = []
         for r in pg["rects"]:
             n = r["name"]
-            ph = "пример значения «%s»" % n
+            _val = _vals.get(n) if isinstance(_vals, dict) else None
+            _val = "" if _val is None else str(_val).strip()
+            ph = _val if _val else ("пример значения «%s»" % n)
             left = r["x0"] / W * 100; top = r["y0"] / H * 100
             fs = max(r["y1"] - r["y0"], 1) / 1.2 / W * 100
             spans.append(
@@ -5540,7 +5612,10 @@ def word_preview(template_id: int):
         ex = {}
     vals = {}
     for k in names:
-        vals[k] = request.args.get(k) if k in request.args else str(ex.get(k, "") or "")
+        # Пустое поле правой панели — это «значение не задано», а не приказ стереть
+        # значение примера: иначе предпросмотр Word всегда открывался пустым бланком.
+        arg = request.args.get(k)
+        vals[k] = arg if (arg is not None and arg.strip()) else str(ex.get(k, "") or "")
     key = hashlib.sha256(json.dumps(vals, sort_keys=True, ensure_ascii=False).encode("utf8")).hexdigest()[:20]
     out = Path(f"/opt/wolf_v2/data/cache/word_preview/{code}/{key}")
     out.mkdir(parents=True, exist_ok=True)
@@ -5758,15 +5833,31 @@ def htmlview(template_id: int):
     Отдаём серверный рендер (тот же движок, что печатает PDF), поэтому переносы, кегль и
     позиции совпадают с бумагой: в визоре не может быть наложений и «уползания» за край.
     """
-    t = db.q1("SELECT id, code FROM templates WHERE id=?", (template_id,))
+    t = db.q1("SELECT id, code, engine FROM templates WHERE id=?", (template_id,))
     if not t:
         abort(404)
     app_id = request.args.get("app", type=int)
     code = t["code"]
     from services import html_frame
-    if not html_frame.available(code):
-        abort(404)
-    vals = html_frame.values_with_frames(code, {}, app_id)
+    # Документы на Word-движке (резюме, договоры) собираются из template.html
+    # со значениями заявки: каркас с подложкой к ним не относится, и раньше визор
+    # показывал пустой бланк без данных (Андрей, 17.10.2026).
+    _use_frame = html_frame.available(code) and str(t.get("engine") or "html") != "word"
+    if _use_frame:
+        vals = html_frame.values_with_frames(code, {}, app_id)
+    else:
+        # Каркаса с паспортом качества нет — собираем HTML прямо из template.html
+        # со значениями заявки. Иначе правая панель сравнения отдавала 404 и окно
+        # «Сравнить» не работало ни по одному документу (кейс 120, 17.10.2026).
+        vals = {}
+        try:
+            from services import values as _vals_mod
+            from core import db as _dbq
+            _app = _dbq.q1("SELECT client_id FROM applications WHERE id=?", (app_id,)) if app_id else None
+            _cl = dict(_dbq.q1("SELECT * FROM clients WHERE id=?", (_app["client_id"],))) if _app else {}
+            vals = _vals_mod.build_template_values(_cl, code, {}, app_id=app_id) or {}
+        except Exception:
+            vals = {}
     # Значения приводим ТЕМ ЖЕ нормализатором, что печатает PDF (services.render.normalize):
     # иначе в HTML-вкладке сумма прописью, скобки и формат суммы отличаются от того, что
     # видно в сравнении и на бумаге (Андрей, 16.10.2026: «в сравнении правильно, в HTML — нет»).
@@ -5992,6 +6083,15 @@ def pdfview(template_id):
         if not _cid and kind[6:].isdigit():
             _cid = int(kind[6:])
         src = _client_original_path(code, _cid) or ""
+        if not src:
+            # Оригинала клиента нет — слева показываем эталон шаблона (тот документ,
+            # по которому он сделан). Без этого левая панель пустая и сравнение
+            # бесполезно (Андрей, 17.10.2026).
+            for _cand in (Path('/opt/wolf_v2/data/templates') / code / 'example_filled.pdf',
+                          Path('/opt/wolf_v2/data/originals') / (code + '.pdf')):
+                if _cand.exists():
+                    src = str(_cand)
+                    break
         names = {}
     elif kind.startswith("ours"):
         # Наша сборка: документ, который система сделала по заявке (для сравнения с оригиналом).

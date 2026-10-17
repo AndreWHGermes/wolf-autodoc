@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 import json
 import pathlib
 
@@ -50,10 +51,40 @@ def in_range(annual) -> bool:
 
 def pick(app_id=None, client_id=None) -> dict:
     """Пара сумм для заявки/клиента: одна и та же при каждой сборке."""
+    # Клиент важнее заявки: если пришёл только app_id — достаём клиента,
+    # иначе оклад считается по другому ключу и документы расходятся (560 vs 525).
+    if not client_id and app_id:
+        try:
+            import sqlite3 as _sq
+            _c = _sq.connect(str(Path(__file__).resolve().parent.parent / 'data' / 'wolf.db'), timeout=15)
+            _r = _c.execute("SELECT client_id FROM applications WHERE id=?", (int(app_id),)).fetchone()
+            _c.close()
+            client_id = _r[0] if _r else None
+        except Exception:
+            client_id = None
+    # Легенда клиента — источник истины: если в ней уже записан оклад,
+    # его и берём, чтобы документы и легенда не расходились.
+    try:
+        import json as _json
+        _lp = Path(__file__).resolve().parent.parent / 'data' / 'legends' / ('client_%s.json' % client_id)
+        if client_id and _lp.exists():
+            _lg = _json.loads(_lp.read_text(encoding='utf-8'))
+            for _src in (_lg.get('finance') or {}, _lg):
+                _mo = _src.get('salary_rub') or _src.get('salary') or _src.get('monthly_salary')
+                _yr = _src.get('annual_income') or _src.get('annual_salary') or _src.get('income')
+                if _mo:
+                    _mo = int(str(_mo).replace(' ', '').split(',')[0] or 0)
+                    _yr = int(str(_yr).replace(' ', '').split(',')[0]) if _yr else _mo * 12
+                    if _mo:
+                        return {'annual': _yr or _mo * 12, 'monthly': _mo, 'source': 'легенда клиента'}
+    except Exception:
+        pass
     rows = load()
     if not rows:
         return {}
-    key = '%s|%s' % (client_id or '', app_id or '')
+    # Оклад — свойство КЛИЕНТА, а не заявки: ключ только по client_id.
+    # Иначе договор и контракт одной заявки получали разные суммы (535 vs 555).
+    key = str(client_id or app_id or '')
     h = int(hashlib.md5(('salary|' + key).encode('utf-8')).hexdigest(), 16)
     return rows[h % len(rows)]
 

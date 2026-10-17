@@ -114,6 +114,17 @@ def _template_titles() -> dict:
 
 def build_pool(app_id: int, only_tpl=None, include_service: bool = False) -> list:
     """Склеенный пул переменных: одно поле на одну логическую величину."""
+    import time as _t
+    _pk = ("pool", app_id, only_tpl, include_service)
+    _ph = _POOL_CACHE.get(_pk)
+    if _ph and (_t.time() - _ph[0]) < 30:
+        return [dict(x) for x in _ph[1]]
+    _pr = _build_pool_uncached(app_id, only_tpl, include_service)
+    _POOL_CACHE[_pk] = (_t.time(), [dict(x) for x in _pr])
+    return _pr
+
+
+def _build_pool_uncached(app_id: int, only_tpl=None, include_service: bool = False) -> list:
     docs = _value_sources(app_id)
     if only_tpl:
         docs = [d for d in docs if d["tpl"] == only_tpl]
@@ -623,8 +634,29 @@ DOC_NAMES = {"doc_no", "number", "doc_number", "ref_no", "ref_number", "referenc
              "period_to"}
 
 
+_POOL_CACHE = {}
+
+
 def _docs_values(client_id) -> dict:
-    """Реальные значения из документов клиента (Google Диск): номера, карта, остаток."""
+    """Реальные значения из документов клиента (Google Диск): номера, карта, остаток.
+
+    Чтение PDF клиента идёт с диска и разбирается постранично (176 страниц за
+    одно открытие). Кэш на 2 минуты: переключение документов в заявке больше
+    не перечитывает всё заново (Андрей, 17.10.2026: «очень долго подгружает»).
+    """
+    import time as _t
+    if not client_id:
+        return {}
+    _key = ("dv", client_id)
+    _hit = _POOL_CACHE.get(_key)
+    if _hit and (_t.time() - _hit[0]) < 120:
+        return dict(_hit[1])
+    _res = _docs_values_uncached(client_id)
+    _POOL_CACHE[_key] = (_t.time(), dict(_res))
+    return _res
+
+
+def _docs_values_uncached(client_id) -> dict:
     out = {}
     if not client_id:
         return out

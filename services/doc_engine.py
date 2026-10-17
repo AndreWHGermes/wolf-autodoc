@@ -139,7 +139,11 @@ def fit_word_template(tpl: Path, vals: dict, out: Path, rules: dict | None = Non
         w_pt = 300.0
         if fr is not None and fr.get(qn("w:w")):
             w_pt = int(fr.get(qn("w:w"))) / 20.0
-        if name == "address_in_indonesia":
+        if fr is None and name not in rules:
+            # Обычный текстовый абзац (письмо, договор, справка потоком): кегль
+            # не подгоняем — иначе длинное значение сжимается до 5pt.
+            continue
+        if name == "address_in_indonesia" and fr is not None:
             # адрес — строго одна строка: сокращаем текст, ширину рамки расширяем до края листа
             from services.address_fit import SHEET_RIGHT, VALUE_X0, fit_address
             txt, size, _short = fit_address(str(vals.get(name) or ""))
@@ -172,6 +176,42 @@ def build_word(code: str, values: dict, out_dir: Path | str, name: str | None = 
     from docxtpl import DocxTemplate
 
     vals = {k: ("" if v is None else str(v)) for k, v in (values or {}).items()}
+    # Добираем производные значения, если движок их не положил.
+    if not vals.get("salary_words") and vals.get("monthly_amount_words"):
+        vals["salary_words"] = vals["monthly_amount_words"]
+    if not vals.get("ogrn") and vals.get("company_ogrn"):
+        vals["ogrn"] = vals["company_ogrn"]
+    if not vals.get("inn_kpp") and vals.get("company_inn"):
+        m = re.search(r"KPP:\s*(\d+)", vals.get("inn_kpp_ogrn") or "")
+        vals["inn_kpp"] = vals["company_inn"] + (" / " + m.group(1) if m else "")
+    if not vals.get("registration_address"):
+        vals["registration_address"] = vals.get("address_ru") or vals.get("address_live") or ""
+    # В договоре незаполненные реквизиты сторон печатаем прочерком, а не пустой строкой
+    if code.startswith("cv__"):
+        # Обязанности печатаем маркированным списком, как в настоящих резюме
+        for _k in ("cv_job1_bullets", "cv_job2_bullets"):
+            _v = str(vals.get(_k) or "")
+            if _v.strip() and "•" not in _v:
+                vals[_k] = "\n".join("• " + ln.strip() for ln in _v.splitlines() if ln.strip())
+        # Профиль и место работы должны называть одну и ту же компанию
+        _org = str(vals.get("cv_job1_company") or "").strip()
+        _sum = str(vals.get("cv_summary") or "").strip()
+        if _org and _sum and _org.lower() not in _sum.lower():
+            vals["cv_summary"] = re.sub(r"at [^.]+\.", "at %s." % _org, _sum, count=1)
+    if code == "employment_contract__default":
+        if not str(vals.get("structural_unit") or "").strip():
+            vals["structural_unit"] = "the Employer"
+        for _k in ("employer_representative", "registration_address"):
+            if not str(vals.get(_k) or "").strip():
+                vals[_k] = "-"
+    if code == "d12_cover_letter__default":
+        if not str(vals.get("attorney_occupation") or "").strip():
+            vals["attorney_occupation"] = vals.get("attorney_position") or "Swasta"
+        for _k in ("sponsor_address", "sponsor_contact"):
+            if not str(vals.get(_k) or "").strip():
+                vals[_k] = "-"
+    if code == "statement_letter_e02__default" and not str(vals.get("date_of_issue") or "").strip():
+        vals["date_of_issue"] = (vals.get("place_date") or vals.get("doc_date") or "").split(",")[-1].strip()
     missing = [v for v in docx_variables(code) if not vals.get(v)]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -181,6 +221,16 @@ def build_word(code: str, values: dict, out_dir: Path | str, name: str | None = 
                                              rules={})))
     doc.render(vals)
     doc.save(str(out_docx))
+    # Логотип в шапку и печать к подписи работодателя — из базы «База значений»
+    try:
+        from services import doc_branding
+        branding = doc_branding.apply(out_docx, code, vals)
+        if any(branding.values()):
+            res_brand = branding
+        else:
+            res_brand = {}
+    except Exception:
+        res_brand = {}
     subprocess.run([SOFFICE, "--headless", "--norestore", "--convert-to", "pdf",
                     "--outdir", str(out_dir), str(out_docx)],
                    capture_output=True, timeout=timeout)

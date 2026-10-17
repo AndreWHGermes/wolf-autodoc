@@ -346,7 +346,10 @@ def parse_bank_statement(text: str) -> dict:
         # «available balance» встречается в самом заголовке («Document on the
         # available balance № …»), поэтому ищем по всему тексту и берём
         # ПОСЛЕДНЕЕ число с копейками перед RUB — именно оно и есть остаток.
-        _cands = re.findall(r"(\d[\d\s\u00a0]{0,12}[.,]\d{2})\s*(?:RUB|₽)", t, re.I)
+        # Разряды отделяются РОВНО одним пробелом/неразрывным пробелом:
+        # иначе в сумму склеивался хвост маски карты («…6385        29919.94 RUB»
+        # превращалось в 638529919.94).
+        _cands = re.findall(r"(\d{1,3}(?:[ \u00a0]\d{3})*[.,]\s?\d{2})\s*(?:RUB|₽)", t, re.I)
         if _cands:
             out["balance_rub"] = (_cands[-1].replace(" ", "").replace("\u00a0", "")
                                   .replace(",", "."))

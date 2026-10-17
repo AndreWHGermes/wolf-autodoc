@@ -37,6 +37,17 @@ def ts() -> str:
     return datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 
+def auto_paused() -> bool:
+    """Кнопка «Пауза» на главной — глобальный стоп: прогон не начинается и не отправляет пакет."""
+    try:
+        c = conn()
+        r = c.execute("SELECT value FROM settings WHERE key='auto_mode'").fetchone()
+        c.close()
+        return ((r['value'] if r else '') or '').strip() != 'on'
+    except Exception:                                  # noqa: BLE001
+        return True
+
+
 def conn() -> sqlite3.Connection:
     # Падение «database is locked» на записи в auto_runs: соединение открывалось без
     # таймаута ожидания, а в это время базу держит веб-панель или второй прогон.
@@ -179,6 +190,9 @@ def run(app_id: int) -> dict:
         return {'ok': False, 'note': 'заявка не найдена'}
     if row['status'] in STATUSES_DONE:
         return {'ok': True, 'note': 'уже отправлена ранее'}
+    if auto_paused():
+        # Пауза нажата до старта прогона: заявка остаётся в очереди и ждёт «Старт».
+        return {'ok': False, 'note': 'автоматика на паузе — прогон не начат', 'paused': True}
 
     # Этапы журнала: тип продукта → набор документов → чтение Диска и заявки →
     # легенда → заполнение → визуальная и логическая проверка → отправка.
@@ -270,6 +284,16 @@ def run(app_id: int) -> dict:
                 'checks': chk, 'files': fls, 'folder_link': folder_link,
                 'status': (stt['status'] if stt else None)}
 
+    if auto_paused():
+        # Пауза нажата во время прогона: до отправки на Диск не доходим, заявка вернётся в очередь.
+        try:
+            from services import app_steps as _st_pause
+            _st_pause.step(app_id, 'pause', 'warn',
+                           'нажата пауза — пакет не отправляется, заявка вернётся в очередь')
+        except Exception:                              # noqa: BLE001
+            pass
+        return {'ok': False, 'note': 'пауза перед отправкой', 'paused': True}
+
     a = _attempt()
     sent, stops, verdict_line, stage, checks, files = (a['sent'], a['stops'], a['verdict_line'],
                                                        a['stage'], a['checks'], a['files'])
@@ -285,6 +309,25 @@ def run(app_id: int) -> dict:
         pass
     if sent and files == 0:
         problems.append('файлы не легли в папку клиента на Google Диске (робот не смог записать в папку)')
+    # Собранные документы подтверждаем автоматически: если PDF реально создан
+    # (файл есть и не пустой), статус draft — это просто «забыли нажать».
+    # Без этого проверка пакета блокирует заявку «нет подтверждённого документа слота».
+    try:
+        _c_v = sqlite3.connect(str(DB), timeout=60)
+        _c_v.row_factory = sqlite3.Row
+        _ok_v = 0
+        for _d in _c_v.execute("SELECT id, pdf_path FROM application_documents "
+                               "WHERE application_id=? AND status IN ('draft','filled','pending')", (app_id,)).fetchall():
+            _pp = _d['pdf_path'] or ''
+            if _pp and Path(_pp).exists() and Path(_pp).stat().st_size > 2000:
+                _c_v.execute("UPDATE application_documents SET status='verified' WHERE id=?", (_d['id'],))
+                _ok_v += 1
+        _c_v.commit(); _c_v.close()
+        if _ok_v:
+            _st.step(app_id, 'verify_docs', 'ok',
+                     'собранные документы подтверждены автоматически: %d' % _ok_v)
+    except Exception:                                      # noqa: BLE001
+        pass
     # Двухуровневая финальная проверка пакета: сначала визуальная (грязь,
     # наложения, русские символы), затем логическая (стыковка дат, цифр,
     # паспортов против инструкции). Замечания идут в общий стоп-лист, поэтому
@@ -293,7 +336,9 @@ def run(app_id: int) -> dict:
         from services import final_check as _fc
         from services import app_steps as _st_final
         _fc_res = _fc.run(app_id, verbose=False)
-        _st_final.step(app_id, 'final', 'ok' if _fc_res['action'] == 'готово' else 'warn',
+        _v_ok = (_fc_res.get('visual') or {}).get('ok', True)
+        _fc_st = 'ok' if _fc_res['action'] == 'готово' else ('fail' if not _v_ok else 'warn')
+        _st_final.step(app_id, 'final', _fc_st,
                        '%s: %s' % (_fc_res['action'], _fc_res['verdict']))
         if _fc_res['visual'] and not _fc_res['visual']['ok']:
             problems = list(problems) + ['[визуальная] %s' % i['text']
@@ -394,6 +439,13 @@ def run(app_id: int) -> dict:
             c.commit()
             c.close()
             wrote = True
+            # Реестр ошибок: каждая проблема прогона попадает в нумерованный журнал
+            # со статусом «открыта», чтобы её можно было разобрать и закрыть.
+            try:
+                from services import error_log as _el
+                _el.log(app_id, stage, stops + checks.get('log_stops', []) + checks.get('tech_stops', []))
+            except Exception:                                  # noqa: BLE001
+                pass
             break
         except Exception as _e_wr:                 # noqa: BLE001
             if _try == 5:

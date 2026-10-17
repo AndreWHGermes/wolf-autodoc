@@ -31,6 +31,7 @@ BLUEPRINTS = [
     ("blocks.dashboard.events", "bp"),
     ("blocks.review.page", "bp"),
     ("blocks.guide.page", "bp"),
+    ("blocks.pool.page_v2", "bp"),
 ]
 
 

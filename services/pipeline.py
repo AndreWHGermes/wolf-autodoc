@@ -188,10 +188,12 @@ def run(application_id: int, use_llm: bool = False, force: bool = False,
                 row = _db.q1('SELECT id FROM application_documents WHERE application_id=? AND template_id=?',
                              (application_id, tid))
                 if row:
-                    _db.exec_sql("UPDATE application_documents SET status='verified' WHERE id=?", (row['id'],))
+                    _db.exec_sql("UPDATE application_documents SET status='verified', pdf_path=?, rendered_at=datetime('now') WHERE id=?",
+                                 (b.get('файл') or '', row['id']))
                 else:
-                    _db.exec_sql("INSERT INTO application_documents (application_id, template_id, status) "
-                                 "VALUES (?,?,'verified')", (application_id, tid))
+                    _db.exec_sql("INSERT INTO application_documents (application_id, template_id, status, pdf_path, rendered_at) "
+                                 "VALUES (?,?,'verified',?,datetime('now'))",
+                                 (application_id, tid, b.get('файл') or ''))
                 _auto.append(b['документ'])
             res['auto_verified'] = _auto
             if _auto:

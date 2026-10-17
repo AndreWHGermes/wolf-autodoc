@@ -47,6 +47,18 @@ def _files(app_id: int) -> list:
     return sorted(p.name for p in d.glob('*.pdf')) if d.exists() else []
 
 
+def _rebuild(app_id: int, timeout: int = 180) -> bool:
+    """Пересобрать документы заявки тем же путём, что и обычный прогон."""
+    import subprocess
+    try:
+        r = subprocess.run(['/usr/bin/python3', '-m', 'services.pipeline', str(app_id)],
+                           cwd=str(BASE), capture_output=True, timeout=timeout,
+                           env={**__import__('os').environ, 'PYTHONPATH': str(BASE)})
+        return r.returncode == 0
+    except Exception:                                                 # noqa: BLE001
+        return False
+
+
 def scan_quality(conn) -> int:
     """Документы, которые проверка не пропускает."""
     from services import pdf_quality
@@ -70,6 +82,24 @@ def scan_quality(conn) -> int:
             for f in d.get('finds') or []:
                 if f.get('level') == 'BLOCK':
                     bad.append('%s: %s' % (d.get('code'), f.get('msg')))
+        # «Файл собран раньше правки шаблона» лечится сам: пересобираем заявку и
+        # проверяем заново. Без этого любая правка шаблона вешала заявку в ступор
+        # до прихода агента, хотя системе достаточно пересобрать документ
+        # (задача #21, 17.10.2026). Задача ставится только если после пересбора
+        # замечания остались.
+        if bad and all('раньше последней правки шаблона' in b for b in bad):
+            if _rebuild(app_id):
+                try:
+                    res = pdf_quality.check_app(app_id, save=False)
+                except Exception:                                     # noqa: BLE001
+                    res = {}
+                bad = []
+                for d in res.get('docs') or []:
+                    for f in d.get('finds') or []:
+                        if f.get('level') == 'BLOCK':
+                            bad.append('%s: %s' % (d.get('code'), f.get('msg')))
+                if not bad:
+                    continue
         if bad:
             from services import agent_bridge
             agent_bridge.raise_task(

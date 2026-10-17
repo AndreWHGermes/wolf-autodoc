@@ -127,13 +127,20 @@ class Checker:
     def r1_foreign_names(self) -> None:
         c = _conn()
         mine = (self.client.get('surname') or '').upper()
+        # Своё имя/отчество — не «чужое»: в базе встречаются карточки, где имя клиента
+        # попало в поле «фамилия» другого человека, и проверка ловила клиента на себе же.
+        mine_parts = {(self.client.get(k) or '').upper().strip()
+                      for k in ('surname', 'name', 'patronymic', 'full_name_latin')}
+        mine_parts = {p for p in mine_parts if len(p) > 2}
         known = set()
         for r in c.execute('SELECT surname FROM clients WHERE surname IS NOT NULL AND surname != ""'):
             s = (r['surname'] or '').upper().strip()
-            if s and s != mine and len(s) > 2:
+            if s and s != mine and len(s) > 2 and s not in mine_parts:
                 known.add(s)
         text = self.all_text().upper()
         for name in sorted(known):
+            if name in mine_parts:
+                continue
             if re.search(r'\b%s\b' % re.escape(name), text):
                 self.add('BLOCK', 'R1', '-', 'в документах встречается чужое имя: %s' % name,
                          'убрать значение из шаблона или из карточки клиента')

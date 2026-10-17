@@ -320,7 +320,10 @@ def _ru_to_en(var_name: str, value):
         _upper = {'surname', 'name', 'patronymic', 'surname_latin', 'name_latin',
                   'patronymic_latin', 'client_name', 'full_name', 'full_name_latin',
                   'employee_name', 'employee_full_name', 'employee_full_name_latin',
-                  'contractor_full_name', 'cv_name', 'for_name'}
+                  'contractor_full_name', 'for_name'}
+        if var_name == 'cv_name':
+            # Резюме: «Tovpeko Egor Artemovich» — первая заглавная, остальные строчные
+            return ' '.join(w.capitalize() for w in _translit(s).split())
         return _translit(s).upper() if var_name in _upper else _translit(s)
     if var_name in _ADDRESS_VARS:
         return _translit(s, addr=True)
@@ -510,6 +513,27 @@ def parse_amount_any(value) -> float | None:
         return None
 
 
+# Кэш тяжёлых чтений (Google Диск, разбор справки). Страница заявки собирала
+# значения по 6 раз и каждый раз ходила в Drive — 15 секунд на открытие
+# (Андрей, 17.10.2026: «сайт очень медленно стал работать»).
+_VALUE_CACHE = {}
+
+
+def _cached(key, ttl: float, fn):
+    import time as _t
+    now = _t.time()
+    hit = _VALUE_CACHE.get(key)
+    if hit and (now - hit[0]) < ttl:
+        return hit[1]
+    val = fn()
+    _VALUE_CACHE[key] = (now, val)
+    return val
+
+
+def _clear_value_cache():
+    _VALUE_CACHE.clear()
+
+
 def _balance_words_from(num: float) -> str:
     """Пропись суммы как в настоящей справке: «(seven million … rubles ninety-eight kopeks)».
     Для целых копеек — «rubles 00 kopeks»."""
@@ -518,7 +542,19 @@ def _balance_words_from(num: float) -> str:
     return "(%s rubles %s kopeks)" % (_num2words_en(rub), cents)
 
 
+def _address_from_bank_statement(client_id) -> str:
+    """Адрес из банковской справки клиента с кэшем на 10 минут."""
+    return _cached(("addr_bs", client_id), 600,
+                   lambda: _address_from_bank_statement_raw(client_id))
+
+
 def read_client_bank_statement(client_id: int) -> dict:
+    """Разбор справки клиента с кэшем на 10 минут."""
+    return _cached(("bs_read", client_id), 600,
+                   lambda: _read_client_bank_statement_raw(client_id))
+
+
+def _read_client_bank_statement_raw(client_id: int) -> dict:
     """Разбор настоящей банковской справки клиента: банк, счёт, остаток, период.
 
     Универсально: Т-Банк («Amount of available balance as 17.09.2026: 2 757 201.00 ₽»)
@@ -584,15 +620,25 @@ def bank_amount_for(client_id, tpl_code: str):
     # Планка «солидности»: справка на 12 месяцев несёт крупный остаток, как в настоящих
     # справках клиентов (образец TBank — 7 121 309,98). Маленькая сумма в годовой справке
     # выглядит неправдоподобно и не проходит проверку, поэтому её не печатаем.
-    _solid = 7121309.98 if "12m" in str(tpl_code) else 0.0
+    # Вилка остатка — В РУБЛЯХ, как в инструкции (docs/VARIABLES_RULES.md):
+    # 3 месяца — 190 000…800 000 ₽ (≈2 000…8 000 $), 12 месяцев — 5 200 000…8 000 000 ₽.
+    if "12m" in str(tpl_code):
+        _lo, _hi = 5_200_000.0, 8_000_000.0
+    else:
+        _lo, _hi = 190_000.0, 800_000.0
 
-    if real_num >= max(need, _solid):
-        return real                      # реальная справка солидная — не трогаем
-    if _solid:
-        return "%.2f" % _solid
-    # иначе ставим проходную сумму с запасом
-    target = need * 1.25                 # запас, чтобы не «ровно по порогу»
-    return "%s" % _round_thousand(target)
+    if real_num >= _lo:
+        return real                      # реальная справка попадает в вилку — берём её
+    # Реальной справки нет или она ниже вилки: печатаем сумму из вилки.
+    # Выбор детерминирован по клиенту и шаблону, чтобы сумма не «прыгала» при пересборке.
+    import hashlib
+    _h = int(hashlib.sha256(("%s|%s|%s" % (client_id, tpl_code, int(_lo))).encode()).hexdigest()[:8], 16)
+    target = _lo + (_hi - _lo) * ((_h % 10000) / 10000.0)
+    # Сумма за 3 месяца должна делиться на 3 без остатка: оклад в договоре =
+    # сумма справки / 3 (правило заказчика 17.10.2026), иначе цифры не сходятся.
+    if "3m" in str(tpl_code):
+        target = round(target / 3000.0) * 3000
+    return "%.2f" % _round_thousand(target)
 
 
 def _round_thousand(value: float) -> int:
@@ -718,6 +764,24 @@ def num_ok(value, *patterns) -> str | None:
             return v
     return None
 
+
+def _no_busy(field: str, value, client_id) -> bool:
+    """Номер уже выдан другому клиенту? Тогда он чужой и использовать его нельзя.
+
+    Причина: в архиве встречаются копии одной и той же настоящей справки у разных
+    клиентов — одинаковые Ref./No. в двух пакетах выглядят как подделка.
+    """
+    if not value or not client_id:
+        return False
+    try:
+        from core import db as _db
+        rows = _db.q("SELECT ad.application_id FROM application_documents ad "
+                     "JOIN applications a ON a.id = ad.application_id "
+                     "WHERE a.client_id <> ? AND json_extract(ad.values_json, '$.%s') = ? LIMIT 1" % field,
+                     (client_id, str(value)))
+        return bool(rows)
+    except Exception:                                              # noqa: BLE001
+        return False
 
 def number_pattern(code: str, name: str) -> str | None:
     """Правило номера для конкретного документа (None — общее правило)."""
@@ -972,16 +1036,15 @@ def _fio_full_latin(client: dict, tpl_code: str = "") -> str:
     parts = [x for x in (surname, name, patronymic) if x]
     if not parts:
         return ""
-    # Регистр — как в ОБРАЗЦЕ этого документа. В образце справки «3 месяца, ТБанк» имя стоит
-    # «Blium Elizaveta Sergeevna», а в образцах Сбербанка и 12-месячных — заглавными,
-    # поэтому одно общее правило здесь неверно.
+    # Регистр — единое правило заказчика от 17.10.2026:
+    # в банковских справках (tpl 1, 3 — TBank и Sber, 3 мес. и 12 мес.)
+    # каждое слово ФИО пишется с заглавной буквы, остальные строчные.
+    # Раньше tbank=Title Case, sber=капсом — у Сбера было расхождение.
+    # В шаблоне справки {{ client_name }} идёт в ДВУХ местах: шапка (справа сверху)
+    # и сам текст «… hereby informs that … {{ client_name }}». Оба получают
+    # одинаковое значение, потому что подставляются из одного `vals['client_name']`.
     _fio = _translit(" ".join(parts))
-    # ТБанк-справки (3 и 12 месяцев) — «Фамилия Имя Отчество»; Сбер и прочие банки — капсом.
-    # Регистр был «как в образце», из-за этого 3м и 12м ТБанк выглядели по-разному
-    # (Андрей, 16.10.2026: у обоих ТБанк-шаблонов вид должен совпадать).
-    if "tbank" in (tpl_code or ""):
-        return _smart_title(_fio)
-    return _fio.upper()
+    return _smart_title(_fio)
 # Документы, где адрес по смыслу ИНДОНЕЗИЙСКИЙ: письма в иммиграцию, заявления,
 # спонсорские и адвокатские адреса. Здесь генерация запрещена — только реальный
 # адрес из заявки/документов, иначе поле остаётся пустым для ручного выбора.
@@ -1002,6 +1065,57 @@ def is_indonesia_document(tpl_code: str) -> bool:
 # клиента занимает секунды, а адрес запрашивается многократно при сборке.
 _ADDR_DOC_CACHE = {}
 
+
+def _address_from_bank_statement_raw(client_id) -> str:
+    """Российский адрес из банковской справки клиента (верхний колонтитул).
+
+    Правило Андрея (17.10.2026): если своей прописки в карточке нет, а клиент дал
+    банковскую справку — печатаем в нашем банковском документе адрес из этой справки
+    («ул. Вавилова, д. 19, Москва, 117312»). Индонезийский адрес в банковскую справку
+    по-прежнему не подставляется.
+    """
+    try:
+        from services import gdrive_write as _G
+        from core import db as _db
+        row = _db.q1("SELECT gdrive_folder_url FROM clients WHERE id=?", (client_id,))
+        url = (row or {}).get("gdrive_folder_url") or ""
+        if not url:
+            return ""
+        cands = []
+        for f in _G.list_folder_contents(url):
+            nm = (f.get("name") or "").lower()
+            if (f.get("mimeType") or "").endswith("folder"):
+                continue
+            if nm.endswith(".pdf") and any(w in nm for w in ("справк", "выписк", "bank", "statement", "счет", "счёт")):
+                cands.append(f)
+        if not cands:
+            return ""
+        from services.gdrive_write import _read_service
+        import pymupdf, re as _re, tempfile, os
+        svc = _read_service()
+        data = svc.files().get_media(fileId=cands[0]["id"]).execute()
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as fh:
+            fh.write(data); tmp = fh.name
+        try:
+            doc = pymupdf.open(tmp)
+            text = "\n".join(pg.get_text() for pg in doc)
+        finally:
+            try: os.unlink(tmp)
+            except Exception: pass
+        m = _re.search(r"(ул\.\s*[^,\n]{2,60},\s*д\.\s*\d+[^,\n]{0,10},\s*[^,\n]{2,40},\s*\d{6})", text)
+        if not m:
+            m = _re.search(r"(\d{6}),?\s*([^,\n]{2,40}),\s*(ул\.?\s*[^,\n]{2,60}),\s*д\.\s*(\d+[^,\n]{0,6})", text)
+            if m:
+                return "%s, %s, %s, д. %s" % (m.group(1), m.group(2), m.group(3), m.group(4))
+            return ""
+        raw = m.group(1)
+        parts = [x.strip() for x in raw.split(",")]
+        # «ул. Вавилова, д. 19, Москва, 117312» → «117312, Москва, ул. Вавилова, д. 19»
+        if len(parts) >= 4:
+            return "%s, %s, %s, %s" % (parts[-1], parts[-2], parts[0], parts[1])
+        return raw
+    except Exception:                                              # noqa: BLE001
+        return ""
 
 def _address_from_client_docs(client_id) -> str:
     """Адрес в стране клиента из его документов: строка «Home address:».
@@ -1395,8 +1509,13 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
     _salt_key = tpl_code or ""       # разные документы одного клиента — разные номера
     simple = {
         "full_name": _fio_full_latin(client, tpl_code),
-        "surname": client.get("surname"), "name": client.get("name"),
-        "patronymic": client.get("patronymic"),
+        # Правило заказчика от 17.10.2026: имя/фамилия/отчество по отдельности
+        # — первая буква заглавная, остальные строчные. В карточке поля часто
+        # лежат капсом (TOVPEKO/EGOR/ARTEMOVICH); для документа переводим
+        # в Title Case. Полное ФИО собирается в _fio_full_latin по тому же правилу.
+        "surname": _smart_title(client.get("surname") or ""),
+        "name": _smart_title(client.get("name") or ""),
+        "patronymic": _smart_title(client.get("patronymic") or ""),
         "full_name_latin": _fio_full_latin(client),
         "full_name_title": client.get("full_name_title"),
         "client_name": _fio_full_latin(client, tpl_code),
@@ -1462,11 +1581,17 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
         # по правилу (дата формирования + имя и фамилия), чтобы значения были уникальны
         # Порядок: данные клиента → реальный номер из его документов → номер,
         # уже сохранённый в этом документе → генерация (один раз, затем фиксируется).
-        "ref_no": (num_ok(client.get("ref_no")) or num_ok(_real_ref, number_pattern(tpl_code, "ref_no"), 'U' + 'd' * 8 + 'U' * 3)
-                   or num_ok((doc_values or {}).get("ref_no"), number_pattern(tpl_code, "ref_no"), 'U' + 'd' * 8 + 'U' * 3)
+        "ref_no": ((num_ok(client.get("ref_no")) if not _no_busy("ref_no", client.get("ref_no"), client.get("id")) else None)
+                   or (num_ok(_real_ref, number_pattern(tpl_code, "ref_no"), 'U' + 'd' * 8 + 'U' * 3)
+                       if not _no_busy("ref_no", _real_ref, client.get("id")) else None)
+                   or (num_ok((doc_values or {}).get("ref_no"), number_pattern(tpl_code, "ref_no"), 'U' + 'd' * 8 + 'U' * 3)
+                       if not _no_busy("ref_no", (doc_values or {}).get("ref_no"), client.get("id")) else None)
                    or gen_ref_no(_fio_latin(client), _doc_key, _salt_key, pattern=number_pattern(tpl_code, "ref_no"))),
-        "doc_no": (num_ok(client.get("doc_no")) or num_ok(_real_no, number_pattern(tpl_code, "doc_no"), 'l' * 2 + 'd' * 8)
-                   or num_ok((doc_values or {}).get("doc_no"), number_pattern(tpl_code, "doc_no"), 'l' * 2 + 'd' * 8)
+        "doc_no": ((num_ok(client.get("doc_no")) if not _no_busy("doc_no", client.get("doc_no"), client.get("id")) else None)
+                   or (num_ok(_real_no, number_pattern(tpl_code, "doc_no"), 'l' * 2 + 'd' * 8)
+                       if not _no_busy("doc_no", _real_no, client.get("id")) else None)
+                   or (num_ok((doc_values or {}).get("doc_no"), number_pattern(tpl_code, "doc_no"), 'l' * 2 + 'd' * 8)
+                       if not _no_busy("doc_no", (doc_values or {}).get("doc_no"), client.get("id")) else None)
                    or gen_doc_no(_fio_latin(client), _doc_key, _salt_key, pattern=number_pattern(tpl_code, "doc_no"))),
         "stay_permit_no": client.get("stay_permit_no"),
         "place": client.get("place"),
@@ -1719,7 +1844,21 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
                      "position_title", "engagement_phrase", "governing_law", "company_tail",
                      "base_salary", "annual_amount_numeric", "annual_amount_words",
                      "monthly_amount_numeric", "monthly_amount_words"}
-        vals.update({k: v for k, v in doc_values.items() if v and k not in _DERIVED8})
+        # Правило заказчика от 17.10.2026: ФИО в банковских справках — Title Case.
+        # Если в doc_values (values_json) лежит кэш старого формата (TOVPEKO EGOR),
+        # нормализуем к Tovpeko Egor. Ручные правки админа вроде «McDonald» не
+        # трогаем — _smart_title их не меняет. Для не-ФИО полей поведение прежнее.
+        _NORMALIZE_NAME_KEYS = ("client_name", "full_name", "full_name_latin",
+                                "surname", "name", "patronymic")
+        _doc_norm = {}
+        for k, v in doc_values.items():
+            if not v or k in _DERIVED8:
+                continue
+            if k in _NORMALIZE_NAME_KEYS and isinstance(v, str):
+                _doc_norm[k] = _smart_title(v)
+            else:
+                _doc_norm[k] = v
+        vals.update(_doc_norm)
 
     # Организация договора — всегда из пула, если админ не выбрал её сам:
     # 1) в сохранённых значениях стоит реальная организация пула → берём весь её
@@ -1884,6 +2023,69 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
     except Exception:
         pass
 
+    # --- Резюме: ФИО с отчеством, полный паспорт, чистый адрес ---
+    # Требование Андрея (17.10.2026): в документе — «Tovpeko Egor Artemovich»
+    # (первая заглавная, остальные строчные), паспорт с серией, а текст-просьба
+    # менеджера («попросил поставить любой адрес») адресом не считается.
+    try:
+        if str(tpl_code).startswith("cv"):
+            _fl = str(client.get("full_name_latin") or "").strip()
+            _sur = str(client.get("surname") or "").strip()
+            _nm = str(client.get("name") or "").strip()
+            _pat = str(client.get("patronymic") or "").strip()
+            if _fl and _pat and _pat.upper() not in _fl.upper():
+                _fl = ("%s %s" % (_fl, _pat)).strip()
+            if not _fl and (_sur or _nm):
+                _fl = ("%s %s %s" % (_sur, _nm, _pat)).strip()
+            if _fl:
+                vals["cv_name"] = " ".join(w.capitalize() for w in _fl.split())
+            _ser = str(client.get("passport_series") or "").strip()
+            _num = str(client.get("passport_number") or "").strip()
+            if _num:
+                vals["cv_passport_no"] = ("%s %s" % (_ser, _num)).strip() if _ser else _num
+    except Exception:
+        pass
+    try:
+        _addr_all = " ".join(str(vals.get(k) or "") for k in
+                             ("address_live", "address_ru", "address_in_indonesia"))
+        _bad_words = ("попросил", "поставить любой", "любой адрес", "не на бали")
+        if any(_w in _addr_all.lower() for _w in _bad_words):
+            for _k in ("address_live", "address_live_2"):
+                if _k in vals:
+                    vals[_k] = ""
+            vals["address_note"] = "адрес уточняется — в карточке был текст запроса"
+    except Exception:
+        pass
+
+    # --- Легенда клиента: источник истины для резюме ---
+    # Второе место работы, навыки и языки должны совпадать с легендой.
+    # Раньше значения собирались кодом («2022 – Present» без месяца, старый
+    # список навыков), и резюме расходилось с легендой (Андрей, 17.10.2026).
+    try:
+        import json as _json_l
+        from pathlib import Path as _Path_l
+        if str(tpl_code).startswith("cv"):
+            _cid = client.get("id") if isinstance(client, dict) else None
+            _lp = _Path_l(__file__).resolve().parent.parent / "data" / "legends" / ("client_%s.json" % _cid)
+            if _cid and _lp.exists():
+                _w = (_json_l.loads(_lp.read_text(encoding="utf-8")) or {}).get("work") or {}
+                for _k, _src in (("cv_job1_title", "job1_title"),
+                                 ("cv_job1_company", "job1_company"),
+                                 ("cv_job1_period", "job1_period"),
+                                 ("cv_job1_bullets", "job1_bullets"),
+                                 ("cv_job2_title", "job2_title"),
+                                 ("cv_job2_company", "job2_company"),
+                                 ("cv_job2_period", "job2_period"),
+                                 ("cv_job2_bullets", "job2_bullets"),
+                                 ("cv_skills_hard", "skills_hard"),
+                                 ("cv_skills_soft", "skills_soft"),
+                                 ("cv_languages", "languages")):
+                    _v = str(_w.get(_src) or "").strip()
+                    if _v:
+                        vals[_k] = _v
+    except Exception:
+        pass
+
     # --- Дефолты из template_variables (низший приоритет, но выше мусора из истории) ---
     try:
         t = db.q1("SELECT id FROM templates WHERE code=?", (tpl_code,))
@@ -1896,9 +2098,17 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
                 # образование) лежит в шаблоне как текст заполненного образца, и дефолт
                 # печатал клиенту чужую профессию (05.10.2026). Пустое поле резюме
                 # убирается сборщиком, а чужая профессия клиенту недопустима.
+                # Запрещённые для дефолта темы: организация, деньги, даты, реквизиты.
+                # Раньше из образца в договор уходил работодатель «Media Daydzhest LLC»
+                # и чужие суммы — проверка пакета останавливала заявку (кейс 120).
+                _never = ("employer", "company", "organi", "salary", "amount", "income",
+                          "balance", "date", "period", "passport", "address", "position",
+                          "bank", "account", "card", "name", "sign")
+                _nm = str(r["name"]).lower()
                 if (r["default_value"] and not vals.get(r["name"])
                         and not _is_personal(r["name"])
-                        and not str(r["name"]).startswith("cv_")):
+                        and not str(r["name"]).startswith("cv_")
+                        and not any(x in _nm for x in _never)):
                     vals[r["name"]] = r["default_value"]
             # Поля 1,2,3 и 9..13 списка переменных + адресат — постоянные реквизиты
             # офиса и агентства: карта переменных шаблона перекрывает историю и настройки.
@@ -2095,6 +2305,31 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
             vals["balance_words"] = _balance_words_from(_bal_num)
             vals["balance_words_2"] = ""      # вторая строка прописи не нужна: всё в одну строку
             vals["balance_cents"] = "%02d" % int(round((_bal_num - int(_bal_num)) * 100))
+            # Единая цифра во всех трёх местах: справка = легенда = карточка клиента.
+            # Иначе проверка блокирует пакет («в справке 301 000, в легенде 357 000»).
+            try:
+                if "bank_statement" in (tpl_code or "") and (client or {}).get("id"):
+                    from core import db as _dbB
+                    import json as _jsonB
+                    from pathlib import Path as _PathB
+                    _cidB = int(client["id"])
+                    _amtB = str(vals["balance_rub"])
+                    _dbB.exec_sql("UPDATE clients SET balance_rub=? WHERE id=?", (_amtB, _cidB))
+                    # Дата остатка в карточке = дата справки (иначе «справка от 17.10,
+                    # а карточка обновлена 16.10» — блокирующее расхождение).
+                    _bdateB = str(vals.get("period_to") or vals.get("balance_date") or "").strip()
+                    if _bdateB:
+                        _dbB.exec_sql("UPDATE clients SET balance_date=? WHERE id=?", (_bdateB, _cidB))
+                        vals["balance_date"] = _bdateB
+                    _lpB = _PathB("/opt/wolf_v2/data/legends") / ("client_%s.json" % _cidB)
+                    if _lpB.exists():
+                        _ljB = _jsonB.loads(_lpB.read_text(encoding="utf-8"))
+                        _finB = _ljB.setdefault("finance", {})
+                        _finB["balance"] = _amtB.replace(" ", "").replace("\u00a0", "")
+                        _finB["bank"] = _finB.get("bank") or "TBANK"
+                        _lpB.write_text(_jsonB.dumps(_ljB, ensure_ascii=False, indent=2), encoding="utf-8")
+            except Exception:                                      # noqa: BLE001
+                pass
     except Exception:
         pass
 
@@ -2107,7 +2342,8 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
         _cur = str(vals.get("address_live") or "")
         if _bank_doc:
             _ru2 = next((str(c) for c in (_cli.get("address_reg"), _cli.get("address_live"),
-                                          _address_from_client_docs(_cli.get("id")))
+                                          _address_from_client_docs(_cli.get("id")),
+                                          _address_from_bank_statement(_cli.get("id")))
                          if c and _is_ru(str(c))), "")
             if _is_id(_cur):
                 vals["address_indonesia"] = _cur
@@ -2822,6 +3058,62 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
     except Exception:
         pass
 
+    # --- Трудовой договор: оклад прописью и реквизиты работодателя --------------
+    try:
+        if 'employment' in str(tpl_code or '').lower():
+            _kpp = ''
+            _m = re.search(r'KPP:\s*(\d+)', str(vals.get('inn_kpp_ogrn') or ''))
+            if _m:
+                _kpp = _m.group(1)
+            if not str(vals.get('salary_words') or '').strip():
+                vals['salary_words'] = vals.get('monthly_amount_words') or ''
+            if not str(vals.get('inn_kpp') or '').strip() and vals.get('company_inn'):
+                vals['inn_kpp'] = str(vals['company_inn']) + ((' / ' + _kpp) if _kpp else '')
+            if not str(vals.get('ogrn') or '').strip():
+                vals['ogrn'] = vals.get('company_ogrn') or ''
+            if not str(vals.get('registration_address') or '').strip():
+                vals['registration_address'] = (vals.get('address_ru')
+                                                or vals.get('address_live') or '')
+    except Exception:
+        pass
+
+    # --- ИТК и пол для писем иммиграции -----------------------------------------
+    # Номер и срок ИТК лежат в документе клиента (services/itk_doc.py), а не в карточке:
+    # без этого в письме оставались пустые строки «Nomor ITK» и «Masa Berlaku ITK».
+    try:
+        _tl = str(tpl_code or '').lower()
+        if any(x in _tl for x in ('letter', 'e02', 'statement')):
+            if not str(vals.get('itk_no') or '').strip() or not str(vals.get('itk_expiry') or '').strip():
+                from services.itk_doc import itk_data
+                _itk = itk_data(client.get('id')) or {}
+                if not str(vals.get('itk_no') or '').strip() and _itk.get('permit_no'):
+                    vals['itk_no'] = str(_itk['permit_no']).strip()
+                if not str(vals.get('itk_expiry') or '').strip() and _itk.get('permit_expiry'):
+                    _d = _parse_any_date(_itk['permit_expiry'])
+                    if _d:
+                        vals['itk_expiry'] = _d.strftime('%d-%m-%Y')
+    except Exception:
+        pass
+
+    # Пол в письмах — «Laki-laki» / «Perempuan». Если в карточке пусто, определяем
+    # по отчеству: ...ович/...евич — мужской, ...овна/...евна — женский.
+    try:
+        if any(x in str(tpl_code or '').lower() for x in ('letter', 'e02', 'statement')):
+            _g = str(vals.get('client_gender') or '').strip().lower()
+            if not _g:
+                _pat = str(client.get('patronymic') or '').strip().lower()
+                if _pat.endswith(('овна', 'евна', 'ична', 'инична')):
+                    _g = 'perempuan'
+                elif _pat.endswith(('ович', 'евич', 'ич')):
+                    _g = 'laki-laki'
+            _g = {'m': 'laki-laki', 'male': 'laki-laki', 'f': 'perempuan', 'female': 'perempuan'}.get(_g, _g)
+            if _g.startswith('laki'):
+                vals['client_gender'] = 'Laki-laki'
+            elif _g.startswith('perempuan') or _g.startswith('жен'):
+                vals['client_gender'] = 'Perempuan'
+    except Exception:
+        pass
+
     return vals
 
 
@@ -2988,6 +3280,39 @@ def _clean_place(value: str) -> str:
 
 
 def build_template_values(*args, **kwargs):
+    """Общая точка входа: значения документа (с коротким кэшем).
+
+    Одна страница заявки запрашивала значения по 6 раз, и каждый расчёт
+    тянул Google Диск — страница открывалась 15 секунд. Кэш на 20 секунд
+    убирает повторные расчёты, не мешая правкам (Андрей, 17.10.2026).
+    """
+    _key = None
+    try:
+        _cl = args[0] if args else kwargs.get("client")
+        _code = args[1] if len(args) > 1 else kwargs.get("tpl_code")
+        _app = kwargs.get("app_id")
+        if _app is None and len(args) > 3:
+            _app = args[3]
+        _cid = (_cl or {}).get("id") if isinstance(_cl, dict) else None
+        if _cid and _code:
+            _key = ("btv", _cid, str(_code), _app)
+            _hit = _VALUE_CACHE.get(_key)
+            if _hit and (_time_now() - _hit[0]) < 20:
+                return dict(_hit[1])
+        _res = _build_template_values_cached(*args, **kwargs)
+        if _key:
+            _VALUE_CACHE[_key] = (_time_now(), dict(_res))
+        return _res
+    except Exception:
+        return _build_template_values_cached(*args, **kwargs)
+
+
+def _time_now():
+    import time as _t
+    return _t.time()
+
+
+def _build_template_values_cached(*args, **kwargs):
     """Общая точка входа: значения документа.
 
     Почта-формула «фамилия+@alpha-prime.group» убрана по указанию заказчика
@@ -3017,17 +3342,25 @@ def build_template_values(*args, **kwargs):
         # Имя в шапке резюме — без отчества, как в настоящих образцах («ANNA MARKAROVA»).
         # Полное ФИО с отчеством не влезает в отведённую ширину и накладывается на
         # строку с датой рождения ниже.
+        # ФИО в шапке резюме — полностью, с отчеством: «Tovpeko Egor Artemovich»
+        # (первая заглавная, остальные строчные). Требование Андрея 17.10.2026:
+        # в документе должно быть ФИО, а не только фамилия и имя.
         _cv_name_short = " ".join(
             x for x in (str(_cl.get("surname") or "").strip(),
-                        str(_cl.get("name") or "").strip()) if x)
+                        str(_cl.get("name") or "").strip(),
+                        str(_cl.get("patronymic") or "").strip()) if x)
         if _cv_name_short and re.search(r"[\u0400-\u04ff]", _cv_name_short):
             _cv_name_short = _fio_full_latin(_cl)
+        if _cv_name_short:
+            _cv_name_short = " ".join(w.capitalize() for w in _cv_name_short.split())
         for _k, _v in (("cv_name", _cv_name_short or _fio_full_latin(_cl)),
                        ("full_name_latin", _fio_full_latin(_cl)),
                        ("cv_date_of_birth", _fmt_date_en(_cl.get("birth_date"))),
                        ("cv_place_of_birth", _clean_place(_cl.get("birth_place"))),
                        ("cv_nationality", _nat_en or ""),
-                       ("cv_passport_no", str(_cl.get("passport_number") or "").strip()),
+                       ("cv_passport_no", ("%s %s" % (
+                           str(_cl.get("passport_series") or "").strip(),
+                           str(_cl.get("passport_number") or "").strip())).strip()),
                        ("cv_passport_issue", _fmt_date_en(_cl.get("passport_issue_date"))),
                        ("cv_passport_expiry", _fmt_date_en(_cl.get("passport_expiry"))),
                        ("cv_profession", _pos),
@@ -3132,6 +3465,19 @@ def build_template_values(*args, **kwargs):
             # даже если в карточке клиента уже стояла другая: приоритет у договора.
             if _fill5.get("cv_job1_company"):
                 vals["cv_job1_company"] = _fill5["cv_job1_company"]
+    except Exception:
+        pass
+
+    # Правило Андрея (17.10.2026): если профессии/организации нет в данных клиента,
+    # берём удалённую профессию из пула и реальную организацию (Москва/СПб) с реквизитами.
+    try:
+        _tc10 = args[1] if len(args) > 1 else kwargs.get("tpl_code")
+        if _tc10 and str(_tc10).startswith("cv__"):
+            from services import cv_rules as _cvr
+            _az10 = kwargs.get("app_id")
+            if _az10 is None and len(args) > 3:
+                _az10 = args[3]
+            _cvr.fill_cv(vals, (args[0] if args else kwargs.get("client")) or {}, _az10)
     except Exception:
         pass
 
@@ -3327,6 +3673,19 @@ def build_template_values(*args, **kwargs):
                 # в подлинных договорах и бланках гражданство пишут именно так
                 vals["nationality"] = "RUSIA"
             vals["signer_title"] = "GENERAL DIRECTOR"
+            # Поля трудового договора (док. №11) — отдельными переменными, чтобы в бланке
+            # стояли поля «label: value», как в подлиннике, а не сплошной абзац.
+            if "employment_contract" in str(_tz7 or ""):
+                _a1x = str(vals.get("company_address_1") or "").strip()
+                _a2x = str(vals.get("company_address_2") or "").strip()
+                vals["company_address_full"] = ", ".join([x for x in (_a1x, _a2x) if x])
+                vals["start_date"] = str(vals.get("term_start_date") or vals.get("agreement_date") or "").strip()
+                if not str(vals.get("payment_frequency") or "").strip():
+                    vals["payment_frequency"] = "Once a month"
+                if not str(vals.get("payment_method") or "").strip():
+                    vals["payment_method"] = "Transfer to an employee's bank account using the account details"
+                if not str(vals.get("notice_period") or "").strip():
+                    vals["notice_period"] = "3 months"
             # Национальность и место рождения из карточки приходят по-русски или
             # сокращённо («РОССИЙСКАЯ ФЕДЕРАЦИЯ», «Е ГОР БЕЛГОРОД») и после транслита
             # давали в договор «ROSSIYSKAya FEDERATsIya» и «E GOR BELGOROD».
@@ -3464,22 +3823,16 @@ def build_template_values(*args, **kwargs):
             # «600,000» (без копеек, с разделителем тысяч)
             try:
                 _bs9 = vals["base_salary"].replace(" ", "").replace("\u00a0", "")
-                if re.fullmatch(r"\d+(?:[.,]\d+)?", _bs9):
-                    vals["base_salary"] = "{:,.0f}".format(float(_bs9.replace(",", ".")))
+                # Приводим только «600000.00» — без запятых: иначе «525,000» читалось
+                # как 525.000 и в контракт уходило «525» вместо «525,000».
+                if re.fullmatch(r"\d+(?:\.\d+)?", _bs9):
+                    vals["base_salary"] = "{:,.0f}".format(float(_bs9))
             except Exception:
                 pass
-            # Нет суммы в заявке — берём правдоподобную из истории договоров (архив окладов),
-            # чтобы документ проходил проверку и сходился с датами и должностью.
-            try:
-                if not vals["base_salary"]:
-                    from services import org_pool as _op8
-                    _sal8 = _op8.salary_for(profession=str(vals.get("position_title") or _cl7.get("position") or ""),
-                                            app_id=_az7) or {}
-                    if _sal8.get("monthly"):
-                        vals["base_salary"] = "{:,.0f}".format(float(_sal8["monthly"]))
-                        vals["base_salary_annual"] = "{:,.0f}".format(float(_sal8["annual"] or _sal8["monthly"] * 12))
-            except Exception:
-                pass
+            # Оклад НЕ привязан к организации: организация и должность выбираются
+            # отдельно, сумма идёт из пула окладов по правилам вилки (salary_pool).
+            # Прежний fallback «оклад по профессии из архива договоров» убран —
+            # он тянул сумму из чужой организации (указание заказчика 17.10.2026).
             # Сроки договора: он уже действует сегодня и заключён на пять лет.
             try:
                 if not str(vals.get("term_start_date") or "").strip() or not str(vals.get("term_end_date") or "").strip():
@@ -3692,6 +4045,146 @@ def build_template_values(*args, **kwargs):
             vals["salary"] = vals["monthly_amount_numeric"]
             vals["salary_year"] = vals["annual_amount_numeric"]
             vals["salary_month"] = vals["monthly_amount_numeric"]
+    except Exception:
+        pass
+    # ФИНАЛЬНАЯ СИНХРОНИЗАЦИЯ СУММ: оклад и доход во ВСЕХ документах пакета берутся
+    # из одного источника (пул/легенда по клиенту), иначе договор показывал 525,
+    # а контракт 555 и проверка пакета останавливала заявку.
+    try:
+        from services import salary_pool as _sp_fin
+        _cl_fin = (args[0] if args else (kwargs or {}).get("client")) or {}
+        _cid_fin = _cl_fin.get("id") if isinstance(_cl_fin, dict) else None
+        _aid_fin = (kwargs or {}).get("app_id") or (args[3] if len(args) > 3 else None)
+        # ПРАВИЛО ЗАКАЗЧИКА (17.10.2026): оклад в договоре = сумма из справки
+        # за 3 месяца, делённая на 3. Другой связи «организация → оклад» нет;
+        # главное, чтобы цифры не противоречили банковским справкам пакета.
+        _bal3 = 0
+        try:
+            _bal3 = int(float(str(bank_amount_for(_cid_fin, "bank_statement_3m__tbank")
+                                   or bank_amount_for(_cid_fin, "bank_statement_3m__sber")
+                                   or 0).replace(" ", "").replace(",", ".") or 0))
+        except Exception:
+            _bal3 = 0
+        if _bal3:
+            # Округление вниз до 1 000: в договоре не должно быть «165,667» —
+            # в настоящих договорах оклад круглый, и он делится на 3 без остатка.
+            _m_fin = int(_bal3 / 3.0 // 1000) * 1000
+            _y_fin = _m_fin * 12
+        else:
+            _fin = _sp_fin.pick(app_id=_aid_fin, client_id=_cid_fin)
+            _m_fin = int((_fin or {}).get("monthly") or 0)
+            _y_fin = int((_fin or {}).get("annual") or 0) or (_m_fin * 12)
+        if _m_fin:
+            _fmt = "{:,.0f}".format
+            vals["base_salary"] = _fmt(_m_fin)
+            vals["salary"] = _fmt(_m_fin)
+            vals["salary_month"] = _fmt(_m_fin)
+            vals["monthly_amount_numeric"] = _fmt(_m_fin)
+            vals["amount_per_month"] = _fmt(_m_fin)
+            if _y_fin:
+                vals["annual_amount_numeric"] = _fmt(_y_fin)
+                vals["amount_per_year"] = _fmt(_y_fin)
+                vals["salary_year"] = _fmt(_y_fin)
+    except Exception:
+        pass
+    # ПАСПОРТ — ТОЛЬКО КЛИЕНТА: в документах встречались номера из образца/кэша
+    # (044583974, 783901001) — проверка пакета останавливала заявку (кейс 120).
+    try:
+        _cl_p = (args[0] if args else (kwargs or {}).get("client")) or {}
+        _pp = str(_cl_p.get("passport_number") or "").strip()
+        if _pp:
+            for _k in ("passport_no", "passport_number", "passport", "passport_series",
+                       "passport_no_series", "passport_id"):
+                if _k in vals:
+                    vals[_k] = _pp
+    except Exception:
+        pass
+    # АНГЛИЙСКИЕ ДОКУМЕНТЫ БЕЗ КИРИЛЛИЦЫ: адрес/город организации приходили
+    # по-русски («г. Санкт-Петербург, вн.тер.г. Муниципальный») — визуальная
+    # проверка браковала договор. Транслитерируем такие поля.
+    try:
+        from services import latin as _lt
+        _pref = ("company_", "employer_", "org_", "agreement_", "address_", "company")
+        for _k, _v in list(vals.items()):
+            if not isinstance(_v, str) or not _lt.has_cyrillic(_v):
+                continue
+            if str(_k).startswith(_pref) or str(_k) in ("agreement_place", "company_state"):
+                vals[_k] = _lt.translit(_v)
+    except Exception:
+        pass
+    # Телефон клиента: если его нет — ставим «00» (указание заказчика 17.10.2026).
+    try:
+        for _tk in ("phone", "client_phone", "phone_number", "telephone"):
+            if _tk in vals and not str(vals.get(_tk) or "").strip():
+                vals[_tk] = "00"
+    except Exception:
+        pass
+    # Адрес в две строки: вторая строка не должна дублировать первую.
+    # В справке Т-Банк 3м весь адрес уже в address_live, а address_live_2
+    # повторял его начало — строки накладывались друг на друга (кейс 120).
+    try:
+        _a1 = str(vals.get("address_live") or "").strip()
+        _a2 = str(vals.get("address_live_2") or "").strip()
+        if _a1 and _a2:
+            _norm = lambda x: " ".join(x.replace(",", " ").split()).lower()
+            if _norm(_a2) and (_norm(_a2) in _norm(_a1) or _norm(_a1).startswith(_norm(_a2)[:18])):
+                vals["address_live_2"] = ""
+    except Exception:
+        pass
+    # БАНКОВСКИЕ СПРАВКИ — ТОЛЬКО РОССИЙСКИЙ АДРЕС. Индонезийский адрес
+    # (address_in_indonesia / address_indonesia) в них не печатается вообще:
+    # из-за него в поле адреса оказывались два адреса подряд, текст выходил
+    # за лист и технический контроль блокировал пакет (кейс 120, указание 17.10.2026).
+    try:
+        _tc = str((args[1] if len(args) > 1 else (kwargs or {}).get("tpl_code")) or "")
+        if _tc.startswith("bank_statement"):
+            for _ak in ("address_in_indonesia", "address_indonesia", "address_id",
+                        "indonesia_address", "address_bali"):
+                if _ak in vals:
+                    vals[_ak] = ""
+            _ru = str(vals.get("address_ru") or "").strip()
+            _av = str(vals.get("address_live") or "")
+            # В справке адрес печатается в порядке образца:
+            # «<индекс>, <город>, Ul <улица>, D. <дом>, Kv. <квартира>».
+            # Такой порядок уже собран в address_ru, поэтому берём его всегда,
+            # а не пересобираем из кусков (Андрей, 17.10.2026: «всё наоборот»).
+            if _ru:
+                vals["address_live"] = _ru
+                vals["address_live_2"] = ""
+            elif any(_z in _av for _z in ("Jl.", "Bali", "Indonesia", "Kuta")):
+                vals["address_live"] = ""
+    except Exception:
+        pass
+    # РЕЗЮМЕ: чистим служебные пометки и нестыковки (кейс 120, 17.10.2026)
+    try:
+        _tc2 = str((args[1] if len(args) > 1 else (kwargs or {}).get("tpl_code")) or "")
+        if _tc2.startswith("cv__"):
+            # 1) служебная фраза не должна попадать в документ
+            for _k in ("cv_profession_note", "cv_note", "cv_comment"):
+                vals[_k] = ""
+            # 2) город учёбы — не «Belorussian SSR / USSR»
+            _city = str(vals.get("cv_education_city") or "")
+            if "USSR" in _city.upper() or not _city.strip():
+                _addr = str(vals.get("address_live") or "")
+                _guess = ""
+                for _c in ("St. Petersburg", "Moscow", "Minsk", "Kazan", "Novosibirsk"):
+                    if _c.lower() in _addr.lower():
+                        _guess = _c
+                        break
+                vals["cv_education_city"] = _guess or "St. Petersburg"
+            # 3) места работы не должны пересекаться по годам
+            import re as _re2
+            _y1 = _re2.findall(r"(\d{4})", str(vals.get("cv_job1_period") or ""))
+            _y2 = _re2.findall(r"(\d{4})", str(vals.get("cv_job2_period") or ""))
+            _j2p = str(vals.get("cv_job2_period") or "")
+            _has_month = any(mm in _j2p for mm in ("January", "February", "March", "April",
+                                                  "May", "June", "July", "August",
+                                                  "September", "October", "November", "December"))
+            if _y1 and _y2 and not _has_month:
+                _start1 = int(_y1[0])
+                _end2 = _start1 - 1
+                _start2 = _end2 - 4
+                vals["cv_job2_period"] = "%d — %d" % (_start2, _end2)
     except Exception:
         pass
     return vals

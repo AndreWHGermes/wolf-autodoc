@@ -121,7 +121,11 @@ def build(code, out_docx):
         if os.path.exists(p):
             bg = p
             break
-    if bg:
+    # Для резюме фон-образец не подкладываем: на bg.png нарисован заполненный
+    # чужой документ (SIVAEV, Executive Director, INGREDIENTTRADE), и наш текст
+    # печатался поверх него — в визоре выходила «каша» из двух документов
+    # (Андрей, 17.10.2026). Резюме — текстовый документ без логотипа и печати.
+    if bg and not str(code).startswith("cv"):
         anchor_picture(doc.add_paragraph(), bg, (0.0, 0.0, pw, ph))
 
     for b in blocks:

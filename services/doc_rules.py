@@ -66,7 +66,15 @@ def check_text(template_code: str, text: str, client_passport: str | None = None
         return out
     # 1) чужой паспорт: в документе есть паспортный номер, не принадлежащий клиенту
     if all_client_passports:
-        for found in set(re.findall(r'\b\d{9}\b', text)):
+        # Паспорт ищем ТОЛЬКО рядом со словом passport/паспорт: иначе за паспорт
+        # принимались БИК банка (044583974) и КПП организации (783901001) — ложные
+        # блокировки пакета (кейс 120).
+        _cands = set()
+        for _m in re.finditer(r'(?i)(?:passport|паспорт)[^\n]{0,80}?\b(\d{9})\b', text):
+            _cands.add(_m.group(1))
+        for _m in re.finditer(r'(?i)\b(\d{9})\b[^\n]{0,40}?(?:passport|паспорт)', text):
+            _cands.add(_m.group(1))
+        for found in _cands:
             if client_passport and found == str(client_passport):
                 continue
             if found in {str(p) for p in all_client_passports if p}:

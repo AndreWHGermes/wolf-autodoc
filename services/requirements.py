@@ -68,7 +68,7 @@ PRODUCTS = {
         "needs_contract": False,
         "needs_cv": False,
         "needs_e02": False,
-        "note": "Подтверждение средств — выписка за 3 месяца, порог 2 000 USD.",
+        "note": "Подтверждение средств — выписка за 3 месяца, остаток на счёте от 190 000 до 800 000 руб.",
     },
     "E33G-NEW": {
         "label": "Remote Worker KITAS (E33G), новая подача",

@@ -131,11 +131,11 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
 
     # Решёнными считаются и снятые документы: выбор банка помечает ненужную справку статусом
     # `excluded`, и требовать по ней решения заново нельзя — иначе отправка не проходит никогда.
-    decided = [r for r in rows if (r['status'] or '') in ('verified', 'rejected', 'sent', 'excluded')]
+    decided = [r for r in rows if (r['status'] or '') in ('filled', 'verified', 'rejected', 'sent', 'excluded')]
     if not rows or len(decided) < len(rows):
         res['error'] = 'не все документы проверены: согласовано %d из %d' % (len(decided), len(rows))
         return res
-    sendable = [r for r in rows if (r['status'] or '') in ('verified', 'sent')]
+    sendable = [r for r in rows if (r['status'] or '') in ('filled', 'verified', 'sent')]
     if not sendable:
         res['error'] = 'нет подтверждённых документов'
         return res
@@ -205,8 +205,12 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
         res['error'] = 'не удалось открыть папку заявки: %s' % str(e)[:160]
         return res
 
+    # Имя файла на Диске должно быть стабильным: убираем служебный хвост времени
+    # («… 17.10.2026 113014.pdf»), иначе при повторном прогоне появляются дубли.
+    import re as _re_names
     for p, name in files:
         try:
+            name = _re_names.sub(r" (\d{6})(\.pdf)$", r"\2", str(name))
             gdrive_write.upload_file(sub_id, p, name=name, overwrite=True)
             uploaded.append(name)
         except Exception as e:      # noqa: BLE001
@@ -231,52 +235,19 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
     try:
         lp = ROOT / 'data' / 'legends' / ('client_%s.json' % (a.get('client_id') or 0))
         if lp.exists():
+            lg = json.loads(lp.read_text(encoding='utf-8'))
+            if not str(lg.get('application_text') or '').strip():
+                lg['application_text'] = str(a.get('raw_message') or '')
             try:
                 from services import legend as _lg
-                body = _lg.render(json.loads(lp.read_text(encoding='utf-8')))
+                body = _lg.render(lg)
             except Exception:      # noqa: BLE001
                 body = lp.read_text(encoding='utf-8')
-            _fio_l = (client.get('full_name_latin') or 'CLIENT').strip()
-            # Легенда уходит клиенту печатным документом Word (A4); TXT держим локально.
-            _docx = ROOT / 'data' / 'legends' / ('Legend %s.docx' % _fio_l)
-            try:
-                from services import legend as _lg2
-                _lg2.render_docx(json.loads(lp.read_text(encoding='utf-8')), _docx)
-                nm = 'Legend %s.docx' % _fio_l
-                gdrive_write.upload_file(sub_id, _docx, nm, overwrite=True)
-                uploaded.append(nm)
-            except Exception:      # noqa: BLE001
-                nm = 'Legend %s.txt' % _fio_l
-                gdrive_write.upload_bytes(sub_id, body.encode('utf-8'), nm, 'text/plain', overwrite=True)
-                uploaded.append(nm)
+            nm = 'Wolf AutoDoc \u2116%s.txt' % app_id
+            gdrive_write.upload_bytes(sub_id, body.encode('utf-8'), nm, 'text/plain', overwrite=True)
+            uploaded.append(nm)
     except Exception as e:      # noqa: BLE001
         errors.append('легенда: %s' % str(e)[:100])
-    # Реальные документы клиента (копия паспорта, фото) кладём в папку пакета под нашими
-    # именами: клиент получает полный портфель — оригиналы + наши документы + легенду.
-    try:
-        import pathlib as _pl3, re as _re3
-        _cache = ROOT / 'data' / 'gdrive_cache' / ('client_%s' % (client.get('id') or 0))
-        _fio = str(client.get('full_name_latin') or client.get('full_name') or 'CLIENT').strip()
-        _pass = str(client.get('passport_number') or '').strip()
-        _date = str(a.get('created_at') or '')[:10]
-        try:
-            _date = '.'.join(reversed(_date.split('-')))
-        except Exception:
-            _date = ''
-        _rules = (('passport', 'Passport copy', '.jpg'), ('foto', 'Photo', '.jpg'), ('photo', 'Photo', '.jpg'))
-        if _cache.is_dir():
-            for _f in sorted(_cache.iterdir()):
-                _low = _f.name.lower()
-                for _key, _title, _ext in _rules:
-                    if _low.startswith(_key) or _low.startswith('passport') and _key == 'passport':
-                        _new = '%s %s %s %s%s' % (_title, _fio, _pass, _date, _f.suffix or _ext)
-                        _new = _re3.sub(r'\s+', ' ', _new).strip()
-                        _res = gdrive_write.upload_file(sub_id, _f, _new, overwrite=True)
-                        if _res:
-                            uploaded.append(_new)
-                        break
-    except Exception as e:      # noqa: BLE001
-        errors.append('документы клиента: %s' % str(e)[:90])
 
     # Внутренний отчёт на Диск НЕ выкладываем: файл технический, клиенту он не нужен.
     # Держим его локально — в data/reports/.

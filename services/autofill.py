@@ -93,9 +93,30 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
     # если она появилась, сумма и дата остатка берутся из неё, а не из генерации.
     try:
         if "bank_statement" in (tpl_code or ""):
-            from services.values import read_client_bank_statement, _num2words_en, _fmt_money
+            from services.values import read_client_bank_statement, _num2words_en, _fmt_money, bank_amount_for
             _real = read_client_bank_statement((dict(client_row) or {}).get("id"))
-            _amt = str(_cl.get('balance_rub') or '').strip() or _real.get("balance_rub")
+            # Остаток решает bank_amount_for: реальная справка идёт в документ только если
+            # проходит порог продукта; иначе ставится проходная сумма из вилки. Брать
+            # balance_rub из карточки напрямую нельзя — так в справку попадал непроходной
+            # остаток клиента (заявка 117: 29 919,94 при пороге 200 000 руб.).
+            _amt = str(bank_amount_for((dict(client_row) or {}).get("id"), tpl_code) or "").strip()
+            if not _amt:
+                _amt = str(_cl.get('balance_rub') or '').strip() or _real.get("balance_rub")
+            # Легенда, карточка и справка обязаны нести одну цифру: при расхождении
+            # проверка блокирует пакет («в справке 301 000, а в карточке 29 919»).
+            _cid8 = (dict(client_row) or {}).get("id")
+            if _amt and _cid8:
+                try:
+                    from core import db as _db8
+                    _db8.exec_sql("UPDATE clients SET balance_rub=? WHERE id=?", (_amt, _cid8))
+                    _lp8 = Path("/opt/wolf_v2/data/legends") / ("client_%s.json" % _cid8)
+                    if _lp8.exists():
+                        _lj8 = json.loads(_lp8.read_text(encoding="utf-8"))
+                        _lj8.setdefault("finance", {})["balance"] = _amt
+                        _lj8.setdefault("finance", {})["bank"] = _lj8["finance"].get("bank") or "TBANK"
+                        _lp8.write_text(json.dumps(_lj8, ensure_ascii=False, indent=2), encoding="utf-8")
+                except Exception:                                  # noqa: BLE001
+                    pass
             _bdate = str(_cl.get('balance_date') or '').strip() or _real.get("balance_date")
             if _amt:
                 _amt_txt = str(_amt).replace("\u00a0", "").replace(" ", "").replace(",", ".")
@@ -108,7 +129,12 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
                 try:
                     _int = int(float(_amt_txt.replace(",", ".")))
                     _kop = int(round((float(_amt_txt.replace(",", ".")) - _int) * 100))
-                    values["balance_words"] = _num2words_en(_int)
+                    # Пропись печатается полностью, как в банковском образце:
+                    # «one million … rubles 00 kopeks», а не обрывок «… thousand»
+                    # (Андрей, 17.10.2026).
+                    _kop_w = _num2words_en(_kop) if _kop else "00"
+                    values["balance_words"] = "%s rubles %s kopeks" % (
+                        _num2words_en(_int), _kop_w)
                     doc_values["balance_words"] = values["balance_words"]
                     # Копейки обязаны идти от той же суммы, что и цифры: иначе в строке
                     # стоит «29 919,94», а прописью печатается «00 kopeks».
@@ -127,12 +153,30 @@ def _render_one(app_id: int, doc_row, app_row, client_row, tpl) -> bool:
         fixed = {}
         for k in ("doc_no", "ref_no", "card_mask", "account_no", "contract_no",
                   "balance_rub", "balance_words", "doc_date"):
-            if values.get(k) and not doc_values.get(k):
+            if not values.get(k):
+                continue
+            # Сумма и её пропись всегда берутся из свежего расчёта: в документе
+            # они должны быть полными — «... rubles 00 kopeks», а старое значение
+            # из карточки обрывалось на «thousand» (Андрей, 17.10.2026).
+            if k in ("balance_rub", "balance_words") or not doc_values.get(k):
                 fixed[k] = values[k]
         # остальные подставленные значения тоже сохраняем: иначе в карточке заявки
         # поля выглядят незаполненными, хотя в документе текст уже стоит
         for k, v in values.items():
-            if k == "doc_values" or k in fixed or k in doc_values:
+            _force = ("address_live", "address_live_2", "address_ru",
+                      "address_in_indonesia", "address_indonesia",
+                      "balance_words", "balance_words_2", "balance_rub",
+                      "balance_cents",
+                      # Правило заказчика от 17.10.2026: ФИО в банковских справках
+                      # всегда в регистре Title Case (Tovpeko Egor Artemovich).
+                      # Если в values_json лежит старый кэш (TOVPEKO EGOR),
+                      # мы его ПЕРЕПИСЫВАЕМ при каждой сборке. Не касается
+                      # пользовательских правок других полей — только регистр ФИО.
+                      "client_name", "full_name", "full_name_latin",
+                      "surname", "name", "patronymic")
+            if k == "doc_values" or k in fixed:
+                continue
+            if k in doc_values and k not in _force:
                 continue
             if v is None or str(v).strip() == "":
                 continue
@@ -296,6 +340,26 @@ def build_pending_async(app_id: int) -> bool:
     threading.Thread(target=build_pending, args=(app_id,), daemon=True).start()
     return True
 
+def _exclude_other_bank(app_id: int) -> None:
+    """Справки банка, которого нет у клиента, в пакет не идут (Т-Банк клиенту — не Сбер).
+
+    Иначе проверка пакета бракует чужие бланки: у Сбера своя вёрстка, и в пакете
+    Т-Банка он даёт ложные «наложения текста» (кейс 120).
+    """
+    from core import db as _db
+    try:
+        rows = _db.q("SELECT t.code FROM application_documents ad JOIN templates t ON t.id=ad.template_id "
+                     "WHERE ad.application_id=?", (app_id,))
+        codes = {str(r["code"]) for r in rows}
+        has_t = any("__tbank" in c for c in codes)
+        has_s = any("__sber" in c for c in codes)
+        if has_t and has_s:
+            _db.exec_sql("UPDATE application_documents SET status='excluded' WHERE application_id=? "
+                         "AND template_id IN (SELECT id FROM templates WHERE code LIKE '%__sber')", (app_id,))
+    except Exception:
+        pass
+
+
 def build_all(app_id: int) -> dict:
     """Пересобрать все документы заявки по текущим правилам — и уже готовые тоже.
 
@@ -343,6 +407,7 @@ def build_all(app_id: int) -> dict:
     finally:
         with _lock:
             _running.discard(app_id)
+    _exclude_other_bank(app_id)
     return {"ok": True, "done": done, "failed": failed}
 
 

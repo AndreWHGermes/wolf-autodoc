@@ -156,10 +156,15 @@ def add_new() -> int:
         "SELECT application_id FROM auto_queue WHERE status='paused'")}
     wait = {r['application_id'] for r in c.execute(
         "SELECT application_id FROM auto_queue WHERE status IN ('queued','running')")}
+    # Повторный прогон — не чаще раза в 30 минут: иначе заявка, остановленная проверкой,
+    # пересобирается заново на каждом тике крона и жжёт ресурсы впустую.
+    recent = {r['application_id'] for r in c.execute(
+        "SELECT application_id FROM auto_queue WHERE status IN ('done','failed') "
+        "AND finished_at > datetime('now','-30 minutes')")}
     c.close()
     n = 0
     for i in rows:
-        if i in stop or i in wait:
+        if i in stop or i in wait or i in recent:
             continue
         if add(i, quiet=True):
             n += 1
@@ -204,6 +209,48 @@ def _notify_manager(app_id: int, text: str) -> None:
         pass
 
 
+def _live_cycle(app_id: int) -> bool:
+    """Есть ли живой процесс цикла по этой заявке."""
+    try:
+        out = subprocess.run(['ps', '-eo', 'cmd'], capture_output=True, text=True,
+                             timeout=10).stdout
+    except Exception:                                  # noqa: BLE001
+        return True        # проверить не смогли — считаем, что цикл живой
+    return ('auto_runner.py %d' % app_id) in out or ('auto_cycle.py %d' % app_id) in out
+
+
+def reap_stale_running() -> int:
+    """Вернуть в очередь брошенный прогон: строка 'running' осталась от убитого цикла.
+
+    Если процесс цикла убит (OOM, перезапуск сайта), строка остаётся 'running'
+    навсегда: проверка «уже обрабатывается» не даёт воркеру взять ни одной
+    следующей заявки, и очередь стоит, пока её не сбросят руками
+    (заявки 116–121, 17.10.2026: заявка 120 висела 2 часа и держала 121).
+    """
+    c = conn()
+    rows = c.execute("SELECT id, application_id, started_at, attempts FROM auto_queue "
+                     "WHERE status='running'").fetchall()
+    reaped = 0
+    for r in rows:
+        app_id = r['application_id']
+        if _live_cycle(app_id):
+            continue
+        started = r['started_at'] or ''
+        age = c.execute("SELECT CAST((julianday('now') - julianday(?)) * 1440 AS INTEGER)",
+                        (started,)).fetchone()[0] if started else 10 ** 6
+        if age is not None and age < 2:      # только что стартовал — даём время
+            continue
+        c.execute("UPDATE auto_queue SET status=CASE WHEN attempts>=3 THEN 'failed' "
+                  "ELSE 'queued' END, finished_at=NULL, last_error=? WHERE id=?",
+                  ('цикл прерван: процесса нет (простой %s мин)' % age, r['id']))
+        reaped += 1
+        print('снят брошенный прогон заявки %s (простой %s мин) — возвращена в очередь'
+              % (app_id, age))
+    c.commit()
+    c.close()
+    return reaped
+
+
 def worker() -> int:
     """Взять ровно одну заявку из очереди и обработать её.
 
@@ -219,6 +266,13 @@ def worker() -> int:
     c = conn()
     busy = c.execute("SELECT application_id FROM auto_queue WHERE status='running' LIMIT 1").fetchone()
     c.close()
+    if busy:
+        # Сначала снимаем брошенные прогоны: иначе «running» от убитого цикла
+        # блокирует очередь навсегда и новые заявки не берутся вовсе.
+        reap_stale_running()
+        c = conn()
+        busy = c.execute("SELECT application_id FROM auto_queue WHERE status='running' LIMIT 1").fetchone()
+        c.close()
     if busy:
         print('заявка %s уже обрабатывается — очередь идёт по одной' % busy['application_id'])
         return 0
@@ -250,6 +304,24 @@ def worker() -> int:
     except Exception:                                  # noqa: BLE001
         pass
     try:
+        # Страховка: зависший прошлый цикл держит flock и блокирует все следующие
+        # прогоны («обработана за 0 сек»). Убиваем цикл, который висит больше 20 минут.
+        try:
+            import subprocess as _sp
+            _out = _sp.run(['ps', '-eo', 'pid,etime,cmd'], capture_output=True, text=True).stdout
+            for _line in _out.splitlines():
+                if 'services/auto_runner.py' not in _line or 'grep' in _line:
+                    continue
+                _parts = _line.split(None, 2)
+                _pid, _et = _parts[0], _parts[1]
+                _sec = 0
+                for _chunk in _et.split('-')[-1].split(':'):
+                    _sec = _sec * 60 + int(_chunk)
+                if _sec > 1200:
+                    _sp.run(['kill', '-9', _pid], check=False)
+                    print('снят зависший цикл auto_runner (pid %s, %s)' % (_pid, _et))
+        except Exception:                                          # noqa: BLE001
+            pass
         rc = subprocess.run([PY, str(ROOT / 'services' / 'auto_runner.py'), str(app_id)],
                             cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
         ok = rc.returncode == 0
@@ -257,6 +329,20 @@ def worker() -> int:
     except subprocess.TimeoutExpired:
         ok, err = False, 'цикл не уложился в 30 минут'
     c = conn()
+    if mode() != MODE_ON:
+        # Пока шёл прогон нажали «Пауза»: заявка не считается сбоем и не теряет попытку.
+        c.execute("""UPDATE auto_queue SET status='queued', finished_at=NULL,
+                            attempts=CASE WHEN attempts>0 THEN attempts-1 ELSE 0 END,
+                            last_error='пауза автоматики' WHERE id=?""", (qid,))
+        c.commit()
+        c.close()
+        try:
+            from services import app_steps as _steps
+            _steps.step(app_id, 'pause', 'warn', 'пауза автоматики — заявка возвращена в очередь')
+        except Exception:                              # noqa: BLE001
+            pass
+        print('пауза: заявка %s возвращена в очередь' % app_id)
+        return 0
     if ok:
         c.execute("UPDATE auto_queue SET status='done', finished_at=datetime('now'), "
                   "last_error=NULL WHERE id=?", (qid,))
@@ -269,7 +355,24 @@ def worker() -> int:
     try:
         from services import app_steps as _steps
         if ok:
-            _steps.step(app_id, 'done', 'ok', 'цикл завершён (%d сек)' % int(time.time() - t0))
+            # Отправлено — «цикл завершён». Не отправлено (остановка на проверке) —
+            # это не успех: пишем предупреждение с причиной, чтобы не читалось как «всё ок».
+            _sent = 0
+            try:
+                _c = sqlite3.connect(str(DB), timeout=30)
+                _r = _c.execute("SELECT sent FROM auto_runs WHERE application_id=? "
+                                "ORDER BY id DESC LIMIT 1", (app_id,)).fetchone()
+                _sent = int((_r[0] if _r else 0) or 0)
+                _c.close()
+            except Exception:
+                pass
+            _sec = int(time.time() - t0)
+            if _sent:
+                _steps.step(app_id, 'done', 'ok', 'цикл завершён: документы отправлены (%d сек)' % _sec)
+            else:
+                _steps.step(app_id, 'done', 'warn',
+                            'остановлено на проверке, документы НЕ отправлены (%d сек). '
+                            'Причины — в этапах «проверка» и «финал».' % _sec)
         else:
             _steps.step(app_id, 'done', 'fail', ('сбой: ' + err)[-300:])
     except Exception:                                  # noqa: BLE001

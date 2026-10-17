@@ -11,11 +11,16 @@
 import re
 
 _ZIP = re.compile(r"\b(\d{6})\b")
-_HOUSE = re.compile(r"(?:дом|д\.?|house|d\.?|D\.)\s*([0-9][0-9A-Za-zА-Яа-я/\\\-]*)")
-_KORP = re.compile(r"(?:корпус|корп\.?|korp\.?|bldg\.?|building)\s*([0-9A-Za-zА-Яа-я/\\\-]+)")
-_KV = re.compile(r"(?:квартира|кв\.?|apt\.?|apartment|flat|fl\.?|Kv\.?)\s*([0-9A-Za-zА-Яа-я/\\\-]+)")
-_STREET = re.compile(r"(?:улица|ул\.?|ul\.?|street|str\.?|Ul\.?)\s*([^,;]+)")
-_CITY = re.compile(r"(?:город|г\.?|city|G\.?)\s*([^,;]+)")
+_HOUSE = re.compile(r"\b(?:дом|д\.|house|d\.|D\.)\s*([0-9][0-9A-Za-zА-Яа-я/\\\-]*)", re.I)
+_KORP = re.compile(r"(?:корпус|корп\.?|korp\.?|bldg\.?|building)\s*([0-9A-Za-zА-Яа-я/\\\-]+)", re.I)
+_KV = re.compile(r"\b(?:квартира|кв\.?|apt\.?|apartment|flat|fl\.?|Kv\.?)\s*([0-9A-Za-zА-Яа-я/\\\-]+)", re.I)
+_STREET = re.compile(r"\b(?:улица|ул\.?|ul\.?|street)\s*([^,;]+)", re.I)
+# «стр. 1» в российском адресе — это СТРОЕНИЕ, а не улица. Раньше оно попадало
+# в остаток и уезжало на место города («Str. 1, St. Petersburg»), из-за чего
+# строка адреса не влезала в поле и наложение строк блокировало отправку
+# (заявка 120, 17.10.2026). Учитываем только вариант с номером: «Str. 1».
+_STR = re.compile(r"\b(?:строение|стр\.?|structure|struct\.?|str\.?)\s*([0-9][0-9A-Za-zА-Яа-я/\\\-]*)", re.I)
+_CITY = re.compile(r"\b(?:город|г\.?|city|G\.?)\s*([^,;]+)", re.I)
 _REGION = re.compile(r"([^,;]*(?:край|область|обл\.?|республика|респ\.?|округ|krai|kray|oblast|okrug|respublika|Obl\.?)[^,;]*)", re.I)
 _COUNTRY = re.compile(r"(россия|российская|russia|russian federation)", re.I)
 
@@ -56,6 +61,7 @@ def en_order(addr: str, translit=None) -> str:
     house = _clean(take(_HOUSE))
     korp = _clean(take(_KORP))
     kv = _clean(take(_KV))
+    build = _clean(take(_STR))
     street = _clean(take(_STREET))
     city = _clean(take(_CITY))
     region = _clean(take(_REGION))
@@ -69,9 +75,12 @@ def en_order(addr: str, translit=None) -> str:
         region = _clean(rest.pop(0))
     if not city and rest:
         city = _clean(rest.pop(0))
+    if not street and rest:
+        # улица без префикса («Sh Magistral'noe»): раньше терялась целиком
+        street = _clean(rest.pop(0))
 
     parts = []
-    for pref, val in (("d.", house), ("korp.", korp), ("kv.", kv)):
+    for pref, val in (("d.", house), ("korp.", korp), ("str.", build), ("kv.", kv)):
         if val:
             parts.append(pref + " " + val)
     if street:

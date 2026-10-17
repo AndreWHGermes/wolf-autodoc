@@ -222,6 +222,14 @@ def normalize(values: dict, template_code: str = '') -> dict:
 
 
 def _normalize_doc_values(out: dict) -> dict:
+    # ФИО в резюме — «Tovpeko Egor Artemovich»: первая заглавная, остальные
+    # строчные. Транслитерация приводила всё к ВЕРХНЕМУ регистру (Андрей, 17.10.2026).
+    try:
+        _cn = str(out.get("cv_name") or "").strip()
+        if _cn:
+            out["cv_name"] = " ".join(w.capitalize() for w in _cn.split())
+    except Exception:
+        pass
     """Единая доводка значений перед подстановкой в шаблон.
 
     Здесь правятся две вещи, которые раньше доходили до документа как есть:
@@ -757,6 +765,13 @@ def generate(application_id: int, template_id: int, out_path: str | Path | None 
     for _k, _v in stored_values(application_id, template_id).items():
         if _v not in (None, ''):
             stored[_k] = _v
+    # Сумма остатка, пропись и адрес считаются заново из карточки клиента и его
+    # документов. Сохранённые в карточке документа значения этих полей внутрь
+    # расчёта не отдаём: они перебивали свежие и печатались обрезанными —
+    # «… thousand» без «rubles 00 kopeks» (Андрей, 17.10.2026).
+    for _k in ("balance_rub", "balance_words", "balance_words_2", "balance_cents",
+               "address_live", "address_live_2", "address_ru"):
+        stored.pop(_k, None)
     try:
         from services.values import build_template_values
         vals = build_template_values(cl, tpl['code'],
@@ -784,6 +799,11 @@ def generate(application_id: int, template_id: int, out_path: str | Path | None 
         "engagement_phrase", "position_title", "base_salary", "base_salary_annual",
         "annual_amount_numeric", "annual_amount_words",
         "monthly_amount_numeric", "monthly_amount_words",
+        # Сумма остатка и её пропись, а также адрес клиента всегда считаются заново:
+        # в карточке документа лежали обрезанные значения («… thousand» без
+        # «rubles 00 kopeks») и адрес в обратном порядке (Андрей, 17.10.2026).
+        "balance_rub", "balance_words", "balance_words_2", "balance_cents",
+        "address_live", "address_live_2",
     }
     for _k, _v in stored.items():
         if _k in _DERIVED_KEYS and str(vals.get(_k) or "").strip():

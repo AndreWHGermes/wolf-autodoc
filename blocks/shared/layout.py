@@ -14,6 +14,11 @@ ICON_GEAR = ("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a7.2 7.2 0 0 0 .1-1 7.2
              "-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.9 4h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.4L6 13.6"
              "a7.2 7.2 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.4z")
 ICON_HIST = "M12 8v4l3 3M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"
+# Иконка «База значений» — слои-справочник, чтобы не путалась с документами
+ICON_POOL = ("M12 2L3 7l9 5 9-5-9-5zM3 12l9 5 9-5M3 17l9 5 9-5")
+ICON_WARN = "M12 3l9 16H3zM12 9v4M12 16.5h.01"          # журнал ошибок
+ICON_LIST = "M4 6h16M4 12h16M4 18h10M2 6h.01M2 12h.01M2 18h.01"  # журнал действий
+ICON_BOOK = "M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2zM9 3v18"   # инструкция
 
 # Стили и логотип вшиваются в страницу (см. _inline_css/_logo_data_uri):
 # на удалённом канале каждый отдельный запрос — лишняя задержка.
@@ -23,10 +28,12 @@ _CSS_MEM: dict = {}
 MENU = [
     ("dashboard", "Новая заявка", "/", ICON_DASH),
     ("history",   "История и поиск", "/history", ICON_HIST),
-    ("events",    "Журнал",   "/events",  ICON_HIST),
+    ("errors",    "Журнал ошибок",   "/errors",  ICON_WARN),
+    ("events",    "Журнал действий",   "/events",  ICON_LIST),
     # «|» в подписи = перенос строки в меню (в остальных местах — « · »)
     ("templates", "Конструктор|Продукты / Документы", "/templates", ICON_DOC),
-    ("guide",     "Инструкция|Пакеты и переменные", "/guide", ICON_DOC),
+    ("guide",     "Инструкция|Пакеты и переменные", "/guide", ICON_BOOK),
+    ("pool",      "База значений|Профессии · Организации · Вузы", "/pool", ICON_POOL),
     ("settings",  "Настройки", "/settings", ICON_GEAR),
 ]
 
@@ -129,6 +136,15 @@ h2{font-size:16px;margin:0 0 8px}
 .card>summary::-webkit-details-marker{display:none}
 .card>summary .chev{margin-left:auto;color:#9AA3B2;font-size:19px;line-height:1;transition:transform .18s}
 .card[open]>summary .chev{transform:rotate(90deg)}
+.now-state{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;padding:9px 11px;margin:6px 0 8px;
+  border-radius:10px;border:1px solid #E4E7EE;font-size:13px;background:#F8FAFC;color:#374151}
+.now-state b{font-weight:800}
+.now-state.run{background:#EFF6FF;border-color:#BFDBFE;color:#1D4ED8}
+.now-state.wait{background:#FFFBEB;border-color:#FDE68A;color:#92400E}
+.now-state.ok{background:#ECFDF5;border-color:#A7F3D0;color:#065F46}
+.now-state.bad{background:#FEF2F2;border-color:#FECACA;color:#991B1B}
+.now-state span{color:#4B5563;font-size:12.5px;margin-left:6px}
+.now-state span+span{padding-left:8px;border-left:1px solid rgba(0,0,0,.12)}
 .card .body{padding:0 14px 14px}
 .card .head-only{display:flex;align-items:center;gap:12px;padding:14px;font-weight:700;font-size:15.5px}
 .card .head-only .chev{margin-left:auto;color:#9AA3B2}

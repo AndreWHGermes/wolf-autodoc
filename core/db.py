@@ -240,8 +240,12 @@ def client_save(data: dict, client_id: int = None) -> int:
 
 
 def client_label(row: dict) -> str:
+    """Имя клиента для интерфейса: латиница, если она есть (документы на английском)."""
+    latin = " ".join(x for x in (row.get("full_name_latin"),) if x).strip()
+    if latin:
+        return latin
     name = " ".join(x for x in (row.get("surname"), row.get("name"), row.get("patronymic")) if x).strip()
-    return name or row.get("full_name_latin") or f"Клиент #{row.get('id')}"
+    return name or f"Клиент #{row.get('id')}"
 
 
 def client_find_duplicate(data: dict):
@@ -407,6 +411,15 @@ def ensure_product_documents(app_id: int) -> list:
 
 def application_doc_set(ad_id: int, status: str, values_json: str = "", pdf_path: str = "",
                         error: str = "") -> None:
+    # Проверенный документ нельзя понизить до «заполнен» пересборкой: галочка
+    # «проверен» — решение человека, и она должна переживать любые пересборки.
+    if status == "filled":
+        try:
+            cur = q1("SELECT status FROM application_documents WHERE id=?", (ad_id,)) or {}
+            if (cur.get("status") or "") in ("verified", "sent"):
+                status = cur["status"]
+        except Exception:                                          # noqa: BLE001
+            pass
     if status == "sent":
         exec_sql("""UPDATE application_documents SET status=?, values_json=?, pdf_path=?,
                     rendered_at=datetime('now'), sent_at=datetime('now'), error=? WHERE id=?""",

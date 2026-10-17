@@ -428,9 +428,35 @@ def _write_application_text(app_id: int, body: str, form: dict, user) -> None:
     ]
     p.write_text("\n".join(lines), encoding="utf-8")
 
+DUP_WINDOW_HOURS = 12
+LAST_DUPLICATE = None      # заполняется create_application, если заявка уже была
+
+
+def _duplicate_application(conn, client_id: int, product_id: int, gdrive_url: str):
+    """Та же заявка, присланная повторно: тот же клиент, продукт и папка Диска.
+
+    17.10.2026 менеджер дважды прислал одну и ту же заявку (117 и 118): вышло
+    две заявки на одного клиента, два комплекта в одну папку на Диске.
+    Повтор в пределах 12 часов считаем тем же делом.
+    """
+    if not client_id or not gdrive_url:
+        return None
+    try:
+        return conn.execute(
+            "SELECT id, status FROM applications WHERE client_id=? "
+            "AND COALESCE(product_id,0)=COALESCE(?,0) AND COALESCE(gdrive_url,'')=? "
+            "AND status IN ('new','in_work','filled','sent') "
+            "AND created_at > datetime('now', ?) ORDER BY id DESC LIMIT 1",
+            (client_id, product_id, gdrive_url, '-%d hours' % DUP_WINDOW_HOURS)).fetchone()
+    except Exception:                                  # noqa: BLE001
+        return None
+
+
 def create_application(form: dict, from_user: sqlite3.Row,
                        autofill: bool = False, raw_text: str = "") -> tuple[int, int]:
     """Создаёт клиента и заявку. Возвращает (application_id, client_id)."""
+    global LAST_DUPLICATE
+    LAST_DUPLICATE = None
     conn = db()
     full = form.get("full_name") or ""
     # Если LLM уже разложил ФИО по частям — используем их напрямую,
@@ -532,6 +558,13 @@ def create_application(form: dict, from_user: sqlite3.Row,
     # gdrive_folder_url, форма — gdrive_url. Берём любую, иначе автораэбор
     # документов с Google Диска не запускается и заявка остаётся без файлов.
     _gdrive_url = (form.get("gdrive_url") or form.get("gdrive_folder_url") or "").strip()
+    _dup = _duplicate_application(conn, client_id, product_id, _gdrive_url)
+    if _dup:
+        log.info("заявка уже принята: #%s (%s), клиент #%s, папка %s — повторно не создаю",
+                 _dup["id"], _dup["status"], client_id, _gdrive_url)
+        LAST_DUPLICATE = {"app_id": int(_dup["id"]), "status": _dup["status"]}
+        conn.commit()
+        return int(_dup["id"]), int(client_id)
     cur = conn.execute(
         "INSERT INTO applications (client_id, product_id, status, source, "
         "comment, brief, price_idr, gdrive_url, raw_payload, raw_message, bot_manager_id, created_at) "
@@ -889,7 +922,8 @@ def _autofill_pdfs(app_id: int, client_id: int, product_id: int) -> None:
             from core import pdf2html
             pdf2html.render_pdf(tmp_html, out_pdf)
             conn.execute(
-                "UPDATE application_documents SET status='filled', pdf_path=?, "
+                "UPDATE application_documents SET status=CASE WHEN status IN ('verified','sent') "
+                "THEN status ELSE 'filled' END, pdf_path=?, "
                 "values_json=?, error=NULL, rendered_at=datetime('now') WHERE id=?",
                 (str(out_pdf), json.dumps(values, ensure_ascii=False), d["id"]))
         except Exception as exc:
@@ -1217,6 +1251,12 @@ def handle_update(upd: dict) -> None:
             send(chat_id, "❌ Нет прав.")
             return
         body = text[len("/new"):].lstrip() if text.startswith("/new") else text
+        # Мгновенный ответ: разбор (LLM + чтение Диска) занимает 10-20 секунд,
+        # менеджер не должен ждать молча.
+        try:
+            send(chat_id, "✅ Заявка принята в обработку. Читаю данные клиента — номер пришлю через несколько секунд.")
+        except Exception:  # noqa: BLE001
+            pass
         form = parse_application(body)
 
         # --- Досылка продукта: менеджер присылает только «Название продукта: X»,
@@ -1259,7 +1299,18 @@ def handle_update(upd: dict) -> None:
                     from bot.ai_parser import parse_free_form
                 _codes = [r["code"] for r in db().execute(
                     "SELECT code FROM products ORDER BY id").fetchall()]
-                ai = parse_free_form(body, _codes)
+                # LLM может «зависнуть» на сетевом запросе: бот однопоточный,
+                # поэтому жёсткий таймаут — иначе заявка молча не создаётся.
+                import signal as _sig
+                def _on_alarm(signum, frame):
+                    raise TimeoutError('LLM не ответил за 30 с')
+                _old_h = _sig.signal(_sig.SIGALRM, _on_alarm)
+                _sig.alarm(30)
+                try:
+                    ai = parse_free_form(body, _codes)
+                finally:
+                    _sig.alarm(0)
+                    _sig.signal(_sig.SIGALRM, _old_h)
                 # Заполняем только ПУСТЫЕ поля: setdefault не работал, потому что
                 # жёсткий шаблон уже создаёт все ключи пустыми — из-за этого разбор
                 # заявки от менеджера уходил в никуда (разбор 05.10.2026).
@@ -1322,6 +1373,12 @@ def handle_update(upd: dict) -> None:
             return
         try:
             app_id, client_id = create_application(form, user, raw_text=body)
+            if LAST_DUPLICATE:
+                send(chat_id, "ℹ️ Эта заявка уже принята ранее — №%s (статус: %s).\n"
+                              "Повторно не создаю: комплект уже готовится по прежней заявке.\n"
+                              "Если нужно новое дело — пришлите новую папку на Google Диске."
+                     % (LAST_DUPLICATE["app_id"], LAST_DUPLICATE["status"]))
+                return
             # администраторам сообщаем сразу: новая заявка, кто менеджер и папка клиента на Диске
             try:
                 from bot.notify import notify_admins_new_app
