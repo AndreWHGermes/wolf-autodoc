@@ -1140,6 +1140,21 @@ def app_view(app_id: int):
             '</form>'
         )
 
+    # === BLOCK 7 prep 2: рендер блока «Продукт + Google Drive» через views.py ===
+    try:
+        from blocks.dashboard.views import render_blocks as _render_blocks2
+        _ctx_pd = {
+            "app_id": app_id,
+            "a": a,
+            "product_label": product_label,
+            "product_code": product_code,
+            "product_select": product_select,
+            "drive_btn": drive_btn,
+        }
+        _blocks_product_drive = _render_blocks2(_ctx_pd, "product_drive")
+    except Exception:                                       # noqa: BLE001
+        _blocks_product_drive = ""
+
     try:
         _drive_scan = db.q1("SELECT status, docs_total, docs_done, note, created_at FROM drive_scans WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
     except Exception:
@@ -1320,26 +1335,16 @@ def app_view(app_id: int):
     except Exception:                                       # noqa: BLE001
         _blocks_top = ""
 
+    # _blocks_product_drive собирается ПОЗЖЕ — после определения product_* и drive_btn.
+    _blocks_product_drive = ""
+    # placeholder: будет заполнено после определения product_select и drive_btn
+
     body = """
 <div class="app-card-green">
 
 # === BLOCK 7: HTML-тело страницы (шапка, этапы сбора, документы, визуализатор) ===
 """ + _blocks_top + """
-<div class="row two-col stage-grid">
-  <div class="kv-cell stage-block">
-    <div class="stage-no">1</div>
-    <div class="kv-label">📦 Продукт</div>
-    <div class="kv-main">""" + product_label + """</div>
-    <div class="kv-sub">код: """ + product_code + """ · IDR """ + ('{:,}'.format(a["price_idr"]) if a.get("price_idr") else '0') + """</div>
-    """ + product_select + """
-  </div>
-  <div class="kv-cell stage-block">
-    <div class="stage-no">2</div>
-    <div class="kv-label">📁 Google Drive клиента</div>
-    """ + drive_btn + """
-  </div>
-</div>
-
+""" + _blocks_product_drive + """
 <details class="ui-card stage-block stage-fold" id="stage-3" open>
   <summary class="ui-card-head">
     <span class="stage-no">3</span><span class="ui-card-emoji">📋</span>

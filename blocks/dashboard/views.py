@@ -47,6 +47,36 @@ def render_stages_intro(ctx) -> str:
     return '<div class="stage-title">Этапы сбора данных</div>\n'
 
 
+def render_product_drive_block(ctx) -> str:
+    """Блок 'Продукт + Google Drive клиента' — две ячейки.
+
+    ctx: dict с полями a (заявка), product_label, product_code, product_select, drive_btn.
+    """
+    a = ctx["a"]
+    product_label = ctx["product_label"]
+    product_code = ctx["product_code"]
+    product_select = ctx["product_select"]
+    drive_btn = ctx["drive_btn"]
+    from blocks.dashboard import page as _page
+    price = _page.html.escape("{:,}".format(int(a["price_idr"]))) if a.get("price_idr") else "0"
+    return (
+        '<div class="row two-col stage-grid">\n'
+        '  <div class="kv-cell stage-block">\n'
+        '    <div class="stage-no">1</div>\n'
+        '    <div class="kv-label">📦 Продукт</div>\n'
+        f'    <div class="kv-main">{_page.html.escape(product_label)}</div>\n'
+        f'    <div class="kv-sub">код: {_page.html.escape(product_code)} · IDR {price}</div>\n'
+        f'    {product_select}\n'
+        '  </div>\n'
+        '  <div class="kv-cell stage-block">\n'
+        '    <div class="stage-no">2</div>\n'
+        '    <div class="kv-label">📁 Google Drive клиента</div>\n'
+        f'    {drive_btn}\n'
+        '  </div>\n'
+        '</div>\n'
+    )
+
+
 # Реестр: какие блоки входят в страницу заявки и в каком порядке.
 # Каждая запись — (tag, callable(ctx)). Будущая правка: добавить новый блок
 # = зарегистрировать здесь + описать рендерер выше.
@@ -54,6 +84,7 @@ BLOCKS_REGISTRY = [
     ("comment",   render_comment_block),
     ("header",    render_app_header),
     ("intro",     render_stages_intro),
+    ("product_drive", render_product_drive_block),
 ]
 
 
