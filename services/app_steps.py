@@ -17,14 +17,21 @@ ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
 
 # Порядок шагов конвейера — для картинки «где мы сейчас».
-ORDER = ['received', 'taken', 'product', 'docs_plan', 'read_drive', 'read_request',
-         'legend', 'fill', 'visual', 'logic', 'send', 'done']
+ORDER = ['received', 'taken', 'product', 'bank_choice', 'org_assigned',
+         'address_assigned', 'uni_assigned', 'docs_plan', 'read_drive',
+         'read_request', 'legend', 'fill', 'visual', 'logic', 'pack',
+         'verify_docs', 'final', 'route', 'collect', 'upload', 'notify',
+         'archive', 'done']
 
 # Этапы по порядку, с понятными названиями для журнала и карточки заявки.
 STAGES = {
     'received':     'Заявка принята из бота',
     'taken':        'Взята в работу (очередь)',
     'product':      'Определён тип продукта',
+    'bank_choice':  'Определён банк (TBank / Sber)',
+    'org_assigned': 'Назначена организация работодателя',
+    'address_assigned': 'Назначен адрес регистрации (РФ)',
+    'uni_assigned': 'Назначен университет (если D12)',
     'docs_plan':    'Набор документов под продукт',
     'read_drive':   'Чтение документов клиента на Диске',
     'read_request': 'Чтение заявки менеджера (паспорт в приоритете)',
@@ -32,6 +39,14 @@ STAGES = {
     'fill':         'Заполнение переменных по документам',
     'visual':       'Визуальная проверка вёрстки',
     'logic':        'Логическая проверка пакета',
+    'pack':         'Согласованность состава пакета',
+    'verify_docs':  'Документы подтверждены (галочки)',
+    'final':        'Финальная проверка',
+    'route':        'Маршрутизация замечаний',
+    'collect':      'Сборка комплекта в data/out/',
+    'upload':       'Отправка на Google Диск',
+    'notify':       'Уведомления отправлены',
+    'archive':      'Заявка переведена в архив',
     'send':         'Отправка на Google Диск',
     'done':         'Цикл завершён',
     # служебные (старые записи и исключения)

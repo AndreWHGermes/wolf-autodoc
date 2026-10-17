@@ -176,16 +176,17 @@ def progress_html(app_id: int) -> str:
     run = _last_run(app_id) or {}
     errs = _err_list(run)
     parts = []
+    # Показываем ТОЛЬКО текущий этап обработки (если он известен) — состояние
+    # заявки (queued/running/paused) уже видно по кнопке и по индикатору слева
+    # от кнопки. Не дублируем «⏳ обрабатывается» / «🕓 очередь №N».
     if q == "running":
         now = _where_now(app_id)
         step = now.get("next") or now.get("last_ok") or str(run.get("stage") or "")
-        parts.append('<span class="pchip run">⏳ обрабатывается'
-                     + (f' · этап: {html.escape(step)}' if step else '') + '</span>')
-    if q == "queued" and _is_active_elsewhere(app_id):
-        parts.append('<span class="pchip wait">🕓 очередь №%s · сейчас обрабатывается другая заявка'
-                     '</span>' % (pos or "?"))
-    elif q == "queued":
-        parts.append('<span class="pchip wait">🕓 очередь №%s</span>' % (pos or "?"))
+        if step:
+            parts.append('<span class="pchip step">📍 этап: ' + html.escape(step) + '</span>')
+    if q == "queued" and pos:
+        # Показываем позицию в очереди, без иконки и без повтора «очередь»
+        parts.append('<span class="pchip step">№' + str(pos) + ' в очереди</span>')
     elif q == "paused":
         parts.append('<span class="pchip paused">⏸ пауза</span>')
     if run.get("sent"):
@@ -200,7 +201,7 @@ def progress_html(app_id: int) -> str:
         if len(errs) > 1:
             parts.append(f'<span class="pchip err-more" title="{title}">ещё {len(errs) - 1}</span>')
     if not parts:
-        parts.append('<span class="pchip idle">не в работе</span>')
+        parts.append('<span class="pchip idle">готова к запуску</span>')
     return '<div class="prow">' + "".join(parts) + '</div>'
 
 

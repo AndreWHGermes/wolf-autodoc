@@ -143,6 +143,15 @@ def apply_to_application(app_id: int, dry: bool = False) -> dict:
     note = 'лишний банк помечен rejected и в отправку не идёт' if rejected else 'лишних банков нет'
     if bank == 'tbank' and not bank_of_client(app_id):
         note = 'банк не определён — приоритет TBank по правилу заказчика; ' + note
+    # Журнал: фиксируем выбор банка отдельной строкой в app_steps,
+    # чтобы админ видел, какое решение приняла система.
+    try:
+        from services import app_steps as _stp
+        _stp.step(app_id, 'bank_choice', 'ok',
+                  f"банк: {bank}; оставлено: {', '.join(kept) or '—'}; "
+                  f"rejected: {', '.join(rejected) or '—'}")
+    except Exception:
+        pass
     return {'bank': bank, 'kept': kept, 'rejected': rejected, 'note': note}
 
 

@@ -379,3 +379,18 @@ def for_application(client: dict, app_id=None, given_org: str = "") -> dict:
     return {"org": org, "salary": salary, "term": term,
             "sector": sector,
             "profession": profession, "checked": bool(org and valid(org))}
+
+
+def _log_org_assigned(app_id: int, result: dict) -> None:
+    """Журнал: фиксируем выбор организации отдельной строкой в app_steps."""
+    try:
+        from services import app_steps as _stp
+        org = result.get("org") or {}
+        name = org.get("name") or org.get("name_ru") or "—"
+        given = bool(org.get("given_by_client"))
+        salary = (result.get("salary") or {}).get("amount")
+        _stp.step(app_id, 'org_assigned', 'ok',
+                  f"организация: {name}" + (" (от клиента)" if given else " (из пула)")
+                  + (f"; оклад: {salary}" if salary else ""))
+    except Exception:
+        pass
