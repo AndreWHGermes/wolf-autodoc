@@ -109,18 +109,26 @@ def bank_of_client(app_id: int) -> str | None:
 def apply_to_application(app_id: int, dry: bool = False) -> dict:
     """Оставить в заявке документ выбранного банка, лишние банки пометить rejected.
 
+    Приоритет (по правилу заказчика 17.10.2026):
+    1. Карточка клиента clients.bank_name ('tbank' / 'sber') — точный выбор.
+    2. Папка клиента на Google Диске — определение по приложенной справке.
+    3. Локальные копии — страховка, ищем в тексте PDF название банка.
+    4. Банк не определён → ДЕФОЛТ TBank (правило: «в приоритете TBank»).
+
     Возвращает {'bank': ..., 'kept': [...], 'rejected': [...]}.
     """
     bank = bank_of_client(app_id)
     if not bank:
-        return {'bank': None, 'kept': [], 'rejected': [], 'note': 'банк не определён — оставляю как есть'}
+        # Правило заказчика: если банк нигде не определён, приоритет — TBank.
+        bank = 'tbank'
     c = _db()
     rows = [dict(r) for r in c.execute('''SELECT ad.id, t.code, ad.status FROM application_documents ad
                                           JOIN templates t ON t.id = ad.template_id
                                           WHERE ad.application_id = ?''', (app_id,))]
     bank_rows = [r for r in rows if any(r['code'].endswith(s) for s in BANK_TPL_SUFFIX.values())]
     if not bank_rows:
-        return {'bank': bank, 'kept': [], 'rejected': [], 'note': 'банковских справок в заявке нет'}
+        return {'bank': bank, 'kept': [], 'rejected': [],
+                'note': 'банковских справок в заявке нет'}
     want = BANK_TPL_SUFFIX[bank]
     kept, rejected = [], []
     for r in bank_rows:
@@ -132,8 +140,10 @@ def apply_to_application(app_id: int, dry: bool = False) -> dict:
                 c.execute("UPDATE application_documents SET status='rejected' WHERE id=?", (r['id'],))
     if not dry:
         c.commit()
-    return {'bank': bank, 'kept': kept, 'rejected': rejected,
-            'note': 'лишний банк помечен rejected и в отправку не идёт' if rejected else 'лишних банков нет'}
+    note = 'лишний банк помечен rejected и в отправку не идёт' if rejected else 'лишних банков нет'
+    if bank == 'tbank' and not bank_of_client(app_id):
+        note = 'банк не определён — приоритет TBank по правилу заказчика; ' + note
+    return {'bank': bank, 'kept': kept, 'rejected': rejected, 'note': note}
 
 
 if __name__ == '__main__':
