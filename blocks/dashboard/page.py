@@ -3846,65 +3846,23 @@ def app_send(app_id: int):
 
     # Финишная проверка пакета: наши документы + то, что реально лежит в папке клиента на Диске.
     # Не прошла — файлы на Диск не уходят, в систему возвращается список нестыковок по документам.
+    # Единый запуск всех трёх проверок через services.checks.
+    # До этого здесь стояли три блока try/except (doc_check + autofix + recheck,
+    # pdf_quality, logical_check) — 60 строк копипасты.
     try:
-        from services.doc_check import check_package
-        _verdict, _finds = check_package(app_id, with_drive=True)
-        if not _verdict["ok"]:
-            # Автовозврат: документы с замечаниями пересобираются по правилам и уходят
-            # на повторную проверку; если нестыковки остались — показываем их как есть.
-            try:
-                from services.doc_check import autofix
-                _fixed = autofix(app_id, _finds)
-                if _fixed:
-                    _verdict, _finds = check_package(app_id, with_drive=True)
-            except Exception:
-                pass
-        if not _verdict["ok"]:
-            _blocks = [{"doc": f["doc"], "msg": f["msg"], "source": f["source"]}
-                       for f in _finds if f["level"] == "BLOCK"]
-            _msg = ("Проверка не пройдена: %d нестыковок. Документы не отправлены и возвращены в редактор."
-                    % len(_blocks))
+        from services.checks import run_all as _checks_run_all
+        _all_ok, _all_findings = _checks_run_all(app_id)
+        if not _all_ok:
+            _msg = ("Проверка не пройдена: %d замечаний. Файлы на Диск не отправлены."
+                    % len(_all_findings))
             if want_json:
-                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _blocks,
-                                "rework": _verdict["rework"], "link": drive}), 200
-            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _blocks[:3]))
-    except Exception:
-        pass  # сама проверка не должна ломать отправку
-
-    # Технический контроль файлов: наложения, пропавший фон, незаполненные метки, чужие люди,
-    # устаревший слепок. Любой BLOCK = на Диск не уходит ничего, журнал проверки сохраняется.
-    try:
-        from services import pdf_quality
-        _q = pdf_quality.check_app(app_id)
-        if not _q["ok"]:
-            _bad = [{"doc": r["code"], "msg": f["msg"]}
-                    for r in _q["docs"] if not r["ok"] for f in r["finds"] if f["level"] == "BLOCK"]
-            _msg = ("Технический контроль не пройден: %d замечаний. Файлы на Диск не отправлены."
-                    % len(_bad))
-            if want_json:
-                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _bad,
-                                "link": drive}), 200
-            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _bad[:3]))
+                return jsonify({"ok": False, "error": _msg, "check": True,
+                                "findings": _all_findings, "link": drive}), 200
+            return _fail(_msg + " " + "; ".join(
+                (f.get("doc", "") or f.get("rule", "?")) + ": " + (f.get("msg", "") or "")
+                for f in _all_findings[:3]))
     except Exception as _exc:                            # noqa: BLE001
-        current_app.logger.warning("pdf_quality failed: %s", _exc)
-
-    # Логическая проверка данных: числа, даты и значения сверяются между документами и с
-    # карточкой клиента (срок паспорта, оклад в границах, офис иммиграции, чужие имена).
-    # Любой BLOCK = на Диск не уходит ничего, журнал проверки сохраняется.
-    try:
-        from services import logical_check
-        _l = logical_check.check_app(app_id)
-        if not _l["ok"]:
-            _lb = [{"doc": "%s %s" % (f.get("rule", ""), f.get("doc", "")), "msg": f["msg"]}
-                   for f in _l["finds"] if f["level"] == "BLOCK"]
-            _msg = ("Логическая проверка данных не пройдена: %d конфликтов. Файлы на Диск не отправлены."
-                    % len(_lb))
-            if want_json:
-                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _lb,
-                                "link": drive}), 200
-            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _lb[:3]))
-    except Exception as _lexc:                            # noqa: BLE001
-        current_app.logger.warning("logical_check failed: %s", _lexc)
+        current_app.logger.warning("checks failed: %s", _exc)
 
     pdfs = []
     for d in db.application_documents(app_id):
