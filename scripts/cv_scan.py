@@ -12,15 +12,15 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT.doc_read import read_text   # noqa: E402
+from services.doc_read import read_text   # noqa: E402
 
-DIRS = [Path('/opt/wolf_v2/data/gCLIENT_cache'),
-        Path('/opt/wolf_v2/data/gCLIENT_archive'),
-        Path('/opt/wolf_v2/data/gCLIENT_examples')]
+DIRS = [Path('/opt/wolf_v2/data/gdrive_cache'),
+        Path('/opt/wolf_v2/data/gdrive_archive'),
+        Path('/opt/wolf_v2/data/gdrive_examples')]
 EXT = ('.pdf', '.docx', '.doc', '.txt', '.html', '.rtf')
-KEYS = ['CLIENTal experience', 'work experience', 'employment CLIENT',
-        'CLIENTal CLIENT', 'curriculum vitae', 'резюме', 'опыт работы',
-        'key CLIENT', 'CLIENT', 'обязанности']
+KEYS = ['professional experience', 'work experience', 'employment history',
+        'professional summary', 'curriculum vitae', 'резюме', 'опыт работы',
+        'key skills', 'education', 'обязанности']
 
 limit = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 out, seen = [], set()

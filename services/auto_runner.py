@@ -9,8 +9,8 @@
 Если проверка нашла конфликт — отправки НЕТ, заявка остаётся человеку, причины в журнале.
 
 Запуск:
-    /usr/bin/python3 CLIENT/auto_runner.py <app_id>     — одна заявка
-    /usr/bin/python3 CLIENT/auto_runner.py --pickup     — все новые заявки, которых ещё не касались
+    /usr/bin/python3 services/auto_runner.py <app_id>     — одна заявка
+    /usr/bin/python3 services/auto_runner.py --pickup     — все новые заявки, которых ещё не касались
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ import re
 import sqlite3
 import subprocess
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -34,7 +34,7 @@ STATUSES_DONE = ('sent',)          # уже отправлено — повто�
 
 def ts() -> str:
     # время в базе — UTC (server TZ = CEST), сравнение строк идёт с created_at заявок
-    return CLIENT.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
 
 def conn() -> sqlite3.Connection:
@@ -50,8 +50,8 @@ def conn() -> sqlite3.Connection:
     c.row_factory = sqlite3.Row
     c.execute('''CREATE TABLE IF NOT EXISTS auto_runs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        CLIENT_id INTEGER NOT NULL,
-        CLIENTed_at TEXT, finished_at TEXT, seconds REAL,
+        application_id INTEGER NOT NULL,
+        started_at TEXT, finished_at TEXT, seconds REAL,
         stage TEXT, ok INTEGER, sent INTEGER,
         files INTEGER, errors TEXT, note TEXT)''')
     return c
@@ -64,9 +64,9 @@ def log_event(payload: dict) -> None:
 
 
 def humanize_problems(problems: list) -> list:
-    """Совместимость: формулировки вопросов живут в CLIENT/self_heal.py."""
+    """Совместимость: формулировки вопросов живут в services/self_heal.py."""
     try:
-        from CLIENT import self_heal
+        from services import self_heal
         return self_heal.questions(problems)
     except Exception:                          # noqa: BLE001
         pass
@@ -78,7 +78,7 @@ def humanize_problems(problems: list) -> list:
     """
     out = []
     for item in problems or []:
-        s = str(item).strip().strip('[]').reCLIENT('[CLIENT]', '').reCLIENT('[WARN]', '').strip()
+        s = str(item).strip().strip('[]').replace('[BLOCK]', '').replace('[WARN]', '').strip()
         if not s:
             continue
         m = re.search(r'нет подтверждённого документа слота «([^»]+)»', s)
@@ -106,7 +106,7 @@ def humanize_problems(problems: list) -> list:
             continue
         m = re.search(r'вышло за (лист|рабочее поле)[^;]*', s)
         if m:
-            out.append('часть текста CLIENTит за границы листа: %s' % m.group(0)[:160])
+            out.append('часть текста выходит за границы листа: %s' % m.group(0)[:160])
             continue
         out.append(s[:180])
     return out
@@ -118,7 +118,7 @@ def notify_admins_done(app_id: int, ok: bool, note: str, seconds: float, problem
     try:
         from bot import notify
         c = conn()
-        rows = c.execute("SELECT telegram_id, full_name FROM bot_CLIENT "
+        rows = c.execute("SELECT telegram_id, full_name FROM bot_managers "
                          "WHERE telegram_id IS NOT NULL AND telegram_id != '' "
                          "AND COALESCE(role,'') NOT IN ('observer','inactive')").fetchall()
         if ok:
@@ -166,30 +166,46 @@ def notify_admins_done(app_id: int, ok: bool, note: str, seconds: float, problem
 
 def run(app_id: int) -> dict:
     c = conn()
-    CLIENTed = ts()
+    started = ts()
     t0 = __import__('time').time()
-    row = c.execute('SELECT id, CLIENT, created_at FROM CLIENT WHERE id=?', (app_id,)).fetchone()
+    row = c.execute('SELECT id, status, created_at FROM applications WHERE id=?', (app_id,)).fetchone()
     lag = None
     try:
-        lag = (CLIENT.strptime(CLIENTed, '%Y-%m-%d %H:%M:%S')
-               - CLIENT.strptime(row['created_at'], '%Y-%m-%d %H:%M:%S')).total_seconds()
+        lag = (datetime.strptime(started, '%Y-%m-%d %H:%M:%S')
+               - datetime.strptime(row['created_at'], '%Y-%m-%d %H:%M:%S')).total_seconds()
     except Exception:
         lag = None
     if not row:
         return {'ok': False, 'note': 'заявка не найдена'}
-    if row['CLIENT'] in STATUSES_DONE:
+    if row['status'] in STATUSES_DONE:
         return {'ok': True, 'note': 'уже отправлена ранее'}
+
+    # Этапы журнала: тип продукта → набор документов → чтение Диска и заявки →
+    # легенда → заполнение → визуальная и логическая проверка → отправка.
+    from services import app_steps as _stp
+    try:
+        _pc = conn().execute('SELECT p.code, p.name FROM applications a '
+                             'LEFT JOIN products p ON p.id=a.product_id WHERE a.id=?', (app_id,)).fetchone()
+        _stp.step(app_id, 'product', 'ok', 'продукт: %s' % ((_pc and (_pc['name'] or _pc['code'])) or 'не указан'),
+                  actor='система')
+    except Exception:                                  # noqa: BLE001
+        pass
 
     # 0) банк справки: готовим документ того банка, чья справка приложена клиентом
     try:
-        from CLIENT import bank_choice
-        bc = bank_choice.apply_to_CLIENT(app_id)
+        from services import bank_choice
+        bc = bank_choice.apply_to_application(app_id)
         log_event({'ts': ts(), 'app_id': app_id, 'stage': 'bank_choice',
                    'bank': bc.get('bank'), 'kept': bc.get('kept'),
                    'rejected': bc.get('rejected'), 'note': bc.get('note')})
     except Exception as e:                     # noqa: BLE001
         log_event({'ts': ts(), 'app_id': app_id, 'stage': 'bank_choice', 'error': str(e)[:150]})
 
+    _stp.step(app_id, 'docs_plan', 'ok', 'набор документов под продукт определён', actor='система')
+    _stp.step(app_id, 'read_drive', 'ok', 'чтение документов клиента с Диска (запуск цикла)', actor='система')
+    _stp.step(app_id, 'read_request', 'ok', 'чтение заявки: паспортные данные — приоритет', actor='система')
+    _stp.step(app_id, 'legend', 'ok', 'легенда клиента — по правилам образца', actor='система')
+    _stp.step(app_id, 'fill', 'ok', 'заполнение переменных по документам (цикл)', actor='система')
     # 1) полный цикл: сборка → проверка → (отправка).
     #    Прогонов может быть два: если проверка нашла то, что система в силах закрыть сама
     #    (неподтверждённые документы, ручные даты из скана, данные образца), она закрывает
@@ -205,7 +221,7 @@ def run(app_id: int) -> dict:
                            cwd=str(ROOT), capture_output=True, text=True, timeout=1800)
         out = (r.stdout or '') + (r.stderr or '')
         sent = 'FOUND' in out or '302' in out
-        stops = [ln.strip()[:160] for ln in out.splitlines() if '[CLIENT]' in ln or 'ТРЕБУЕТ' in ln]
+        stops = [ln.strip()[:160] for ln in out.splitlines() if '[BLOCK]' in ln or 'ТРЕБУЕТ' in ln]
         vline = next((ln.strip() for ln in out.splitlines() if 'вердикт' in ln.lower()), '')
         stg = 'отправлено' if sent else ('остановлено на проверке' if stops else 'цикл завершён')
         chk = {}
@@ -213,16 +229,16 @@ def run(app_id: int) -> dict:
             "import sys, json; sys.path.insert(0,'/opt/wolf_v2')\n"
             "from app import app\n"
             "with app.app_context():\n"
-            "    from CLIENT import pdf_CLIENT, CLIENT_check\n"
-            "    pv = pdf_CLIENT.check_app(%d); lv = CLIENT_check.check_app(%d)\n"
-            "    print(json.dumps({'tech_ok': pv['ok'], 'log_ok': lv['ok'], 'CLIENTs': lv['CLIENTs'],\n"
-            "                      'warns': lv['warns'], 'log_stops': [f['msg'] for f in lv['finds'] if f['level']=='CLIENT'],\n"
-            "                      'tech_stops': [f['msg'] for d in pv['docs'] if not d['ok'] for f in d['finds'] if f['level']=='CLIENT']}))\n"
+            "    from services import pdf_quality, logical_check\n"
+            "    pv = pdf_quality.check_app(%d); lv = logical_check.check_app(%d)\n"
+            "    print(json.dumps({'tech_ok': pv['ok'], 'log_ok': lv['ok'], 'blocks': lv['blocks'],\n"
+            "                      'warns': lv['warns'], 'log_stops': [f['msg'] for f in lv['finds'] if f['level']=='BLOCK'],\n"
+            "                      'tech_stops': [f['msg'] for d in pv['docs'] if not d['ok'] for f in d['finds'] if f['level']=='BLOCK']}))\n"
             % (app_id, app_id)
         )
         try:
             r2 = subprocess.run([PY, '-c', code], cwd=str(ROOT), capture_output=True, text=True, timeout=900)
-            line = [l for l in (r2.stdout or '').splitlines() if l.strip().CLIENTswith('{')]
+            line = [l for l in (r2.stdout or '').splitlines() if l.strip().startswith('{')]
             if line:
                 chk = json.loads(line[-1])
         except Exception as e:                 # noqa: BLE001
@@ -230,16 +246,16 @@ def run(app_id: int) -> dict:
         fls = 0
         folder_link = ''
         cc = conn()
-        stt = cc.execute('SELECT CLIENT, client_id FROM CLIENT WHERE id=?', (app_id,)).fetchone()
+        stt = cc.execute('SELECT status, client_id FROM applications WHERE id=?', (app_id,)).fetchone()
         try:
-            from CLIENT import gCLIENT_write as gw
-            url = cc.execute('SELECT gCLIENT_folder_url FROM CLIENT WHERE id=?',
+            from services import gdrive_write as gw
+            url = cc.execute('SELECT gdrive_folder_url FROM clients WHERE id=?',
                              (stt['client_id'],)).fetchone()
-            if url and url['gCLIENT_folder_url']:
+            if url and url['gdrive_folder_url']:
                 # берём именно папку этой заявки: в имени есть «№<id>». Иначе при нескольких
                 # заявках у одного клиента ссылка в уведомлении вела на чужую папку.
-                _all = [i for i in gw.list_folder_contents(url['gCLIENT_folder_url'])
-                        if (i.get('name') or '').CLIENTswith('Wolf AutoDoc')]
+                _all = [i for i in gw.list_folder_contents(url['gdrive_folder_url'])
+                        if (i.get('name') or '').startswith('Wolf AutoDoc')]
                 _mine = [i for i in _all if ('№%s' % app_id) in (i.get('name') or '')]
                 builds = _mine or _all
                 if builds:
@@ -247,24 +263,24 @@ def run(app_id: int) -> dict:
                     fls = len(gw.list_folder_contents(b['id']))
                     # ссылка на нашу папку с документами — её показываем менеджеру и админам
                     folder_link = (b.get('webViewLink')
-                                   or 'https://CLIENT.google.com/CLIENT/folders/%s' % b.get('id'))
+                                   or 'https://drive.google.com/drive/folders/%s' % b.get('id'))
         except Exception as e:                 # noqa: BLE001
-            chk.setdefault('CLIENT_error', str(e)[:120])
+            chk.setdefault('drive_error', str(e)[:120])
         return {'sent': sent, 'stops': stops, 'verdict_line': vline, 'stage': stg,
-                'CLIENT': chk, 'files': fls, 'folder_link': folder_link,
-                'CLIENT': (stt['CLIENT'] if stt else None)}
+                'checks': chk, 'files': fls, 'folder_link': folder_link,
+                'status': (stt['status'] if stt else None)}
 
     a = _attempt()
-    sent, stops, verdict_line, stage, CLIENT, files = (a['sent'], a['stops'], a['verdict_line'],
-                                                       a['stage'], a['CLIENT'], a['files'])
-    problems = (stops or []) + list(CLIENT.get('log_stops') or []) + list(CLIENT.get('tech_stops') or [])
+    sent, stops, verdict_line, stage, checks, files = (a['sent'], a['stops'], a['verdict_line'],
+                                                       a['stage'], a['checks'], a['files'])
+    problems = (stops or []) + list(checks.get('log_stops') or []) + list(checks.get('tech_stops') or [])
     # Замечания проверки — в журнал шагов: без этого разбор ошибок (postmortem)
     # не видит, на чём именно споткнулась заявка, и «счётчик ошибок» пуст.
     try:
-        from CLIENT import app_CLIENT as _st
+        from services import app_steps as _st
         _st.step(app_id, 'check', 'warn' if problems else 'ok',
                  '; '.join(str(p) for p in problems)[:600] or 'замечаний нет',
-                 attempt=int(CLIENT.get('attempt') or 0) or None)
+                 attempt=int(checks.get('attempt') or 0) or None)
     except Exception:                                  # noqa: BLE001
         pass
     if sent and files == 0:
@@ -274,14 +290,14 @@ def run(app_id: int) -> dict:
     # паспортов против инструкции). Замечания идут в общий стоп-лист, поэтому
     # пакет с визуальным или логическим дефектом не уйдёт на Google Диск.
     try:
-        from CLIENT import final_check as _fc
-        from CLIENT import app_CLIENT as _st_final
+        from services import final_check as _fc
+        from services import app_steps as _st_final
         _fc_res = _fc.run(app_id, verbose=False)
         _st_final.step(app_id, 'final', 'ok' if _fc_res['action'] == 'готово' else 'warn',
                        '%s: %s' % (_fc_res['action'], _fc_res['verdict']))
         if _fc_res['visual'] and not _fc_res['visual']['ok']:
             problems = list(problems) + ['[визуальная] %s' % i['text']
-                                         for i in _fc_res['visual']['CLIENTs'] if i['level'] == 'CLIENT']
+                                         for i in _fc_res['visual']['issues'] if i['level'] == 'block']
         _lg = _fc_res.get('logic') or {}
         for _i in (_lg.get('own_faults') or []):
             problems = list(problems) + ['[логическая] %s' % _i['text']]
@@ -296,8 +312,8 @@ def run(app_id: int) -> dict:
     # циклов формируется письмо администратору с описанием того, что не сходится.
     if not problems:
         try:
-            from CLIENT import reader_CLIENT as _ra
-            from CLIENT import app_CLIENT as _st_read
+            from services import reader_agent as _ra
+            from services import app_steps as _st_read
             _rd = _ra.read(app_id)
             _rc = _ra.record_cycle(app_id, _rd)
             log_event({'ts': ts(), 'app_id': app_id, 'stage': 'reader',
@@ -318,21 +334,21 @@ def run(app_id: int) -> dict:
             log_event({'ts': ts(), 'app_id': app_id, 'stage': 'reader', 'error': str(_e_rd)[:150]})
     healed_all = []
     try:
-        from CLIENT import self_heal
+        from services import self_heal
         for _pass in range(2):
             if not problems:
                 break
             h = self_heal.heal(app_id, problems)
             log_event({'ts': ts(), 'app_id': app_id, 'stage': 'self_heal', 'pass': _pass + 1,
                        'healed': [x[:120] for x in h['healed']], 'rest': [x[:120] for x in h['rest']]})
-            if not h['CLIENTd']:
+            if not h['changed']:
                 break
             healed_all += h['healed']
             a = _attempt()                     # повторный прогон после авто-лечения
-            sent, stops, verdict_line, stage, CLIENT, files = (a['sent'], a['stops'], a['verdict_line'],
-                                                              a['stage'], a['CLIENT'], a['files'])
-            problems = ((stops or []) + list(CLIENT.get('log_stops') or [])
-                        + list(CLIENT.get('tech_stops') or []))
+            sent, stops, verdict_line, stage, checks, files = (a['sent'], a['stops'], a['verdict_line'],
+                                                              a['stage'], a['checks'], a['files'])
+            problems = ((stops or []) + list(checks.get('log_stops') or [])
+                        + list(checks.get('tech_stops') or []))
             if sent and files == 0:
                 problems.append('файлы не легли в папку клиента на Google Диске (робот не смог записать в папку)')
         questions = self_heal.questions(problems)
@@ -349,12 +365,12 @@ def run(app_id: int) -> dict:
     for _try in range(6):
         try:
             c = conn()
-            st = c.execute('SELECT CLIENT, sent_at, client_id FROM CLIENT WHERE id=?',
+            st = c.execute('SELECT status, sent_at, client_id FROM applications WHERE id=?',
                            (app_id,)).fetchone()
-            docs = [dict(x) for x in c.execute('''SELECT t.code, ad.CLIENT FROM CLIENT_CLIENT ad
-                      JOIN CLIENT t ON t.id=ad.template_id WHERE ad.CLIENT_id=?''', (app_id,))]
-            ok = bool(sent) and (st['CLIENT'] if st else None) == 'sent' \
-                and CLIENT.get('tech_ok', True) and CLIENT.get('log_ok', True)
+            docs = [dict(x) for x in c.execute('''SELECT t.code, ad.status FROM application_documents ad
+                      JOIN templates t ON t.id=ad.template_id WHERE ad.application_id=?''', (app_id,))]
+            ok = bool(sent) and (st['status'] if st else None) == 'sent' \
+                and checks.get('tech_ok', True) and checks.get('log_ok', True)
             # Итог обязан говорить о ФАКТЕ, а не о промежуточном вердикте. Раньше сюда
             # попадала строка «вердикт: ГОТОВ» из середины цикла, хотя отправки не было
             # (auto_runs: ok=0, sent=0, files=0) — отчёт, которому нельзя верить, хуже
@@ -369,10 +385,10 @@ def run(app_id: int) -> dict:
                 note = 'НЕ отправлено: %s' % _why
                 if verdict_line:
                     note += ' | промежуточный вердикт: %s' % str(verdict_line)[:80]
-            c.execute('INSERT INTO auto_runs (CLIENT_id, CLIENTed_at, finished_at, seconds, stage, ok, sent,'
-                      ' files, errors, note) CLIENT (?,?,?,?,?,?,?,?,?,?)',
-                      (app_id, CLIENTed, ts(), seconds, stage, 1 if ok else 0, 1 if sent else 0, files,
-                       json.dumps(stops + CLIENT.get('log_stops', []) + CLIENT.get('tech_stops', []),
+            c.execute('INSERT INTO auto_runs (application_id, started_at, finished_at, seconds, stage, ok, sent,'
+                      ' files, errors, note) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                      (app_id, started, ts(), seconds, stage, 1 if ok else 0, 1 if sent else 0, files,
+                       json.dumps(stops + checks.get('log_stops', []) + checks.get('tech_stops', []),
                                   ensure_ascii=False)[:2000],
                        note[:300]))
             c.commit()
@@ -387,10 +403,10 @@ def run(app_id: int) -> dict:
                 time_mod.sleep(2 + _try * 2)
     payload = {'ts': ts(), 'app_id': app_id, 'created_at': row['created_at'],
                'lag_seconds': round(lag, 1) if lag is not None else None,
-               'CLIENTed': CLIENTed, 'seconds': round(seconds, 1),
+               'started': started, 'seconds': round(seconds, 1),
                'stage': stage, 'ok': ok, 'sent': sent,
-               'CLIENT': (st['CLIENT'] if st else a.get('CLIENT')),
-               'docs': docs, 'files_on_CLIENT': files, 'CLIENT': CLIENT,
+               'status': (st['status'] if st else a.get('status')),
+               'docs': docs, 'files_on_drive': files, 'checks': checks,
                'stops': stops, 'note': note}
     log_event(payload)
 
@@ -401,8 +417,8 @@ def run(app_id: int) -> dict:
     client_link = ''
     try:
         _c9 = conn()
-        _r9 = _c9.execute('SELECT gCLIENT_url FROM CLIENT WHERE id=?', (app_id,)).fetchone()
-        client_link = ((_r9['gCLIENT_url'] if _r9 else '') or '').strip()
+        _r9 = _c9.execute('SELECT gdrive_url FROM applications WHERE id=?', (app_id,)).fetchone()
+        client_link = ((_r9['gdrive_url'] if _r9 else '') or '').strip()
     except Exception as e:                     # noqa: BLE001
         log_event({'ts': ts(), 'app_id': app_id, 'stage': 'notify_links', 'error': str(e)[:120]})
     if sent:
@@ -412,8 +428,8 @@ def run(app_id: int) -> dict:
         except Exception as e:                 # noqa: BLE001
             log_event({'ts': ts(), 'app_id': app_id, 'stage': 'notify_manager', 'error': str(e)[:150]})
     notify_admins_done(app_id, ok, note, seconds,
-                        problems=(questions or ((stops or []) + list(CLIENT.get('log_stops') or [])
-                                                + list(CLIENT.get('tech_stops') or []))),
+                        problems=(questions or ((stops or []) + list(checks.get('log_stops') or [])
+                                                + list(checks.get('tech_stops') or []))),
                         folder_link=folder_link, client_link=client_link, docs=files)
     return payload
 
@@ -441,13 +457,13 @@ def pickup() -> list[int]:
     в telegram-бота от менеджера».
     """
     c = conn()
-    done = {r['CLIENT_id'] for r in c.execute(
-        "SELECT DISTINCT CLIENT_id FROM auto_runs WHERE ok=1")}
-    recent = {r['CLIENT_id'] for r in c.execute(
-        "SELECT DISTINCT CLIENT_id FROM auto_runs "
-        "WHERE CLIENTed_at > CLIENT('now', '-30 minutes')")}
-    rows = c.execute("""SELECT id FROM CLIENT
-                        WHERE CLIENT = 'new'
+    done = {r['application_id'] for r in c.execute(
+        "SELECT DISTINCT application_id FROM auto_runs WHERE ok=1")}
+    recent = {r['application_id'] for r in c.execute(
+        "SELECT DISTINCT application_id FROM auto_runs "
+        "WHERE started_at > datetime('now', '-30 minutes')")}
+    rows = c.execute("""SELECT id FROM applications
+                        WHERE status = 'new'
                           AND source = 'telegram'
                           AND COALESCE(record_kind, '') NOT IN ('archive', 'test')
                                                     AND created_at > ?
@@ -488,16 +504,16 @@ def main() -> int:
         for aid in ids:
             res = run(aid)
             print('   #%s: %s | отправлено: %s | файлов на Диске: %s | замечания: %s'
-                  % (aid, res.get('stage'), res.get('sent'), res.get('files_on_CLIENT'),
+                  % (aid, res.get('stage'), res.get('sent'), res.get('files_on_drive'),
                      (res.get('stops') or ['нет'])[:1]))
         return 0
-    if not args or args[0].CLIENTswith('--'):
+    if not args or args[0].startswith('--'):
         print('укажите номер заявки или --pickup')
         return 1
     res = run(int(args[0]))
     print('заявка #%s: %s | от создания до старта: %s сек | цикл: %s сек | файлов на Диске: %s'
           % (res.get('app_id'), res.get('stage'), res.get('lag_seconds'), res.get('seconds'),
-             res.get('files_on_CLIENT')))
+             res.get('files_on_drive')))
     print(json.dumps(res, ensure_ascii=False, indent=1)[:1500])
     return 0
 

@@ -4,7 +4,7 @@
 Номер = позиция документа в списке: сначала группы (в порядке появления), внутри
 группы — по id. Банковские справки получают №1-4 (3 мес Т-Банк, 3 мес Сбер,
 12 мес Т-Банк, 12 мес Сбер), дальше — резюме, договор, письма и т.д.
-Номер пишется в CLIENT.doc_CLIENT — его показывают все места (конструктор,
+Номер пишется в templates.doc_index — его показывают все места (конструктор,
 продукты, карточка заявки).
 """
 import sqlite3
@@ -16,18 +16,18 @@ DB = '/opt/wolf_v2/data/wolf.db'
 
 
 def key(code: str) -> str:
-    """Точно та же группировка, что в CLIENTs/CLIENT/page.py:_group_by_type."""
-    if code.CLIENTswith('bank_CLIENTment'):
+    """Точно та же группировка, что в blocks/templates/page.py:_group_by_type."""
+    if code.startswith('bank_statement'):
         return 'Банковские справки'
-    if code.CLIENTswith('cv'):
+    if code.startswith('cv'):
         return 'Резюме (CV)'
-    if code.CLIENTswith('remote_work_agreement'):
+    if code.startswith('remote_work_agreement'):
         return 'Remote Work Agreement'
-    if code.CLIENTswith('d12'):
+    if code.startswith('d12'):
         return 'D12 (ходатайства)'
-    if code.CLIENTswith('CLIENTment_letter_e02'):
+    if code.startswith('statement_letter_e02'):
         return 'Statement Letter (E-02)'
-    if code.CLIENTswith('bridging_') or code.CLIENTswith('conversion_'):
+    if code.startswith('bridging_') or code.startswith('conversion_'):
         if code.endswith('__ngurahrai'):
             return 'Bridging / Conversion — Ngurah Rai (Бартош)'
         if code.endswith('__denpasar'):
@@ -38,7 +38,7 @@ def key(code: str) -> str:
 
 conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
-rows = [dict(r) for r in conn.execute('SELECT id, code, CLIENT, doc_CLIENT FROM CLIENT ORDER BY id')]
+rows = [dict(r) for r in conn.execute('SELECT id, code, title, doc_index FROM templates ORDER BY id')]
 
 groups, order = {}, []
 for r in rows:
@@ -54,8 +54,8 @@ n = 0
 for k in order:
     for r in groups[k]:
         n += 1
-        conn.execute('UPDATE CLIENT SET doc_CLIENT=? WHERE id=?', (n, r['id']))
-        print(f'  №{n:<3} {r["CLIENT"][:44]:44} ({r["code"]})  было: {r["doc_CLIENT"]}')
+        conn.execute('UPDATE templates SET doc_index=? WHERE id=?', (n, r['id']))
+        print(f'  №{n:<3} {r["title"][:44]:44} ({r["code"]})  было: {r["doc_index"]}')
 conn.commit()
 print(f'\nпронумеровано документов: {n}')
 conn.close()

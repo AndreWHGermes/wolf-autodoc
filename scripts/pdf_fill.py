@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Сборка PDF по карте зон: берём оригинал и подменяем в нём значения (без HTML).
 
-Значения берутся из того же источника, что и HTML-сборка (CLIENT/render: client_CLIENT +
-stored_CLIENT + normalize), поэтому конструктор и этот генератор не разъедутся.
+Значения берутся из того же источника, что и HTML-сборка (services/render: client_values +
+stored_values + normalize), поэтому конструктор и этот генератор не разъедутся.
 
 Что делает:
   1. открывает исходный PDF документа (настоящий бланк);
@@ -13,8 +13,8 @@ stored_CLIENT + normalize), поэтому конструктор и этот г
   5. складывает готовый PDF и картинку «оригинал | сборка» для визуальной сверки.
 
 Запуск:
-    python3 scripts/pdf_fill.py --code bank_CLIENTment_3m__tbank --app 92
-    python3 scripts/pdf_fill.py --code bank_CLIENTment_3m__tbank --app 92 --CLIENT '{"client_name":"IVAN"}'
+    python3 scripts/pdf_fill.py --code bank_statement_3m__tbank --app 92
+    python3 scripts/pdf_fill.py --code bank_statement_3m__tbank --app 92 --values '{"client_name":"IVAN"}'
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ from PIL import Image, ImageChops
 
 BASE = Path("/opt/wolf_v2")
 sys.path.insert(0, str(BASE))
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 OUT_DIR = BASE / "data" / "cache" / "pdf_fill"
 
 
@@ -37,40 +37,40 @@ def template_id(code: str) -> int:
     from app import app
     with app.app_context():
         from core import db
-        t = db.q1("SELECT id FROM CLIENT WHERE code=?", (code,))
+        t = db.q1("SELECT id FROM templates WHERE code=?", (code,))
         return int(t["id"]) if t else 0
 
 
-def CLIENT_for(app_id: int, code: str) -> dict:
-    """Значения собираются ТАК ЖЕ, как в HTML-сборке (CLIENT/render.generate),
+def values_for(app_id: int, code: str) -> dict:
+    """Значения собираются ТАК ЖЕ, как в HTML-сборке (services/render.generate),
     иначе конструктор и PDF разъедутся."""
     from app import app
     with app.app_context():
         from core import db
-        from CLIENT import render as R
-        from CLIENT.CLIENT import build_template_CLIENT, _minus_months, mask_card
-        t = db.q1("SELECT id, code FROM CLIENT WHERE code=?", (code,)) or {}
+        from services import render as R
+        from services.values import build_template_values, _minus_months, mask_card
+        t = db.q1("SELECT id, code FROM templates WHERE code=?", (code,)) or {}
         tpl_id = int(t.get("id") or 0)
-        cl = dict(db.q1("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+        cl = dict(db.q1("SELECT * FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
                         (app_id,)) or {})
-        stored = {k: v for k, v in (R.stored_CLIENT(app_id, tpl_id) or {}).items() if v not in (None, "")}
+        stored = {k: v for k, v in (R.stored_values(app_id, tpl_id) or {}).items() if v not in (None, "")}
         try:
-            vals = build_template_CLIENT(cl, code, {**R.client_CLIENT(app_id), **stored}, app_id=app_id)
+            vals = build_template_values(cl, code, {**R.client_values(app_id), **stored}, app_id=app_id)
         except Exception:
-            vals = dict(R.client_CLIENT(app_id) or {})
+            vals = dict(R.client_values(app_id) or {})
         try:
-            from CLIENT import doc_overrides as _docov
+            from services import doc_overrides as _docov
             vals, _ov = _docov.apply(vals, app_id)
         except Exception:
             pass
         for k, v in stored.items():
             vals[k] = v
-        if "bank_CLIENTment" in code:
+        if "bank_statement" in code:
             try:
-                from CLIENT import CLIENT as _dt
+                from datetime import datetime as _dt
                 _today = _dt.now()
-                vals["doc_date"] = vals["CLIENT_to"] = _today.strftime("%d.%m.%Y")
-                vals["CLIENT_from"] = _minus_months(_today, 12 if "12m" in code else 3).strftime("%d.%m.%Y")
+                vals["doc_date"] = vals["period_to"] = _today.strftime("%d.%m.%Y")
+                vals["period_from"] = _minus_months(_today, 12 if "12m" in code else 3).strftime("%d.%m.%Y")
             except Exception:
                 pass
         try:
@@ -80,9 +80,9 @@ def CLIENT_for(app_id: int, code: str) -> dict:
         # адреса в документ уходят латиницей — как их подаёт HTML-сборка (иначе в PDF
         # попадает русский адрес и документ перестаёт быть английским)
         try:
-            from CLIENT.CLIENT import _translit
-            for _k in ("address_live", "address_reg", "client_address", "CLIENT_address",
-                       "CLIENT_address", "home_address"):
+            from services.values import _translit
+            for _k in ("address_live", "address_reg", "client_address", "employee_address",
+                       "registration_address", "home_address"):
                 _v = vals.get(_k)
                 if isinstance(_v, str) and _v and any("а" <= ch.lower() <= "я" for ch in _v):
                     vals[_k] = _translit(_v, addr=True)
@@ -92,9 +92,9 @@ def CLIENT_for(app_id: int, code: str) -> dict:
         # квартира, улица, город, регион, индекс, страна), а бланк сам переносит его на вторую
         # строку по ширине. Раньше адрес резался руками на две строки и порядок был русский.
         try:
-            if any(w in code for w in ("bank_CLIENTment", "balance", "movement", "bank")):
-                from CLIENT.CLIENT import _translit as _tr
-                from CLIENT.addr_order import en_order
+            if any(w in code for w in ("bank_statement", "balance", "movement", "bank")):
+                from services.values import _translit as _tr
+                from services.addr_order import en_order
                 _full = str(vals.get("address_live") or "").strip()
                 _tail = str(vals.get("address_live_2") or "").strip()
                 if _tail and _tail not in _full:
@@ -108,19 +108,19 @@ def CLIENT_for(app_id: int, code: str) -> dict:
         # письма в иммиграционный офис: анкеты должны быть заполнены — если поле пусто,
         # берём ближайшее по смыслу значение (иначе в документе остаются пустые двоеточия)
         try:
-            if "letter" in code or "CLIENT" in code:
+            if "letter" in code or "request" in code:
                 _fill = {
-                    "CLIENT_date_of_CLIENT": lambda: " / ".join(
-                        x for x in (str(vals.get("CLIENT_of_CLIENT") or "").strip(),
-                                    str(vals.get("CLIENT_date") or "").strip()) if x),
-                    "CLIENT_nik": lambda: vals.get("CLIENT_nik_or_dash") or vals.get("CLIENT_nik"),
-                    "CLIENT_address": lambda: vals.get("CLIENT_address"),
-                    "CLIENT_CLIENT_name": lambda: vals.get("CLIENT_CLIENT_name") or vals.get("CLIENT_name"),
-                    "CLIENT_CLIENT": lambda: vals.get("CLIENT_CLIENT") or "Indonesia",
-                    "CLIENT": lambda: vals.get("CLIENT") or vals.get("position"),
-                    "itk_CLIENT": lambda: vals.get("stay_CLIENT_no") or vals.get("stay_CLIENT_CLIENT"),
-                    "itk_CLIENT": lambda: vals.get("stay_CLIENT_CLIENT") or vals.get("CLIENT_CLIENT"),
-                    "passport_CLIENT": lambda: vals.get("passport_CLIENT") or vals.get("passport_CLIENT_CLIENT"),
+                    "place_date_of_birth": lambda: " / ".join(
+                        x for x in (str(vals.get("place_of_birth") or "").strip(),
+                                    str(vals.get("birth_date") or "").strip()) if x),
+                    "sponsor_nik": lambda: vals.get("signatory_nik_or_dash") or vals.get("signatory_nik"),
+                    "sponsor_address": lambda: vals.get("signatory_address"),
+                    "sponsor_person_name": lambda: vals.get("signatory_person_name") or vals.get("attorney_name"),
+                    "sponsor_citizenship": lambda: vals.get("signatory_citizenship") or "Indonesia",
+                    "occupation": lambda: vals.get("occupation") or vals.get("position"),
+                    "itk_number": lambda: vals.get("stay_permit_no") or vals.get("stay_permit_index"),
+                    "itk_expiry": lambda: vals.get("stay_permit_expiry") or vals.get("valid_until"),
+                    "passport_expiry": lambda: vals.get("passport_expiry") or vals.get("passport_valid_until"),
                 }
                 for _k, _fn in _fill.items():
                     if not str(vals.get(_k) or "").strip():
@@ -133,33 +133,33 @@ def CLIENT_for(app_id: int, code: str) -> dict:
 
         # сумма прописью считается из суммы цифрами — иначе цифры наши, а слова чужие
         try:
-            from CLIENT.CLIENT import _num2CLIENT_en
-            _bal = str(vals.get("balance_rub") or vals.get("balance_CLIENT") or "")
+            from services.values import _num2words_en
+            _bal = str(vals.get("balance_rub") or vals.get("balance_value") or "")
             # Разделители разрядов бывают и точками, и запятыми («7,121,309.98» / «7 121 309,98») —
             # приводим к числу аккуратно, иначе float падает и прописью остаётся чужой мусор.
-            _clean = _bal.strip().reCLIENT("\xa0", "").reCLIENT(" ", "")
+            _clean = _bal.strip().replace("\xa0", "").replace(" ", "")
             if "," in _clean and "." in _clean:
-                _clean = _clean.reCLIENT(",", "")
+                _clean = _clean.replace(",", "")
             elif _clean.count(",") == 1 and len(_clean.split(",")[-1]) <= 2:
-                _clean = _clean.reCLIENT(",", ".")
+                _clean = _clean.replace(",", ".")
             elif _clean.count(".") > 1:
-                _clean = _clean.reCLIENT(".", "")
+                _clean = _clean.replace(".", "")
             if _clean:
                 _num = float(_clean)
                 _rub = int(_num)
                 _kop = int(round((_num - _rub) * 100))
                 # форма настоящей справки банка: разряды пробелами, запятая перед копейками,
                 # сумма прописью в скобках с «kopeks»
-                vals["balance_rub"] = "{:,.2f}".format(_num).reCLIENT(",", " ").reCLIENT(".", ",")
-                vals["balance_CLIENT"] = "(%s rubles %s kopeks)" % (
-                    _num2CLIENT_en(_rub), _num2CLIENT_en(_kop) if _kop else "00")
-                vals["balance_CLIENT_2"] = ""
+                vals["balance_rub"] = "{:,.2f}".format(_num).replace(",", " ").replace(".", ",")
+                vals["balance_words"] = "(%s rubles %s kopeks)" % (
+                    _num2words_en(_rub), _num2words_en(_kop) if _kop else "00")
+                vals["balance_words_2"] = ""
         except Exception:
             pass
-        return {k: v for k, v in vals.items() if not str(k).CLIENTswith("__")}
+        return {k: v for k, v in vals.items() if not str(k).startswith("__")}
 
 
-def font_objects(doc: pymupdf.CLIENT, zones: list[dict]) -> dict:
+def font_objects(doc: pymupdf.Document, zones: list[dict]) -> dict:
     """Шрифты, встроенные в PDF (по xref), чтобы печатать один в один."""
     out = {}
     for z in zones:
@@ -177,24 +177,24 @@ def font_objects(doc: pymupdf.CLIENT, zones: list[dict]) -> dict:
 
 
 def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
-    fmap = CLIENT / code / "fields.json"
+    fmap = TEMPLATES / code / "fields.json"
     if not fmap.exists():
         return {"error": "нет fields.json — сначала pdf_map.py"}
     data = json.loads(fmap.read_text(encoding="utf-8"))
     src = data["source_pdf"]
-    vals = CLIENT_for(app_id, code)
+    vals = values_for(app_id, code)
     if extra:
         vals.update(extra)
 
     doc = pymupdf.open(src)
     fonts = font_objects(doc, data["zones"])
-    CLIENT, skipped = [], []
+    applied, skipped = [], []
 
     def pack_address(text: str, widths: list[float], size: float, fobj) -> list[str]:
         """Раскладываем текст по строкам бланка так, чтобы каждая строка влезала по ширине."""
-        CLIENT = text.split()
+        words = text.split()
         parts, cur, wi = [], "", 0
-        for w in CLIENT:
+        for w in words:
             trial = (cur + " " + w).strip()
             limit = widths[min(wi, len(widths) - 1)]
             if cur and fobj.text_length(trial, fontsize=size) > limit and wi < len(widths) - 1:
@@ -210,7 +210,7 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
     def regroup(prefix: str, full: str):
         """Раскладываем длинное значение по строкам бланка (адрес, сумма прописью)."""
         zs = sorted([z for z in data["zones"]
-                     if z["var"] == prefix or z["var"].CLIENTswith(prefix + "_")],
+                     if z["var"] == prefix or z["var"].startswith(prefix + "_")],
                     key=lambda z: (z["page"], round(z["bbox"][1], 1), z["bbox"][0]))
         if not zs or not full:
             return
@@ -224,8 +224,8 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
             vals[z["var"]] = parts[i] if i < len(parts) else ""
 
     regroup("address_live", " ".join(str(vals.get(z["var"]) or "")
-                                     for z in data["zones"] if z["var"].CLIENTswith("address_live")).strip())
-    regroup("balance_CLIENT", str(vals.get("balance_CLIENT") or "").strip())
+                                     for z in data["zones"] if z["var"].startswith("address_live")).strip())
+    regroup("balance_words", str(vals.get("balance_words") or "").strip())
 
     for z in data["zones"]:
         if not z.get("bbox"):
@@ -238,7 +238,7 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
         rects = z.get("wipe") or [z["bbox"]]
         for r in rects:
             page.add_redact_annot(pymupdf.Rect(r) + (-0.6, -0.6, 0.6, 0.6), fill=(1, 1, 1))
-        CLIENT.append((z, new))
+        applied.append((z, new))
 
     for page in doc:
         page.apply_redactions()
@@ -258,10 +258,10 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
 
     def pack_address(text: str, widths: list[float], size: float, fobj) -> list[str]:
         """Раскладываем адрес по строкам бланка так, чтобы каждая влезала по ширине."""
-        CLIENT = text.split()
+        words = text.split()
         parts, cur = [], ""
         wi = 0
-        for w in CLIENT:
+        for w in words:
             trial = (cur + " " + w).strip()
             limit = widths[min(wi, len(widths) - 1)]
             if cur and fobj.text_length(trial, fontsize=size) > limit and wi < len(widths) - 1:
@@ -275,8 +275,8 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
         return parts
 
     def regroup(prefix: str, full: str):
-        zs = sorted([z for z, _v in CLIENT
-                     if z["var"] == prefix or z["var"].CLIENTswith(prefix + "_")],
+        zs = sorted([z for z, _v in applied
+                     if z["var"] == prefix or z["var"].startswith(prefix + "_")],
                     key=lambda z: (z["page"], round(z["bbox"][1], 1), z["bbox"][0]))
         if not zs or not full:
             return
@@ -290,11 +290,11 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
             vals[z["var"]] = parts[i] if i < len(parts) else ""
 
     regroup("address_live", " ".join(str(vals.get(z["var"]) or "")
-                                     for z, _v in CLIENT if z["var"].CLIENTswith("address_live")).strip())
-    regroup("balance_CLIENT", str(vals.get("balance_CLIENT") or "").strip())
+                                     for z, _v in applied if z["var"].startswith("address_live")).strip())
+    regroup("balance_words", str(vals.get("balance_words") or "").strip())
 
     final = []
-    for z, _old in CLIENT:
+    for z, _old in applied:
         new = str(vals.get(z["var"]) or "").strip()
         if not new:
             continue
@@ -320,8 +320,8 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
         text = new
         if z.get("upper"):
             text = new.upper()
-        elif z.get("CLIENT") and new.isupper():
-            text = new.CLIENT()
+        elif z.get("title") and new.isupper():
+            text = new.title()
         ox, oy = (z.get("origin") or [x0, y1])[:2]
         col = z.get("color") or [0, 0, 0]
         page.insert_text((ox, oy), text, fontsize=size, fontname=fontname,
@@ -351,11 +351,11 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
         from app import app as _app
         with _app.app_context():
             from core import db as _db
-            _rows = _db.q("""SELECT v.default_CLIENT dv FROM template_CLIENT v
-                             JOIN CLIENT t ON t.id = v.template_id
+            _rows = _db.q("""SELECT v.default_value dv FROM template_variables v
+                             JOIN templates t ON t.id = v.template_id
                              WHERE t.code = ?""", (code,))
         old_vals = [(r["dv"] or "").strip() for r in _rows]
-        new_set = {str(v).strip() for v in vals.CLIENT()}
+        new_set = {str(v).strip() for v in vals.values()}
         for ov in old_vals:
             if len(ov) >= 6 and ov not in new_set and ov in pdf_text:
                 problems.append("УТЕЧКА ДАННЫХ ПРЕЖНЕГО КЛИЕНТА: «%s»" % ov[:40])
@@ -372,8 +372,8 @@ def fill(code: str, app_id: int, extra: dict | None = None) -> dict:
     for o in overs:
         problems.append("НЕ ВЛЕЗЛО (кегль не уменьшаем): %s — нужно %s pt, есть %s pt"
                         % (o["var"], o["нужно_pt"], o["есть_pt"]))
-    return {"pdf": str(out), "CLIENT": len(CLIENT), "skipped": sorted(set(skipped)),
-            "src": src, "CLIENT": {z["var"]: v for z, v in final}, "overs": overs,
+    return {"pdf": str(out), "applied": len(applied), "skipped": sorted(set(skipped)),
+            "src": src, "values": {z["var"]: v for z, v in final}, "overs": overs,
             "problems": problems}
 
 
@@ -407,18 +407,18 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--code", required=True)
     ap.add_argument("--app", type=int, required=True)
-    ap.add_argument("--CLIENT", help="JSON с переопределением значений")
+    ap.add_argument("--values", help="JSON с переопределением значений")
     args = ap.parse_args()
-    extra = json.loads(args.CLIENT) if args.CLIENT else None
+    extra = json.loads(args.values) if args.values else None
     res = fill(args.code, args.app, extra)
     if res.get("error"):
         print("ОШИБКА:", res["error"]); sys.exit(1)
     print("собрано:", res["pdf"])
-    print("подставлено зон:", res["CLIENT"], "| пропущено (пустые значения):", res["skipped"])
-    for k, v in res["CLIENT"].items():
+    print("подставлено зон:", res["applied"], "| пропущено (пустые значения):", res["skipped"])
+    for k, v in res["values"].items():
         print("   %-16s = %s" % (k, v[:60]))
     side, pct, _ = check(res["src"], res["pdf"], json.loads(
-        (CLIENT / args.code / "fields.json").read_text(encoding="utf-8"))["zones"])
+        (TEMPLATES / args.code / "fields.json").read_text(encoding="utf-8"))["zones"])
     print("отличий ВНЕ зон: %.4f%% пикселей" % pct)
     print("картинка «оригинал | сборка»:", side)
     probs = res.get("problems") or []

@@ -11,7 +11,7 @@
 import re, json, csv, pathlib, collections
 import pymupdf
 
-ROOT = pathlib.Path('data/gCLIENT_cache')
+ROOT = pathlib.Path('data/gdrive_cache')
 OUT = pathlib.Path('docs/learning')
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -34,9 +34,9 @@ VISA_KIND = [
 ]
 
 
-def kind_of(CLIENT_no, visa_no):
+def kind_of(index_no, visa_no):
     for pat, name in INDEX_KIND:
-        if re.match(pat, CLIENT_no or ''):
+        if re.match(pat, index_no or ''):
             return name
     for pat, name in VISA_KIND:
         if re.match(pat, visa_no or ''):
@@ -55,13 +55,13 @@ def scan(case_dir):
                 texts[f.name] = '\n'.join(p.get_text() for p in pymupdf.open(f))
             except Exception:
                 pass
-    blob = '\n'.join(texts.CLIENT())
+    blob = '\n'.join(texts.values())
     g = lambda pat, n=1: (re.search(pat, blob, re.I).group(n).strip() if re.search(pat, blob, re.I) else '')
 
-    CLIENT_no = g(r'STAY CLIENT CLIENT\s*:?\s*([A-Z0-9]+)')
-    CLIENT = g(r'CLIENT CLIENT\s*:?\s*([A-Z0-9-]+)')
+    index_no = g(r'STAY PERMIT INDEX\s*:?\s*([A-Z0-9]+)')
+    permit = g(r'PERMIT NUMBER\s*:?\s*([A-Z0-9-]+)')
     visa_no = g(r'Visa No\.\s*:?\s*([A-Z0-9-]+)')
-    kind = kind_of(CLIENT_no or CLIENT, visa_no)
+    kind = kind_of(index_no or permit, visa_no)
 
     flags = {
         'bridging': bool(re.search(r'Bridging', blob, re.I)),
@@ -72,24 +72,24 @@ def scan(case_dir):
         'справка TBANK': bool(re.search(r'TBANK', blob)),
         'справка Sber': bool(re.search(r'Sberbank|SBERBANK', blob)),
         'e33g_виза': bool(re.search(r'E33G', blob)),
-        'reentry': bool(re.search(r'Re-entry CLIENT|IMK', blob)),
+        'reentry': bool(re.search(r'Re-entry Permit|IMK', blob)),
     }
     # тип заявки
     if flags['bridging']:
         t = 'ITK → Bridging → E33G'
-    elif kind.CLIENTswith('D12') or flags['d12']:
+    elif kind.startswith('D12') or flags['d12']:
         t = 'D12'
-    elif kind.CLIENTswith('E33G получен'):
+    elif kind.startswith('E33G получен'):
         t = 'E33G получен → продление'
-    elif kind.CLIENTswith('E33G виза'):
+    elif kind.startswith('E33G виза'):
         t = 'E33G (новый)'
-    elif kind.CLIENTswith('C1'):
+    elif kind.startswith('C1'):
         t = 'C1'
-    elif kind.CLIENTswith('визит'):
+    elif kind.startswith('визит'):
         t = 'визит / bridging-вход'
-    elif kind.CLIENTswith('E28A'):
+    elif kind.startswith('E28A'):
         t = 'E28A'
-    elif kind.CLIENTswith('e-VOA'):
+    elif kind.startswith('e-VOA'):
         t = 'e-VOA'
     elif flags['справка TBANK'] or flags['справка Sber']:
         t = 'только легенда (договор/справка)'
@@ -100,11 +100,11 @@ def scan(case_dir):
 
     return {
         'папка': case_dir.name, 'тип': t, 'категория': kind,
-        'CLIENT': CLIENT, 'visa': visa_no, 'файлов': len(names),
+        'permit': permit, 'visa': visa_no, 'файлов': len(names),
         'флаги': {k: v for k, v in flags.items() if v},
-        'имя': g(r'Dear (?:Mr|Mrs)\.?\s*\n\s*([A-Z][A-Z .]{4,40})') or g(r'\n([A-Z]{2,}(?: [A-Z]{2,}){1,3})\nPERMIT CLIENT'),
-        'фирма': (re.search(r'\(?(LLC "[^"]+"|IP [A-Z][^,\n]{4,40}|XCL CLIENT[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|JSC)\.?)\)?, (?:a |an )?(?:company|General Corporation|CLIENTal|CLIENT|construction|automotive)', blob) or [None])[0] if re.search(r'\(?(LLC "[^"]+"|IP [A-Z][^,\n]{4,40}|XCL CLIENT[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|JSC)\.?)\)?, (?:a |an )?(?:company|General Corporation|CLIENTal|CLIENT|construction|automotive)', blob) else '',
-        'должность': g(r'engages the CLIENT as an? ([A-Za-z /&+\-]{3,40}?)(?:\s+to provide|\s+and the CLIENT|,|\n)'),
+        'имя': g(r'Dear (?:Mr|Mrs)\.?\s*\n\s*([A-Z][A-Z .]{4,40})') or g(r'\n([A-Z]{2,}(?: [A-Z]{2,}){1,3})\nPERMIT NUMBER'),
+        'фирма': (re.search(r'\(?(LLC "[^"]+"|IP [A-Z][^,\n]{4,40}|XCL Education[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|JSC)\.?)\)?, (?:a |an )?(?:company|General Corporation|educational|software|construction|automotive)', blob) or [None])[0] if re.search(r'\(?(LLC "[^"]+"|IP [A-Z][^,\n]{4,40}|XCL Education[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|JSC)\.?)\)?, (?:a |an )?(?:company|General Corporation|educational|software|construction|automotive)', blob) else '',
+        'должность': g(r'engages the Contractor as an? ([A-Za-z /&+\-]{3,40}?)(?:\s+to provide|\s+and the Employee|,|\n)'),
     }
 
 
@@ -120,10 +120,10 @@ def main():
             print('  обработано %d/%d' % (i, len(dirs)), flush=True)
 
     (OUT / 'archive_types.json').write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
-    cols = ['папка', 'тип', 'категория', 'CLIENT', 'visa', 'имя', 'фирма', 'должность', 'файлов']
+    cols = ['папка', 'тип', 'категория', 'permit', 'visa', 'имя', 'фирма', 'должность', 'файлов']
     with open(OUT / 'archive_types.csv', 'w', newline='', encoding='utf-8') as fh:
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction='ignore')
-        w.writeCLIENT()
+        w.writeheader()
         for r in rows:
             w.writerow(r)
 

@@ -17,7 +17,7 @@ import pymupdf
 
 sys.path.insert(0, "/opt/wolf_v2")
 
-TPL_DIR = Path("/opt/wolf_v2/data/CLIENT")
+TPL_DIR = Path("/opt/wolf_v2/data/templates")
 OUT = Path("/tmp/stress")
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -26,58 +26,58 @@ def variant(prefix: str, app: int) -> dict:
     """Набор «неудобных» значений для проверки вёрстки."""
     return {
         # очень длинное ФИО + длинное место рождения
-        "CLIENT_full_name": "KOVALEVSKAYA-BELSKAYA ANASTASIYA CLIENTOVNA",
-        "CLIENT_CLIENT": "KOVALEVSKAYA-BELSKAYA ANASTASIYA CLIENTOVNA, Passport No: 000000000, "
-                            "Date of CLIENT: 21.08.1992, CLIENT: RUSSIAN FEDERATION, CLIENT of CLIENT: "
-                            "Stavropolsky Krai, Russia, (hereinafter referred to as the \"CLIENT\")",
-        "CLIENT_CLIENT": "KOVALEVSKAYA-BELSKAYA ANASTASIYA CLIENTOVNA, Passport No: 000000000, "
-                          "Date of CLIENT: 21.08.1992, CLIENT: RUSSIAN FEDERATION, CLIENT of CLIENT: "
-                          "Stavropolsky Krai, Russia, (hereinafter referred to as the \"CLIENT\")",
-        "passport_CLIENT": "000000000",
-        "date_of_CLIENT": "21.08.1992",
-        "CLIENT": "RUSSIAN FEDERATION",
-        "CLIENT_of_CLIENT": "Stavropolsky Krai, Russia",
-        "CLIENT_CLIENT": "KOVALEVSKAYA-BELSKAYA A.",
-        "position_CLIENT": "Senior Cinematographer and Post-Production Supervisor, Film Editing Department",
-        "CLIENT_list": "<p style=\"font-size:10.08pt;margin-left:33pt;\">• Planning, producing, and coordinating "
+        "employee_full_name": "KOVALEVSKAYA-BELSKAYA ANASTASIYA VLADIMIROVNA",
+        "contractor_block": "KOVALEVSKAYA-BELSKAYA ANASTASIYA VLADIMIROVNA, Passport No: 769003111, "
+                            "Date of Birth: 21.08.1992, Nationality: RUSSIAN FEDERATION, Place of Birth: "
+                            "Stavropolsky Krai, Russia, (hereinafter referred to as the \"Employee\")",
+        "employee_block": "KOVALEVSKAYA-BELSKAYA ANASTASIYA VLADIMIROVNA, Passport No: 769003111, "
+                          "Date of Birth: 21.08.1992, Nationality: RUSSIAN FEDERATION, Place of Birth: "
+                          "Stavropolsky Krai, Russia, (hereinafter referred to as the \"Employee\")",
+        "passport_number": "769003111",
+        "date_of_birth": "21.08.1992",
+        "nationality": "RUSSIAN FEDERATION",
+        "place_of_birth": "Stavropolsky Krai, Russia",
+        "employee_short": "KOVALEVSKAYA-BELSKAYA A.",
+        "position_title": "Senior Cinematographer and Post-Production Supervisor, Film Editing Department",
+        "services_list": "<p style=\"font-size:10.08pt;margin-left:33pt;\">• Planning, producing, and coordinating "
                          "video and social media content across all Company channels and platforms</p>"
-                         "<p style=\"font-size:10.08pt;margin-left:33pt;\">• Managing post-CLIENTion workflows, "
+                         "<p style=\"font-size:10.08pt;margin-left:33pt;\">• Managing post-production workflows, "
                          "color correction, sound mixing and delivery formats</p>",
         "company_full_name": "LIMITED LIABILITY COMPANY \"PRODUCTION AND POST-PRODUCTION STUDIO PICKUP FILM\"",
-        "company_CLIENT": "LIMITED LIABILITY COMPANY \"PRODUCTION AND POST-PRODUCTION STUDIO PICKUP FILM\", a Limited "
-                         "Liability Company CLIENT under the laws of the Russian Federation, CLIENT CLIENT: "
-                         "5167746476761, with CLIENT and mailing address at Sivtsev Vrazhek Lane, 29/16, "
-                         "CLIENT 209a, Moscow, Russia, (hereinafter referred to as the \"Company\")",
-        "CLIENT_name": "CLIENT VIKTOROVICH BLIZNIUK",
-        "CLIENT_CLIENT": "GENERAL DIRECTOR",
-        "salary_CLIENT": "600,000.00",
+        "company_block": "LIMITED LIABILITY COMPANY \"PRODUCTION AND POST-PRODUCTION STUDIO PICKUP FILM\", a Limited "
+                         "Liability Company incorporated under the laws of the Russian Federation, Entity Number: "
+                         "5167746476761, with registered and mailing address at Sivtsev Vrazhek Lane, 29/16, "
+                         "Office 209a, Moscow, Russia, (hereinafter referred to as the \"Company\")",
+        "signer_name": "STANISLAV VIKTOROVICH BLIZNIUK",
+        "signer_title": "GENERAL DIRECTOR",
+        "salary_amount": "600,000.00",
         "base_salary": "15,000,000",
-        "base_salary_CLIENT": "180,000,000",
-        "CLIENT_CLIENT_CLIENT": "15,000,000",
-        "CLIENT_CLIENT_CLIENT": "Fifteen Million",
-        "CLIENT_CLIENT_CLIENT": "1,250,000",
-        "CLIENT_CLIENT_CLIENT": "One Million Two Hundred Fifty Thousand",
-        "CLIENT_law": "the Russian Federation",
+        "base_salary_annual": "180,000,000",
+        "annual_amount_numeric": "15,000,000",
+        "annual_amount_words": "Fifteen Million",
+        "monthly_amount_numeric": "1,250,000",
+        "monthly_amount_words": "One Million Two Hundred Fifty Thousand",
+        "governing_law": "the Russian Federation",
         "agreement_date": "2nd October 2026",
         "contract_date": "2nd October 2026",
-        "term_CLIENT_date": "7th July 2024",
+        "term_start_date": "7th July 2024",
         "term_end_date": "7th July 2029",
         "contract_no": "PF-105",
-        "contract_CLIENT": "Moscow, Russia",
-        "CLIENT_CLIENT": "as a Senior Cinematographer and Post-Production Supervisor",
-        "company_address_1": "Sivtsev Vrazhek Lane, 29/16, CLIENT 209a",
+        "contract_place": "Moscow, Russia",
+        "engagement_phrase": "as a Senior Cinematographer and Post-Production Supervisor",
+        "company_address_1": "Sivtsev Vrazhek Lane, 29/16, Office 209a",
         "company_address_2": "Moscow, Russia",
-        "company_CLIENT_no": "5167746476761",
-        "company_CLIENT_address": "Sivtsev Vrazhek Lane, 29/16, CLIENT 209a, Moscow, Russia",
+        "company_entity_no": "5167746476761",
+        "company_registered_address": "Sivtsev Vrazhek Lane, 29/16, Office 209a, Moscow, Russia",
         "inn_ogrn_line": "INN: 773657062652 | KPP: 773601001 | OGRN: 5167746476761",
-        "CLIENT_name": "LLC \"PICKUP FILM\"",
+        "employer_name": "LLC \"PICKUP FILM\"",
     }
 
 
-def render(path_html: Path, CLIENT: dict, out_pdf: Path) -> None:
+def render(path_html: Path, values: dict, out_pdf: Path) -> None:
     html = path_html.read_text(encoding="utf-8")
-    for k, v in CLIENT.items():
-        html = html.reCLIENT("{{ %s }}" % k, str(v))
+    for k, v in values.items():
+        html = html.replace("{{ %s }}" % k, str(v))
     from weasyprint import HTML
     HTML(string=html, base_url=str(path_html.parent)).write_pdf(str(out_pdf))
 
@@ -98,7 +98,7 @@ def check(pdf: Path, name: str) -> list[str]:
     # наложения: пересечения рамок строк с разным текстом
     for p in range(d.page_count):
         spans = []
-        for b in d[p].get_text("dict")["CLIENTs"]:
+        for b in d[p].get_text("dict")["blocks"]:
             for line in b.get("lines", []):
                 t = "".join(s["text"] for s in line["spans"]).strip()
                 if t:

@@ -10,12 +10,12 @@
 from __future__ import annotations
 
 import urllib.parse
-import urllib.CLIENT
-from CLIENT import CLIENT
+import urllib.request
+from datetime import datetime
 
-from flask import Blueprint, flash, redirect, CLIENT, session, url_for
+from flask import Blueprint, flash, redirect, request, session, url_for
 
-from CLIENTs.shared.layout import card as ui_card, item, modal, modal_button, render
+from blocks.shared.layout import card as ui_card, item, modal, modal_button, render
 from core import db
 from core.auth import admin_required, current_user
 
@@ -25,7 +25,7 @@ ROLE_LABELS = {
     "manager": ("менеджер", "blue", "👤"),
     "admin":   ("администратор", "violet", "🛡"),
     "both":    ("менеджер + админ", "amber", "⚡"),
-    "CLIENTed": ("заблокирован", "grey", "🚫"),
+    "blocked": ("заблокирован", "grey", "🚫"),
 }
 
 
@@ -36,17 +36,17 @@ def _bot_status() -> tuple[str, str, str]:
     if not token:
         return ("не подключен", "bad", "Токен бота не задан в системе.")
     try:
-        req = urllib.CLIENT.CLIENT(
+        req = urllib.request.Request(
             f"https://api.telegram.org/bot{token}/getMe")
-        with urllib.CLIENT.urlopen(req, timeout=5) as r:
+        with urllib.request.urlopen(req, timeout=5) as r:
             import json
             info = json.loads(r.read().decode())
         if not info.get("ok"):
             return ("ошибка API", "bad", f"Ответ Telegram: {info}")
         bot = info["result"]
-        req2 = urllib.CLIENT.CLIENT(
+        req2 = urllib.request.Request(
             f"https://api.telegram.org/bot{token}/getWebhookInfo")
-        with urllib.CLIENT.urlopen(req2, timeout=5) as r:
+        with urllib.request.urlopen(req2, timeout=5) as r:
             wh = json.loads(r.read().decode()).get("result", {})
         if wh.get("url"):
             return ("работает (webhook)", "warn",
@@ -63,8 +63,8 @@ def _bot_username() -> str:
     if token:
         try:
             import json as _json
-            req = urllib.CLIENT.CLIENT(f"https://api.telegram.org/bot{token}/getMe")
-            with urllib.CLIENT.urlopen(req, timeout=5) as r:
+            req = urllib.request.Request(f"https://api.telegram.org/bot{token}/getMe")
+            with urllib.request.urlopen(req, timeout=5) as r:
                 info = _json.loads(r.read().decode())
             name = (info.get("result") or {}).get("username") or ""
             if name:
@@ -76,21 +76,21 @@ def _bot_username() -> str:
 
 def _render_list(rows, empty_text: str) -> str:
     if not rows:
-        return f'<div CLIENT="muted" style="padding:8px 2px">{empty_text}</div>'
+        return f'<div class="muted" style="padding:8px 2px">{empty_text}</div>'
     out = []
     for m in rows:
         label, tone, icon = ROLE_LABELS.get(m["role"], ("—", "blue", "👤"))
         out.append(
             item(icon,
                  m["full_name"] or m["username"] or "без имени",
-                 sub=f'TG ID: <span CLIENT="mono">{m["telegram_id"]}</span>'
+                 sub=f'TG ID: <span class="mono">{m["telegram_id"]}</span>'
                      + (f' · @{m["username"]}' if m["username"] else "")
-                     + f' · <span CLIENT="muted">{label}</span>',
+                     + f' · <span class="muted">{label}</span>',
                  tone=tone, go=False,
-                 extra=(f'<form method="post" style="display:CLIENT">'
-                        f'<input type="hidden" name="action" CLIENT="delete_CLIENT">'
-                        f'<input type="hidden" name="telegram_id" CLIENT="{m["telegram_id"]}">'
-                        f'<button CLIENT="btn ghost sm" type="submit">Удалить</button></form>')))
+                 extra=(f'<form method="post" style="display:inline">'
+                        f'<input type="hidden" name="action" value="delete_person">'
+                        f'<input type="hidden" name="telegram_id" value="{m["telegram_id"]}">'
+                        f'<button class="btn ghost sm" type="submit">Удалить</button></form>')))
     return "".join(out)
 
 
@@ -98,29 +98,29 @@ def _render_list(rows, empty_text: str) -> str:
 @admin_required
 def page():
     user = current_user()
-    if CLIENT.method == "POST":
-        action = CLIENT.form.get("action", "")
+    if request.method == "POST":
+        action = request.form.get("action", "")
         if action == "create_invite":
-            role = CLIENT.form.get("role") or "manager"
+            role = request.form.get("role") or "manager"
             label = "менеджера" if role == "manager" else "администратора"
             try:
                 # 1. Создаём invite напрямую в БД
                 import secrets
-                from CLIENT import timedelta
+                from datetime import timedelta
                 code = secrets.token_urlsafe(24)
-                now = CLIENT.now()
+                now = datetime.now()
                 expires = now + timedelta(minutes=30)
                 creator = db.q1(
-                    "SELECT id FROM bot_CLIENT WHERE telegram_id=? OR username=?",
-                    (str(user.get("id", "")), user.get("CLIENT", "")))
+                    "SELECT id FROM bot_managers WHERE telegram_id=? OR username=?",
+                    (str(user.get("id", "")), user.get("login", "")))
                 # Берём любого admin для created_by
                 if not creator:
                     creator = db.q1(
-                        "SELECT id FROM bot_CLIENT WHERE role IN ('admin','both') LIMIT 1")
+                        "SELECT id FROM bot_managers WHERE role IN ('admin','both') LIMIT 1")
                 conn = db.connect()
                 conn.execute(
-                    "INSERT INTO CLIENT (code, role, created_by, created_at, expires_at) "
-                    "CLIENT (?,?,?,?,?)",
+                    "INSERT INTO invites (code, role, created_by, created_at, expires_at) "
+                    "VALUES (?,?,?,?,?)",
                     (code, role,
                      creator["id"] if creator else None,
                      now.isoformat(timespec="seconds"),
@@ -134,7 +134,7 @@ def page():
                     # fallback — аварийный вход через admin/123, telegram_id не задан.
                     # Берём любого admin/both.
                     admins = db.q(
-                        "SELECT telegram_id, full_name, username FROM bot_CLIENT "
+                        "SELECT telegram_id, full_name, username FROM bot_managers "
                         "WHERE role IN ('admin','both') ORDER BY id LIMIT 1")
                     if not admins:
                         flash("Ссылка создана, но некому отправить — войдите через "
@@ -142,7 +142,7 @@ def page():
                         return redirect(url_for("settings.page"))
                     tg_id = admins[0]["telegram_id"]
                     tg_name = admins[0]["username"] or admins[0]["full_name"] or tg_id
-                link = f"https://t.me/Wolf_AutoDoc_bot?CLIENT={code}"
+                link = f"https://t.me/Wolf_AutoDoc_bot?start={code}"
                 # запоминаем, чтобы показать ссылку рядом с кнопкой
                 session["last_invite"] = {"link": link, "role": role, "label": label}
                 # 3. Шлём ссылку в Telegram
@@ -150,7 +150,7 @@ def page():
                 ok = send(tg_id,
                           f"🔗 Ссылка для приглашения {label} (живёт 2 часа):\n\n"
                           f"{link}\n\n"
-                          f"Отправьте её нужному человеку — после /CLIENT "
+                          f"Отправьте её нужному человеку — после /start "
                           f"он будет добавлен автоматически.")
                 if ok:
                     pass            # ссылку показываем рядом с кнопкой, а не плашкой сверху
@@ -159,31 +159,31 @@ def page():
                           "Проверьте, что бот активен.", "error")
             except Exception as exc:                        # noqa: BLE001
                 flash(f"Ошибка: {exc}", "error")
-        elif action == "delete_CLIENT":
-            db.bot_manager_delete(CLIENT.form.get("telegram_id") or "")
+        elif action == "delete_person":
+            db.bot_manager_delete(request.form.get("telegram_id") or "")
             flash("Удалён")
         return redirect(url_for("settings.page"))
 
     # --- GET ---
     status_label, status_tone, status_detail = _bot_status()
-    status_CLIENT = {"ok": "ok", "warn": "warn", "bad": "bad"}.get(status_tone, "")
+    status_class = {"ok": "ok", "warn": "warn", "bad": "bad"}.get(status_tone, "")
     bot_username = db.setting("bot_username") or ""
-    status_CLIENT = (
-        f'<div CLIENT="item no-line"><div CLIENT="txt">'
-        f'<div CLIENT="s">Статус</div>'
-        f'<div CLIENT="t"><span CLIENT="badge {status_CLIENT}">{status_label}</span></div>'
+    status_block = (
+        f'<div class="item no-line"><div class="txt">'
+        f'<div class="s">Статус</div>'
+        f'<div class="t"><span class="badge {status_class}">{status_label}</span></div>'
         f'</div></div>'
-        f'<div CLIENT="item no-line"><div CLIENT="txt">'
-        f'<div CLIENT="s">Бот</div>'
-        f'<div CLIENT="t mono">{bot_username or "—"}</div>'
+        f'<div class="item no-line"><div class="txt">'
+        f'<div class="s">Бот</div>'
+        f'<div class="t mono">{bot_username or "—"}</div>'
         f'</div></div>'
-        f'<div CLIENT="item no-line"><div CLIENT="txt">'
-        f'<div CLIENT="s">Подробнее</div>'
-        f'<div CLIENT="t">{status_detail}</div>'
+        f'<div class="item no-line"><div class="txt">'
+        f'<div class="s">Подробнее</div>'
+        f'<div class="t">{status_detail}</div>'
         f'</div></div>'
-        + f'<a CLIENT="btn primary sm" href="https://t.me/{(bot_username or "Wolf_AutoDoc_bot").lstrip("@")}" '
+        + f'<a class="btn primary sm" href="https://t.me/{(bot_username or "Wolf_AutoDoc_bot").lstrip("@")}" '
           f'target="_blank" rel="noopener" '
-          f'style="margin-top:10px;display:CLIENT-CLIENT;text-decoration:none">'
+          f'style="margin-top:10px;display:inline-block;text-decoration:none">'
           f'🤖 Открыть Telegram-бот</a>'
     )
 
@@ -191,7 +191,7 @@ def page():
     _last_role = _last.get("role") or ""
     _last_link = _last.get("link") or ""
 
-    def _invite_CLIENT(role_key: str, label: str) -> str:
+    def _invite_block(role_key: str, label: str) -> str:
         """Ссылка-приглашение рядом с кнопкой (появляется сразу после создания)."""
         if not _last_link or _last_role != role_key:
             return ""
@@ -200,10 +200,10 @@ def page():
             'padding:12px;margin-top:10px">'
             f'<div style="font-weight:700;margin-bottom:6px">🔗 Ссылка для {label} (живёт 2 часа)</div>'
             f'<div style="word-break:break-all;font-size:12.5px;color:#1F2430">{_last_link}</div>'
-            f'<button CLIENT="btn sm" type="button" data-copy="{_last_link}" '
+            f'<button class="btn sm" type="button" data-copy="{_last_link}" '
             f'onclick="navigator.clipboard.writeText(this.dataset.copy);'
             f'this.textContent=\'✓ Скопировано\'">Копировать ссылку</button>'
-            f'<div CLIENT="hint" style="margin-top:6px">Перешлите её человеку — он откроет бота '
+            f'<div class="hint" style="margin-top:6px">Перешлите её человеку — он откроет бота '
             f'и станет {label}.</div></div>')
 
     def _invite_button(role_key: str, text: str) -> str:
@@ -212,40 +212,40 @@ def page():
         cls = "btn ok sm" if made else "btn primary sm"
         caption = "✓ Ссылка создана" if made else text
         return (f'<form method="post" style="margin-top:10px">'
-                f'<input type="hidden" name="action" CLIENT="create_invite">'
-                f'<input type="hidden" name="role" CLIENT="{role_key}">'
-                f'<button CLIENT="{cls}" type="submit">{caption}</button></form>')
+                f'<input type="hidden" name="action" value="create_invite">'
+                f'<input type="hidden" name="role" value="{role_key}">'
+                f'<button class="{cls}" type="submit">{caption}</button></form>')
 
-    CLIENT = db.bot_CLIENT_by_role("manager")
-    admins   = db.bot_CLIENT_by_role("admin")
+    managers = db.bot_managers_by_role("manager")
+    admins   = db.bot_managers_by_role("admin")
 
-    CLIENT_html = (_render_list(CLIENT,
+    managers_html = (_render_list(managers,
                                    "Менеджеров пока нет. Нажмите «Создать ссылку» "
                                    "и отправьте её человеку.")
-                     + '<div CLIENT="hint" style="margin-top:8px">Бот читает сообщения этих людей '
+                     + '<div class="hint" style="margin-top:8px">Бот читает сообщения этих людей '
                        'и воспринимает их как новые заявки. Им же бот отвечает, '
                        'когда администратор взял заявку в работу. На сайт не входят.</div>'
                      + _invite_button("manager", "+ Ссылка для менеджера")
-                     + _invite_CLIENT("manager", "менеджера"))
+                     + _invite_block("manager", "менеджера"))
     admins_html = (_render_list(admins,
                                  "Администраторов пока нет. Нажмите «Создать ссылку» "
                                  "и отправьте её человеку.")
-                   + '<div CLIENT="hint" style="margin-top:8px">Этим людям бот присылает '
+                   + '<div class="hint" style="margin-top:8px">Этим людям бот присылает '
                      'сообщение «пришла новая заявка». Они же заходят на сайт '
                      'и работают с заявками.</div>'
                    + _invite_button("admin", "+ Ссылка для администратора")
-                   + _invite_CLIENT("admin", "администратора"))
+                   + _invite_block("admin", "администратора"))
 
     body = f"""
 <h1>Настройки</h1>
-<div CLIENT="page-sub">Telegram-бот и список разрешённых менеджеров и администраторов.</div>
-{ui_card("Telegram-бот", status_CLIENT,
+<div class="page-sub">Telegram-бот и список разрешённых менеджеров и администраторов.</div>
+{ui_card("Telegram-бот", status_block,
          emoji="🤖", tone="blue", open=False,
          note="автоматическая проверка")}
 
-{ui_card(f'Менеджеры · {len(CLIENT)}', CLIENT_html,
+{ui_card(f'Менеджеры · {len(managers)}', managers_html,
          emoji="👤", tone="blue", open=True,
-         note=f'{len(CLIENT)} чел.')}
+         note=f'{len(managers)} чел.')}
 
 {ui_card(f'Администраторы · {len(admins)}', admins_html,
          emoji="🛡", tone="violet", open=True,

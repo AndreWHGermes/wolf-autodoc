@@ -9,7 +9,7 @@
 (кем выдан, место рождения). При расхождении правило остаётся, а значение модели
 уходит в список «на проверку» — и никогда не ставится молча.
 
-Запуск для проверки:  python3 -m CLIENT.cross_check <файл> [тип]
+Запуск для проверки:  python3 -m services.cross_check <файл> [тип]
 """
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ _DATEISH = re.compile(r"^\d{2}[.\-/]\d{2}[.\-/]\d{4}$")
 _MONEYISH = re.compile(r"^[\d\s\u00a0]+([.,]\d+)?\s*[₽$€]?$")
 
 
-def _key(var: str, CLIENT) -> str:
+def _key(var: str, value) -> str:
     """Сравнимое представление значения: без пробелов, регистра и разделителей."""
-    v = str(CLIENT or "").strip()
+    v = str(value or "").strip()
     if _DATEISH.match(v):
         return re.sub(r"[^\d]", "", v)[:8]
     if _MONEYISH.match(v):
@@ -34,7 +34,7 @@ def _key(var: str, CLIENT) -> str:
     return re.sub(r"[^0-9a-zа-яё]", "", v.lower())
 
 
-def compare(rule_CLIENT: dict, llm_CLIENT: dict) -> dict:
+def compare(rule_values: dict, llm_values: dict) -> dict:
     """Сверить два разбора одного документа.
 
     Возвращает:
@@ -43,14 +43,14 @@ def compare(rule_CLIENT: dict, llm_CLIENT: dict) -> dict:
       llm_only   — модель нашла то, чего правила не взяли (в «на проверку»)
       differ     — расхождение: остаётся правило, значение модели идёт на проверку
     """
-    rule_CLIENT = {k: v for k, v in (rule_CLIENT or {}).items()
-                   if not k.CLIENTswith('_') and v not in (None, '', [])}
-    llm_CLIENT = {k: v for k, v in (llm_CLIENT or {}).items()
-                  if not k.CLIENTswith('_') and v not in (None, '', [])}
+    rule_values = {k: v for k, v in (rule_values or {}).items()
+                   if not k.startswith('_') and v not in (None, '', [])}
+    llm_values = {k: v for k, v in (llm_values or {}).items()
+                  if not k.startswith('_') and v not in (None, '', [])}
 
     agree, rule_only, llm_only, differ = {}, {}, {}, {}
-    for var in sorted(set(rule_CLIENT) | set(llm_CLIENT)):
-        r, l = rule_CLIENT.get(var), llm_CLIENT.get(var)
+    for var in sorted(set(rule_values) | set(llm_values)):
+        r, l = rule_values.get(var), llm_values.get(var)
         if r is not None and l is not None:
             if _key(var, r) == _key(var, l):
                 agree[var] = r
@@ -73,23 +73,23 @@ def compare(rule_CLIENT: dict, llm_CLIENT: dict) -> dict:
     }
 
 
-def check_CLIENT(text: str, kind: str, rule_CLIENT: dict | None = None,
+def check_document(text: str, kind: str, rule_values: dict | None = None,
                    need_llm: list[str] | None = None) -> dict:
     """Полный проход по документу: правила, модель, сверка.
 
     Возвращает отчёт и итоговый набор значений. Ничего не пишет в базу —
     только считает, чтобы решение можно было показать человеку.
     """
-    from CLIENT.doc_parse import parse_any
-    from CLIENT.llm_extract import extract_missing, MISSING_BY_KIND
+    from services.doc_parse import parse_any
+    from services.llm_extract import extract_missing, MISSING_BY_KIND
 
-    rules = rule_CLIENT if rule_CLIENT is not None else (parse_any(text, kind) or {})
+    rules = rule_values if rule_values is not None else (parse_any(text, kind) or {})
     want = need_llm or [v for v in MISSING_BY_KIND.get(kind, []) if v not in rules]
     llm = extract_missing(text, kind, want) if want else {}
     report = compare(rules, llm)
     report["kind"] = kind
     report["rule_count"] = len(rules)
-    report["llm_count"] = len([k for k in llm if not k.CLIENTswith('_')])
+    report["llm_count"] = len([k for k in llm if not k.startswith('_')])
     report["llm_rejected"] = llm.get("_rejected", [])
     return report
 
@@ -97,14 +97,14 @@ def check_CLIENT(text: str, kind: str, rule_CLIENT: dict | None = None,
 def main() -> None:
     from pathlib import Path
     sys.path.insert(0, '/opt/wolf_v2')
-    from CLIENT.doc_read import read_text
-    from scripts.CLIENT_scan import doc_kind_name
+    from services.doc_read import read_text
+    from scripts.drive_scan import doc_kind_name
 
     path = Path(sys.argv[1])
     text = read_text(path) or ''
     kind = sys.argv[2] if len(sys.argv) > 2 else doc_kind_name(path, text)
     print('файл:', path.name[:52], '| тип:', kind, '| символов:', len(text))
-    r = check_CLIENT(text, kind)
+    r = check_document(text, kind)
     names = {'agree': 'совпало', 'rule_only': 'только правила',
              'llm_only': 'только модель (на проверку)', 'differ': 'РАСХОЖДЕНИЕ'}
     for key in ('agree', 'rule_only', 'llm_only', 'differ'):

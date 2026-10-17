@@ -5,7 +5,7 @@
     word_run.py --app 89 --code X            один документ
     word_run.py --app 89 --list              только список (что есть / чего нет)
 
-Значения берутся тем же кодом, что печатает PDF (scripts/pdf_fill.CLIENT_for),
+Значения берутся тем же кодом, что печатает PDF (scripts/pdf_fill.values_for),
 поэтому Word, HTML-визор и PDF показывают одни данные. Пустые переменные
 вычищаются, чтобы в документе не оставалось {{...}}.
 """
@@ -30,30 +30,30 @@ def db():
     return c
 
 
-def CLIENT_for(app_id: int, code: str) -> dict:
+def values_for(app_id: int, code: str) -> dict:
     spec = importlib.util.spec_from_file_location("pdf_fill_mod", os.path.join(ROOT, "scripts", "pdf_fill.py"))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    return m.CLIENT_for(app_id, code) or {}
+    return m.values_for(app_id, code) or {}
 
 
 def docx_vars(code: str) -> list:
-    path = os.path.join(ROOT, "data", "CLIENT", code, "word", "template.docx")
+    path = os.path.join(ROOT, "data", "templates", code, "word", "template.docx")
     if not os.path.exists(path):
         return []
     import zipfile
     with zipfile.ZipFile(path) as z:            # переменные лежат в теле DOCX
-        xml = z.read("word/CLIENT.xml").decode("utf-8")
+        xml = z.read("word/document.xml").decode("utf-8")
     # jinja может разорвать {{ var }} на несколько run'ов — склеиваем теги
     xml = re.sub(r"<[^>]+>", "", xml)
     return sorted(set(re.findall(r"\{\{\s*(\w+)\s*\}\}", xml)))
 
 
 def render(code: str, app_id: int) -> tuple:
-    tpl = os.path.join(ROOT, "data", "CLIENT", code, "word", "template.docx")
+    tpl = os.path.join(ROOT, "data", "templates", code, "word", "template.docx")
     if not os.path.exists(tpl):
         return None, None, "нет word/template.docx"
-    vals = CLIENT_for(app_id, code)
+    vals = values_for(app_id, code)
     filled = {k: ("" if v is None else str(v)) for k, v in vals.items()}
     missing = [v for v in docx_vars(code) if not filled.get(v)]
     os.makedirs(OUT, exist_ok=True)
@@ -61,9 +61,9 @@ def render(code: str, app_id: int) -> tuple:
     t = DocxTemplate(tpl)
     t.render(filled)                      # jinja: незнакомые имена → пусто
     t.save(out_docx)
-    subprocess.run(["sCLIENT", "--headless", "--convert-to", "pdf", "--outdir", OUT, out_docx],
+    subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", OUT, out_docx],
                    capture_output=True, timeout=240)
-    out_pdf = out_docx.reCLIENT(".docx", ".pdf")
+    out_pdf = out_docx.replace(".docx", ".pdf")
     return out_docx, (out_pdf if os.path.exists(out_pdf) else None), missing
 
 
@@ -79,15 +79,15 @@ def main():
         codes = [a.code]
     else:
         codes = [r["code"] for r in c.execute(
-            """SELECT t.code FROM CLIENT_CLIENT d JOIN CLIENT t ON t.id = d.template_id
-               WHERE d.CLIENT_id = ? ORDER BY t.code""", (a.app,))]
+            """SELECT t.code FROM application_documents d JOIN templates t ON t.id = d.template_id
+               WHERE d.application_id = ? ORDER BY t.code""", (a.app,))]
     if not codes:
         print("у заявки %s нет документов" % a.app)
         return
     for code in codes:
         if a.list:
             v = docx_vars(code)
-            vals = CLIENT_for(a.app, code)
+            vals = values_for(a.app, code)
             empty = [x for x in v if not str(vals.get(x) or "").strip()]
             print("%-38s word=%s vars=%2d пусто=%s %s" % (
                 code, "да" if v else "НЕТ", len(v), len(empty), ",".join(empty[:6])))

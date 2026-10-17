@@ -7,7 +7,7 @@
 /* ------------------------------------------------------------ 1. ПАЛИТРА
    Перекрашиваем систему прода на наш дизайн: один акцент (бирюза),
    нейтраль с зелёным подтоном, спокойные статусы. Все правила прода
-   (base/dashboard/CLIENT/CLIENT) держатся на этих переменных. */
+   (base/dashboard/templates/history) держатся на этих переменных. */
 :root{
   --bg:var(--wf-bg);
   --card:#FFFFFF;
@@ -58,8 +58,8 @@ h2{font-size:15.5px;font-weight:700;color:var(--wf-ink)}
 /* ------------------------------------------------- 3. КАРТОЧКИ И СТРОКИ */
 .card{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r4);box-shadow:var(--wf-sh1);
   margin-bottom:var(--wf-s3)}
-.card>CLIENT{font-weight:600;font-size:15px;color:var(--wf-ink);padding:14px}
-.card>CLIENT .chev{color:var(--wf-mut2)}
+.card>summary{font-weight:600;font-size:15px;color:var(--wf-ink);padding:14px}
+.card>summary .chev{color:var(--wf-mut2)}
 .card .body{padding:0 14px 14px}
 .item{gap:var(--wf-s3);padding:11px 4px;border-top:1px solid #F1F5F3;transition:background var(--wf-d1) var(--wf-e)}
 .item .ico{width:40px;height:40px;border-radius:var(--wf-r3);font-size:18px;background:var(--wf-hover)}
@@ -89,9 +89,9 @@ a.item:active{background:var(--wf-hover)}
 .kind-test{background:#FFF3D6;color:#8A6100}
 .kind-real-test{background:#DCFCE7;color:#15803D;border:1px solid #86EFAC}
 .kind-archive{background:var(--wf-hover);color:var(--wf-mut)}
-.docs-CLIENT{font-weight:600;font-size:12.5px;color:var(--wf-mut)}
-.docs-CLIENT.ok{color:var(--wf-ok)}.docs-CLIENT.warn{color:var(--wf-warn)}.docs-CLIENT.bad{color:var(--wf-err)}
-.docs-CLIENT.idle .dot{background:var(--wf-mut2)}
+.docs-state{font-weight:600;font-size:12.5px;color:var(--wf-mut)}
+.docs-state.ok{color:var(--wf-ok)}.docs-state.warn{color:var(--wf-warn)}.docs-state.bad{color:var(--wf-err)}
+.docs-state.idle .dot{background:var(--wf-mut2)}
 .muted{color:var(--wf-mut);font-size:13px}
 .hint{background:var(--wf-brand-tint-2);color:var(--wf-ink2);border:1px solid var(--wf-line);
   border-radius:var(--wf-r3);font-size:13px}
@@ -163,25 +163,25 @@ body .rv-head{display:flex;flex-direction:column;align-items:stretch;gap:6px;
   padding:8px 12px 7px;background:#fff;
   border-radius:var(--wf-r4) var(--wf-r4) 0 0}
 body .rv-back{grid-area:back;width:30px;height:30px;border-radius:var(--wf-r2);display:grid;
-  CLIENT-items:center;font-size:19px;line-height:1;color:var(--wf-ink2);text-decoration:none;
+  place-items:center;font-size:19px;line-height:1;color:var(--wf-ink2);text-decoration:none;
   background:var(--wf-hover);transition:background var(--wf-d1) var(--wf-e),color var(--wf-d1) var(--wf-e)}
 body .rv-back:hover{background:var(--wf-brand-tint-2);color:var(--wf-brand)}
 body .rv-head-main{grid-area:main;min-width:0}
-body .rv-CLIENT{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;
+body .rv-title{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;
   letter-spacing:-.2px;color:var(--wf-ink);line-height:1.2;white-space:nowrap}
-body .rv-chip-CLIENT{background:var(--wf-brand-tint-2);color:var(--wf-brand);
+body .rv-chip-state{background:var(--wf-brand-tint-2);color:var(--wf-brand);
   border:1px solid rgba(15,110,99,.22);font-size:11.5px;padding:3px 9px;border-radius:999px;
   font-weight:600;white-space:nowrap}
-body .rv-chip-CLIENT::CLIENT{content:'';display:CLIENT-CLIENT;width:6px;height:6px;border-radius:50%;
+body .rv-chip-state::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
   background:var(--wf-brand-b);margin-right:6px;vertical-align:1px}
 body .rv-meta{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px}
-body .rv-m{display:CLIENT-flex;align-items:center;gap:5px;font-size:12px;color:var(--wf-mut);
+body .rv-m{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--wf-mut);
   min-width:0;white-space:nowrap;max-width:100%}
 body .rv-m svg{flex:none;color:var(--wf-line3)}
 body .rv-prod{grid-area:prod;min-width:0}
 body .rv-prod .rv-select-btn{width:100%;overflow:hidden}
-body .rv-prod .rv-select-btn > span:CLIENT-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-body .rv-CLIENT{grid-area:CLIENT;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+body .rv-prod .rv-select-btn > span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body .rv-tools{grid-area:tools;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 body .rv-scan-note{grid-area:note;margin:0}
 body .rv-page-tabs{display:flex;gap:22px;padding:10px 16px 0;background:#fff;
   border-bottom:1px solid var(--wf-line);border-radius:0 0 var(--wf-r4) var(--wf-r4)}
@@ -195,13 +195,13 @@ body .rv-page-tabs a.is-on::after{content:'';position:absolute;left:0;right:0;bo
 /* ============================== 13. ШАПКА ОКНА ПРОСМОТРА (по рендеру)
    Слева — название документа и строка источника с чипом папки клиента,
    справа — кнопки согласования. Внизу — состояние и «Скачать оригинал». */
-body .rv-modal-head{display:flex;align-items:flex-CLIENT;gap:12px;padding:12px 14px;
+body .rv-modal-head{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;
   border-bottom:1px solid var(--wf-line);background:#fff}
 body .rv-mh-main{min-width:0;flex:1 1 auto}
-body .rv-mh-CLIENT{font-size:16.5px;font-weight:700;color:var(--wf-ink);line-height:1.25;
+body .rv-mh-title{font-size:16.5px;font-weight:700;color:var(--wf-ink);line-height:1.25;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body .rv-mh-sub{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-top:5px}
-body .rv-mh-folder{display:CLIENT-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+body .rv-mh-folder{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
   color:var(--wf-brand);text-decoration:none;background:var(--wf-brand-tint-2);
   border:1px solid var(--wf-line2);border-radius:999px;padding:3px 10px}
 body .rv-mh-folder:hover{background:var(--wf-brand-tint)}
@@ -210,9 +210,9 @@ body .rv-mh-folder.is-off{color:var(--wf-mut);background:var(--wf-hover);border-
 body .rv-mh-src{font-size:12px;color:var(--wf-mut);min-width:0}
 body .rv-modal-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:9px 14px;border-top:1px solid var(--wf-line);background:#fff}
-body .rv-mf-CLIENT{font-size:12.5px;color:var(--wf-mut)}
-body .rv-mf-CLIENT::CLIENT{content:'✔';color:var(--wf-ok);font-weight:700;margin-right:7px}
-body .rv-mf-dl{display:CLIENT-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+body .rv-mf-state{font-size:12.5px;color:var(--wf-mut)}
+body .rv-mf-state::before{content:'✔';color:var(--wf-ok);font-weight:700;margin-right:7px}
+body .rv-mf-dl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
   color:var(--wf-brand);text-decoration:none;border:1px solid var(--wf-line2);
   border-radius:var(--wf-r2);padding:5px 11px;background:#fff;white-space:nowrap}
 body .rv-mf-dl:hover{background:var(--wf-brand-tint-2)}
@@ -220,8 +220,8 @@ body .rv-modal-note{display:none}
 
 /* ============================== 14. ПРАВАЯ КОЛОНКА: ПЕРЕМЕННЫЕ ДОКУМЕНТА (по рендеру)
    Заголовок с чипом АВТО, поиск переменной, карточки полей с кружком состояния,
-   строка «Требует внимания» с CLIENTом к проблемному полю. */
-body .rv-chip-auto{display:CLIENT-CLIENT;margin-left:8px;font-size:10.5px;font-weight:700;
+   строка «Требует внимания» с переходом к проблемному полю. */
+body .rv-chip-auto{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:700;
   letter-spacing:.4px;color:var(--wf-brand);background:var(--wf-brand-tint-2);
   border:1px solid var(--wf-line2);border-radius:4px;padding:2px 6px;vertical-align:1px}
 body .rv-vars-search{display:flex;align-items:center;gap:7px;margin:8px 0 2px;padding:7px 10px;
@@ -229,7 +229,7 @@ body .rv-vars-search{display:flex;align-items:center;gap:7px;margin:8px 0 2px;pa
 body .rv-vars-search svg{flex:none;color:var(--wf-line3)}
 body .rv-vars-search input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;
   font-size:12.5px;color:var(--wf-ink)}
-body .rv-vars-search input::CLIENTholder{color:var(--wf-mut)}
+body .rv-vars-search input::placeholder{color:var(--wf-mut)}
 body .rv-attn{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;
   padding:8px 10px;background:var(--wf-warn-bg);border:1px solid rgba(169,99,10,.28);
   border-radius:var(--wf-r2)}
@@ -246,15 +246,15 @@ body .rv-right .rv-field.is-flash{box-shadow:0 0 0 2px var(--wf-brand-b);border-
 
 /* ============================== 15. ЭТАПЫ ЗАЯВКИ (левая колонка, по рендеру)
    Заголовок капсом, пункты с кружком-галочкой, подпись справа. */
-body .rv-CLIENT{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r4);
+body .rv-steps{background:#fff;border:1px solid var(--wf-line);border-radius:var(--wf-r4);
   padding:11px 12px}
-body .rv-CLIENT-t{font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
+body .rv-steps-t{font-size:10.5px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;
   color:var(--wf-mut);margin-bottom:9px}
-body .rv-CLIENT-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
-body .rv-step{display:grid;grid-template-columns:20px minmax(0,1fr);gap:3px 9px;align-items:CLIENT;
+body .rv-steps-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+body .rv-step{display:grid;grid-template-columns:20px minmax(0,1fr);gap:3px 9px;align-items:start;
   position:relative}
 body .rv-step-i{grid-row:1 / span 2;width:20px;height:20px;border-radius:50%;display:grid;
-  CLIENT-items:center;font-size:11px;font-weight:700;background:var(--wf-hover);
+  place-items:center;font-size:11px;font-weight:700;background:var(--wf-hover);
   color:var(--wf-mut);border:1px solid var(--wf-line)}
 body .rv-step.is-done .rv-step-i{background:var(--wf-ok-bg);color:var(--wf-ok);
   border-color:rgba(23,114,69,.28)}
@@ -287,15 +287,15 @@ body .hrow .hprod{max-width:none;flex:0 1 38%;text-align:left;white-space:normal
   overflow:visible;text-overflow:clip;line-height:1.35;font-size:12.5px}
 body .hrow .hnum{color:var(--wf-brand);font-weight:700}
 body .hrow .hname{color:var(--wf-ink)}
-body form[action="/CLIENT"] label{font-size:12px;color:var(--wf-mut);font-weight:600}
-body form[action="/CLIENT"] select{font:inherit;border:1px solid var(--wf-line);
+body form[action="/events"] label{font-size:12px;color:var(--wf-mut);font-weight:600}
+body form[action="/events"] select{font:inherit;border:1px solid var(--wf-line);
   border-radius:var(--wf-r2);padding:8px 10px;background:#fff;color:var(--wf-ink)}
-body form[action="/CLIENT"] button{background:var(--wf-brand);border:1px solid var(--wf-brand);
+body form[action="/events"] button{background:var(--wf-brand);border:1px solid var(--wf-brand);
   color:#fff;border-radius:var(--wf-r2);font-weight:600;padding:9px 16px;cursor:pointer}
-body form[action="/CLIENT"] button:hover{background:var(--wf-brand-700)}
+body form[action="/events"] button:hover{background:var(--wf-brand-700)}
 body .rv-chip{background:var(--wf-brand-tint) !important;color:var(--wf-brand-700) !important;border-color:var(--wf-line2) !important}
-body .rv-CLIENT.ok{background:var(--wf-ok-bg);border-color:rgba(23,114,69,.30);color:var(--wf-ok)}
-body .rv-CLIENT.warn{background:var(--wf-warn-bg);border-color:rgba(169,99,10,.30);color:var(--wf-warn)}
+body .rv-state.ok{background:var(--wf-ok-bg);border-color:rgba(23,114,69,.30);color:var(--wf-ok)}
+body .rv-state.warn{background:var(--wf-warn-bg);border-color:rgba(169,99,10,.30);color:var(--wf-warn)}
 body .rv-tabs{border-bottom-color:var(--wf-line)}
 body .rv-tab:hover{background:var(--wf-hover)}
 body .rv-tab.is-on,body .rv-tabs .rv-tab.is-on{color:var(--wf-brand-700);box-shadow:inset 0 3px 0 var(--wf-brand)}
@@ -332,9 +332,9 @@ body .rv-progress.is-done #rv-progress-text{color:var(--wf-ok)}
 body .rv-progress.is-urgent #rv-progress-text{color:var(--wf-err)}
 body .rv-collapse-all{border-color:var(--wf-line2);background:var(--wf-hover);color:var(--wf-ink2)}
 body .rv-collapse-all:hover{background:var(--wf-brand-tint-2)}
-body .rv-CLIENT{background:#F7FAF9;border-color:var(--wf-line)}
-body .rv-CLIENT-k{color:var(--wf-mut)}
-body .rv-CLIENT-edit{color:var(--wf-brand-700)}
+body .rv-drive{background:#F7FAF9;border-color:var(--wf-line)}
+body .rv-drive-k{color:var(--wf-mut)}
+body .rv-drive-edit{color:var(--wf-brand-700)}
 body .rv-thumb:hover{border-color:var(--wf-brand-b);box-shadow:var(--wf-sh2)}
 body .rv-thumb.is-on{border-color:var(--wf-brand-b);box-shadow:var(--wf-ring)}
 body .rv-thumb-frame,body .rv-thumb-frame:not(.is-ready){background:var(--wf-work)}
@@ -343,8 +343,8 @@ body .rv-auto-fill:hover{background:var(--wf-brand-700) !important}
 body .rv-auto-fill[data-done="1"]{box-shadow:0 0 0 2px rgba(23,179,163,.35) inset}
 body .rv-auto[data-done="1"] .rv-auto-dot{border-color:var(--wf-ok);background:var(--wf-ok)}
 body .rv-mark-yellow{background:var(--wf-gold-tint);color:#6B5410;box-shadow:0 0 0 1px rgba(212,175,55,.45) inset}
-body .rv-CLIENT-btn{background:#fff;border-color:var(--wf-line2) !important;color:var(--wf-ink) !important}
-body .rv-CLIENT-btn:hover{background:var(--wf-hover)}
+body .rv-drive-btn{background:#fff;border-color:var(--wf-line2) !important;color:var(--wf-ink) !important}
+body .rv-drive-btn:hover{background:var(--wf-hover)}
 
 /* ============================== 9. КОНСТРУКТОР PDF
    У конструктора свои зелёные и синие акценты во встроенном стиле;
@@ -382,7 +382,7 @@ body .fill-flag.is-ok{background:var(--wf-ok-bg);color:var(--wf-ok);border-color
    просмотра миниатюр нет — только документ и его шапка. */
 body .wrap{max-width:1560px}
 body .rv-cols{display:grid;grid-template-columns:252px minmax(0,1fr) 360px;
-  gap:0;align-items:CLIENT}
+  gap:0;align-items:start}
 @media (max-width:1360px){body .rv-cols{grid-template-columns:232px minmax(0,1fr) 340px}}
 @media (max-width:1240px){body .rv-cols{grid-template-columns:200px minmax(0,1fr) 320px}}
 body .rv-side{display:flex;flex-direction:column;gap:8px;min-width:0;
@@ -406,33 +406,33 @@ body .rv-side .rv-body{padding:10px;overflow-y:auto}
 body .rv-side .rv-thumbs{display:flex;flex-direction:column;gap:9px;padding:0}
 body .rv-side .rv-thumb{display:grid;grid-template-columns:78px minmax(0,1fr);gap:9px;
   padding:8px;border:1px solid var(--wf-line);border-radius:var(--wf-r3);background:#fff;
-  align-items:CLIENT;cursor:pointer}
+  align-items:start;cursor:pointer}
 body .rv-side .rv-thumb-frame{height:104px;border-radius:var(--wf-r2)}
 body .rv-side .rv-thumb-cap{display:grid;grid-template-columns:minmax(0,1fr) 22px;
   gap:3px 8px;padding:0}
 body .rv-side .rv-thumb-name{font-size:12.5px;font-weight:600;line-height:1.25;color:var(--wf-ink)}
-body .rv-side .rv-thumb-CLIENT{grid-column:1;font-size:11px;color:var(--wf-mut)}
-body .rv-side .rv-thumb-CLIENT.rv-warn{color:var(--wf-warn);font-weight:600}
-body .rv-side .rv-check{grid-column:2;grid-row:1 / span 3;align-self:CLIENT;width:22px;height:22px;
+body .rv-side .rv-thumb-state{grid-column:1;font-size:11px;color:var(--wf-mut)}
+body .rv-side .rv-thumb-state.rv-warn{color:var(--wf-warn);font-weight:600}
+body .rv-side .rv-check{grid-column:2;grid-row:1 / span 3;align-self:start;width:22px;height:22px;
   aspect-ratio:1;border-radius:6px;
-  border:1.5px solid var(--wf-line3);background:#fff;display:grid;CLIENT-items:center;cursor:pointer;
+  border:1.5px solid var(--wf-line3);background:#fff;display:grid;place-items:center;cursor:pointer;
   padding:0;margin:0;transition:background var(--wf-d1) var(--wf-e),border-color var(--wf-d1) var(--wf-e)}
 body .rv-side .rv-check:hover{border-color:var(--wf-brand-b)}
 body .rv-side .rv-check.rv-on-ok{background:var(--wf-ok);border-color:var(--wf-ok)}
 body .rv-side .rv-check.rv-on-ok::after{content:'✓';color:#fff;font-size:13px;font-weight:700;line-height:1}
 body .rv-side .rv-prog{grid-column:1 / -1;height:3px;border-radius:2px;background:var(--wf-hover);
   overflow:hidden;margin-top:5px}
-body .rv-side .rv-prog i{display:CLIENT;height:100%;width:0;background:var(--wf-gold);
+body .rv-side .rv-prog i{display:block;height:100%;width:0;background:var(--wf-gold);
   transition:width var(--wf-d3) var(--wf-e)}
 body .rv-side .rv-thumb.is-checked .rv-prog i{width:100%;background:var(--wf-ok)}
 body .rv-side .rv-thumb.is-on{background:var(--wf-brand-tint-2);border-color:var(--wf-line2);
   box-shadow:inset 3px 0 0 var(--wf-brand)}
-body .rv-side .rv-thumb-CLIENT{display:none}
+body .rv-side .rv-thumb-tools{display:none}
 body .rv-side .rv-note{margin:10px 0 0;font-size:12px}
 body .rv-card-box{margin:0;overflow:hidden}
 body .rv-card-sum{display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;
   font-weight:600;font-size:13px;color:var(--wf-ink);list-style:none}
-body .rv-card-sum::-webkit-CLIENT-marker{display:none}
+body .rv-card-sum::-webkit-details-marker{display:none}
 body .rv-card-chev{margin-left:auto;color:var(--wf-mut2);transition:transform var(--wf-d2) var(--wf-e)}
 body .rv-card-box[open] .rv-card-chev{transform:rotate(90deg)}
 body .rv-card-body{padding:0 12px 12px}
@@ -440,16 +440,16 @@ body .rv-card-body .rv-row{border-bottom-color:#F1F5F3}
 
 /* окно просмотра: встроено в центр страницы */
 body .rv-modal,body .rv-modal.is-on{position:static;left:auto;top:auto;bottom:auto;width:auto;
-  z-CLIENT:auto;background:transparent;padding:0;display:flex;flex-direction:column}
+  z-index:auto;background:transparent;padding:0;display:flex;flex-direction:column}
 body .rv-modal .rv-modal-win{border:1px solid var(--wf-line);border-radius:var(--wf-r4);
   box-shadow:var(--wf-sh1);min-height:560px;flex:1 1 auto}
 body .rv-modal .rv-modal-head{background:#F7FAF9;border-bottom-color:var(--wf-line)}
-body .rv-modal .rv-modal-CLIENT{font-weight:600;font-size:14px}
-body .rv-modal .rv-modal-CLIENT button{border-radius:var(--wf-r2)}
+body .rv-modal .rv-modal-title{font-weight:600;font-size:14px}
+body .rv-modal .rv-modal-tools button{border-radius:var(--wf-r2)}
 body .rv-backdrop{display:none !important}
 /* когда открыт документ, правую колонку не вырываем из раскладки */
 body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !important;right:auto !important;
-  height:auto !important;width:auto !important;box-shadow:none !important;z-CLIENT:1 !important;
+  height:auto !important;width:auto !important;box-shadow:none !important;z-index:1 !important;
   border-radius:var(--wf-r4) !important;margin:0 !important}
 
 /* Узкие экраны: три колонки не помещаются — идём в один столбец,
@@ -471,7 +471,7 @@ body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !importan
 @media (max-width:1000px) and (min-width:861px){
   body .rv-cols{grid-template-columns:minmax(0,2fr) minmax(0,4fr) minmax(0,2fr)}
   body .rv-panel.rv-right{display:flex;position:static;max-height:none;border-radius:0;
-    box-shadow:none;z-CLIENT:auto;left:auto;right:auto;bottom:auto;top:auto}
+    box-shadow:none;z-index:auto;left:auto;right:auto;bottom:auto;top:auto}
   body .rv-close-mobile{display:none}
   body .rv-mobile-bar{display:none}
   body .rv-backdrop{display:none !important}
@@ -487,10 +487,10 @@ body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !importan
    линиями, а не отдельной панелью. */
 .brand-pill{background:transparent;box-shadow:none;padding:0;gap:10px}
 .brand-pill .logo{width:34px;height:34px;border-radius:var(--wf-r3);background:var(--wf-brand-900);
-  overflow:hidden;display:grid;CLIENT-items:center}
+  overflow:hidden;display:grid;place-items:center}
 .brand-pill b{font-size:16.5px;font-weight:700;letter-spacing:-.01em;color:var(--wf-ink)}
 .burger{border:0;background:transparent;width:36px;height:36px}
-.burger span,.burger span::CLIENT,.burger span::after{width:17px;height:1.7px}
+.burger span,.burger span::before,.burger span::after{width:17px;height:1.7px}
 .top-search{display:none}
 @media (min-width:900px){
   .top-search{display:flex;align-items:center;gap:9px;flex:1;max-width:640px;margin:0 auto;
@@ -499,7 +499,7 @@ body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !importan
   .top-search input{border:0;background:transparent;padding:0;font-size:14px;color:var(--wf-ink);
     box-shadow:none;min-height:22px}
   .top-search input:focus{box-shadow:none;outline:none;border:0}
-  .top-search input::CLIENTholder{color:var(--wf-mut2)}
+  .top-search input::placeholder{color:var(--wf-mut2)}
   .top-search-hint{font-size:11.5px;color:var(--wf-mut2);border:1px solid var(--wf-line2);
     border-radius:var(--wf-r1);padding:1px 6px;background:#fff;white-space:nowrap}
   .topbar-date{font-size:12.5px;color:var(--wf-mut);white-space:nowrap}
@@ -517,47 +517,47 @@ body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !importan
 
   /* нижняя плашка переменных не должна перекрывать содержимое */
   body .rv-wrap{padding-bottom:74px}
-  body .rv-mobile-bar{position:fixed;left:0;right:0;bottom:0;z-CLIENT:60;
+  body .rv-mobile-bar{position:fixed;left:0;right:0;bottom:0;z-index:60;
     box-shadow:0 -6px 18px rgba(4,32,30,.14)}
 
   /* карточка заявки: сверху, компактно, сворачивается */
-  body .rv-head{position:sticky;top:0;z-CLIENT:40;background:var(--wf-card);
+  body .rv-head{position:sticky;top:0;z-index:40;background:var(--wf-card);
     border-bottom:1px solid var(--wf-line);padding:10px 12px;gap:8px;
     display:flex;flex-direction:column;align-items:stretch}
   body .rv-head .rv-back{grid-area:back}
   body .rv-head .rv-head-main{grid-area:main;min-width:0}
   body .rv-head .rv-prod{grid-area:prod}
-  body .rv-head .rv-CLIENT{grid-area:CLIENT;display:flex;flex-wrap:wrap;gap:6px}
-  body .rv-head .rv-CLIENT-box{grid-area:CLIENT}
-  body .rv-CLIENT{font-size:16.5px;gap:8px;flex-wrap:wrap}
+  body .rv-head .rv-tools{grid-area:tools;display:flex;flex-wrap:wrap;gap:6px}
+  body .rv-head .rv-drive-box{grid-area:drive}
+  body .rv-title{font-size:16.5px;gap:8px;flex-wrap:wrap}
   body .rv-meta{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;margin-top:6px;
     max-height:180px;overflow:hidden;transition:max-height .18s ease}
   body .rv-head.is-collapsed .rv-meta{max-height:0;margin-top:0;opacity:0}
-  body .rv-head-toggle{display:CLIENT-flex;align-items:center;justify-content:center;
+  body .rv-head-toggle{display:inline-flex;align-items:center;justify-content:center;
     width:34px;height:34px;border:1px solid var(--wf-line);border-radius:var(--wf-r3);
     background:#fff;color:var(--wf-mut);cursor:pointer}
-  body .rv-head-toggle::CLIENT{content:'';width:8px;height:8px;border-right:2px solid currentColor;
+  body .rv-head-toggle::before{content:'';width:8px;height:8px;border-right:2px solid currentColor;
     border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-1px);transition:transform .18s ease}
-  body .rv-head.is-collapsed .rv-head-toggle::CLIENT{transform:rotate(-45deg) translateY(1px)}
+  body .rv-head.is-collapsed .rv-head-toggle::before{transform:rotate(-45deg) translateY(1px)}
 
   /* документы — компактные миниатюры в две колонки */
   body .rv-side .rv-thumbs,body .rv-thumbs{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
   body .rv-thumb-frame,body .rv-side .rv-thumb-frame{height:104px}
   body .rv-thumb-cap{padding:6px 8px;gap:1px}
   body .rv-thumb-name{font-size:11.5px;line-height:1.25}
-  body .rv-thumb-CLIENT{font-size:10.5px}
+  body .rv-thumb-status{font-size:10.5px}
   body .rv-side-head{padding:9px 10px}
   body .rv-side-t{font-size:12.5px}
 
   /* тап по миниатюре: документ раскрывается на весь экран */
   body .rv-modal.is-on{position:fixed !important;inset:0 !important;width:auto !important;
-    height:auto !important;max-height:none !important;z-CLIENT:80 !important;padding:0 !important;
+    height:auto !important;max-height:none !important;z-index:80 !important;padding:0 !important;
     background:#fff !important;display:flex !important;flex-direction:column !important;
     overflow:auto !important}
   body .rv-modal .rv-modal-win{min-height:100% !important;border:0 !important;border-radius:0 !important;
     box-shadow:none !important;flex:1 1 auto}
   body .rv-backdrop{display:none !important}
-  body .rv-close-mobile{display:CLIENT-flex !important}
+  body .rv-close-mobile{display:inline-flex !important}
   /* нижние служебные панели страницы при открытом документе не мешают */
   body.rv-viewing .rv-mobile-bar{display:none !important}
 }
@@ -565,7 +565,7 @@ body.rv-viewing .rv-panel.rv-right{position:sticky !important;top:10px !importan
 /* очень узкие экраны: одна миниатюра в строку и крупнее */
 @media (max-width:420px){
   body .rv-thumb-frame,body .rv-side .rv-thumb-frame{height:118px}
-  body .rv-CLIENT{font-size:15.5px}
+  body .rv-title{font-size:15.5px}
 }
 
 /* Длинный список переменных: браузер не тратит время на отрисовку того,

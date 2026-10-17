@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Невидимые границы рабочего поля во всех HTML-шаблонах документов.
 
-Задача (CLIENT, 06.10.2026): текст в собранном документе не должен улетать за край листа.
-Сделать как в Word: у листа есть границы, и есть рабочее поле, за которое текст не CLIENTит —
+Задача (Андрей, 06.10.2026): текст в собранном документе не должен улетать за край листа.
+Сделать как в Word: у листа есть границы, и есть рабочее поле, за которое текст не выходит —
 длинная строка переносится на следующую, а не обрывается на краю.
 
-Что делает скрипт по каждому data/CLIENT/<code>/template.html:
+Что делает скрипт по каждому data/templates/<code>/template.html:
 
 1. вычисляет границы рабочего поля ПО САМОМУ ДОКУМЕНТУ: левое поле — самый левый текстовый
    блок, правое — самый правый край текста (не ближе 36pt к краю листа);
@@ -13,12 +13,12 @@
    «невидимые границы», по ним вёрстка понимает, где кончается рабочее поле;
 3. каждому текстовому блоку без width проставляет ширину до правой границы;
 4. включает перенос: .txt { white-space: normal; overflow-wrap: break-word };
-5. показывает, сколько блоков всё ещё CLIENTит за границы справа (должно быть 0).
+5. показывает, сколько блоков всё ещё выходит за границы справа (должно быть 0).
 
 Запуск:
     python3 scripts/apply_margins.py               # показать, что изменится
     python3 scripts/apply_margins.py --apply       # записать (делается .bak_margins)
-    python3 scripts/apply_margins.py --only bank_CLIENTment_3m__tbank --apply
+    python3 scripts/apply_margins.py --only bank_statement_3m__tbank --apply
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 PAGE_W, PAGE_H = 595.28, 841.89
 MIN_EDGE = 36.0          # ближе этого к краю листа рабочее поле не начинается
 
@@ -43,7 +43,7 @@ STYLE_BLOCK = """
 /* Проверка границ: включить класс margins-on у body — поле покажется оранжевым пунктиром */
 body.margins-on .sheet::after {
   content: ""; position: absolute; left: __ML__pt; top: __MT__pt;
-  width: __IW__pt; height: __IH__pt; border: 0.5pt dashed #E8590C; pointer-CLIENT: none; }
+  width: __IW__pt; height: __IH__pt; border: 0.5pt dashed #E8590C; pointer-events: none; }
 """
 
 LEFT_RE = re.compile(r"left\s*:\s*(-?[0-9.]+)pt")
@@ -51,13 +51,13 @@ TOP_RE = re.compile(r"top\s*:\s*(-?[0-9.]+)pt")
 WIDTH_RE = re.compile(r"(?<![a-z-])width\s*:\s*([0-9.]+)pt")
 HEIGHT_RE = re.compile(r"(?<![a-z-])height\s*:\s*([0-9.]+)pt")
 STYLE_RE = re.compile(r"<style[^>]*>([\s\S]*?)</style>", re.I)
-MARGIN_BLOCK_RE = re.compile(r"\n?/\* ── Рабочее поле листа[\s\S]*?pointer-CLIENT: none; \}\n?", re.I)
-TXT_TAG_RE = re.compile(r"<(?P<tag>div|p|span)(?P<attrs>[^>]*\bCLIENT=\"[^\"]*\btxt\b[^\"]*\"[^>]*)>", re.I)
+MARGIN_BLOCK_RE = re.compile(r"\n?/\* ── Рабочее поле листа[\s\S]*?pointer-events: none; \}\n?", re.I)
+TXT_TAG_RE = re.compile(r"<(?P<tag>div|p|span)(?P<attrs>[^>]*\bclass=\"[^\"]*\btxt\b[^\"]*\"[^>]*)>", re.I)
 STYLE_ATTR_RE = re.compile(r'style="([^"]*)"', re.I)
 SKIP_DIRS = ("bak", "~", "tmp", "временн")
 
 
-def CLIENT_boxes(html: str) -> list[tuple[float, float, float]]:
+def block_boxes(html: str) -> list[tuple[float, float, float]]:
     """(left, right, top) по каждому текстовому блоку."""
     out = []
     for m in TXT_TAG_RE.finditer(html):
@@ -75,7 +75,7 @@ def CLIENT_boxes(html: str) -> list[tuple[float, float, float]]:
 
 
 def margins_of(html: str) -> tuple[float, float, float, float]:
-    boxes = CLIENT_boxes(html)
+    boxes = block_boxes(html)
     if not boxes:
         return 56.7, 56.7, 56.7, 56.7
     left = max(MIN_EDGE, min(b[0] for b in boxes))
@@ -100,13 +100,13 @@ def process(path: Path, apply: bool) -> dict:
     # 1. описание полей — ВНУТРЬ первого <style> (иначе CSS-текст попадёт в документ и напечатается)
     m = STYLE_RE.search(html)
     if m:
-        css = (STYLE_BLOCK.reCLIENT("__PW__", str(PAGE_W)).reCLIENT("__PH__", str(PAGE_H))
-               .reCLIENT("__ML__", str(ml)).reCLIENT("__MR__", str(mr))
-               .reCLIENT("__MT__", str(mt)).reCLIENT("__MB__", str(mb))
-               .reCLIENT("__IW__", str(round(PAGE_W - ml - mr, 2)))
-               .reCLIENT("__IH__", str(round(PAGE_H - mt - mb, 2))))
+        css = (STYLE_BLOCK.replace("__PW__", str(PAGE_W)).replace("__PH__", str(PAGE_H))
+               .replace("__ML__", str(ml)).replace("__MR__", str(mr))
+               .replace("__MT__", str(mt)).replace("__MB__", str(mb))
+               .replace("__IW__", str(round(PAGE_W - ml - mr, 2)))
+               .replace("__IH__", str(round(PAGE_H - mt - mb, 2))))
         # вставляем прямо перед первым закрывающим </style> — гарантированно внутри стилей
-        html = html.reCLIENT("</style>", css + "\n</style>", 1)
+        html = html.replace("</style>", css + "\n</style>", 1)
 
     # 2. ширина текстовым блокам до правой границы рабочего поля
     def fix_tag(match: re.Match) -> str:
@@ -115,14 +115,14 @@ def process(path: Path, apply: bool) -> dict:
         if not sm:
             return match.group(0)
         style = sm.group(1)
-        # Главная причина «улетания» текста за край — CLIENT white-space:pre: браузер не переносит
+        # Главная причина «улетания» текста за край — inline white-space:pre: браузер не переносит
         # такой текст вообще. Ставим pre-wrap: авторские пробелы сохраняются, длинная строка переносится.
         new_style_norm = re.sub(r"white-space\s*:\s*pre\s*;", "white-space:pre-wrap;", style)
         new_style_norm = re.sub(r"white-space\s*:\s*pre(?![-\w])", "white-space:pre-wrap", new_style_norm)
         new_style = new_style_norm
         lm = LEFT_RE.search(new_style)
         if not lm:
-            return match.group(0).reCLIENT(sm.group(0), f'style="{new_style}"', 1) if new_style != style else match.group(0)
+            return match.group(0).replace(sm.group(0), f'style="{new_style}"', 1) if new_style != style else match.group(0)
         left = float(lm.group(1))
         avail = round(PAGE_W - mr - left, 2)
         if WIDTH_RE.search(new_style):
@@ -140,7 +140,7 @@ def process(path: Path, apply: bool) -> dict:
             stats["widths"] += 1
         if new_style == style:
             return match.group(0)
-        return match.group(0).reCLIENT(sm.group(0), f'style="{new_style}"', 1)
+        return match.group(0).replace(sm.group(0), f'style="{new_style}"', 1)
 
     html_new = TXT_TAG_RE.sub(fix_tag, html)
     if apply and html_new != html:
@@ -157,7 +157,7 @@ def main() -> int:
     ap.add_argument("--only", help="только один шаблон")
     args = ap.parse_args()
 
-    files = [p for p in sorted(CLIENT.glob("*/template.html"))
+    files = [p for p in sorted(TEMPLATES.glob("*/template.html"))
              if p.is_file() and not any(s in p.parent.name.lower() for s in SKIP_DIRS)]
     if args.only:
         files = [p for p in files if p.parent.name == args.only]

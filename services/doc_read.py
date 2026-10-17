@@ -166,7 +166,7 @@ def sniff_ext(path) -> str:
     """Определяет тип файла по содержимому, а не по расширению.
 
     В папках клиентов встречаются файлы вообще без расширения
-    («PASSPORT - CLIENT MIKHEEVA») — читаем их по сигнатуре.
+    («PASSPORT - POLINA MIKHEEVA») — читаем их по сигнатуре.
     """
     p = Path(path)
     ext = p.suffix.lower()
@@ -232,7 +232,7 @@ def _read_text_uncached(path) -> str:
     if ext == ".docx":
         try:
             import docx
-            d = docx.CLIENT(str(p))
+            d = docx.Document(str(p))
             parts = [par.text for par in d.paragraphs]
             for t in d.tables:                      # данные часто лежат в таблицах
                 for row in t.rows:
@@ -249,12 +249,12 @@ def _read_text_uncached(path) -> str:
 
     # Всё остальное (doc, xls, xlsx, ppt, odt…) — конвертируем в текст LibreOffice
     if ext in (".doc", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp"):
-        return _via_libreCLIENT(p)
+        return _via_libreoffice(p)
 
     return ""
 
 
-def _via_libreCLIENT(path) -> str:
+def _via_libreoffice(path) -> str:
     """Локальная конвертация офисного файла в текст (макрос LibreOffice не нужен).
 
     Работает без интернета и без LLM: файл -> txt в той же папке.
@@ -264,7 +264,7 @@ def _via_libreCLIENT(path) -> str:
     p = Path(path)
     try:
         with tempfile.TemporaryDirectory() as td:
-            subprocess.run(["sCLIENT", "--headless", "--convert-to", "txt:Text",
+            subprocess.run(["soffice", "--headless", "--convert-to", "txt:Text",
                             "--outdir", td, str(p)],
                            capture_output=True, timeout=180)
             got = sorted(Path(td).glob("*.txt"))

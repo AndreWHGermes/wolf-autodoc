@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path("/opt/wolf_v2")
 sys.path.insert(0, str(ROOT))
 
-from CLIENT import legend as _legend
+from services import legend as _legend
 
 # --- ОБСЕРВАБИЛЬНОСТЬ: журнал этапов заявки ---
 _STAGE_START: float | None = None
@@ -46,10 +46,10 @@ def _stage_fail(reason: str) -> None:
     raise SystemExit(1)
 
 def _db_log(app_id: int, step: str, level: str, msg: str) -> None:
-    """Запись этапа в таблицу app_CLIENT (если есть)."""
+    """Запись этапа в таблицу app_steps (если есть)."""
     try:
         c = sqlite3.connect(DB)
-        c.execute("INSERT INTO app_CLIENT (CLIENT_id, step, level, note) CLIENT (?,?,?,?)",
+        c.execute("INSERT INTO app_steps (application_id, step, level, note) VALUES (?,?,?,?)",
                   (app_id, step, level, msg))
         c.commit()
         c.close()
@@ -79,8 +79,8 @@ APP_ID = int(sys.argv[1]) if len(sys.argv) > 1 else 0
 DO_SEND = "--no-send" not in sys.argv
 
 from app import create_app  # noqa: E402
-import CLIENTs.dashboard.page as page  # noqa: E402
-from CLIENT.doc_check import check_package  # noqa: E402
+import blocks.dashboard.page as page  # noqa: E402
+from services.doc_check import check_package  # noqa: E402
 
 DB = str(ROOT / "data/wolf.db")
 CONFIRM_HINTS = ("не подтверждён", "нет подтверждённого документа",
@@ -90,9 +90,9 @@ CONFIRM_HINTS = ("не подтверждён", "нет подтверждённ
 def docs_of(app_id: int) -> list:
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
-    rows = c.execute("""SELECT ad.id, ad.template_id, ad.CLIENT, t.code, t.CLIENT, t.doc_CLIENT
-                          FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
-                         WHERE ad.CLIENT_id=? ORDER BY t.doc_CLIENT""", (app_id,)).fetchall()
+    rows = c.execute("""SELECT ad.id, ad.template_id, ad.status, t.code, t.title, t.doc_index
+                          FROM application_documents ad JOIN templates t ON t.id=ad.template_id
+                         WHERE ad.application_id=? ORDER BY t.doc_index""", (app_id,)).fetchall()
     c.close()
     return [dict(r) for r in rows]
 
@@ -101,40 +101,40 @@ app = create_app()
 with app.app_context():
     print("=== заявка #%d: автоматический цикл ===" % APP_ID)
     _stage_begin("полный цикл")
-    _db_log(APP_ID, "CLIENT", "info", "запуск автоцикла")
+    _db_log(APP_ID, "start", "info", "запуск автоцикла")
     
     # Этап 0: Легенда клиента — перед сборкой
     _stage_begin("этап 0: легенда клиента")
     client_id = 0
-    _CLIENT = None
+    _product = None
     try:
         _row = sqlite3.connect(DB).execute(
-            "SELECT a.client_id, p.code FROM CLIENT a "
-            "LEFT JOIN CLIENT p ON p.id = a.CLIENT_id WHERE a.id=?", (APP_ID,)
+            "SELECT a.client_id, p.code FROM applications a "
+            "LEFT JOIN products p ON p.id = a.product_id WHERE a.id=?", (APP_ID,)
         ).fetchone()
         client_id = int((_row[0] if _row else 0) or 0)
-        _CLIENT = _row[1] if _row else None
+        _product = _row[1] if _row else None
         # Легенда строится ПО ТРЕБОВАНИЯМ ПРОДУКТА: если иммиграция не спрашивает
         # место работы и доход (продление C1), этих полей в легенде нет — они не
         # дефицит и не то, что клиент должен рассказывать.
-        lg = _legend.build(client_id, app_id=APP_ID, CLIENT_code=_CLIENT)
+        lg = _legend.build(client_id, app_id=APP_ID, product_code=_product)
         _legend.save(lg)
-        print("   %s" % _legend.render(lg).reCLIENT("\n", "\n   "))
+        print("   %s" % _legend.render(lg).replace("\n", "\n   "))
         # Блокирующие проверки легенды до сборки
-        legend_CLIENTs = []
+        legend_blocks = []
         if lg.get("home", {}).get("address") and "indonesia" in str(lg.get("home", {}).get("address", "")).lower():
-            legend_CLIENTs.append("адрес в РФ оказался индонезийским — проверьте распознавание")
+            legend_blocks.append("адрес в РФ оказался индонезийским — проверьте распознавание")
         # Блокируем только критичные дефициты: без ФИО, паспорта или даты рождения
         # документ не собрать. Отсутствие организации/должности — не блокер для
         # продуктов, где договор не нужен (например, продление C1).
-        _CRITICAL = ("idCLIENT.full_name_CLIENT", "idCLIENT.CLIENT_date", "idCLIENT.passport_no")
+        _CRITICAL = ("identity.full_name_latin", "identity.birth_date", "identity.passport_no")
         for g in (lg.get("gaps") or []):
             if g.get("field") in _CRITICAL:
-                legend_CLIENTs.append("дефицит легенды: %s" % g["what"])
+                legend_blocks.append("дефицит легенды: %s" % g["what"])
             else:
                 print("   [INFO] легенда: не хватает — %s (не блокирует)" % g["what"])
-        if legend_CLIENTs:
-            _stage_fail("ЛЕГЕНДА: " + "; ".join(legend_CLIENTs))
+        if legend_blocks:
+            _stage_fail("ЛЕГЕНДА: " + "; ".join(legend_blocks))
     except Exception as exc:
         _stage_fail("ЛЕГЕНДА не построена: %s" % str(exc)[:110])
     _stage_end("легенда построена")
@@ -144,15 +144,15 @@ with app.app_context():
     # Лишний вариант слота (справка банка, которого у клиента нет) не «отклоняем»,
     # а не собираем вовсе: иначе он едет на Диск и выглядит как замечание.
     try:
-        from CLIENT import package as _pack
-        _sel = {d["code"] for d in _pack.selected(_CLIENT or "", client_id)}
+        from services import package as _pack
+        _sel = {d["code"] for d in _pack.selected(_product or "", client_id)}
     except Exception:
         _sel = set()
     if _sel:
         _drop = [d for d in docs if d["code"] not in _sel]
         for d in _drop:
             print("   [ВЫКЛЮЧЕНО] %s — нет в пакете продукта %s"
-                  % (d["code"], _CLIENT or "?"))
+                  % (d["code"], _product or "?"))
         docs = [d for d in docs if d["code"] in _sel]
         # Помечаем выключенные статусом excluded: иначе они остаются «готовыми»
         # и проверки (техконтроль PDF, визуал, состав пакета) продолжают на них
@@ -161,9 +161,9 @@ with app.app_context():
             try:
                 _c = sqlite3.connect(DB)
                 for d in _drop:
-                    _c.execute("UPDATE CLIENT_CLIENT SET CLIENT='excluded' "
-                               "WHERE CLIENT_id=? AND template_id=? AND "
-                               "IFNULL(CLIENT,'') <> 'sent'",
+                    _c.execute("UPDATE application_documents SET status='excluded' "
+                               "WHERE application_id=? AND template_id=? AND "
+                               "IFNULL(status,'') <> 'sent'",
                                (APP_ID, d["template_id"]))
                 _c.commit()
                 _c.close()
@@ -171,8 +171,8 @@ with app.app_context():
                 print("   не удалось пометить выключенные: %s" % str(exc)[:90])
         if not docs:
             _stage_fail("ПАКЕТ: для продукта %s не нашлось ни одного документа"
-                        % (_CLIENT or "?"))
-    work = [d for d in docs if d["CLIENT"] not in ("rejected",)]
+                        % (_product or "?"))
+    work = [d for d in docs if d["status"] not in ("rejected",)]
     print("   документов в работе: %d, закрыто: %d"
           % (len(work), len(docs) - len(work)))
 
@@ -184,16 +184,16 @@ with app.app_context():
             _frozen = ROOT / "data" / "frozen" / ("app%s_tpl%s.html" % (APP_ID, d["template_id"]))
             if _frozen.exists():
                 _frozen.unlink()
-            page.freeze_CLIENT(APP_ID, d["template_id"], actor="автоцикл")
+            page.freeze_document(APP_ID, d["template_id"], actor="автоцикл")
             c = sqlite3.connect(DB)
-            row = c.execute("""SELECT id, pdf_path FROM CLIENT_CLIENT
-                                WHERE CLIENT_id=? AND template_id=?
+            row = c.execute("""SELECT id, pdf_path FROM application_documents
+                                WHERE application_id=? AND template_id=?
                                 ORDER BY id DESC LIMIT 1""",
                              (APP_ID, d["template_id"])).fetchone()
             c.close()
             if row:
                 if row[1]:
-                    old = Path(row[1]) if str(row[1]).CLIENTswith("/") else ROOT / str(row[1])
+                    old = Path(row[1]) if str(row[1]).startswith("/") else ROOT / str(row[1])
                     try:
                         old.unlink()
                     except Exception:
@@ -202,13 +202,13 @@ with app.app_context():
                 # статус сохраняем: подтверждённый документ, пересобранный заново, остаётся
                 # подтверждённым. Сброс в draft ломал цикл — проверка «до подтверждения»
                 # видела «нет подтверждённого документа» и останавливала прогон навсегда.
-                c.execute("UPDATE CLIENT_CLIENT SET pdf_path=NULL WHERE id=?", (row[0],))
-                c.execute("UPDATE CLIENT_CLIENT SET CLIENT='draft' "
-                          "WHERE id=? AND IFNULL(CLIENT,'') NOT IN ('verified','rejected','sent')",
+                c.execute("UPDATE application_documents SET pdf_path=NULL WHERE id=?", (row[0],))
+                c.execute("UPDATE application_documents SET status='draft' "
+                          "WHERE id=? AND IFNULL(status,'') NOT IN ('verified','rejected','sent')",
                           (row[0],))
                 c.commit()
                 c.close()
-            with app.test_CLIENT_context("/"):
+            with app.test_request_context("/"):
                 from flask import session
                 session["user_id"] = 1
                 res = page.app_doc_ensure_pdf(APP_ID, d["template_id"])
@@ -222,8 +222,8 @@ with app.app_context():
 
     print()
     _stage_begin("шаг 2: проверка до подтверждения")
-    verdict, finds = check_package(APP_ID, with_CLIENT=True)
-    content = [f for f in finds if f["level"] == "CLIENT"
+    verdict, finds = check_package(APP_ID, with_drive=True)
+    content = [f for f in finds if f["level"] == "BLOCK"
                and not any(h in f["msg"] for h in CONFIRM_HINTS)]
     for f in finds:
         if f["level"] != "INFO":
@@ -233,33 +233,33 @@ with app.app_context():
 
     # Этап 2.5: дополнительные проверки (логика, визуал, состав пакета)
     _stage_begin("шаг 2.5: логика, визуал, состав пакета")
-    # CLIENT_check: даты, суммы, должности, остатки. CLIENTs — блокирующие, warns — нет.
-    from CLIENT import CLIENT_check as _lc
+    # logical_check: даты, суммы, должности, остатки. blocks — блокирующие, warns — нет.
+    from services import logical_check as _lc
     lc_res = _lc.check_app(APP_ID, save=True)
     for f in (lc_res.get("finds") or []):
-        if f.get("level") == "CLIENT":
+        if f.get("level") == "BLOCK":
             print("   [LOGIC] %s — %s" % (f.get("doc"), str(f.get("msg"))[:104]))
-    if lc_res.get("CLIENTs"):
-        _stage_fail("ЛОГИКА: %d блокирующих замечаний" % lc_res["CLIENTs"])
+    if lc_res.get("blocks"):
+        _stage_fail("ЛОГИКА: %d блокирующих замечаний" % lc_res["blocks"])
     print("   логика: ок (предупреждений %s)" % lc_res.get("warns", 0))
     # final_check: визуальное оформление листа + логика
-    from CLIENT import final_check as _fc
+    from services import final_check as _fc
     fc_res = _fc.run(APP_ID, verbose=False)
     vis = fc_res.get("visual") or {}
-    if vis.get("CLIENTs"):
-        for i in vis["CLIENTs"]:
+    if vis.get("issues"):
+        for i in vis["issues"]:
             print("   [VISUAL] %s — %s" % (i.get("doc", "?"),
                                            str(i.get("text") or i.get("msg"))[:104]))
-        _stage_fail("ВИЗУАЛ: %d замечаний по оформлению" % len(vis["CLIENTs"]))
+        _stage_fail("ВИЗУАЛ: %d замечаний по оформлению" % len(vis["issues"]))
     print("   визуал: ок (проверено %s документов)" % vis.get("checked"))
     # pack_check: состав пакета по продукту + что уже было у клиента
-    from CLIENT import pack_check as _pc
+    from services import pack_check as _pc
     pc_res = _pc.check(APP_ID)
     if pc_res.get("missing"):
         _stage_fail("СОСТАВ: нет обязательных документов пакета: %s"
                     % ", ".join(str(m) for m in pc_res["missing"]))
     print("   состав: %s — %s (готовность %s)"
-          % (pc_res.get("CLIENT"), pc_res.get("CLIENT_name"), pc_res.get("progress")))
+          % (pc_res.get("product"), pc_res.get("product_name"), pc_res.get("progress")))
     _stage_end("логика/визуал/состав: ок")
 
     print()
@@ -267,7 +267,7 @@ with app.app_context():
     for d in work:
         try:
             c = sqlite3.connect(DB)
-            c.execute("UPDATE CLIENT_CLIENT SET CLIENT='verified' WHERE id=?", (d["id"],))
+            c.execute("UPDATE application_documents SET status='verified' WHERE id=?", (d["id"],))
             c.commit()
             c.close()
             print("   подтверждён %s" % d["code"])
@@ -278,7 +278,7 @@ with app.app_context():
 
     print()
     _stage_begin("шаг 4: финальная проверка")
-    verdict, finds = check_package(APP_ID, with_CLIENT=True)
+    verdict, finds = check_package(APP_ID, with_drive=True)
     for f in finds:
         if f["level"] != "INFO":
             print("   [%s] %s — %s" % (f["level"], f["doc"], f["msg"][:104]))
@@ -292,7 +292,7 @@ with app.app_context():
     if ok:
         _stage_begin("шаг 5: смысловая проверка (читатель)")
         try:
-            from CLIENT import reader_CLIENT as _ra
+            from services import reader_agent as _ra
             _rd = _ra.read(APP_ID)
             _rc = _ra.record_cycle(APP_ID, _rd)
             print()
@@ -300,10 +300,10 @@ with app.app_context():
             print("   вердикт: %s (подтверждённых замечаний: %s, цикл %s)"
                   % (_rd.get("verdict"), len(_rd.get("confirmed") or []), _rc.get("cycle")))
             for _p in (_rd.get("confirmed") or []):
-                print("   [CLIENT] %s — %s | как исправить: %s"
+                print("   [BLOCK] %s — %s | как исправить: %s"
                       % (_p.get("doc"), str(_p.get("problem"))[:96], str(_p.get("how_to_fix"))[:72]))
             for _x in (_rd.get("need_from_client") or []):
-                print("   [CLIENT] документы клиента — %s" % str(_x)[:96])
+                print("   [BLOCK] документы клиента — %s" % str(_x)[:96])
             # Технический сбой читателя (модель не ответила) — не отказ пакета:
             # объективные проверки (сборка, визуал, состав, финальный вердикт ГОВОР)
             # уже пройдены, и держать из-за этого готовый комплект нельзя.
@@ -365,7 +365,7 @@ with app.app_context():
                     len(route["fix_ourselves"]), len(route["ask_client"]), len(route["template_fix"])))
             
             if _rc.get("escalate"):
-                print("   ТРЕБУЕТ АДМИНА — %s" % str(_rc.get("message"))[:200].reCLIENT("\n", " "))
+                print("   ТРЕБУЕТ АДМИНА — %s" % str(_rc.get("message"))[:200].replace("\n", " "))
         except Exception as _e_rd:                     # noqa: BLE001
             print("   читатель недоступен: %s" % str(_e_rd)[:120])
             ok = False
@@ -380,7 +380,7 @@ with app.app_context():
         # прочитать (в журнале оставалось «ответ: <Response ...>», а auto_runner искал в
         # выводе строки 'FOUND'/'302' и всегда считал, что отправки не было).
         try:
-            from CLIENT import sender as _sender
+            from services import sender as _sender
             _res = _sender.send_package(APP_ID, notify=True)
             print("   ok=%s, файлов=%s" % (_res.get("ok"), _res.get("files")))
             for _n in (_res.get("uploaded") or []):
@@ -394,10 +394,10 @@ with app.app_context():
                 # сутками лежат только локально (именно так всё и было, пока доступ к Диску был
                 # отозван — в журнале «цикл завершён», на Диске пусто).
                 try:
-                    import CLIENT as _dt
+                    import datetime as _dt
                     import json as _json
                     with open("data/escalations.jsonl", "a", encoding="utf-8") as _f:
-                        _f.write(_json.dumps({"ts": _dt.CLIENT.now().isoformat(timespec="seconds"),
+                        _f.write(_json.dumps({"ts": _dt.datetime.now().isoformat(timespec="seconds"),
                                               "app_id": APP_ID, "kind": "send_failed",
                                               "error": str(_res.get("error") or _res.get("stops"))[:300]},
                                              ensure_ascii=False) + "\n")

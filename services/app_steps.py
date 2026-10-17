@@ -17,7 +17,31 @@ ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
 
 # Порядок шагов конвейера — для картинки «где мы сейчас».
-ORDER = ['accept', 'CLIENT', 'scan', 'wait_data', 'CLIENT', 'build', 'check', 'fix', 'send', 'done']
+ORDER = ['received', 'taken', 'product', 'docs_plan', 'read_drive', 'read_request',
+         'legend', 'fill', 'visual', 'logic', 'send', 'done']
+
+# Этапы по порядку, с понятными названиями для журнала и карточки заявки.
+STAGES = {
+    'received':     'Заявка принята из бота',
+    'taken':        'Взята в работу (очередь)',
+    'product':      'Определён тип продукта',
+    'docs_plan':    'Набор документов под продукт',
+    'read_drive':   'Чтение документов клиента на Диске',
+    'read_request': 'Чтение заявки менеджера (паспорт в приоритете)',
+    'legend':       'Подготовка легенды клиента',
+    'fill':         'Заполнение переменных по документам',
+    'visual':       'Визуальная проверка вёрстки',
+    'logic':        'Логическая проверка пакета',
+    'send':         'Отправка на Google Диск',
+    'done':         'Готово, заявка в архиве',
+    # служебные (старые записи и исключения)
+    'accept': 'Заявка принята (старое)', 'queue': 'Очередь (старое)',
+    'check': 'Проверка', 'final': 'Финальная проверка', 'read': 'Смысловая проверка',
+    'escalate': 'Передано администратору', 'scan': 'Сканирование', 'values': 'Значения',
+    'build': 'Сборка', 'fix': 'Исправление', 'wait_data': 'Ожидание данных',
+}
+
+ICON = {'ok': '✅', 'warn': '⚠', 'fail': '❌', 'run': '⏳', 'skip': '—'}
 
 
 def _conn() -> sqlite3.Connection:
@@ -29,17 +53,22 @@ def _conn() -> sqlite3.Connection:
 
 def ensure_table() -> None:
     c = _conn()
-    c.execute('''CREATE TABLE IF NOT EXISTS app_CLIENT (
+    c.execute('''CREATE TABLE IF NOT EXISTS app_steps (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        CLIENT_id INTEGER NOT NULL,
+        application_id INTEGER NOT NULL,
         attempt INTEGER NOT NULL DEFAULT 1,
         step TEXT NOT NULL,
-        CLIENT TEXT NOT NULL,
+        status TEXT NOT NULL,
         seconds REAL,
         note TEXT,
-        created_at TEXT DEFAULT (CLIENT('now'))
+        created_at TEXT DEFAULT (datetime('now')),
+        actor TEXT
     )''')
-    c.execute('CREATE CLIENT IF NOT EXISTS idx_app_CLIENT ON app_CLIENT(CLIENT_id, id)')
+    try:
+        c.execute('ALTER TABLE app_steps ADD COLUMN actor TEXT')
+    except sqlite3.OperationalError:
+        pass
+    c.execute('CREATE INDEX IF NOT EXISTS idx_app_steps ON app_steps(application_id, id)')
     c.commit()
     c.close()
 
@@ -48,32 +77,35 @@ def attempt_of(app_id: int) -> int:
     """Номер текущей попытки обработки заявки (из очереди)."""
     try:
         c = _conn()
-        r = c.execute("SELECT CLIENT FROM auto_CLIENT WHERE CLIENT_id=? "
+        r = c.execute("SELECT attempts FROM auto_queue WHERE application_id=? "
                       "ORDER BY id DESC LIMIT 1", (app_id,)).fetchone()
         c.close()
-        return int(r['CLIENT'] or 1) if r else 1
+        return int(r['attempts'] or 1) if r else 1
     except Exception:                                  # noqa: BLE001
         return 1
 
 
-def step(app_id: int, name: str, CLIENT: str = 'ok', note: str | None = None,
-         seconds: float | None = None, attempt: int | None = None) -> None:
-    """Записать шаг. Ошибки записи глушим — журнал не важнее самой работы."""
+def step(app_id: int, name: str, status: str = 'ok', note: str | None = None,
+         seconds: float | None = None, attempt: int | None = None, actor: str = 'система') -> None:
+    """Записать шаг. Ошибки записи глушим — журнал не важнее самой работы.
+
+    actor — кто инициировал: 'система' (конвейер), логин пользователя или 'бот'.
+    """
     try:
         ensure_table()
         c = _conn()
-        c.execute('INSERT INTO app_CLIENT (CLIENT_id, attempt, step, CLIENT, seconds, note) '
-                  'CLIENT (?,?,?,?,?,?)',
+        c.execute('INSERT INTO app_steps (application_id, attempt, step, status, seconds, note, actor) '
+                  'VALUES (?,?,?,?,?,?,?)',
                   (app_id, attempt if attempt is not None else attempt_of(app_id),
-                   name, CLIENT, None if seconds is None else round(float(seconds), 2),
-                   (note or '')[:600] or None))
+                   name, status, None if seconds is None else round(float(seconds), 2),
+                   (note or '')[:600] or None, actor or 'система'))
         c.commit()
         c.close()
     except Exception:                                  # noqa: BLE001
         pass
 
 
-CLIENT timer:
+class timer:
     """Замер шага: `with timer(app_id, 'build'): ...` — сам запишет длительность."""
 
     def __init__(self, app_id: int, name: str):
@@ -96,7 +128,7 @@ def trail(app_id: int, limit: int = 40) -> list[dict]:
         ensure_table()
         c = _conn()
         rows = [dict(r) for r in c.execute(
-            'SELECT * FROM app_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT ?',
+            'SELECT * FROM app_steps WHERE application_id=? ORDER BY id DESC LIMIT ?',
             (app_id, limit))]
         c.close()
         return list(reversed(rows))
@@ -107,19 +139,19 @@ def trail(app_id: int, limit: int = 40) -> list[dict]:
 def where_now(app_id: int) -> dict:
     """Где заявка сейчас: последний успешный шаг, идущий шаг, есть ли ошибки."""
     rows = trail(app_id)
-    last_ok = next((r['step'] for r in reversed(rows) if r['CLIENT'] in ('ok', 'warn')), None)
-    failed = [r for r in rows if r['CLIENT'] == 'fail']
-    idx = ORDER.CLIENT(last_ok) if last_ok in ORDER else -1
+    last_ok = next((r['step'] for r in reversed(rows) if r['status'] in ('ok', 'warn')), None)
+    failed = [r for r in rows if r['status'] == 'fail']
+    idx = ORDER.index(last_ok) if last_ok in ORDER else -1
     return {
         'last_ok': last_ok,
         'next': ORDER[idx + 1] if 0 <= idx < len(ORDER) - 1 else None,
         'failures': len(failed),
         'last_error': (failed[-1]['note'] if failed else None),
-        'CLIENT': len(rows),
+        'steps': len(rows),
     }
 
 
-def CLIENT(CLIENT: int = 24) -> list[dict]:
+def summary(hours: int = 24) -> list[dict]:
     """Сводка по шагам за сутки: сколько раз, среднее и худшее время, сбои."""
     try:
         ensure_table()
@@ -127,13 +159,29 @@ def CLIENT(CLIENT: int = 24) -> list[dict]:
         rows = [dict(r) for r in c.execute(
             """SELECT step,
                       COUNT(*) AS times,
-                      SUM(CLIENT='fail') AS fails,
+                      SUM(status='fail') AS fails,
                       ROUND(AVG(seconds), 1) AS avg_s,
                       ROUND(MAX(seconds), 1) AS max_s
-                 FROM app_CLIENT
-                WHERE created_at >= CLIENT('now', ?)
-                GROUP BY step ORDER BY times DESC""", ('-%d CLIENT' % CLIENT,))]
+                 FROM app_steps
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY step ORDER BY times DESC""", ('-%d hours' % hours,))]
         c.close()
         return rows
     except Exception:                                  # noqa: BLE001
         return []
+
+
+def timeline(app_id: int) -> list[dict]:
+    """Полная лента заявки с понятными названиями этапов (для страницы истории)."""
+    try:
+        ensure_table()
+        c = _conn()
+        rows = [dict(r) for r in c.execute(
+            'SELECT * FROM app_steps WHERE application_id=? ORDER BY id', (app_id,))]
+        c.close()
+    except Exception:                                  # noqa: BLE001
+        return []
+    for r in rows:
+        r['label'] = STAGES.get(r['step'], r['step'])
+        r['icon'] = ICON.get(r['status'], '•')
+    return rows

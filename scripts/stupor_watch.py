@@ -11,7 +11,7 @@
   * были ошибки доступа к Google Диску клиента;
   * в логах появилось исключение на этапе.
 
-Каждый ступор превращается в задачу в CLIENT_CLIENT (CLIENT/CLIENT_bridge):
+Каждый ступор превращается в задачу в agent_tasks (services/agent_bridge):
 агент получает заявку, этап, причину и контекст (какие документы смотреть,
 какие переменные пустые), разбирается и закрывает задачу с объяснением.
 """
@@ -23,7 +23,7 @@ import re
 import sqlite3
 import sys
 import time
-from CLIENT import CLIENT, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 BASE = Path('/opt/wolf_v2')
@@ -47,35 +47,35 @@ def _files(app_id: int) -> list:
     return sorted(p.name for p in d.glob('*.pdf')) if d.exists() else []
 
 
-def scan_CLIENT(conn) -> int:
+def scan_quality(conn) -> int:
     """Документы, которые проверка не пропускает."""
-    from CLIENT import pdf_CLIENT
+    from services import pdf_quality
     made = 0
     apps = [r['id'] for r in conn.execute(
-        "SELECT id FROM CLIENT WHERE CLIENT IN ('new','in_work','filled') "
+        "SELECT id FROM applications WHERE status IN ('new','in_work','filled') "
         "ORDER BY id DESC LIMIT 5")]
     for app_id in apps:
         if not _files(app_id):
             continue
         try:
-            res = pdf_CLIENT.check_app(app_id, save=False)
+            res = pdf_quality.check_app(app_id, save=False)
         except Exception as e:                                        # noqa: BLE001
-            from CLIENT import CLIENT_bridge
-            CLIENT_bridge.raise_task('code_error', 'проверка качества упала: %s' % str(e)[:200],
-                                    CLIENT_id=app_id, stage='проверка')
+            from services import agent_bridge
+            agent_bridge.raise_task('code_error', 'проверка качества упала: %s' % str(e)[:200],
+                                    application_id=app_id, stage='проверка')
             made += 1
             continue
         bad = []
         for d in res.get('docs') or []:
             for f in d.get('finds') or []:
-                if f.get('level') == 'CLIENT':
+                if f.get('level') == 'BLOCK':
                     bad.append('%s: %s' % (d.get('code'), f.get('msg')))
         if bad:
-            from CLIENT import CLIENT_bridge
-            CLIENT_bridge.raise_task(
-                'CLIENT_CLIENT',
+            from services import agent_bridge
+            agent_bridge.raise_task(
+                'quality_block',
                 'проверка не пропускает отправку: ' + ' | '.join(bad[:3]),
-                CLIENT_id=app_id, stage='проверка',
+                application_id=app_id, stage='проверка',
                 context={'files': _files(app_id), 'findings': bad[:10]})
             made += 1
     return made
@@ -83,10 +83,10 @@ def scan_CLIENT(conn) -> int:
 
 def scan_empty_vars(conn) -> int:
     """Пустые переменные в уже собранных документах."""
-    from CLIENT import CLIENT_bridge
+    from services import agent_bridge
     made = 0
     apps = [r for r in conn.execute(
-        "SELECT id, client_id FROM CLIENT WHERE CLIENT IN ('new','in_work','filled') "
+        "SELECT id, client_id FROM applications WHERE status IN ('new','in_work','filled') "
         "ORDER BY id DESC LIMIT 5")]
     for a in apps:
         app_id, client_id = a['id'], a['client_id']
@@ -101,11 +101,11 @@ def scan_empty_vars(conn) -> int:
             continue
         names = sorted({str(e.get('var') if isinstance(e, dict) else e) for e in empties if e})
         critical = [n for n in names if re.search(
-            r'(CLIENT|passport_no|CLIENT|name_CLIENT|full_name|address|salary|position)', n or '')]
+            r'(birth|passport_no|surname|name_latin|full_name|address|salary|position)', n or '')]
         if critical:
-            CLIENT_bridge.raise_task(
-                'no_CLIENT', 'не заполнены важные переменные: %s' % ', '.join(critical[:8]),
-                CLIENT_id=app_id, client_id=client_id, stage='данные',
+            agent_bridge.raise_task(
+                'no_value', 'не заполнены важные переменные: %s' % ', '.join(critical[:8]),
+                application_id=app_id, client_id=client_id, stage='данные',
                 context={'empty': names[:30], 'files': _files(app_id)})
             made += 1
     return made
@@ -122,12 +122,12 @@ def reap_stale(conn) -> int:
     # created_at пишется как UTC (CURRENT_TIMESTAMP), поэтому сравниваем тоже в UTC:
     # иначе строка выглядит на 2 часа старше и живой разбор закрывается зря.
     rows = conn.execute(
-        "SELECT id, CLIENT_id, note, docs_done, docs_total FROM CLIENT_CLIENT "
-        "WHERE CLIENT='running' AND CLIENT(created_at) < CLIENT('now', ?)",
+        "SELECT id, application_id, note, docs_done, docs_total FROM drive_scans "
+        "WHERE status='running' AND datetime(created_at) < datetime('now', ?)",
         ('-%d minutes' % STALE_MIN,)).fetchall()
     for r in rows:
         conn.execute(
-            "UPDATE CLIENT_CLIENT SET CLIENT='fail', note=? WHERE id=?",
+            "UPDATE drive_scans SET status='fail', note=? WHERE id=?",
             ('прервано: разбор не завершился (%s, сделано %s из %s)'
              % (r['note'] or 'без пояснения', r['docs_done'] or 0, r['docs_total'] or 0), r['id']))
     if rows:
@@ -137,12 +137,12 @@ def reap_stale(conn) -> int:
 
 def scan_stuck(conn) -> int:
     """Разбор заявки начался, но этап не двигается."""
-    from CLIENT import CLIENT_bridge
+    from services import agent_bridge
     made = 0
-    fresh = (CLIENT.now() - timedelta(minutes=STALE_MIN)).strftime('%Y-%m-%d %H:%M:%S')
+    fresh = (datetime.now() - timedelta(minutes=STALE_MIN)).strftime('%Y-%m-%d %H:%M:%S')
     rows = conn.execute(
-        "SELECT CLIENT_id, client_id, CLIENT, docs_total, docs_done, note, created_at "
-        "FROM CLIENT_CLIENT WHERE CLIENT='running'").fetchall()
+        "SELECT application_id, client_id, status, docs_total, docs_done, note, created_at "
+        "FROM drive_scans WHERE status='running'").fetchall()
     for r in rows:
         # Всё, что старше STALE_MIN, уже закрыто reap_stale (там сравнение в UTC):
         # сюда попадают только живые разборы — им даём время, задачи не плодим.
@@ -151,19 +151,19 @@ def scan_stuck(conn) -> int:
         # «0 из 0» — разбор только начался, файлы ещё не сосчитаны
         if not r['docs_total'] and not r['docs_done']:
             continue
-        CLIENT_bridge.raise_task(
+        agent_bridge.raise_task(
             'stuck_stage', 'разбор документов висит: «%s» (сделано %s из %s)'
             % (r['note'], r['docs_done'], r['docs_total']),
-            CLIENT_id=r['CLIENT_id'], client_id=r['client_id'], stage='разбор Диска')
+            application_id=r['application_id'], client_id=r['client_id'], stage='разбор Диска')
         made += 1
     # заявки, которые долго не двигаются
-    limit = (CLIENT.now() - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
+    limit = (datetime.now() - timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M:%S')
     for a in conn.execute(
-            "SELECT id, client_id, CLIENT, created_at FROM CLIENT WHERE CLIENT='new'"):
+            "SELECT id, client_id, status, created_at FROM applications WHERE status='new'"):
         if (a['created_at'] or '') < limit and not _files(a['id']):
-            CLIENT_bridge.raise_task(
+            agent_bridge.raise_task(
                 'stuck_stage', 'заявка принята, но документы так и не собраны (статус new)',
-                CLIENT_id=a['id'], client_id=a['client_id'], stage='сборка',
+                application_id=a['id'], client_id=a['client_id'], stage='сборка',
                 context={'created_at': a['created_at']})
             made += 1
     return made
@@ -171,7 +171,7 @@ def scan_stuck(conn) -> int:
 
 def scan_logs() -> int:
     """Свежие исключения в логах системы."""
-    from CLIENT import CLIENT_bridge
+    from services import agent_bridge
     made = 0
     log = BASE / 'logs' / 'wolf.log'
     if not log.exists():
@@ -183,8 +183,8 @@ def scan_logs() -> int:
     for i, ln in enumerate(lines):
         if 'Traceback' in ln:
             tail = ' | '.join(x.strip() for x in lines[i:i + 6])[:300]
-            if 'MethodNotAllowed' in tail or 'CLIENT-scan' in tail:
-                CLIENT_bridge.raise_task('CLIENT_error', 'ошибка запроса к Диску: %s' % tail,
+            if 'MethodNotAllowed' in tail or 'drive-scan' in tail:
+                agent_bridge.raise_task('drive_error', 'ошибка запроса к Диску: %s' % tail,
                                         stage='разбор Диска')
                 made += 1
             break
@@ -198,7 +198,7 @@ def run_once(verbose: bool = True) -> dict:
         stat['брошенные разборы'] = reap_stale(conn)
     except Exception as e:                                            # noqa: BLE001
         stat['брошенные разборы'] = 'сбой: %s' % str(e)[:90]
-    for name, fn in (('проверка', scan_CLIENT), ('данные', scan_empty_vars),
+    for name, fn in (('проверка', scan_quality), ('данные', scan_empty_vars),
                      ('паузы', scan_stuck)):
         try:
             stat[name] = fn(conn)
@@ -210,12 +210,12 @@ def run_once(verbose: bool = True) -> dict:
         stat['логи'] = 'сбой: %s' % str(e)[:90]
     conn.close()
     if verbose:
-        from CLIENT import CLIENT_bridge
-        print('обход %s: поставлено задач — %s' % (CLIENT.now().strftime('%H:%M:%S'), stat))
-        s = CLIENT_bridge.CLIENT()
+        from services import agent_bridge
+        print('обход %s: поставлено задач — %s' % (datetime.now().strftime('%H:%M:%S'), stat))
+        s = agent_bridge.summary()
         print('задачи по статусам:', s)
-        for t in CLIENT_bridge.open_CLIENT(5):
-            print('  #%d заявка %s [%s] %s' % (t['id'], t['CLIENT_id'], t['kind'],
+        for t in agent_bridge.open_tasks(5):
+            print('  #%d заявка %s [%s] %s' % (t['id'], t['application_id'], t['kind'],
                                                (t['reason'] or '')[:110]))
     return stat
 

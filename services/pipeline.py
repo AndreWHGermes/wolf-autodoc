@@ -14,7 +14,7 @@
                     где его быть не должно, пустые поля, устаревший шаблон.
 
 Запуск:
-    python3 -m CLIENT.pipeline <CLIENT_id> [--llm] [--force] [--no-render]
+    python3 -m services.pipeline <application_id> [--llm] [--force] [--no-render]
 """
 from __future__ import annotations
 
@@ -28,60 +28,60 @@ sys.path.insert(0, '/opt/wolf_v2')
 OUT_DIR = Path('/opt/wolf_v2/data/out')
 
 
-def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
+def run(application_id: int, use_llm: bool = False, force: bool = False,
         render: bool = True, verbose: bool = True) -> dict:
     import sqlite3
 
-    from CLIENT import intake_gate, pool_assign, pool_builder
+    from services import intake_gate, pool_assign, pool_builder
 
     t0 = time.time()
-    res = {'CLIENT_id': CLIENT_id, 'CLIENT': []}
+    res = {'application_id': application_id, 'steps': []}
 
     def step(name: str, data: dict) -> None:
-        res['CLIENT'].append({'step': name, **data})
+        res['steps'].append({'step': name, **data})
         if verbose:
             for k, v in data.items():
                 print('   %-16s %s' % (k, v))
 
     conn = sqlite3.connect('/opt/wolf_v2/data/wolf.db', timeout=60)
     conn.row_factory = sqlite3.Row
-    app = conn.execute('SELECT * FROM CLIENT WHERE id=?', (CLIENT_id,)).fetchone()
+    app = conn.execute('SELECT * FROM applications WHERE id=?', (application_id,)).fetchone()
     if not app:
-        return {'error': 'заявка %s не найдена' % CLIENT_id}
+        return {'error': 'заявка %s не найдена' % application_id}
     app = dict(app)
     res['client_id'] = app['client_id']
-    res['CLIENT'] = {'id': CLIENT_id, 'client_id': app['client_id'],
-                          'CLIENT': app.get('CLIENT'), 'gCLIENT': app.get('gCLIENT_url') or ''}
+    res['application'] = {'id': application_id, 'client_id': app['client_id'],
+                          'status': app.get('status'), 'gdrive': app.get('gdrive_url') or ''}
 
     # 1. приёмка: продукт и что лежит в папке клиента
     print('\n[1] приёмка')
     try:
-        gate = intake_gate.gate(CLIENT_id) or {}
+        gate = intake_gate.gate(application_id) or {}
         if not isinstance(gate, dict):
             gate = {'result': str(gate)[:200]}
     except Exception as e:                                            # noqa: BLE001
         gate = {'error': str(e)[:200]}
     res['gate'] = gate
-    step('приёмка', {'продукт': gate.get('CLIENT') or gate.get('CLIENT_code') or '?',
+    step('приёмка', {'продукт': gate.get('product') or gate.get('product_code') or '?',
                      'документов у клиента': (gate.get('docs') or {}).get('total')
                      if isinstance(gate.get('docs'), dict) else gate.get('docs_total'),
                      'ошибка': gate.get('error') or ''})
 
     # 2. сбор пула: все файлы, повторно — только новые
     print('\n[2] сбор значений')
-    pool = pool_builder.build_for_client(app['client_id'], CLIENT_id,
+    pool = pool_builder.build_for_client(app['client_id'], application_id,
                                          use_llm=use_llm, force=force, verbose=False)
     res['pool'] = pool
     step('сбор', {'документов': pool.get('docs'), 'новых': pool.get('new'),
                   'пропущено (уже читали)': pool.get('skipped'),
-                  'значений в пуле': pool.get('CLIENT')})
+                  'значений в пуле': pool.get('values')})
 
     # 3. подстановка по продукту
     print('\n[3] подстановка в документы')
-    assign = pool_assign.assign(CLIENT_id)
+    assign = pool_assign.assign(application_id)
     res['assign'] = {k: v for k, v in assign.items() if k != 'docs'}
-    step('подстановка', {'продукт': assign.get('CLIENT'),
-                         'источник продукта': assign.get('CLIENT_from'),
+    step('подстановка', {'продукт': assign.get('product'),
+                         'источник продукта': assign.get('product_from'),
                          'документов в наборе': len(assign.get('docs') or []),
                          'значений из пула': len(assign.get('pool_used') or []),
                          'вычислено': len(assign.get('derived_used') or []),
@@ -104,9 +104,9 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
     # 5. сборка PDF и 6. проверка собранного
     if render:
         print('\n[5] сборка')
-        from CLIENT import html_frame
-        from CLIENT import render as render_mod
-        out_dir = OUT_DIR / str(CLIENT_id)
+        from services import html_frame
+        from services import render as render_mod
+        out_dir = OUT_DIR / str(application_id)
         out_dir.mkdir(parents=True, exist_ok=True)
         built = []
         for d in assign.get('docs') or []:
@@ -115,9 +115,9 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
             try:
                 # часть шаблонов собрана по каркасу (flow), часть рендерится
                 # напрямую из своего HTML — пробуем оба пути
-                ok = html_frame.build_pdf(code, d['CLIENT'], target, CLIENT_id)
+                ok = html_frame.build_pdf(code, d['values'], target, application_id)
                 if not ok:
-                    html = render_mod.render_html(code=code, CLIENT=d['CLIENT'])
+                    html = render_mod.render_html(code=code, values=d['values'])
                     if html:
                         render_mod.render_pdf(html, out_path=target)
                         ok = target.exists()
@@ -133,7 +133,7 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
         print('\n[6] проверка')
         checked, bad = [], []
         try:
-            from CLIENT import pdf_CLIENT
+            from services import pdf_quality
             # проверяем именно то, что сейчас собрали: check_app смотрит документы
             # заявки в базе, а нам нужен вердикт по свежим файлам
             checked, bad = [], []
@@ -141,8 +141,8 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
                 if not b['собран']:
                     continue
                 try:
-                    finds = pdf_CLIENT.check_pdf(Path(b['файл']), b['документ'],
-                                                  foreign_names=pdf_CLIENT.foreign_names_for(CLIENT_id))
+                    finds = pdf_quality.check_pdf(Path(b['файл']), b['документ'],
+                                                  foreign_names=pdf_quality.foreign_names_for(application_id))
                 except Exception as e:                                # noqa: BLE001
                     finds = [{'code': 'check_error', 'msg': str(e)[:120]}]
                 checked.append({'документ': b['документ'], 'замечаний': len(finds),
@@ -172,26 +172,26 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
                 if b.get('собран') and b['документ'] in _bad:
                     # документ с замечаниями не подтверждаем и снимаем прежнее
                     # подтверждение: подтверждённым считается только проверенный
-                    _tpl = _db.q1('SELECT id FROM CLIENT WHERE code=?', (b['документ'],))
+                    _tpl = _db.q1('SELECT id FROM templates WHERE code=?', (b['документ'],))
                     if _tpl:
-                        _r = _db.q1('SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?',
-                                    (CLIENT_id, _tpl['id']))
+                        _r = _db.q1('SELECT id FROM application_documents WHERE application_id=? AND template_id=?',
+                                    (application_id, _tpl['id']))
                         if _r:
-                            _db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='draft' WHERE id=?", (_r['id'],))
+                            _db.exec_sql("UPDATE application_documents SET status='draft' WHERE id=?", (_r['id'],))
                     continue
                 if not b.get('собран'):
                     continue
-                tpl = _db.q1('SELECT id FROM CLIENT WHERE code=?', (b['документ'],))
+                tpl = _db.q1('SELECT id FROM templates WHERE code=?', (b['документ'],))
                 if not tpl:
                     continue
                 tid = tpl['id']
-                row = _db.q1('SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?',
-                             (CLIENT_id, tid))
+                row = _db.q1('SELECT id FROM application_documents WHERE application_id=? AND template_id=?',
+                             (application_id, tid))
                 if row:
-                    _db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='verified' WHERE id=?", (row['id'],))
+                    _db.exec_sql("UPDATE application_documents SET status='verified' WHERE id=?", (row['id'],))
                 else:
-                    _db.exec_sql("INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT) "
-                                 "CLIENT (?,?,'verified')", (CLIENT_id, tid))
+                    _db.exec_sql("INSERT INTO application_documents (application_id, template_id, status) "
+                                 "VALUES (?,?,'verified')", (application_id, tid))
                 _auto.append(b['документ'])
             res['auto_verified'] = _auto
             if _auto:
@@ -201,7 +201,7 @@ def run(CLIENT_id: int, use_llm: bool = False, force: bool = False,
             res['auto_verified_error'] = str(e)[:200]
 
     res['seconds'] = round(time.time() - t0, 1)
-    out = Path('/tmp/pipeline_%d.json' % CLIENT_id)
+    out = Path('/tmp/pipeline_%d.json' % application_id)
     out.write_text(json.dumps(res, ensure_ascii=False, default=str)[:600000], encoding='utf-8')
     res['report'] = str(out)
     return res

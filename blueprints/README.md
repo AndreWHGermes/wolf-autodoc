@@ -1,1 +1,1 @@
-# Маршруты по экранам: dashboard, CLIENT, settings, CLIENT, CLIENT.
+# Маршруты по экранам: dashboard, templates, settings, history, login.

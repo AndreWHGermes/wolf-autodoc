@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Заполняем кэш переводов (CLIENT_line) для ВСЕХ шаблонов.
+"""Заполняем кэш переводов (translation_line) для ВСЕХ шаблонов.
 
 Ключи — как их видит фронтенд (/tmp/static_keys.json, собраны обходом текстовых узлов HTML).
 Перевод — бесплатный LLM-роутер (bynara). Ключ берём из /root/.hermes/.env, в логи не пишем.
@@ -10,7 +10,7 @@ import re
 import sqlite3
 import sys
 import time
-import urllib.CLIENT
+import urllib.request
 from pathlib import Path
 
 DB = '/opt/wolf_v2/data/wolf.db'
@@ -50,10 +50,10 @@ def call(lines: list[str], n_retry: int = 3) -> list[str]:
             body = {'model': MODEL,
                     'messages': [{'role': 'user', 'content': PROMPT + '\n'.join(lines)}],
                     'temperature': 0}
-            req = urllib.CLIENT.CLIENT(URL, data=json.dumps(body).encode(),
-                                         CLIENTs={'Authorization': f'Bearer {KEY}',
-                                                  'Content-Type': 'CLIENT/json'})
-            with urllib.CLIENT.urlopen(req, timeout=240) as r:
+            req = urllib.request.Request(URL, data=json.dumps(body).encode(),
+                                         headers={'Authorization': f'Bearer {KEY}',
+                                                  'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=240) as r:
                 data = json.loads(r.read().decode())
             out = data['choices'][0]['message']['content'] or ''
             got = [re.sub(r'^\s*\d+[.)]\s*', '', l).strip() for l in out.splitlines()]
@@ -80,10 +80,10 @@ def call_single(line: str) -> str:
     body = {'model': MODEL,
             'messages': [{'role': 'user', 'content': PROMPT + line}],
             'temperature': 0}
-    req = urllib.CLIENT.CLIENT(URL, data=json.dumps(body).encode(),
-                                 CLIENTs={'Authorization': f'Bearer {KEY}',
-                                          'Content-Type': 'CLIENT/json'})
-    with urllib.CLIENT.urlopen(req, timeout=120) as r:
+    req = urllib.request.Request(URL, data=json.dumps(body).encode(),
+                                 headers={'Authorization': f'Bearer {KEY}',
+                                          'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=120) as r:
         data = json.loads(r.read().decode())
     got = [re.sub(r'^\s*\d+[.)]\s*', '', l).strip() for l in
            (data['choices'][0]['message']['content'] or '').splitlines() if l.strip()]
@@ -99,7 +99,7 @@ def main() -> None:
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         missing = [k for k in keys if k not in have]
         if not missing:
             log(f'{code[:36].ljust(36)} кэш полный ({len(keys)})')
@@ -112,7 +112,7 @@ def main() -> None:
             for src, dst in zip(chunk, got):
                 if not dst:
                     continue
-                conn.execute('INSERT OR REPLACE INTO CLIENT_line(template_id, src, ru) CLIENT(?,?,?)',
+                conn.execute('INSERT OR REPLACE INTO translation_line(template_id, src, ru) VALUES(?,?,?)',
                              (tid, src, dst))
                 done += 1
             conn.commit()
@@ -126,7 +126,7 @@ def main() -> None:
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         miss = [k for k in keys if k not in have]
         log(f'  {code[:36].ljust(36)} {len(keys)-len(miss)}/{len(keys)}' + (f'  БЕЗ: {miss[:2]}' if miss else '  ✅'))
     conn.close()

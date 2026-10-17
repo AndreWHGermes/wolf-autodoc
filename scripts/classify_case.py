@@ -3,8 +3,8 @@
 """Классификатор новой заявки: определяет группу пакета и выдаёт план сборки.
 
 Использование:
-    /usr/bin/python3 scripts/CLIENTify_case.py <папка с документами клиента>
-    /usr/bin/python3 scripts/CLIENTify_case.py data/gCLIENT_cache/client_65
+    /usr/bin/python3 scripts/classify_case.py <папка с документами клиента>
+    /usr/bin/python3 scripts/classify_case.py data/gdrive_cache/client_65
 
 Зачем: новая заявка опознаётся по составу документов, и по группе сразу берётся
 штатный план сборки (какие документы делать, какие поля откуда брать).
@@ -16,8 +16,8 @@ PLANS = {
  'E33G (новый)': [
    'Remote Work Agreement (годовой доход ≥ 60 000 USD)',
    'Справка банка 12 мес (остаток ≥ 2 000 USD)',
-   'CV (должность = должность в договоре = CLIENT в E-02)',
-   'FORM E-02 (национальность RUSIA, телефон 00, CLIENT на домене агентства)',
+   'CV (должность = должность в договоре = occupation в E-02)',
+   'FORM E-02 (национальность RUSIA, телефон 00, email на домене агентства)',
    'Фото 4×6, страница паспорта со штампом, itinerary',
  ],
  'ITK → Bridging → E33G': [
@@ -66,20 +66,20 @@ def main():
     has = {
       'паспорт': any(re.search(r'passport|паспорт|загран', n, re.I) for n in names),
       'фото': any(re.search(r'photo|фото', n, re.I) for n in names),
-      'статус': bool(re.search(r'CLIENT CLIENT|Visa No\.', blob)),
-      'справка': bool(re.search(r'bank|CLIENTal|справка|bankCLIENTment', ' '.join(names), re.I)),
-      'договор': bool(re.search(r'REMOTE WORK AGREEMENT|EMPLOYMENT CONTRACT|INDEPENDENT CLIENT', blob)),
+      'статус': bool(re.search(r'PERMIT NUMBER|Visa No\.', blob)),
+      'справка': bool(re.search(r'bank|personal|справка|bankstatement', ' '.join(names), re.I)),
+      'договор': bool(re.search(r'REMOTE WORK AGREEMENT|EMPLOYMENT CONTRACT|INDEPENDENT CONTRACTOR', blob)),
       'резюме': any(re.search(r'resume|\bcv\b', n, re.I) for n in names),
       'письмо': bool(re.search(r'PT ALPHA PRIME BALI|SURAT PERMINTAAN', blob)),
       'E-02': bool(re.search(r'STATEMENT LETTER|FORM E-02', blob)),
-      'семья': any(re.search(r'marriage|CLIENT|pernikahan|kelahiran|свидетельств', n, re.I) for n in names),
+      'семья': any(re.search(r'marriage|birth|pernikahan|kelahiran|свидетельств', n, re.I) for n in names),
     }
     z = {
-      'stay_no': (re.search(r'CLIENT CLIENT\s*:?\s*([A-Z0-9-]{8,20})', blob) or
+      'stay_no': (re.search(r'PERMIT NUMBER\s*:?\s*([A-Z0-9-]{8,20})', blob) or
                   re.search(r'Visa No\.\s*:?\s*([A-Z0-9-]{8,20})', blob)),
-      'CLIENT_addr': re.search(r'Address(?: in Indonesia)?[^:]*:?\s*([^\n]{12,90})', blob),
-      'firm': re.search(r'\(?(LLC "[^"]+"|Linguamarina, Inc\.|XCL CLIENT[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|Ltd)\.?)\)?, a (?:company|General Corporation)', blob),
-      'position': re.search(r'(?:engages the CLIENT as an?|position of)\s+([A-Z][A-Za-z /&+\-]{2,40}?)(?:\s+to provide|\s+and the CLIENT|,|\n)', blob),
+      'office_addr': re.search(r'Address(?: in Indonesia)?[^:]*:?\s*([^\n]{12,90})', blob),
+      'firm': re.search(r'\(?(LLC "[^"]+"|Linguamarina, Inc\.|XCL Education[^,]*|[A-Z][A-Za-z&.,\- ]{3,40}(?:Inc|LLC|Ltd)\.?)\)?, a (?:company|General Corporation)', blob),
+      'position': re.search(r'(?:engages the Contractor as an?|position of)\s+([A-Z][A-Za-z /&+\-]{2,40}?)(?:\s+to provide|\s+and the Employee|,|\n)', blob),
       'balance': re.search(r'deposit balance is\s*([\d \u00a0,.]{5,20})\s*rubles', blob),
       'bridging': bool(re.search(r'Bridging', blob, re.I)),
       'd12': bool(re.search(r'\bD12\b', blob)),

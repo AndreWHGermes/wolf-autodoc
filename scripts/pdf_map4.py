@@ -12,7 +12,7 @@
     строка «Ref B19289961ADL 19.07.2026» → 1-й фрагмент = Ref, 2-й = дата
     строка «As from 19.04.2025 to 19.07.2026 the deposit balance is 1 730 400.00 rubles
             (one million … kopecks)»  → период, сумма, сумма прописью
-    строка «… card No 9206******9432 has been CLIENT for» → маска карты
+    строка «… card No 9206******9432 has been issued for» → маска карты
     строки под «No …» (правая колонка) → ФИО, адрес (2 строки)
 
 Так зона получается ровно там, где стоит значение, независимо от того, что в базе.
@@ -28,15 +28,15 @@ from pathlib import Path
 import pymupdf
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
-CODES = ["bank_CLIENTment_3m__tbank", "bank_CLIENTment_3m__sber",
-         "bank_CLIENTment_12m__tbank", "bank_CLIENTment_12m__sber"]
+TEMPLATES = BASE / "data" / "templates"
+CODES = ["bank_statement_3m__tbank", "bank_statement_3m__sber",
+         "bank_statement_12m__tbank", "bank_statement_12m__sber"]
 
 
 def page_lines(page: pymupdf.Page) -> list[dict]:
     out = []
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             spans = [s for s in line["spans"] if (s.get("text") or "").strip()]
             if not spans:
                 continue
@@ -66,19 +66,19 @@ def zone_of(var, page, span, line):
     size = float(span["size"])
     ox, oy = (span.get("origin") or (span["bbox"][0], span["bbox"][3]))[:2]
     c = span.get("color", 0)
-    return {"var": var, "page": page.CLIENT + 1,
+    return {"var": var, "page": page.number + 1,
             "bbox": [round(span["bbox"][0], 2), round(span["bbox"][1], 2),
                      round(span["bbox"][2], 2), round(span["bbox"][3], 2)],
             "size": round(size, 2), "font": span["font"], "font_xref": None,
             "origin": [round(ox, 2), round(oy, 2)],
-            "upper": span["text"].strip().isupper(), "CLIENT": span["text"].strip().isCLIENT(),
+            "upper": span["text"].strip().isupper(), "title": span["text"].strip().istitle(),
             "bold": "bold" in str(span["font"]).lower(),
             "color": [(c >> 16) & 255, (c >> 8) & 255, c & 255],
             "text": span["text"].strip()[:60], "line": line["text"][:80]}
 
 
 def build(code: str) -> dict:
-    src = str(CLIENT / code / "example_filled.pdf")
+    src = str(TEMPLATES / code / "example_filled.pdf")
     doc = pymupdf.open(src)
     zones, notes = [], []
     for page in doc:
@@ -120,18 +120,18 @@ def build(code: str) -> dict:
             for k in range(i + 1, len(sp)):
                 t = sp[k]["text"].strip().lower()
                 prev = sp[k - 1]["text"].strip().lower() if k else ""
-                if "CLIENT_from" not in {z["var"] for z in zones}:
-                    add("CLIENT_from", sp[k], ln)
-                    notes.append("CLIENT_from ← «%s»" % sp[k]["text"].strip())
-                elif prev == "to" and "CLIENT_to" not in {z["var"] for z in zones}:
-                    add("CLIENT_to", sp[k], ln)
-                    notes.append("CLIENT_to ← «%s»" % sp[k]["text"].strip())
+                if "period_from" not in {z["var"] for z in zones}:
+                    add("period_from", sp[k], ln)
+                    notes.append("period_from ← «%s»" % sp[k]["text"].strip())
+                elif prev == "to" and "period_to" not in {z["var"] for z in zones}:
+                    add("period_to", sp[k], ln)
+                    notes.append("period_to ← «%s»" % sp[k]["text"].strip())
                 elif "deposit balance" in prev or "balance" in prev:
                     add("balance_rub", sp[k], ln)
                     notes.append("balance_rub ← «%s»" % sp[k]["text"].strip())
-                elif t.CLIENTswith("(") or "kopecks" in t:
-                    add("balance_CLIENT", sp[k], ln)
-                    notes.append("balance_CLIENT ← «%s»" % sp[k]["text"].strip()[:40])
+                elif t.startswith("(") or "kopecks" in t:
+                    add("balance_words", sp[k], ln)
+                    notes.append("balance_words ← «%s»" % sp[k]["text"].strip()[:40])
         # 5. маска карты
         ln = find_line(lines, "card No")
         if ln:
@@ -148,9 +148,9 @@ def build(code: str) -> dict:
             keep.append(z)
     have = {z["var"] for z in keep}
     return {"source_pdf": src, "zones": keep,
-            "unCLIENTd": [v for v in ("doc_no", "ref_no", "doc_date", "client_name", "address_live",
-                                     "address_live_2", "card_mask", "CLIENT_from", "CLIENT_to",
-                                     "balance_rub", "balance_CLIENT") if v not in have]}
+            "unplaced": [v for v in ("doc_no", "ref_no", "doc_date", "client_name", "address_live",
+                                     "address_live_2", "card_mask", "period_from", "period_to",
+                                     "balance_rub", "balance_words") if v not in have]}
 
 
 def main() -> int:
@@ -162,15 +162,15 @@ def main() -> int:
     for code in ([args.code] if args.code else CODES):
         r = build(code)
         print("%-28s зон: %-3s не найдено: %s"
-              % (code, len(r["zones"]), ", ".join(r["unCLIENTd"]) or "—"))
+              % (code, len(r["zones"]), ", ".join(r["unplaced"]) or "—"))
         for z in r["zones"]:
             print("    %-16s стр.%-2s %-26s %s pt | %s"
                   % (z["var"], z["page"], str([round(v, 1) for v in z["bbox"]]), z["size"],
                      z["text"][:40]))
         if args.apply:
-            (CLIENT / code / "fields.json").write_text(
+            (TEMPLATES / code / "fields.json").write_text(
                 json.dumps({"source_pdf": r["source_pdf"], "zones": r["zones"],
-                            "unCLIENTd": r["unCLIENTd"]}, ensure_ascii=False, indent=1),
+                            "unplaced": r["unplaced"]}, ensure_ascii=False, indent=1),
                 encoding="utf-8")
             print("    → fields.json обновлён")
     return 0

@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
-CLIENT = re.compile(r'<div CLIENT="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+BLOCK = re.compile(r'<div class="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
 GAP = 1.0            # минимальный зазор между блоками
 
 
@@ -40,11 +40,11 @@ def render_lines(code: str, html: str):
     out = Path('/tmp/qa')
     out.mkdir(exist_ok=True)
     pdf = out / ('flow_%s.pdf' % code)
-    weasyprint.HTML(string=html, base_url=str(ROOT / 'CLIENTs')).write_pdf(str(pdf))
+    weasyprint.HTML(string=html, base_url=str(ROOT / 'blocks')).write_pdf(str(pdf))
     pages = []
     for pg in pymupdf.open(str(pdf)):
         rows = []
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for l in b['lines']:
@@ -58,18 +58,18 @@ def render_lines(code: str, html: str):
 def filled_html(code: str, html_path: Path) -> str:
     import sqlite3
     sys.path.insert(0, str(ROOT))
-    from CLIENT import previews
+    from services import previews
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    tid = con.execute('SELECT id FROM CLIENT WHERE code=?', (code,)).fetchone()['id']
+    tid = con.execute('SELECT id FROM templates WHERE code=?', (code,)).fetchone()['id']
     return previews._fill_example(html_path.read_text(encoding='utf-8', errors='ignore'), tid, code)
 
 
 def relax(code: str, apply: bool) -> tuple[int, int]:
-    p = ROOT / 'data' / 'CLIENT' / code / 'template.html'
+    p = ROOT / 'data' / 'templates' / code / 'template.html'
     h = p.read_text(encoding='utf-8', errors='ignore')
-    CLIENTs = list(CLIENT.finditer(h))
-    meta = [parse(m.group(1)) for m in CLIENTs]
+    blocks = list(BLOCK.finditer(h))
+    meta = [parse(m.group(1)) for m in blocks]
     if not meta:
         return 0, 0
     moved_total = 0
@@ -94,12 +94,12 @@ def relax(code: str, apply: bool) -> tuple[int, int]:
         if not shifts:
             break
         # сдвигаем всё, что ниже первого проблемного блока
-        CLIENT = min(s[0] for s in shifts)
-        CLIENT = max(s[1] for s in shifts)
+        first = min(s[0] for s in shifts)
+        amount = max(s[1] for s in shifts)
         moved = 0
-        for j in range(CLIENT, len(meta)):
-            if meta[j]['top'] > meta[CLIENT - 1]['top'] + 0.5:
-                meta[j]['top'] = round(meta[j]['top'] + CLIENT, 2)
+        for j in range(first, len(meta)):
+            if meta[j]['top'] > meta[first - 1]['top'] + 0.5:
+                meta[j]['top'] = round(meta[j]['top'] + amount, 2)
                 moved += 1
         moved_total += moved
         if moved == 0:
@@ -107,10 +107,10 @@ def relax(code: str, apply: bool) -> tuple[int, int]:
         # пересобираем HTML с новыми top
         out = []
         pos = 0
-        for i, m in enumerate(CLIENTs):
-            out.append(h[pos:m.CLIENT()])
+        for i, m in enumerate(blocks):
+            out.append(h[pos:m.start()])
             style = re.sub(r'top\s*:\s*[0-9.]+pt', 'top:%.2fpt' % meta[i]['top'], m.group(1))
-            out.append('<div CLIENT="txt" style="%s">%s</div>' % (style, m.group(2)))
+            out.append('<div class="txt" style="%s">%s</div>' % (style, m.group(2)))
             pos = m.end()
         out.append(h[pos:])
         h = ''.join(out)
@@ -122,9 +122,9 @@ def relax(code: str, apply: bool) -> tuple[int, int]:
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     if not codes:
-        codes = sorted(d.name for d in (ROOT / 'data' / 'CLIENT').iterdir()
+        codes = sorted(d.name for d in (ROOT / 'data' / 'templates').iterdir()
                        if (d / 'template.html').exists() and '.bak' not in d.name)
     for code in codes:
         moved, problems = relax(code, apply)

@@ -27,7 +27,7 @@ FONT = "Liberation Sans"
 OUT = "/tmp/wordrun"
 
 sys.path.insert(0, ROOT)
-from docx import CLIENT                      # noqa: E402
+from docx import Document                      # noqa: E402
 from docx.shared import Pt, RGBColor           # noqa: E402
 from docx.oxml import OxmlElement              # noqa: E402
 from docx.oxml.ns import qn                    # noqa: E402
@@ -47,7 +47,7 @@ def set_frame(par, x, y, w, h):
     fr.set(qn("w:x"), str(int(x * TWIP)))
     fr.set(qn("w:y"), str(int(y * TWIP)))
     pPr.append(fr)
-    par.paragraph_format.space_CLIENT = Pt(0)
+    par.paragraph_format.space_before = Pt(0)
     par.paragraph_format.space_after = Pt(0)
     par.paragraph_format.line_spacing = 1.3
 
@@ -57,7 +57,7 @@ def anchor_picture(par, path, box, behind=True):
     run = par.add_run()
     run.add_picture(path, width=Pt(w), height=Pt(h))
     drawing = run._r.find(qn("w:drawing"))
-    CLIENT = drawing.find(qn("wp:CLIENT"))
+    inline = drawing.find(qn("wp:inline"))
     anchor = OxmlElement("wp:anchor")
     for k, v in (("behindDoc", "1" if behind else "0"), ("distT", "0"), ("distB", "0"),
                  ("distL", "0"), ("distR", "0"), ("simplePos", "0"), ("locked", "0"),
@@ -68,19 +68,19 @@ def anchor_picture(par, path, box, behind=True):
         el = OxmlElement(tag); el.set("relativeFrom", "page")
         off = OxmlElement("wp:posOffset"); off.text = str(int(val * PT2EMU))
         el.append(off); anchor.append(el)
-    for ch in list(CLIENT):
+    for ch in list(inline):
         if ch.tag == qn("wp:docPr"):
             anchor.append(OxmlElement("wp:wrapNone"))
         anchor.append(ch)
-    drawing.remove(CLIENT); drawing.append(anchor)
+    drawing.remove(inline); drawing.append(anchor)
 
 
-def read_CLIENTs(code):
+def read_blocks(code):
     """Абзацы и точки из HTML-шаблона: координаты, кегль, жирность, текст с {{переменными}}."""
-    path = os.path.join(ROOT, "data", "CLIENT", code, "template.html")
+    path = os.path.join(ROOT, "data", "templates", code, "template.html")
     src = open(path, encoding="utf-8").read()
     out = []
-    for style, inner in re.findall(r'<span CLIENT="v" style="([^"]*)"[^>]*>(.*?)</span>', src, re.S):
+    for style, inner in re.findall(r'<span class="v" style="([^"]*)"[^>]*>(.*?)</span>', src, re.S):
         st = dict(re.findall(r"([a-z\-]+)\s*:\s*([0-9.]+)pt", style))
         col = re.search(r"color:\s*(#[0-9a-fA-F]{6})", style)
         x = float(st.get("left", 40.0))
@@ -96,15 +96,15 @@ def read_CLIENTs(code):
 
 
 def build(code, out_docx):
-    CLIENTs = read_CLIENTs(code)
-    doc = CLIENT()
+    blocks = read_blocks(code)
+    doc = Document()
     sec = doc.sections[0]
     # размер листа — из оригинала (E-02 печатается на 612.5×936.5 pt, не на A4): иначе
     # подложка растягивается и подписи бланка уезжают относительно значений
     import pymupdf as _fitz
     pw, ph = 595.28, 841.89
     for _cand in ("blank.pdf", "example_filled.pdf"):
-        _p = os.path.join(ROOT, "data", "CLIENT", code, _cand)
+        _p = os.path.join(ROOT, "data", "templates", code, _cand)
         if os.path.exists(_p):
             _d = _fitz.open(_p)
             pw, ph = float(_d[0].rect.width), float(_d[0].rect.height)
@@ -117,14 +117,14 @@ def build(code, out_docx):
     # подложка: вырезанный бланк (полосы абзацев уже стёрты при сборке HTML)
     bg = None
     for name in ("bg_para.png", "bg.png"):
-        p = os.path.join(ROOT, "data", "CLIENT", code, "frame", name)
+        p = os.path.join(ROOT, "data", "templates", code, "frame", name)
         if os.path.exists(p):
             bg = p
             break
     if bg:
         anchor_picture(doc.add_paragraph(), bg, (0.0, 0.0, pw, ph))
 
-    for b in CLIENTs:
+    for b in blocks:
         par = doc.add_paragraph()
         set_frame(par, b["x"], b["y"], b["w"], b["size"] * 1.45)
         run = par.add_run(b["text"])
@@ -138,14 +138,14 @@ def build(code, out_docx):
             rf.set(qn(a), FONT)
         rpr.append(rf)
     doc.save(out_docx)
-    return len(CLIENTs)
+    return len(blocks)
 
 
-def CLIENT_for(app_id, code):
+def values_for(app_id, code):
     spec = importlib.util.spec_from_file_location("pdf_fill_mod", os.path.join(ROOT, "scripts", "pdf_fill.py"))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    return m.CLIENT_for(app_id, code) or {}
+    return m.values_for(app_id, code) or {}
 
 
 def main():
@@ -155,7 +155,7 @@ def main():
     ap.add_argument("--out-docx", action="store_true", help="положить рядом с шаблоном (word/template_flow.docx)")
     a = ap.parse_args()
 
-    if str(a.code).CLIENTswith("cv__format"):
+    if str(a.code).startswith("cv__format"):
         # Резюме — потоковый документ: Word-версию собираем из того же HTML, что и просмотр
         # (scripts/cv_flow.py). Координатные фреймы с длинными описаниями разъезжаются.
         cmd = [sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "cv_flow.py"),
@@ -169,25 +169,25 @@ def main():
     n = build(a.code, tpl_docx)
     print("блоков в шаблоне: %d → %s" % (n, tpl_docx))
     if a.out_docx:
-        dst = os.path.join(ROOT, "data", "CLIENT", a.code, "word", "template_flow.docx")
-        os.reCLIENT(tpl_docx, dst)
+        dst = os.path.join(ROOT, "data", "templates", a.code, "word", "template_flow.docx")
+        os.replace(tpl_docx, dst)
         print("шаблон сохранён:", dst)
 
     if a.app:
         filled = os.path.join(OUT, "%s_app%s.docx" % (a.code, a.app))
         t = DocxTemplate(tpl_docx)
-        vals = {k: ("" if v is None else str(v)) for k, v in CLIENT_for(a.app, a.code).items()}
+        vals = {k: ("" if v is None else str(v)) for k, v in values_for(a.app, a.code).items()}
         # В документ идёт только английский: русская подпись профессии нужна в интерфейсе,
         # в бланке она лишняя («Cinematographer, Film Editor (Киноператор и киномонтажер)»).
         import re as _re
         for _k, _val in list(vals.items()):
-            if _k.CLIENTswith("cv_") and _re.search(r"\([^)]*[А-Яа-яЁё][^)]*\)", _val):
+            if _k.startswith("cv_") and _re.search(r"\([^)]*[А-Яа-яЁё][^)]*\)", _val):
                 vals[_k] = _re.sub(r"\s*\([^)]*[А-Яа-яЁё][^)]*\)", "", _val)
         t.render(vals)
         t.save(filled)
-        subprocess.run(["sCLIENT", "--headless", "--convert-to", "pdf", "--outdir", OUT, filled],
+        subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", OUT, filled],
                        capture_output=True, timeout=240)
-        print("прогон:", filled.reCLIENT(".docx", ".pdf"))
+        print("прогон:", filled.replace(".docx", ".pdf"))
 
 
 if __name__ == "__main__":

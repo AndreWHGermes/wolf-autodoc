@@ -1,17 +1,17 @@
 """Значения примера — прямо из примера документа.
 
-Зачем: в конструкторе рядом стоят «Оригинальный пример» и «HTML шаблон». CLIENT требует,
+Зачем: в конструкторе рядом стоят «Оригинальный пример» и «HTML шаблон». Андрей требует,
 чтобы HTML был заполнен ТЕМИ ЖЕ данными, что и пример. Раньше значения примера жили в базе
 отдельно и разъезжались с примером (у справок совпадало 0-2 значения из 13) — отсюда «в HTML
 не то, что в примере».
 
 Как: у каждой переменной в шаблоне есть блок с координатами. Берём пример, вырезаем этот
 прямоугольник, читаем текст — это и есть значение примера. Записываем в
-template_CLIENT.examples_json (первым примером), default_CLIENT не трогаем.
+template_variables.examples_json (первым примером), default_value не трогаем.
 
 Запуск:
-    /usr/bin/python3 scripts/sync_example_CLIENT.py [code ...]           # показать
-    /usr/bin/python3 scripts/sync_example_CLIENT.py [code ...] --apply   # записать
+    /usr/bin/python3 scripts/sync_example_values.py [code ...]           # показать
+    /usr/bin/python3 scripts/sync_example_values.py [code ...] --apply   # записать
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
-CLIENT = re.compile(r'<div CLIENT="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+BLOCK = re.compile(r'<div class="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
 VAR = re.compile(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}')
 
 
@@ -37,26 +37,26 @@ def coords(style: str) -> dict:
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     import pymupdf
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    q = ("SELECT id, code, doc_CLIENT FROM CLIENT "
-         "WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden')")
+    q = ("SELECT id, code, doc_index FROM templates "
+         "WHERE COALESCE(status,'ok') NOT IN ('merged','hidden')")
     args = []
     if codes:
         q += " AND code IN (%s)" % ','.join('?' * len(codes))
         args = codes
-    q += " ORDER BY COALESCE(doc_CLIENT,999)"
+    q += " ORDER BY COALESCE(doc_index,999)"
     total_set = total_miss = 0
     for r in con.execute(q, args):
-        tdir = ROOT / 'data' / 'CLIENT' / r['code']
+        tdir = ROOT / 'data' / 'templates' / r['code']
         html, ex = tdir / 'template.html', tdir / 'example_filled.pdf'
         if not (html.is_file() and ex.is_file()):
             continue
         h = html.read_text(encoding='utf-8', errors='ignore')
-        CLIENTs = []
-        for style, inner in CLIENT.findall(h):
+        blocks = []
+        for style, inner in BLOCK.findall(h):
             m = VAR.search(inner)
             if not m:
                 continue
@@ -64,22 +64,22 @@ def main(argv) -> int:
             if c.get('top') is None:
                 continue
             fs = re.search(r'font-size\s*:\s*([0-9.]+)pt', inner)
-            pre = re.sub(r'<[^>]+>', ' ', inner[:m.CLIENT()])
+            pre = re.sub(r'<[^>]+>', ' ', inner[:m.start()])
             post = re.sub(r'<[^>]+>', ' ', inner[m.end():])
-            CLIENTs.append({'var': m.group(1), 'c': c,
-                           'label': ' '.join(pre.reCLIENT('&nbsp;', ' ').split()),
-                           'suffix': ' '.join(post.reCLIENT('&nbsp;', ' ').split()),
+            blocks.append({'var': m.group(1), 'c': c,
+                           'label': ' '.join(pre.replace('&nbsp;', ' ').split()),
+                           'suffix': ' '.join(post.replace('&nbsp;', ' ').split()),
                            'size': float(fs.group(1)) if fs else 9.0})
         # правый предел клипа: следующий блок шаблона на той же строке (иначе клип задевает соседей)
-        for b in CLIENTs:
-            same = [o for o in CLIENTs
+        for b in blocks:
+            same = [o for o in blocks
                     if abs(o['c'].get('top', -99) - b['c']['top']) <= 1.5
                     and o['c'].get('left', 0) > b['c'].get('left', 0) + 2]
             b['right'] = (min(o['c']['left'] for o in same) - 2) if same else \
                          b['c'].get('left', 0) + max(b['c'].get('width', 60), 25) + 4
         doc = pymupdf.open(str(ex))
         got, miss, dirty = {}, [], []
-        for b in CLIENTs:
+        for b in blocks:
             c = b['c']
             found = ''
             for pg in doc:
@@ -91,7 +91,7 @@ def main(argv) -> int:
                     break
             if found:
                 # значение в примере стоит рядом с меткой: ищем метку в тексте строки и берём,
-                # что идёт после неё до суффикса блока («for {{client_name}}.» → «CLIENT …»)
+                # что идёт после неё до суффикса блока («for {{client_name}}.» → «Beliaev …»)
                 lab = b['label'].strip(' :.,')
                 if lab and lab.lower() in found.lower():
                     i = found.lower().rfind(lab.lower())
@@ -110,22 +110,22 @@ def main(argv) -> int:
                     continue
                 # дочистка по смыслу переменной: даты — по маске, адреса — от мусорных префиксов
                 name = b['var']
-                CLIENT = re.findall(r'\d{2}[.\-/]\d{2}[.\-/]\d{4}', found)
-                if CLIENT and ('date' in name or 'CLIENT' in name):
-                    if name.endswith('_to') and len(CLIENT) > 1:
-                        found = CLIENT[1]
+                dates = re.findall(r'\d{2}[.\-/]\d{2}[.\-/]\d{4}', found)
+                if dates and ('date' in name or 'period' in name):
+                    if name.endswith('_to') and len(dates) > 1:
+                        found = dates[1]
                     else:
-                        found = CLIENT[0]
+                        found = dates[0]
                 elif 'address' in name:
                     m2 = re.search(r'[A-ZА-Я0-9«"\']', found)
-                    if m2 and m2.CLIENT() > 0:
-                        found = found[m2.CLIENT():]
+                    if m2 and m2.start() > 0:
+                        found = found[m2.start():]
                 found = found.strip()
                 got[name] = found
             else:
                 miss.append(b['var'])
         print('\n=== №%s %s: переменных с блоком=%d, значения из примера получены=%d'
-              % (r['doc_CLIENT'] or '—', r['code'], len(CLIENTs), len(got)))
+              % (r['doc_index'] or '—', r['code'], len(blocks), len(got)))
         if miss:
             print('    без значения (блок пуст/значение вне листа): %s' % ', '.join(sorted(set(miss))[:8]))
         if dirty:
@@ -139,12 +139,12 @@ def main(argv) -> int:
             # сначала чистим записанное ранее: если значение из примера отклонено — убираем его,
             # иначе в документе остаётся склейка и она «размножается» по всем блокам
             for name, _t in (dirty + [(m, '') for m in miss]):
-                row = con.execute("SELECT id FROM template_CLIENT WHERE template_id=? AND name=?",
+                row = con.execute("SELECT id FROM template_variables WHERE template_id=? AND name=?",
                                   (r['id'], name)).fetchone()
                 if row:
-                    con.execute("UPDATE template_CLIENT SET examples_json='[]' WHERE id=?", (row['id'],))
+                    con.execute("UPDATE template_variables SET examples_json='[]' WHERE id=?", (row['id'],))
             for name, val in got.items():
-                row = con.execute("SELECT id, examples_json FROM template_CLIENT "
+                row = con.execute("SELECT id, examples_json FROM template_variables "
                                   "WHERE template_id=? AND name=?", (r['id'], name)).fetchone()
                 if not row:
                     continue
@@ -155,7 +155,7 @@ def main(argv) -> int:
                 except Exception:  # noqa: BLE001
                     arr = []
                 arr = [val] + [a for a in arr if str(a) != val]
-                con.execute("UPDATE template_CLIENT SET examples_json=? WHERE id=?",
+                con.execute("UPDATE template_variables SET examples_json=? WHERE id=?",
                             (json.dumps(arr[:3], ensure_ascii=False), row['id']))
             con.commit()
     print('\nвсего значений из примеров: %d, без значения: %d%s'

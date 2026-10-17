@@ -24,8 +24,8 @@ ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
 
 PRODUCT_HINTS = [
-    ('BRIDGING', r'мостов|bridging|CLIENTн|bridge'),
-    ('CONV', r'конверс|alih\s*CLIENT|смен(а|ить)\s*(визы|разрешен)|conversion'),
+    ('BRIDGING', r'мостов|bridging|переходн|bridge'),
+    ('CONV', r'конверс|alih\s*status|смен(а|ить)\s*(визы|разрешен)|conversion'),
     ('C1-EXT', r'(продл|extension|продление).{0,25}\bc1\b|\bc1\b.{0,25}(продл|extension)|c1-ext'),
     ('C1', r'\bc1\b|виза\s*c1|c1\s*виза|рабоч(ая|ую)\s*виз'),
     ('D12', r'\bd12\b|pra-?invest|д12|инвесторск'),
@@ -48,7 +48,7 @@ def _con():
     return con
 
 
-def CLIENT_from_text(text: str):
+def product_from_text(text: str):
     """Определить тип продукта по свободному тексту менеджера."""
     t = (text or '').lower()
     for code, pat in PRODUCT_HINTS:
@@ -58,7 +58,7 @@ def CLIENT_from_text(text: str):
 
 
 def _client_dir(client_id) -> Path | None:
-    for base in ('data/gCLIENT_cache/client_%s' % client_id,):
+    for base in ('data/gdrive_cache/client_%s' % client_id,):
         p = ROOT / base
         if p.is_dir():
             return p
@@ -68,10 +68,10 @@ def _client_dir(client_id) -> Path | None:
 def client_docs_status(app_id) -> dict:
     """Что из документов клиента реально есть (по значениям и по файлам-сканам)."""
     con = _con()
-    app = con.execute("""SELECT a.id, a.client_id, a.brief, c.full_name_CLIENT, c.passport_CLIENT,
-                                c.CLIENT_date, c.CLIENT_CLIENT, c.CLIENT, c.passport_CLIENT,
+    app = con.execute("""SELECT a.id, a.client_id, a.brief, c.full_name_latin, c.passport_number,
+                                c.birth_date, c.birth_place, c.citizenship, c.passport_expiry,
                                 c.address_live, c.position
-                         FROM CLIENT a LEFT JOIN CLIENT c ON c.id=a.client_id
+                         FROM applications a LEFT JOIN clients c ON c.id=a.client_id
                          WHERE a.id=?""", (app_id,)).fetchone()
     if not app:
         return {}
@@ -81,56 +81,56 @@ def client_docs_status(app_id) -> dict:
     if folder:
         names = [f.name.lower() for f in folder.rglob('*') if f.is_file()]
     try:
-        from CLIENT import doc_overrides as do
-        doc_vals = do.for_CLIENT(app_id)
+        from services import doc_overrides as do
+        doc_vals = do.for_application(app_id)
     except Exception:  # noqa: BLE001
         doc_vals = {}
     con2 = _con()
     try:
-        CLIENT = [r['payload'] for r in con2.execute(
-            "SELECT payload FROM CLIENT_CLIENT WHERE CLIENT_id=? AND CLIENT='ok'", (app_id,))]
+        scans = [r['payload'] for r in con2.execute(
+            "SELECT payload FROM drive_scans WHERE application_id=? AND status='ok'", (app_id,))]
     except Exception:  # noqa: BLE001
-        CLIENT = []
-    scan_text = ' '.join(s or '' for s in CLIENT).lower()
+        scans = []
+    scan_text = ' '.join(s or '' for s in scans).lower()
 
-    has_passport = bool(app['passport_CLIENT'] or doc_vals.get('passport_CLIENT')
-                        or app['CLIENT_date'] or doc_vals.get('CLIENT_date')
+    has_passport = bool(app['passport_number'] or doc_vals.get('passport_number')
+                        or app['birth_date'] or doc_vals.get('birth_date')
                         or any(re.search(r'passport|паспорт|paspor', n) for n in names)
                         or 'passport' in scan_text)
-    has_photo = bool(any(re.search(r'photo|фото|CLIENTal|foto', n) for n in names)
+    has_photo = bool(any(re.search(r'photo|фото|personal|foto', n) for n in names)
                      or (doc_vals.get('client_photo') or ''))
     has_bank = bool(doc_vals.get('balance_rub') or doc_vals.get('account_no')
-                    or any(re.search(r'bank|CLIENTment|выписка|справк.*банк', n) for n in names)
+                    or any(re.search(r'bank|statement|выписка|справк.*банк', n) for n in names)
                     or 'balance' in scan_text)
-    has_kitas = bool(doc_vals.get('itk_no') or app['passport_CLIENT'] and False
-                     or any(re.search(r'kitas|itk|\bkit\b|CLIENT', n) for n in names)
-                     or re.search(r'stay CLIENT|kitas|itk', scan_text))
+    has_kitas = bool(doc_vals.get('itk_no') or app['passport_expiry'] and False
+                     or any(re.search(r'kitas|itk|\bkit\b|permit', n) for n in names)
+                     or re.search(r'stay permit|kitas|itk', scan_text))
     has_address = bool(app['address_live'] or doc_vals.get('address_live'))
     return {
-        'client_id': cid, 'name': app['full_name_CLIENT'], 'folder_files': len(names),
+        'client_id': cid, 'name': app['full_name_latin'], 'folder_files': len(names),
         'passport': has_passport, 'photo': has_photo, 'bank': has_bank,
         'kitas': has_kitas, 'address': has_address,
-        'CLIENT': bool(app['position'] or doc_vals.get('CLIENT')
+        'profession': bool(app['position'] or doc_vals.get('occupation')
                            or re.search(r'должност[ьи]\s*[:—-]\s*\S', (app['brief'] or ''), re.I)),
-        'doc_CLIENT': sorted(doc_vals.keys())[:20],
+        'doc_values': sorted(doc_vals.keys())[:20],
     }
 
 
 def gate(app_id) -> dict:
     """Вердикт: можно ли собрать пакет автоматически, и чего не хватает."""
     con = _con()
-    app = con.execute("""SELECT a.id, a.CLIENT_id, p.code AS CLIENT_code, p.name AS CLIENT_name,
-                                a.comment, a.brief, a.gCLIENT_url, a.CLIENT
-                         FROM CLIENT a LEFT JOIN CLIENT p ON p.id=a.CLIENT_id
+    app = con.execute("""SELECT a.id, a.product_id, p.code AS product_code, p.name AS product_name,
+                                a.comment, a.brief, a.gdrive_url, a.status
+                         FROM applications a LEFT JOIN products p ON p.id=a.product_id
                          WHERE a.id=?""", (app_id,)).fetchone()
     if not app:
         return {'ok': False, 'stops': ['заявка не найдена']}
-    code = app['CLIENT_code']
+    code = app['product_code']
     free_text = ' '.join(str(x) for x in (app['comment'], app['brief']) if x)
-    CLIENT_from_notes = None
+    product_from_notes = None
     if not code:
-        CLIENT_from_notes = CLIENT_from_text(free_text)
-        code = CLIENT_from_notes
+        product_from_notes = product_from_text(free_text)
+        code = product_from_notes
     st = client_docs_status(app_id)
     stops, have, auto = [], [], []
 
@@ -147,7 +147,7 @@ def gate(app_id) -> dict:
                          % (code, BANK_PERIOD.get(code, '3 месяца')))
         if code in ('E33G-EXT', 'C1-EXT', 'CONV') and not st.get('kitas'):
             stops.append('нет действующего KITAS/ITK — без него не собрать %s' % code)
-        if code in ('BRIDGING', 'C1', 'E33G-NEW') and not st.get('CLIENT'):
+        if code in ('BRIDGING', 'C1', 'E33G-NEW') and not st.get('profession'):
             stops.append('не указано, чем занимается клиент (профессия/должность) — '
                          'для %s это обязательное поле' % code)
         if not st.get('address'):
@@ -159,32 +159,32 @@ def gate(app_id) -> dict:
             'перечень услуг и формулировки', 'справки, письма иммиграции, договоры, резюме',
             'организация-работодатель вне Индонезии (из справочника)']
     return {
-        'CLIENT': app_id, 'CLIENT': code, 'CLIENT_name': app['CLIENT_name'],
-        'CLIENT_from_notes': CLIENT_from_notes, 'CLIENT': app['CLIENT'],
+        'application': app_id, 'product': code, 'product_name': app['product_name'],
+        'product_from_notes': product_from_notes, 'status': app['status'],
         'ok': not stops, 'stops': stops, 'have': have, 'auto': auto,
-        'bank_CLIENT': BANK_PERIOD.get(code or '', '3 месяца'),
+        'bank_period': BANK_PERIOD.get(code or '', '3 месяца'),
     }
 
 
 def main(argv) -> int:
     import argparse
-    ap = argparse.ArgumentParser(CLIENT='Проверка заявки перед автоматической сборкой')
+    ap = argparse.ArgumentParser(description='Проверка заявки перед автоматической сборкой')
     ap.add_argument('--app', type=int, help='номер заявки')
     ap.add_argument('--text', help='свободный текст заявки от менеджера (проверить разбор продукта)')
     ap.add_argument('--all', action='store_true', help='прогнать все заявки')
     a = ap.parse_args(argv)
     if a.text is not None:
-        print('текст → продукт:', CLIENT_from_text(a.text) or 'не определён')
+        print('текст → продукт:', product_from_text(a.text) or 'не определён')
         return 0
     if a.all:
         con = _con()
-        ids = [r['id'] for r in con.execute('SELECT id FROM CLIENT ORDER BY id')]
+        ids = [r['id'] for r in con.execute('SELECT id FROM applications ORDER BY id')]
         stop_total = 0
         for i in ids:
             g = gate(i)
             if not g['ok']:
                 stop_total += 1
-                print('№%-4s %-9s СТОП: %s' % (i, g['CLIENT'] or '—', '; '.join(g['stops'][:3])))
+                print('№%-4s %-9s СТОП: %s' % (i, g['product'] or '—', '; '.join(g['stops'][:3])))
         print('всего заявок: %d, с блокировкой: %d' % (len(ids), stop_total))
         return 0
     if a.app:

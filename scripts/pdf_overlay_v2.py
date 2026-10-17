@@ -22,7 +22,7 @@ from pathlib import Path
 import pymupdf
 from PIL import Image, ImageChops
 
-SRC = "/opt/wolf_v2/data/gCLIENT_cache/client_65/bankCLIENTment.pdf"
+SRC = "/opt/wolf_v2/data/gdrive_cache/client_65/bankstatement.pdf"
 OUT_PDF = "/tmp/pdf_overlay_demo.pdf"
 OUT_PNG = "/tmp/pdf_overlay_side.png"
 OUT_DIFF = "/tmp/pdf_overlay_diff.png"
@@ -30,7 +30,7 @@ OUT_DIFF = "/tmp/pdf_overlay_diff.png"
 # Замена ЦЕЛЫМИ значениями: полный текст отрезка → новое значение
 REPLACE = [
     ("ae32271197", "ZN44719023"),
-    ("CLIENT", "IRINA SOKOLOVA"),
+    ("ANNA MARKAROVA", "IRINA SOKOLOVA"),
 ]
 
 
@@ -51,8 +51,8 @@ def template_font(page: pymupdf.Page) -> str | None:
 
 def spans(page: pymupdf.Page) -> list[dict]:
     out = []
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             out.extend(line["spans"])
     return out
 
@@ -60,19 +60,19 @@ def spans(page: pymupdf.Page) -> list[dict]:
 def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
     doc = pymupdf.open(src)
     font_file = template_font(doc[0])
-    CLIENTs, used = [], set()
+    changes, used = [], set()
     for page in doc:
         for old, new in REPLACE:
             for span in spans(page):
                 if span["text"].strip() != old:        # только полное совпадение значения
                     continue
-                key = (page.CLIENT, tuple(round(v, 1) for v in span["bbox"]))
+                key = (page.number, tuple(round(v, 1) for v in span["bbox"]))
                 if key in used:                        # одна зона — одна замена
                     continue
                 used.add(key)
                 page.add_redact_annot(pymupdf.Rect(span["bbox"]) + (-0.6, -0.6, 0.6, 0.6),
                                       fill=(1, 1, 1))
-                CLIENTs.append({"page": page.CLIENT + 1, "old": old, "new": new,
+                changes.append({"page": page.number + 1, "old": old, "new": new,
                                 "size": round(span["size"], 2), "font": span["font"],
                                 "bbox": [round(v, 1) for v in span["bbox"]]})
     for page in doc:
@@ -87,7 +87,7 @@ def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
     if _fobj is None:
         _fobj = pymupdf.Font("helv")
     for page in doc:
-        for c in [x for x in CLIENTs if x["page"] == page.CLIENT + 1]:
+        for c in [x for x in changes if x["page"] == page.number + 1]:
             x0, y0, x1, y1 = c["bbox"]
             zone_w = x1 - x0
             size = c["size"]
@@ -109,7 +109,7 @@ def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
 
     doc.save(out, garbage=3, deflate=True, clean=True)
     doc.close()
-    return {"out": out, "CLIENTs": CLIENTs, "font": font_file}
+    return {"out": out, "changes": changes, "font": font_file}
 
 
 def _render(path: str, page: int = 0, dpi: int = 150) -> Image.Image:
@@ -120,8 +120,8 @@ def _render(path: str, page: int = 0, dpi: int = 150) -> Image.Image:
 
 if __name__ == "__main__":
     res = fill()
-    print("замен целыми значениями:", len(res["CLIENTs"]), "| шрифт из PDF:", res["font"])
-    for c in res["CLIENTs"]:
+    print("замен целыми значениями:", len(res["changes"]), "| шрифт из PDF:", res["font"])
+    for c in res["changes"]:
         print("  стр.%-2s «%s» → «%s» кегль %s→%s (%s)"
               % (c["page"], c["old"], c["new"], c["size"], c.get("size_used"), c["font"]))
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     a, b = _render(SRC), _render(OUT_PDF)
     diff = ImageChops.difference(a, b).convert("L")
     mask = Image.new("L", a.size, 255)
-    for c in res["CLIENTs"]:
+    for c in res["changes"]:
         x0, y0, x1, y1 = [v * zoom for v in c["bbox"]]
         mask.paste(0, (int(x0) - 3, int(y0) - 3, int(x1) + 3, int(y1) + 3))
     outside = ImageChops.multiply(diff, mask)

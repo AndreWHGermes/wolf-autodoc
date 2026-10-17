@@ -1,4 +1,4 @@
-"""Убрать CLIENT текста за поле: длинные блоки получают перенос по ширине листа.
+"""Убрать выход текста за поле: длинные блоки получают перенос по ширине листа.
 
 Заказчик видит это как «текст уходит за границу поля». Причина: блок в шаблоне собран с
 white-space:pre и без ограничения ширины — длинное значение печатается одной строкой.
@@ -23,7 +23,7 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 RIGHT = 539.0
-CLIENT = re.compile(r'<div CLIENT="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+BLOCK = re.compile(r'<div class="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
 
 
 def plain(inner: str) -> str:
@@ -36,18 +36,18 @@ def measure(code: str, html_path: Path) -> list[tuple[float, str]]:
     import sqlite3 as _s
     import weasyprint
     import pymupdf
-    from CLIENT import previews
+    from services import previews
     conn = _s.connect(str(ROOT / 'data' / 'wolf.db'))
     conn.row_factory = _s.Row
-    tid = conn.execute('SELECT id FROM CLIENT WHERE code=?', (code,)).fetchone()['id']
+    tid = conn.execute('SELECT id FROM templates WHERE code=?', (code,)).fetchone()['id']
     html = previews._fill_example(html_path.read_text(encoding='utf-8', errors='ignore'), tid, code)
     out = Path('/tmp/qa')
     out.mkdir(exist_ok=True)
     pdf = out / ('overflow_%s.pdf' % code)
-    weasyprint.HTML(string=html, base_url=str(ROOT / 'CLIENTs')).write_pdf(str(pdf))
+    weasyprint.HTML(string=html, base_url=str(ROOT / 'blocks')).write_pdf(str(pdf))
     res = []
     for pg in pymupdf.open(str(pdf)):
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for l in b['lines']:
@@ -59,10 +59,10 @@ def measure(code: str, html_path: Path) -> list[tuple[float, str]]:
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    q = "SELECT code, doc_CLIENT FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden')"
+    q = "SELECT code, doc_index FROM templates WHERE COALESCE(status,'ok') NOT IN ('merged','hidden')"
     args = []
     if codes:
         q += " AND code IN (%s)" % ','.join('?' * len(codes))
@@ -70,15 +70,15 @@ def main(argv) -> int:
     fixed_total = 0
     for r in con.execute(q, args):
         code = r['code']
-        p = ROOT / 'data' / 'CLIENT' / code / 'template.html'
+        p = ROOT / 'data' / 'templates' / code / 'template.html'
         bad = measure(code, p)
         if not bad:
-            print('№%-3s %-38s CLIENTов за поле нет' % (r['doc_CLIENT'] or '—', code))
+            print('№%-3s %-38s выходов за поле нет' % (r['doc_index'] or '—', code))
             continue
         h = p.read_text(encoding='utf-8', errors='ignore')
         hits = 0
         for x1, y0, txt in bad:
-            for m in CLIENT.finditer(h):
+            for m in BLOCK.finditer(h):
                 style, inner = m.group(1), m.group(2)
                 mt = re.search(r'top\s*:\s*([0-9.]+)pt', style)
                 if not (mt and abs(float(mt.group(1)) - y0) <= 8.0):
@@ -90,16 +90,16 @@ def main(argv) -> int:
                 style = re.sub(r'width\s*:\s*[0-9.]+pt;?', '', style)
                 style = re.sub(r'white-space\s*:\s*[a-z-]+;?', '', style)
                 style = style.rstrip('; ') + ';width:%.2fpt;white-space:pre-wrap' % width
-                new_CLIENT = '<div CLIENT="txt" style="%s">%s</div>' % (style, inner)
-                if new_CLIENT != m.group(0):
-                    h = h.reCLIENT(m.group(0), new_CLIENT, 1)
+                new_block = '<div class="txt" style="%s">%s</div>' % (style, inner)
+                if new_block != m.group(0):
+                    h = h.replace(m.group(0), new_block, 1)
                     hits += 1
         if hits and apply:
             bak = p.with_name('template.html.bak_overflow_%s' % time.strftime('%Y%m%d_%H%M%S'))
             shutil.copy2(p, bak)
             p.write_text(h, encoding='utf-8')
         print('№%-3s %-38s строк за полем: %-3d исправлено блоков: %d%s'
-              % (r['doc_CLIENT'] or '—', code, len(bad), hits, '' if apply else '  (пробно)'))
+              % (r['doc_index'] or '—', code, len(bad), hits, '' if apply else '  (пробно)'))
         fixed_total += hits
         if hits and apply:
             left = measure(code, p)

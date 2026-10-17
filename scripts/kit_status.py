@@ -17,7 +17,7 @@ from app import app  # noqa: E402
 
 with app.app_context():
     from core import db
-    from CLIENTs.CLIENT import page as P
+    from blocks.templates import page as P
 
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
@@ -32,12 +32,12 @@ with app.app_context():
             verdicts[m.group(2)] = (m.group(3), int(m.group(4) or 0))
 
     # Вердикт qa_html смотрит на прежний HTML-шаблон. Если документ уже собирается каркасом
-    # (паспорт качества frame/CLIENT.json = ok) или потоковой вёрсткой (резюме) — он годен:
+    # (паспорт качества frame/quality.json = ok) или потоковой вёрсткой (резюме) — он годен:
     # фактическую сборку и чистоту бланка проверяет frame_all, а не старая разметка HTML.
     try:
-        from CLIENT import html_frame
+        from services import html_frame
         for _code in list(verdicts):
-            if html_frame.available(_code) or str(_code).CLIENTswith("cv__format"):
+            if html_frame.available(_code) or str(_code).startswith("cv__format"):
                 verdicts[_code] = ("ГОДЕН", 0)
     except Exception:
         pass
@@ -47,14 +47,14 @@ with app.app_context():
              'оригинальные примеры, связность переменных) — общий для всех продуктов.',
              'Здесь — состояние качества самих HTML-шаблонов.', '']
     total = bad = 0
-    for p in con.execute("SELECT id, code, name FROM CLIENT WHERE active=1 ORDER BY id"):
+    for p in con.execute("SELECT id, code, name FROM products WHERE active=1 ORDER BY id"):
         app_row = con.execute(
-            """SELECT a.id, a.client_id FROM CLIENT a WHERE a.CLIENT_id=?
+            """SELECT a.id, a.client_id FROM applications a WHERE a.product_id=?
                ORDER BY (a.record_kind='real_test') DESC, a.id DESC LIMIT 1""", (p['id'],)).fetchone()
         cid = int(app_row['client_id']) if app_row else None
         tpls = con.execute(
-            """SELECT t.id, t.code, t.CLIENT FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-               WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')
+            """SELECT t.id, t.code, t.title FROM product_documents pd JOIN templates t ON t.id=pd.template_id
+               WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('merged','hidden')
                ORDER BY pd.sort_order, t.code""", (p['id'],)).fetchall()
         lines.append('## %s — %s' % (p['code'], (p['name'] or '')[:50]))
         lines.append('')

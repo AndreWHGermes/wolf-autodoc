@@ -23,16 +23,16 @@ BAD_SAMPLES = ('123456789', 'October 26, 1987', 'example', 'sample', 'lorem')
 conn = sqlite3.connect('/opt/wolf_v2/data/wolf.db')
 conn.row_factory = sqlite3.Row
 rows = [dict(r) for r in conn.execute(
-    'SELECT id, code, CLIENT, doc_CLIENT, example_path FROM CLIENT ORDER BY doc_CLIENT')]
+    'SELECT id, code, title, doc_index, example_path FROM templates ORDER BY doc_index')]
 
 print(f'{"№":>3} {"документ":40} {"стр":>3} {"КБ":>5}  движок/скан                точек  жёлтых  вердикт')
 print('-' * 132)
 problems = []
 for r in rows:
     code = r['code']
-    f = f'/opt/wolf_v2/data/CLIENT/{code}/example_marked.pdf'
+    f = f'/opt/wolf_v2/data/templates/{code}/example_marked.pdf'
     if not __import__('os').path.exists(f):
-        print(f'{str(r["doc_CLIENT"]):>3} {code[:40]:40} — нет размеченного примера')
+        print(f'{str(r["doc_index"]):>3} {code[:40]:40} — нет размеченного примера')
         problems.append((code, 'нет примера'))
         continue
     doc = pymupdf.open(f)
@@ -40,7 +40,7 @@ for r in rows:
     engine = f"{meta.get('producer') or meta.get('creator') or '?'}"
     text = '\n'.join(pg.get_text() for pg in doc)
     dots = len(PLACEHOLDER.findall(text))
-    CLIENT = sum(len(pg.get_images()) for pg in doc)
+    scans = sum(len(pg.get_images()) for pg in doc)
     yellows = sum(1 for pg in doc for dr in pg.get_drawings()
                   if dr.get('fill') and tuple(round(x, 2) for x in dr['fill']) == (1.0, 0.9, 0.35))
     our = any(k in engine.lower() for k in OUR_ENGINES)
@@ -48,8 +48,8 @@ for r in rows:
     verdict = []
     if our:
         verdict.append('НАШ РЕНДЕР')
-    if CLIENT:
-        verdict.append(f'скан ({CLIENT} img)')
+    if scans:
+        verdict.append(f'скан ({scans} img)')
     if dots > 3:
         verdict.append(f'бланк? точек {dots}')
     if bad:
@@ -58,7 +58,7 @@ for r in rows:
         verdict.append('похож на реальный')
     if our or dots > 3 or bad:
         problems.append((code, '; '.join(verdict)))
-    print(f'{str(r["doc_CLIENT"]):>3} {code[:40]:40} {doc.page_count:>3} '
+    print(f'{str(r["doc_index"]):>3} {code[:40]:40} {doc.page_count:>3} '
           f'{__import__("os").path.getsize(f)//1024:>5}  {engine[:24]:24} {dots:>6} {yellows:>7}  {" | ".join(verdict)}')
     doc.close()
 

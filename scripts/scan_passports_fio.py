@@ -1,7 +1,7 @@
 
 import glob, os, re
 import pymupdf
-root = "/opt/wolf_v2/data/gCLIENT_cache"
+root = "/opt/wolf_v2/data/gdrive_cache"
 files = [p for p in glob.glob(root + "/**/*", recursive=True) if os.path.isfile(p)]
 print("файлов в кэше сканов:", len(files))
 pdfs = [p for p in files if p.lower().endswith(".pdf")]

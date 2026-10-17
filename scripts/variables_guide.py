@@ -8,7 +8,7 @@
 
 Выход:
   docs/DOCUMENT_VARIABLES_GUIDE.md   — читаемая таблица
-  /root/.hermes/cache/scratch/CLIENT_guide.json — машинный вид
+  /root/.hermes/cache/scratch/variables_guide.json — машинный вид
 """
 import json
 import re
@@ -19,11 +19,11 @@ from pathlib import Path
 DB = '/opt/wolf_v2/data/wolf.db'
 ROOT = Path('/opt/wolf_v2')
 OUT_MD = ROOT / 'docs' / 'DOCUMENT_VARIABLES_GUIDE.md'
-OUT_JSON = Path('/root/.hermes/cache/scratch/CLIENT_guide.json')
+OUT_JSON = Path('/root/.hermes/cache/scratch/variables_guide.json')
 
 # где искать вычисление величины: значения подставляются в основном из этих модулей
-SEARCH_FILES = ['CLIENT/CLIENT.py', 'CLIENT/CLIENT_pool.py', 'CLIENT/salary_pool.py',
-                'CLIENT/cv_gen.py', 'CLIENT/autofill.py', 'CLIENT/render.py']
+SEARCH_FILES = ['services/values.py', 'services/employer_pool.py', 'services/salary_pool.py',
+                'services/cv_gen.py', 'services/autofill.py', 'services/render.py']
 
 
 def find_usage(name: str) -> str:
@@ -46,12 +46,12 @@ def find_usage(name: str) -> str:
 def main() -> int:
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
-    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM CLIENT")}
-    prods = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM CLIENT")}
+    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM templates")}
+    prods = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM products")}
     prod_of = {}
-    for r in con.execute("SELECT CLIENT_id, template_id FROM CLIENT_CLIENT"):
-        prod_of.setdefault(r['template_id'], []).append(prods.get(r['CLIENT_id'], '?'))
-    rows = [dict(r) for r in con.execute("SELECT * FROM template_CLIENT ORDER BY template_id, sort_order, name")]
+    for r in con.execute("SELECT product_id, template_id FROM product_documents"):
+        prod_of.setdefault(r['template_id'], []).append(prods.get(r['product_id'], '?'))
+    rows = [dict(r) for r in con.execute("SELECT * FROM template_variables ORDER BY template_id, sort_order, name")]
 
     md = ['# Переменные документов Wolf AutoDoc', '']
     md.append('Собрано автоматически из системы (%s): описание, источник, место расчёта в коде.' % DB)
@@ -61,10 +61,10 @@ def main() -> int:
         vars_ = [v for v in rows if v['template_id'] == tid]
         if not vars_:
             continue
-        html_path = ROOT / 'data' / 'CLIENT' / (t.get('code') or '') / 'template.html'
+        html_path = ROOT / 'data' / 'templates' / (t.get('code') or '') / 'template.html'
         html = html_path.read_text(encoding='utf-8', errors='ignore') if html_path.is_file() else ''
         in_html = set(re.findall(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}', html)) if html else set()
-        md += ['', '## %s — %s' % (t.get('code'), t.get('CLIENT') or ''),
+        md += ['', '## %s — %s' % (t.get('code'), t.get('title') or ''),
                '', 'Продукты: %s' % (', '.join(sorted(prod_of.get(tid, []))) or '—'),
                'Переменных: %d; в HTML шаблона: %d' % (len(vars_), len(in_html)), '']
         md.append('| переменная | описание | источник | где считается | пример |')
@@ -95,8 +95,8 @@ def main() -> int:
     OUT_MD.parent.mkdir(parents=True, exist_ok=True)
     OUT_MD.write_text('\n'.join(md) + '\n', encoding='utf-8')
     OUT_JSON.write_text(json.dumps(machine, ensure_ascii=False, indent=1), encoding='utf-8')
-    print('шаблонов:', len(machine), '| переменных:', sum(len(v) for v in machine.CLIENT()))
-    print('пробелов:', sum(1 for v in machine.CLIENT() for x in v if x['gap']))
+    print('шаблонов:', len(machine), '| переменных:', sum(len(v) for v in machine.values()))
+    print('пробелов:', sum(1 for v in machine.values() for x in v if x['gap']))
     print('файлы:', OUT_MD, '|', OUT_JSON)
     return 0
 

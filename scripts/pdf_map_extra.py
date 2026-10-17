@@ -8,7 +8,7 @@
   • сумма прописью («… rubles … kopecks») — одна зона, значение считается из суммы цифрами.
 
 Скрипт дописывает эти зоны в fields.json (заменяя прежние ошибочные для address_live и
-добавляя balance_CLIENT). Запуск:
+добавляя balance_words). Запуск:
     python3 scripts/pdf_map_extra.py                 # показать план
     python3 scripts/pdf_map_extra.py --apply         # записать в fields.json
 """
@@ -22,15 +22,15 @@ from pathlib import Path
 import pymupdf
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
-CODES = ["bank_CLIENTment_3m__tbank", "bank_CLIENTment_3m__sber",
-         "bank_CLIENTment_12m__tbank", "bank_CLIENTment_12m__sber"]
+TEMPLATES = BASE / "data" / "templates"
+CODES = ["bank_statement_3m__tbank", "bank_statement_3m__sber",
+         "bank_statement_12m__tbank", "bank_statement_12m__sber"]
 
 
 def spans(page) -> list[dict]:
     out = []
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             out.extend(line["spans"])
     return out
 
@@ -55,14 +55,14 @@ def extra_zones(pdf: str) -> list[dict]:
             elif ("krai" in low or "kray" in low) and any(c.isdigit() for c in t[:6]):
                 var = "address_live"            # первая строка адреса
             elif "kopecks" in low or "kopeks" in low:
-                var = "balance_CLIENT"           # сумма прописью
+                var = "balance_words"           # сумма прописью
             if not var:
                 continue
-            key = (page.CLIENT, tuple(round(v, 1) for v in sp["bbox"]), var)
+            key = (page.number, tuple(round(v, 1) for v in sp["bbox"]), var)
             if key in seen:
                 continue
             seen.add(key)
-            zones.append({"var": var, "page": page.CLIENT + 1,
+            zones.append({"var": var, "page": page.number + 1,
                           "bbox": [round(v, 2) for v in sp["bbox"]],
                           "size": round(sp["size"], 2), "font": sp["font"],
                           "font_xref": font_xref(page, sp["font"]), "text": t[:60],
@@ -78,7 +78,7 @@ def main() -> int:
     args = ap.parse_args()
     codes = [args.code] if args.code else CODES
     for code in codes:
-        f = CLIENT / code / "fields.json"
+        f = TEMPLATES / code / "fields.json"
         if not f.exists():
             print("%-28s нет fields.json" % code)
             continue
@@ -87,8 +87,8 @@ def main() -> int:
         by_var = {}
         for z in add:
             by_var.setdefault(z["var"], []).append(z)
-        # заменяем прежние зоны address_live / balance_CLIENT на найденные по структуре
-        drop = {"address_live", "address_live_2", "balance_CLIENT"}
+        # заменяем прежние зоны address_live / balance_words на найденные по структуре
+        drop = {"address_live", "address_live_2", "balance_words"}
         kept = [z for z in data["zones"] if z["var"] not in drop]
         merged = kept + [z for z in add]
         data["zones"] = merged

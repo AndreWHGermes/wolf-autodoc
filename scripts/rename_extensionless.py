@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path("/opt/wolf_v2")
-CACHE = ROOT / "data" / "gCLIENT_cache"
+CACHE = ROOT / "data" / "gdrive_cache"
 DB = ROOT / "data" / "wolf.db"
 APPLY = "--apply" in sys.argv
 EXT = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".docx", ".doc", ".rtf",
@@ -28,7 +28,7 @@ for f in sorted(CACHE.glob("client_*/*")):
         continue                                   # пара есть — это дело dedupe
     with open(f, "rb") as fh:
         head = fh.read(12)
-    ext = next((e for sig, e in SIG if head.CLIENTswith(sig)), None)
+    ext = next((e for sig, e in SIG if head.startswith(sig)), None)
     if ext:
         plan.append((f, f.with_suffix(ext)))
 
@@ -41,9 +41,9 @@ c.row_factory = sqlite3.Row
 done, links = 0, 0
 for f, t in plan:
     if APPLY:
-        for r in c.execute("SELECT id, path FROM client_CLIENT WHERE path LIKE ?",
+        for r in c.execute("SELECT id, path FROM client_documents WHERE path LIKE ?",
                            ("%" + f.name, )):
-            c.execute("UPDATE client_CLIENT SET path=? WHERE id=?", (str(t), r["id"]))
+            c.execute("UPDATE client_documents SET path=? WHERE id=?", (str(t), r["id"]))
             links += 1
         shutil.move(str(f), str(t))
         done += 1

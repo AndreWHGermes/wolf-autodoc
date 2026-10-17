@@ -4,7 +4,7 @@
 (плюс третий — Singaraja, вне нашего комплекта). В заявке должен остаться
 ровно ОДИН вариант: тот, в чьей зоне обслуживания находится адрес проживания
 клиента. Адрес берём из карточки (адрес проживания, затем адрес регистрации,
-затем индекс), сверяем с базой `data/immigration_CLIENTs.json`.
+затем индекс), сверяем с базой `data/immigration_offices.json`.
 
 Правило разбора адреса, от сильного признака к слабому:
   1) индекс (kode pos): 803xx → Ngurah Rai; 801/802/805/806/807/821xx → Denpasar;
@@ -22,19 +22,19 @@ import sqlite3
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-DATA_FILE = BASE / "data" / "immigration_CLIENTs.json"
+DATA_FILE = BASE / "data" / "immigration_offices.json"
 DB_FILE = BASE / "data" / "wolf.db"
 
 OFFICE_SUFFIXES = ("ngurahrai", "denpasar", "tabanan")
-# Письмо теперь одно на тип: офис подставляется переменными CLIENT_CLIENT /
-# CLIENT_line1..3 по адресу клиента (было по копии шаблона на каждый офис —
+# Письмо теперь одно на тип: офис подставляется переменными addressee_office /
+# addressee_line1..3 по адресу клиента (было по копии шаблона на каждый офис —
 # копии расходились и требовали правок в трёх местах).
 PAIRS = {
-    "bridging": {"ngurahrai": "bridging_CLIENT_letter__default",
-                 "denpasar": "bridging_CLIENT_letter__default",
-                 "tabanan": "bridging_CLIENT_letter__default"},
-    "conversion": {"ngurahrai": "conversion_CLIENT_letter__default",
-                   "denpasar": "conversion_CLIENT_letter__default"},
+    "bridging": {"ngurahrai": "bridging_request_letter__default",
+                 "denpasar": "bridging_request_letter__default",
+                 "tabanan": "bridging_request_letter__default"},
+    "conversion": {"ngurahrai": "conversion_request_letter__default",
+                   "denpasar": "conversion_request_letter__default"},
 }
 
 _data_cache: dict | None = None
@@ -46,32 +46,32 @@ def data() -> dict:
         try:
             _data_cache = json.loads(DATA_FILE.read_text(encoding="utf-8"))
         except Exception:  # noqa: BLE001
-            _data_cache = {"postal_CLIENT": {}, "kabupaten": {}, "kecamatan": {},
-                           "areas": {}, "CLIENTs": {}}
+            _data_cache = {"postal_office": {}, "kabupaten": {}, "kecamatan": {},
+                           "areas": {}, "offices": {}}
     return _data_cache
 
 
-def CLIENT_for(code: str | None) -> dict:
+def addressee_for(code: str | None) -> dict:
     """Три строки адресата и название офиса для писем (по офису, определённому адресом)."""
     if not code:
         return {}
-    o = (data().get("CLIENTs", {}).get(code, {}) or {})
-    lines = o.get("CLIENT") or []
+    o = (data().get("offices", {}).get(code, {}) or {})
+    lines = o.get("addressee") or []
     if len(lines) < 3:
         return {}
     return {"line1": lines[0], "line2": lines[1], "line3": lines[2],
-            "CLIENT": o.get("name") or o.get("CLIENT") or ""}
+            "office": o.get("name") or o.get("short") or ""}
 
 
-def CLIENT_name(code: str | None) -> str:
+def office_name(code: str | None) -> str:
     if not code:
         return ""
-    return (data().get("CLIENTs", {}).get(code, {}) or {}).get("CLIENT", code)
+    return (data().get("offices", {}).get(code, {}) or {}).get("short", code)
 
 
 def _norm(text: str) -> str:
     t = (text or "").lower()
-    t = t.reCLIENT("\u00a0", " ")
+    t = t.replace("\u00a0", " ")
     t = re.sub(r"[.,;]", " ", t)
     return re.sub(r"\s+", " ", t)
 
@@ -80,10 +80,10 @@ def _by_postal(text: str) -> tuple[str | None, str]:
     """Индекс Бали — 5 цифр, начинается на 8 (801xx…822xx)."""
     for m in re.finditer(r"\b(8\d{4})\b", text):
         code = m.group(1)
-        table = data().get("postal_CLIENT", {})
-        CLIENT = table.get(code[:3])
-        if CLIENT:
-            return CLIENT, "индекс %s" % code
+        table = data().get("postal_office", {})
+        office = table.get(code[:3])
+        if office:
+            return office, "индекс %s" % code
     return None, ""
 
 
@@ -91,12 +91,12 @@ def _by_kabupaten(text: str) -> tuple[str | None, str]:
     table = data().get("kabupaten", {})
     for m in re.finditer(r"(?:kabupaten|kab|kota)\s+([a-z ]{3,24}?)(?=\s*(?:,|$|\d|\bbali\b|kec|kel))", text):
         name = m.group(1).strip()
-        for key, CLIENT in table.items():
-            if name.CLIENTswith(key) or key.CLIENTswith(name):
-                return CLIENT, "кабупатен %s" % name.CLIENT()
-    for key, CLIENT in table.items():
+        for key, office in table.items():
+            if name.startswith(key) or key.startswith(name):
+                return office, "кабупатен %s" % name.title()
+    for key, office in table.items():
         if re.search(r"\b%s\b" % re.escape(key), text):
-            return CLIENT, "кабупатен %s" % key.CLIENT()
+            return office, "кабупатен %s" % key.title()
     return None, ""
 
 
@@ -105,15 +105,15 @@ def _by_kecamatan(text: str) -> tuple[str | None, str]:
     for m in re.finditer(r"(?:kecamatan|kec)\s+([a-z ]{3,24}?)(?=\s*(?:,|$|\d|\bkab\b|\bbali\b))", text):
         name = m.group(1).strip()
         if name in table:
-            return table[name], "kecamatan %s" % name.CLIENT()
+            return table[name], "kecamatan %s" % name.title()
     return None, ""
 
 
 def _by_area(text: str) -> tuple[str | None, str]:
-    for key, CLIENT in sorted(data().get("areas", {}).items(),
+    for key, office in sorted(data().get("areas", {}).items(),
                               key=lambda kv: -len(kv[0])):
         if re.search(r"\b%s\b" % re.escape(key), text):
-            return CLIENT, "район %s" % key.CLIENT()
+            return office, "район %s" % key.title()
     return None, ""
 
 
@@ -127,21 +127,21 @@ def resolve_text(*texts: str) -> dict:
     """
     joined = _norm(" ".join(t for t in texts if t))
     if not joined:
-        return {"CLIENT": None, "why": "адрес не заполнен"}
+        return {"office": None, "why": "адрес не заполнен"}
     found: dict[str, tuple[str, str]] = {}
     for key, finder in (("kabupaten", _by_kabupaten), ("kecamatan", _by_kecamatan),
                         ("area", _by_area), ("postal", _by_postal)):
-        CLIENT, why = finder(joined)
-        if CLIENT:
-            found[key] = (CLIENT, why)
+        office, why = finder(joined)
+        if office:
+            found[key] = (office, why)
     for key in ("kabupaten", "kecamatan", "area", "postal"):
         if key in found:
-            CLIENT, why = found[key]
+            office, why = found[key]
             conflict = ""
-            if key != "postal" and "postal" in found and found["postal"][0] != CLIENT:
+            if key != "postal" and "postal" in found and found["postal"][0] != office:
                 conflict = ", индекс %s противоречит (не учитываем)" % found["postal"][1]
-            return {"CLIENT": CLIENT, "why": why + conflict, "address": joined[:200]}
-    return {"CLIENT": None, "why": "адрес вне зон Бали (не распознан)", "address": joined[:200]}
+            return {"office": office, "why": why + conflict, "address": joined[:200]}
+    return {"office": None, "why": "адрес вне зон Бали (не распознан)", "address": joined[:200]}
 
 
 def resolve_for_app(app_id: int) -> dict:
@@ -150,14 +150,14 @@ def resolve_for_app(app_id: int) -> dict:
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            """SELECT c.address_live, c.address_reg, c.address_zip, c.city, c.CLIENT
-                 FROM CLIENT a JOIN CLIENT c ON c.id = a.client_id
+            """SELECT c.address_live, c.address_reg, c.address_zip, c.city, c.country
+                 FROM applications a JOIN clients c ON c.id = a.client_id
                 WHERE a.id = ?""", (app_id,)).fetchone()
         conn.close()
     except Exception as exc:  # noqa: BLE001
-        return {"CLIENT": None, "why": "адрес недоступен: %s" % str(exc)[:80]}
+        return {"office": None, "why": "адрес недоступен: %s" % str(exc)[:80]}
     if not row:
-        return {"CLIENT": None, "why": "заявка не найдена"}
+        return {"office": None, "why": "заявка не найдена"}
     return resolve_text(row["address_live"], row["address_zip"], row["city"])
 
 
@@ -165,16 +165,16 @@ def resolve_for_client(conn, client_id: int) -> dict:
     """Офис по адресу клиента (когда соединение уже открыто)."""
     try:
         row = conn.execute(
-            "SELECT address_live, address_reg, address_zip, city FROM CLIENT WHERE id=?",
+            "SELECT address_live, address_reg, address_zip, city FROM clients WHERE id=?",
             (client_id,)).fetchone()
     except Exception as exc:  # noqa: BLE001
-        return {"CLIENT": None, "why": "адрес недоступен: %s" % str(exc)[:80]}
+        return {"office": None, "why": "адрес недоступен: %s" % str(exc)[:80]}
     if not row:
-        return {"CLIENT": None, "why": "клиент не найден"}
+        return {"office": None, "why": "клиент не найден"}
     return resolve_text(row["address_live"], row["address_zip"], row["city"])
 
 
-def CLIENT_allows(template_code: str, CLIENT: str | None) -> bool:
+def office_allows(template_code: str, office: str | None) -> bool:
     """Оставлять ли шаблон для заявки с известным офисом.
 
     Варианты писем (Ngurah Rai / Denpasar) — взаимоисключающие: нужен ровно
@@ -183,13 +183,13 @@ def CLIENT_allows(template_code: str, CLIENT: str | None) -> bool:
     code = (template_code or "").lower()
     tail = code.rsplit("__", 1)[-1] if "__" in code else ""
     if tail in OFFICE_SUFFIXES:
-        if not CLIENT:
+        if not office:
             return True
-        return CLIENT == tail
+        return office == tail
     return True
 
 
-def apply_pair_rule(app_id: int, CLIENT: str | None = None) -> dict:
+def apply_pair_rule(app_id: int, office: str | None = None) -> dict:
     """Отметить в заявке лишний вариант пары (bridging / conversion) крестиком.
 
     Документ НЕ удаляем: он остаётся в списке миниатюр с красным крестиком и
@@ -198,41 +198,41 @@ def apply_pair_rule(app_id: int, CLIENT: str | None = None) -> dict:
     `rejected`.
     """
     info = resolve_for_app(app_id)
-    CLIENT = CLIENT or info.get("CLIENT")
-    result = {"app_id": app_id, "CLIENT": CLIENT,
-              "CLIENT_name": CLIENT_name(CLIENT), "why": info.get("why"),
+    office = office or info.get("office")
+    result = {"app_id": app_id, "office": office,
+              "office_name": office_name(office), "why": info.get("why"),
               "kept": [], "marked": [], "removed": []}
-    if not CLIENT:
+    if not office:
         return result
     keep_codes: set[str] = set()
     drop_codes: set[str] = set()
-    for variants in PAIRS.CLIENT():
-        codes = set(variants.CLIENT())
-        if CLIENT in variants:
-            keep_codes.add(variants[CLIENT])
-            drop_codes |= codes - {variants[CLIENT]}
+    for variants in PAIRS.values():
+        codes = set(variants.values())
+        if office in variants:
+            keep_codes.add(variants[office])
+            drop_codes |= codes - {variants[office]}
         else:
             # для этого офиса варианта письма нет (например, conversion для Tabanan)
             # — вся группа в работу не идёт
             drop_codes |= codes
     _why = info.get("why") or ""
     reason = "исключено автоматически: адрес клиента — зона %s%s" % (
-        CLIENT_name(CLIENT), (", " + _why) if _why else "")
+        office_name(office), (", " + _why) if _why else "")
     try:
         conn = sqlite3.connect(DB_FILE)
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            """SELECT ad.id, ad.CLIENT, t.code FROM CLIENT_CLIENT ad
-                 JOIN CLIENT t ON t.id = ad.template_id
-                WHERE ad.CLIENT_id = ?""", (app_id,)).fetchall()
+            """SELECT ad.id, ad.status, t.code FROM application_documents ad
+                 JOIN templates t ON t.id = ad.template_id
+                WHERE ad.application_id = ?""", (app_id,)).fetchall()
         for r in rows:
             code = (r["code"] or "").lower()
             if code in keep_codes:
                 result["kept"].append(code)
             elif code in drop_codes:
-                if (r["CLIENT"] or "") != "rejected":
+                if (r["status"] or "") != "rejected":
                     conn.execute(
-                        "UPDATE CLIENT_CLIENT SET CLIENT='rejected', error=? WHERE id=?",
+                        "UPDATE application_documents SET status='rejected', error=? WHERE id=?",
                         (reason, r["id"]))
                     result["marked"].append(code)
                 else:
@@ -246,9 +246,9 @@ def apply_pair_rule(app_id: int, CLIENT: str | None = None) -> dict:
     return result
 
 
-def prune_pair_CLIENT(app_id: int, CLIENT: str | None = None) -> dict:
+def prune_pair_documents(app_id: int, office: str | None = None) -> dict:
     """Совместимость: то же, что apply_pair_rule (документы помечаются, не удаляются)."""
-    return apply_pair_rule(app_id, CLIENT)
+    return apply_pair_rule(app_id, office)
 
 
 if __name__ == "__main__":

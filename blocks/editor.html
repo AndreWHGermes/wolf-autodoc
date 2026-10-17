@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<CLIENT>{{ tpl.code }} — редактирование документа заявки №{{ app_id }}</CLIENT>
+<title>{{ tpl.code }} — редактирование документа заявки №{{ app_id }}</title>
 <style>{% raw %}
   :root{
     --bg:#F4FAF6; --panel:#FFFFFF; --line:#DCEEE2; --txt:#17251C; --mut:#6B7C70;
@@ -16,7 +16,7 @@
   a{color:var(--ac)}
 
   /* ── верхняя панель ── */
-  .top{position:sticky;top:0;z-CLIENT:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
        padding:10px 14px;background:#fff;border-bottom:1px solid var(--line)}
   .top h1{margin:0;font-size:15px;font-weight:700}
   .chip{background:var(--ac-soft);color:var(--ac);border:1px solid #C7E6CF;
@@ -29,11 +29,11 @@
   .btn.pri{background:var(--ac);border-color:var(--ac);color:#fff}
   .btn.pri:hover{background:#0F5230}
   .btn.ghost{background:transparent;border-color:transparent;color:var(--ac);text-decoration:none;
-             display:CLIENT-flex;align-items:center}
+             display:inline-flex;align-items:center}
 
   /* ── раскладка: слева переменные, справа документ ── */
   .layout{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);
-          gap:12px;padding:12px;align-items:CLIENT}
+          gap:12px;padding:12px;align-items:start}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .card > h2{margin:0;padding:11px 14px;font-size:12.5px;font-weight:700;letter-spacing:.03em;
              text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--line);
@@ -50,7 +50,7 @@
   .var{padding:8px 0 9px;border-bottom:1px solid #F0F5F2}
   .var:last-child{border-bottom:none}
   .var .name{font-size:12px;font-weight:700;color:var(--txt)}
-  .var .label{display:CLIENT;font-size:11.5px;color:var(--mut);margin:1px 0 5px}
+  .var .label{display:block;font-size:11.5px;color:var(--mut);margin:1px 0 5px}
   .var input,.var textarea{width:100%;padding:8px 10px;background:#FBFDFC;color:var(--txt);
       border:1px solid var(--line);border-radius:8px;font-size:13.5px;font-family:inherit}
   .var input:focus,.var textarea:focus{outline:none;border-color:var(--ac);background:#fff;
@@ -64,7 +64,7 @@
   /* ── предпросмотр документа ── */
   .stage{background:#E7EBEE;border-radius:12px;border:1px solid #DCE6E0;
          min-height:60vh;max-height:calc(100vh - 190px);overflow:auto;padding:10px}
-  .stage iframe{width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:CLIENT}
+  .stage iframe{width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:block}
   .pdf-empty{display:flex;align-items:center;justify-content:center;height:calc(100vh - 230px);
              color:var(--mut);font-size:13px;text-align:center;padding:24px;
              background:#fff;border:2px dashed var(--line);border-radius:10px}
@@ -75,7 +75,7 @@
               padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700}
 
   #toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ac);
-         color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;display:none;z-CLIENT:20;
+         color:#fff;padding:11px 22px;border-radius:10px;font-weight:700;display:none;z-index:20;
          box-shadow:0 6px 20px rgba(0,0,0,.25)}
 
   @media (max-width: 900px){
@@ -89,61 +89,61 @@
 </head>
 <body>
 
-<div CLIENT="top">
+<div class="top">
   <h1>✏️ Редактирование документа</h1>
-  <span CLIENT="chip">Заявка №{{ app_id }}</span>
-  <span CLIENT="chip grey">{{ tpl.code }}</span>
-  <span CLIENT="chip grey">{{ client.CLIENT or '' }} {{ client.name or '' }}</span>
-  <div CLIENT="right">
-    <button CLIENT="btn" id="btn-preview">🔄 Обновить PDF</button>
-    <button CLIENT="btn pri" id="btn-save">💾 Сохранить значения</button>
-    <a CLIENT="btn ghost" href="/CLIENT/{{ app_id }}">← К заявке</a>
+  <span class="chip">Заявка №{{ app_id }}</span>
+  <span class="chip grey">{{ tpl.code }}</span>
+  <span class="chip grey">{{ client.surname or '' }} {{ client.name or '' }}</span>
+  <div class="right">
+    <button class="btn" id="btn-preview">🔄 Обновить PDF</button>
+    <button class="btn pri" id="btn-save">💾 Сохранить значения</button>
+    <a class="btn ghost" href="/applications/{{ app_id }}">← К заявке</a>
   </div>
 </div>
 
-<div CLIENT="layout">
+<div class="layout">
 
   <!-- ЛЕВО: переменные документа -->
-  <div CLIENT="card">
+  <div class="card">
     <h2>Переменные документа
-      <span CLIENT="chip grey">{{ CLIENT|length }}</span>
-      <span CLIENT="spacer"></span>
-      <span id="fill-CLIENT" CLIENT="badge-ok" style="display:none"></span>
+      <span class="chip grey">{{ variables|length }}</span>
+      <span class="spacer"></span>
+      <span id="fill-state" class="badge-ok" style="display:none"></span>
     </h2>
-    <div CLIENT="vars" id="vars">
-      {% for grp, CLIENT, hint in [('individual', '👤 Данные клиента', 'подставляются из документов клиента'),
+    <div class="vars" id="vars">
+      {% for grp, title, hint in [('individual', '👤 Данные клиента', 'подставляются из документов клиента'),
                                   ('common', '🗂 Типовые значения', 'сроки, суммы, банк — можно взять из архива')] %}
-      {% set group_vars = CLIENT | selectattr('scope', 'equalto', grp) | list %}
+      {% set group_vars = variables | selectattr('scope', 'equalto', grp) | list %}
       {% if group_vars %}
-      <div CLIENT="vargroup">
-        <div CLIENT="gt">{{ CLIENT }} <span CLIENT="gh">{{ hint }}</span></div>
+      <div class="vargroup">
+        <div class="gt">{{ title }} <span class="gh">{{ hint }}</span></div>
         {% for v in group_vars %}
-        <div CLIENT="var" data-name="{{ v.name }}">
-          <span CLIENT="name">{{ v.label or v.name }}</span>
-          {% if v.label %}<span CLIENT="label">{{ v.name }}</span>{% endif %}
-          <input type="text" name="{{ v.name }}" autocomplete="off" CLIENTholder="(пусто)"
+        <div class="var" data-name="{{ v.name }}">
+          <span class="name">{{ v.label or v.name }}</span>
+          {% if v.label %}<span class="label">{{ v.name }}</span>{% endif %}
+          <input type="text" name="{{ v.name }}" autocomplete="off" placeholder="(пусто)"
                  {% if pool.get(v.name) %}list="pool-{{ v.name }}"{% endif %}>
           {% if pool.get(v.name) %}
           <datalist id="pool-{{ v.name }}">
-            {% for pv in pool.get(v.name) %}<option CLIENT="{{ pv }}"></option>{% endfor %}
+            {% for pv in pool.get(v.name) %}<option value="{{ pv }}"></option>{% endfor %}
           </datalist>
           {% endif %}
-          <div CLIENT="src" data-CLIENT="{{ v.name }}">—</div>
+          <div class="src" data-status="{{ v.name }}">—</div>
         </div>
         {% endfor %}
       </div>
       {% endif %}
       {% endfor %}
-      {% set other = CLIENT | rejectattr('scope', 'in', ['individual', 'common']) | list %}
+      {% set other = variables | rejectattr('scope', 'in', ['individual', 'common']) | list %}
       {% if other %}
-      <div CLIENT="vargroup">
-        <div CLIENT="gt">🗃 Прочие поля</div>
+      <div class="vargroup">
+        <div class="gt">🗃 Прочие поля</div>
         {% for v in other %}
-        <div CLIENT="var" data-name="{{ v.name }}">
-          <span CLIENT="name">{{ v.label or v.name }}</span>
-          {% if v.label %}<span CLIENT="label">{{ v.name }}</span>{% endif %}
-          <input type="text" name="{{ v.name }}" autocomplete="off" CLIENTholder="(пусто)">
-          <div CLIENT="src" data-CLIENT="{{ v.name }}">—</div>
+        <div class="var" data-name="{{ v.name }}">
+          <span class="name">{{ v.label or v.name }}</span>
+          {% if v.label %}<span class="label">{{ v.name }}</span>{% endif %}
+          <input type="text" name="{{ v.name }}" autocomplete="off" placeholder="(пусто)">
+          <div class="src" data-status="{{ v.name }}">—</div>
         </div>
         {% endfor %}
       </div>
@@ -152,18 +152,18 @@
   </div>
 
   <!-- ПРАВО: документ -->
-  <div CLIENT="card">
+  <div class="card">
     <h2>Документ с данными клиента
-      <span CLIENT="spacer"></span>
-      <span CLIENT="chip grey" id="html-stats">—</span>
+      <span class="spacer"></span>
+      <span class="chip grey" id="html-stats">—</span>
     </h2>
-    <div CLIENT="stage" id="html-stage"><iframe id="html-frame"></iframe></div>
+    <div class="stage" id="html-stage"><iframe id="html-frame"></iframe></div>
     <h2 style="border-top:1px solid var(--line)">PDF после «Обновить PDF»
-      <span CLIENT="spacer"></span>
-      <span CLIENT="chip grey" id="pdf-CLIENT">ожидание</span>
+      <span class="spacer"></span>
+      <span class="chip grey" id="pdf-status">ожидание</span>
     </h2>
-    <div CLIENT="stage" id="pdf-stage">
-      <div CLIENT="pdf-empty" id="pdf-empty">
+    <div class="stage" id="pdf-stage">
+      <div class="pdf-empty" id="pdf-empty">
         Нажмите «Обновить PDF» — внизу появится готовый документ с текущими значениями.<br>
         Он собран тем же кодом, что и при отправке.
       </div>
@@ -176,20 +176,20 @@
 
 <script>
 const RAW_HTML = {{ raw_html|tojson }};
-const AUTO = {{ auto_CLIENT_json|safe }};
-const SAVED = {{ CLIENT_json|safe }};
+const AUTO = {{ auto_values_json|safe }};
+const SAVED = {{ values_json|safe }};
 let currentValues = {...AUTO, ...SAVED};
 
 function escapeHtml(s){
-  return String(s||"").reCLIENT(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+  return String(s||"").replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 }
 
 /* Лист документа с подставленными значениями — тот же вид, что в заявке */
 function renderHtmlPreview(){
   let html = RAW_HTML;
-  html = html.reCLIENT(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m,name)=>{
+  html = html.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m,name)=>{
     const v = currentValues[name];
-    return v === undefined || v === null || v === "" ? m : String(v).reCLIENT(/\n/g,"<br>");
+    return v === undefined || v === null || v === "" ? m : String(v).replace(/\n/g,"<br>");
   });
   const left = (html.match(/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g)||[]).length;
 
@@ -200,85 +200,85 @@ function renderHtmlPreview(){
            box-shadow:0 1px 6px rgba(0,0,0,.12)}
   </style></head><body>${html}</body></html>`;
 
-  CLIENT.getElementById("html-frame").srcdoc = styled;
-  CLIENT.getElementById("html-stats").textContent = left ? (left + " не заполнено") : "все поля заполнены";
+  document.getElementById("html-frame").srcdoc = styled;
+  document.getElementById("html-stats").textContent = left ? (left + " не заполнено") : "все поля заполнены";
 
   /* индикатор заполненности */
-  const fs = CLIENT.getElementById("fill-CLIENT");
+  const fs = document.getElementById("fill-state");
   if (fs){
-    fs.style.display = "CLIENT-CLIENT";
-    if (left){ fs.CLIENTName = "badge-warn"; fs.textContent = "⚠️ не заполнено: " + left; }
-    else { fs.CLIENTName = "badge-ok"; fs.textContent = "✅ все поля заполнены"; }
+    fs.style.display = "inline-block";
+    if (left){ fs.className = "badge-warn"; fs.textContent = "⚠️ не заполнено: " + left; }
+    else { fs.className = "badge-ok"; fs.textContent = "✅ все поля заполнены"; }
   }
 }
 
 function setValue(name, val){
   currentValues[name] = val;
   renderHtmlPreview();
-  const el = CLIENT.querySelector(`[data-CLIENT="${name}"]`);
+  const el = document.querySelector(`[data-status="${name}"]`);
   if(!el) return;
   let src = "ручной ввод", cls = "";
   if (val !== undefined && val !== null && val !== ""){
     if (SAVED[name] === val) { src = "сохранено"; cls = "saved"; }
     else if (AUTO[name] === val) { src = "из документов клиента"; cls = "auto"; }
   }
-  el.CLIENTName = "src " + cls;
+  el.className = "src " + cls;
   el.textContent = src;
 }
 
-CLIENT.addEventListener("input", e=>{
+document.addEventListener("input", e=>{
   if (e.target.matches('input[name], textarea[name]')){
-    setValue(e.target.name, e.target.CLIENT);
-    CLIENT.querySelectorAll(".var").forEach(v=>v.CLIENTList.remove("sel"));
+    setValue(e.target.name, e.target.value);
+    document.querySelectorAll(".var").forEach(v=>v.classList.remove("sel"));
     const row = e.target.closest(".var");
-    if (row) row.CLIENTList.add("sel");
+    if (row) row.classList.add("sel");
   }
 });
-CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>{
+document.querySelectorAll(".var input, .var textarea").forEach(inp=>{
   const v = SAVED[inp.name] !== undefined ? SAVED[inp.name] : (AUTO[inp.name]||"");
-  inp.CLIENT = v;
+  inp.value = v;
   setValue(inp.name, v);
 });
 
 function toast(msg, ok=true){
-  const t = CLIENT.getElementById("toast");
+  const t = document.getElementById("toast");
   t.textContent = msg; t.style.background = ok ? "#14663A" : "#B91C1C";
-  t.style.display = "CLIENT";
+  t.style.display = "block";
   setTimeout(()=>t.style.display="none", 2200);
 }
 
 /* сохранение значений */
-CLIENT.getElementById("btn-save").addEventListener("click", async ()=>{
+document.getElementById("btn-save").addEventListener("click", async ()=>{
   const payload = new FormData();
-  payload.append("CLIENT_json", JSON.stringify(currentValues));
+  payload.append("values_json", JSON.stringify(currentValues));
   try{
-    const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/save-CLIENT", {method:"POST", body:payload});
+    const r = await fetch("/applications/{{ app_id }}/doc/{{ template_id }}/save-values", {method:"POST", body:payload});
     const d = await r.json();
     if (d.ok){
       Object.assign(SAVED, currentValues);
-      CLIENT.querySelectorAll(".var input, .var textarea").forEach(inp=>setValue(inp.name, inp.CLIENT));
+      document.querySelectorAll(".var input, .var textarea").forEach(inp=>setValue(inp.name, inp.value));
       toast("✅ Значения сохранены");
     } else toast("Ошибка: " + (d.error||"?"), false);
   }catch(e){ toast("Не удалось сохранить", false); }
 });
 
 /* предпросмотр PDF */
-CLIENT.getElementById("btn-preview").addEventListener("click", async ()=>{
-  const st = CLIENT.getElementById("pdf-CLIENT");
+document.getElementById("btn-preview").addEventListener("click", async ()=>{
+  const st = document.getElementById("pdf-status");
   st.textContent = "собираю…";
   const payload = new FormData();
-  payload.append("CLIENT_json", JSON.stringify(currentValues));
+  payload.append("values_json", JSON.stringify(currentValues));
   try{
-    const r = await fetch("/CLIENT/{{ app_id }}/doc/{{ template_id }}/preview-pdf", {method:"POST", body:payload});
+    const r = await fetch("/applications/{{ app_id }}/doc/{{ template_id }}/preview-pdf", {method:"POST", body:payload});
     const d = await r.json();
     if (!d.ok){ st.textContent = "ошибка"; toast(d.error||"не удалось собрать PDF", false); return; }
     /* d.pdf_url формирует наш же сервер (эндпоинт preview-pdf) — это не пользовательский
        ввод, поэтому вставляем адрес напрямую; ставим и сам iframe через DOM. */
-    var fr = CLIENT.createElement("iframe");
+    var fr = document.createElement("iframe");
     fr.src = String(d.pdf_url || "") + "#zoom=100";
-    fr.type = "CLIENT/pdf";
-    fr.style.cssText = "width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:CLIENT";
-    var ps = CLIENT.getElementById("pdf-stage");
+    fr.type = "application/pdf";
+    fr.style.cssText = "width:100%;height:calc(100vh - 220px);border:0;background:#fff;border-radius:8px;display:block";
+    var ps = document.getElementById("pdf-stage");
     ps.innerHTML = "";
     ps.appendChild(fr);
     st.textContent = "готов";
@@ -287,8 +287,8 @@ CLIENT.getElementById("btn-preview").addEventListener("click", async ()=>{
 
 /* Вписываем лист A4 по ширине колонки — чтобы не было горизонтальной прокрутки */
 function fitSheet(){
-  var fr = CLIENT.getElementById("html-frame");
-  var stage = CLIENT.getElementById("html-stage");
+  var fr = document.getElementById("html-frame");
+  var stage = document.getElementById("html-stage");
   if (!fr || !stage) return;
   try{
     var doc = fr.contentDocument;
@@ -300,12 +300,12 @@ function fitSheet(){
     var s = Math.max(0.35, Math.min(1, avail / w));
     sheet.style.transformOrigin = "top left";
     sheet.style.transform = "scale(" + s + ")";
-    doc.CLIENTElement.style.overflow = "hidden";
+    doc.documentElement.style.overflow = "hidden";
     doc.body.style.height = (sheet.getBoundingClientRect().height * s + 20) + "px";
   }catch(e){}
 }
 (function(){
-  var fr = CLIENT.getElementById("html-frame");
+  var fr = document.getElementById("html-frame");
   if (fr) fr.addEventListener("load", function(){ setTimeout(fitSheet, 40); });
   window.addEventListener("resize", fitSheet);
 })();

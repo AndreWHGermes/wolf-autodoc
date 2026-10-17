@@ -8,14 +8,14 @@ import sqlite3
 import sys
 
 sys.path.insert(0, "/opt/wolf_v2")
-from CLIENT.doc_parse import is_russian_address          # noqa: E402
-from CLIENT import CLIENT as V                            # noqa: E402
+from services.doc_parse import is_russian_address          # noqa: E402
+from services import values as V                            # noqa: E402
 
 APPLY = "--apply" in sys.argv
 c = sqlite3.connect("/opt/wolf_v2/data/wolf.db", timeout=120)
 c.row_factory = sqlite3.Row
-rows = list(c.execute("SELECT id, full_name_CLIENT, address_live, address_reg, "
-                      "address_in_indonesia FROM CLIENT "
+rows = list(c.execute("SELECT id, full_name_latin, address_live, address_reg, "
+                      "address_in_indonesia FROM clients "
                       "WHERE COALESCE(address_live,'')='' AND COALESCE(address_in_indonesia,'')<>''"))
 print("клиентов без российского адреса, но с индонезийским: %d" % len(rows))
 filled, empty = 0, 0
@@ -25,12 +25,12 @@ for r in rows:
     except Exception:                                       # noqa: BLE001
         addr = ""
     if addr and is_russian_address(addr):
-        print("  id=%-5s %-24s ← %s" % (r["id"], str(r["full_name_CLIENT"])[:24], addr[:52]))
+        print("  id=%-5s %-24s ← %s" % (r["id"], str(r["full_name_latin"])[:24], addr[:52]))
         if APPLY:
-            c.execute("UPDATE CLIENT SET address_live=? WHERE id=?", (addr, r["id"]))
+            c.execute("UPDATE clients SET address_live=? WHERE id=?", (addr, r["id"]))
         filled += 1
     else:
-        print("  id=%-5s %-24s — российского адреса в документах нет" % (r["id"], str(r["full_name_CLIENT"])[:24]))
+        print("  id=%-5s %-24s — российского адреса в документах нет" % (r["id"], str(r["full_name_latin"])[:24]))
         empty += 1
 if APPLY:
     c.commit()

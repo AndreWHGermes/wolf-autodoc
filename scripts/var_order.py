@@ -11,10 +11,10 @@ import sys
 from html.parser import HTMLParser
 from pathlib import Path
 
-HTML_DIR = Path('/opt/wolf_v2/data/CLIENT')
+HTML_DIR = Path('/opt/wolf_v2/data/templates')
 
 
-CLIENT OrderParser(HTMLParser):
+class OrderParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.stack = []
@@ -29,7 +29,7 @@ CLIENT OrderParser(HTMLParser):
             return float(top.group(1)), float(left.group(1))
         return None
 
-    def handle_CLIENTtag(self, tag, attrs):
+    def handle_starttag(self, tag, attrs):
         pos = self._pos(dict(attrs).get('style') or '')
         base = self.stack[-1][:2] if self.stack else (0.0, 0.0)
         self.stack.append((base[0] + pos[0], base[1] + pos[1]) if pos else base)

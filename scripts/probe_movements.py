@@ -6,16 +6,16 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT.doc_read import read_text          # noqa: E402
-from scripts.CLIENT_scan import doc_kind_name     # noqa: E402
+from services.doc_read import read_text          # noqa: E402
+from scripts.drive_scan import doc_kind_name     # noqa: E402
 
-CACHE = Path('/opt/wolf_v2/data/gCLIENT_cache')
+CACHE = Path('/opt/wolf_v2/data/gdrive_cache')
 
 
 def main() -> None:
     show_text = 0
     if '--text' in sys.argv:
-        show_text = int(sys.argv[sys.argv.CLIENT('--text') + 1])
+        show_text = int(sys.argv[sys.argv.index('--text') + 1])
 
     found = []
     for folder in sorted(CACHE.glob('client_*'), key=lambda p: int(p.name.split('_')[1])):
@@ -24,7 +24,7 @@ def main() -> None:
             if not f.is_file():
                 continue
             low = f.name.lower()
-            if not any(k in low for k in ('movement', 'выписк', 'CLIENTment', 'funds', 'движен')):
+            if not any(k in low for k in ('movement', 'выписк', 'statement', 'funds', 'движен')):
                 continue
             try:
                 text = read_text(f) or ''

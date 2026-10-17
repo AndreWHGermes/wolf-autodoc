@@ -12,27 +12,27 @@
 готовые документы (3), при расхождении поправить значение справа, если всё
 верно — согласовать и отправить.
 
-Старый экран (/CLIENT/<id>/view) не меняется. Визор готовых документов —
-зафиксированный движок из CLIENTs/shared/layout.py: контейнер с data-zoom-pan
+Старый экран (/applications/<id>/view) не меняется. Визор готовых документов —
+зафиксированный движок из blocks/shared/layout.py: контейнер с data-zoom-pan
 и .html-stage внутри, тулбар движок строит сам.
 """
 import html as _html
 import json
 from pathlib import Path
 
-from flask import Blueprint, CLIENT, redirect, url_for, flash, jsonify
+from flask import Blueprint, request, redirect, url_for, flash, jsonify
 from urllib.parse import quote as url_quote
 
 from core import db
-from CLIENTs.review import pool
-from CLIENTs.review.scripts import js_for
+from blocks.review import pool
+from blocks.review.scripts import js_for
 
 bp = Blueprint("review", __name__)
 
 
 # Стили каркаса отдельной строкой (не f-строкой): в CSS фигурные скобки,
 # внутри f-строки Python принял бы их за подстановку.
-from CLIENTs.review.styles import CSS     # стили вынесены отдельным модулем
+from blocks.review.styles import CSS     # стили вынесены отдельным модулем
 
 
 
@@ -57,14 +57,14 @@ def _doc_status_label(code: str) -> str:
 
 def _client_display(a, client) -> str:
     if client:
-        name = (client.get("full_name_CLIENT") or client.get("full_name")
-                or " ".join(x for x in (client.get("CLIENT"), client.get("name")) if x))
+        name = (client.get("full_name_latin") or client.get("full_name")
+                or " ".join(x for x in (client.get("surname"), client.get("name")) if x))
         if name:
             return name
-    return " ".join(x for x in (a.get("CLIENT"), a.get("name")) if x) or "без имени"
+    return " ".join(x for x in (a.get("surname"), a.get("name")) if x) or "без имени"
 
 
-# Сигнатуры файлов: у выгрузок с Google CLIENT расширения иногда нет вовсе,
+# Сигнатуры файлов: у выгрузок с Google Drive расширения иногда нет вовсе,
 # и сервер отдавал их как поток байтов — браузер такие картинки не рисует.
 _SIGS = ((b"%PDF", ".pdf"), (b"\xff\xd8\xff", ".jpg"), (b"\x89PNG", ".png"),
          (b"GIF8", ".gif"), (b"RIFF", ".webp"), (b"II*\x00", ".tif"), (b"MM\x00*", ".tif"))
@@ -78,7 +78,7 @@ def _sniff_ext(path) -> str:
     except OSError:
         return ""
     for sig, ext in _SIGS:
-        if head.CLIENTswith(sig):
+        if head.startswith(sig):
             return ext
     if head[4:8] == b"ftyp":
         return ".heic"
@@ -88,19 +88,19 @@ def _sniff_ext(path) -> str:
 def _mime_of(path, ext: str = "") -> str:
     """Тип содержимого для браузера."""
     ext = ext or _sniff_ext(path)
-    return {".pdf": "CLIENT/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    return {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
             ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp",
             ".heic": "image/heic", ".tif": "image/tiff", ".tiff": "image/tiff",
-            ".mp4": "video/mp4", ".webm": "video/webm"}.get(ext, "CLIENT/octet-stream")
+            ".mp4": "video/mp4", ".webm": "video/webm"}.get(ext, "application/octet-stream")
 
 
 def _client_files(client_id):
-    """Файлы клиента из локального кэша Google CLIENT."""
-    root = Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % client_id)
+    """Файлы клиента из локального кэша Google Drive."""
+    root = Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % client_id)
     out = []
     if root.exists():
         for p in sorted(root.rglob("*")):
-            if p.is_file() and not p.name.CLIENTswith("."):
+            if p.is_file() and not p.name.startswith("."):
                 try:
                     size = p.stat().st_size
                 except OSError:
@@ -119,16 +119,16 @@ def _human_size(n: int) -> str:
     return str(n)
 
 
-def _doc_CLIENT_by_template(app_id: int) -> dict:
+def _doc_values_by_template(app_id: int) -> dict:
     """Значения по каждому документу заявки: {template_id: {имя: значение}}."""
     out = {}
     for r in db.q(
-        "SELECT template_id, CLIENT_json FROM CLIENT_CLIENT "
-        "WHERE CLIENT_id=? ORDER BY id",
+        "SELECT template_id, values_json FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
         (app_id,),
     ) or []:
         try:
-            vals = json.loads(r.get("CLIENT_json") or "{}")
+            vals = json.loads(r.get("values_json") or "{}")
         except Exception:
             vals = {}
         if vals:
@@ -139,7 +139,7 @@ def _doc_CLIENT_by_template(app_id: int) -> dict:
 def _template_meta(template_id: int) -> list:
     """Описания переменных шаблона: подпись, тип, откуда берётся."""
     return db.q(
-        "SELECT name, label, vtype, source_kind, sort_order FROM template_CLIENT "
+        "SELECT name, label, vtype, source_kind, sort_order FROM template_variables "
         "WHERE template_id=? ORDER BY sort_order, id",
         (template_id,),
     ) or []
@@ -148,15 +148,15 @@ def _template_meta(template_id: int) -> list:
 def _template_name(template_id) -> str:
     if not template_id:
         return "—"
-    row = db.q1("SELECT code, CLIENT FROM CLIENT WHERE id=?", (template_id,))
+    row = db.q1("SELECT code, title FROM templates WHERE id=?", (template_id,))
     if isinstance(row, dict):
-        return row.get("CLIENT") or row.get("code") or ("шаблон %s" % template_id)
+        return row.get("title") or row.get("code") or ("шаблон %s" % template_id)
     return "шаблон %s" % template_id
 
 
 
 
-@bp.route("/CLIENT/<int:app_id>/file-page")
+@bp.route("/applications/<int:app_id>/file-page")
 def app_file_page(app_id):
     """Первая страница PDF клиента картинкой.
 
@@ -166,17 +166,17 @@ def app_file_page(app_id):
     from flask import send_file, abort
     import subprocess
     import hashlib
-    name = (CLIENT.args.get("name") or "").strip()
-    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
         abort(404)
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a or not a.get("client_id"):
         abort(404)
-    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
     target = (root / name).resolve()
-    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+    if not str(target).startswith(str(root)) or not target.is_file():
         abort(404)
-    if _mime_of(target) != "CLIENT/pdf":
+    if _mime_of(target) != "application/pdf":
         abort(404)
     cache_dir = Path("/opt/wolf_v2/data/previews/client_files")
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -191,59 +191,59 @@ def app_file_page(app_id):
             log.warning("страница PDF не отрисовалась (%s): %s", name, str(e)[:120])
             abort(500)
     resp = send_file(str(out), mimetype="image/png", conditional=True)
-    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    resp.headers["Cache-Control"] = "private, max-age=86400"
     return resp
 
 
-@bp.route("/CLIENT/<int:app_id>/file")
+@bp.route("/applications/<int:app_id>/file")
 def app_file(app_id):
-    """Отдаёт входящий файл клиента из локального кэша Google CLIENT.
+    """Отдаёт входящий файл клиента из локального кэша Google Drive.
 
     Нужен для предпросмотра: администратор должен видеть реальный документ
     рядом с переменными. Путь проверяем, чтобы нельзя было выйти за каталог.
     """
     from flask import send_file, abort
-    name = (CLIENT.args.get("name") or "").strip()
-    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
         abort(404)
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a or not a.get("client_id"):
         abort(404)
-    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
     target = (root / name).resolve()
-    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+    if not str(target).startswith(str(root)) or not target.is_file():
         abort(404)
     resp = send_file(str(target), as_attachment=False, conditional=True,
                      mimetype=_mime_of(target))
     # Файл клиента не меняется: браузер держит его в кэше, и повторный просмотр
     # открывается сразу, без повторной загрузки с сервера.
-    resp.CLIENTs["Cache-Control"] = "private, max-age=86400"
+    resp.headers["Cache-Control"] = "private, max-age=86400"
     return resp
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
-def app_review_CLIENT(app_id):
+@bp.route("/applications/<int:app_id>/review/value", methods=["POST"])
+def app_review_value(app_id):
     """Сохранить значение: пишется во все документы, где есть эта величина."""
-    key = (CLIENT.form.get("key") or "").strip()
-    CLIENT = CLIENT.form.get("CLIENT")
+    key = (request.form.get("key") or "").strip()
+    value = request.form.get("value")
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
-    res = pool.set_CLIENT(app_id, key, CLIENT or "")
+    res = pool.set_value(app_id, key, value or "")
     res["docs_updated"] = len(res.get("touched") or [])
     # Если администратор выбрал значение из документа или из анкеты — запоминаем
     # выбор, чтобы разбор документов больше не перебивал его своим значением.
-    source = (CLIENT.form.get("source") or "").strip()
+    source = (request.form.get("source") or "").strip()
     if source in ("doc", "card"):
         try:
-            pool.mark_choice(app_id, key, source, CLIENT or "")
+            pool.mark_choice(app_id, key, source, value or "")
             res["chosen"] = source
         except Exception:
             pass
     return jsonify(res)
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
-def app_review_CLIENT(app_id):
+@bp.route("/applications/<int:app_id>/review/product", methods=["POST"])
+def app_review_product(app_id):
     """Сменить тип продукта заявки.
 
     Меняется вся цепочка: под новый продукт подставляется свой пакет документов,
@@ -252,132 +252,132 @@ def app_review_CLIENT(app_id):
     убираются, чтобы не мешались в панели; выпущенные (проверенные, отправленные)
     остаются как есть.
     """
-    pid = (CLIENT.form.get("CLIENT_id") or "").strip()
-    row = db.q1("SELECT id, name FROM CLIENT WHERE id=?", (pid,))
+    pid = (request.form.get("product_id") or "").strip()
+    row = db.q1("SELECT id, name FROM products WHERE id=?", (pid,))
     if not row:
         return jsonify({"ok": False, "error": "продукт не найден"}), 400
 
-    db.exec_sql("UPDATE CLIENT SET CLIENT_id=? WHERE id=?", (row["id"], app_id))
+    db.exec_sql("UPDATE applications SET product_id=? WHERE id=?", (row["id"], app_id))
 
     # Свои документы нового продукта заводим сразу — на них смотрит панель переменных
     keep, added = set(), 0
-    for t in db.q("SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? "
+    for t in db.q("SELECT template_id FROM product_documents WHERE product_id=? "
                   "ORDER BY sort_order, id", (row["id"],)) or []:
         keep.add(t.get("template_id"))
         try:
-            db.CLIENT_doc_create(app_id, t.get("template_id"))
+            db.application_doc_create(app_id, t.get("template_id"))
             added += 1
         except Exception:
             pass
 
     # Убираем черновики прежнего продукта: выпущенные документы не трогаем
     removed = 0
-    for d in db.CLIENT_CLIENT(app_id) or []:
+    for d in db.application_documents(app_id) or []:
         if d.get("template_id") in keep:
             continue
         # Отправленные документы не трогаем — они уже ушли клиенту.
         # Собранные ранее черновики убираем: они от прежнего продукта.
-        if (d.get("CLIENT") or "") == "sent":
+        if (d.get("status") or "") == "sent":
             continue
         try:
-            db.exec_sql("DELETE FROM CLIENT_CLIENT WHERE id=?", (d.get("id"),))
+            db.exec_sql("DELETE FROM application_documents WHERE id=?", (d.get("id"),))
             removed += 1
         except Exception:
             pass
 
-    return jsonify({"ok": True, "CLIENT": row.get("name"), "CLIENT": added,
+    return jsonify({"ok": True, "product": row.get("name"), "documents": added,
                     "removed": removed})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/scan-CLIENT")
+@bp.route("/applications/<int:app_id>/review/scan-status")
 def app_review_scan_status(app_id):
     """Состояние разбора документов: по нему понятно, можно ли ставить галочку.
 
     Галочка ставится, когда разбор действительно прошёл и документы скачаны.
     Пока идёт — на кнопке крутится индикатор; если не удалось — показываем причину.
     """
-    from CLIENT import CLIENT as _CLIENT
-    a = db.CLIENT_get(app_id) or {}
-    st = _CLIENT.CLIENT(app_id) or {}
-    files = len(_CLIENT.docs_for_client(a.get("client_id"))) if a.get("client_id") else 0
-    ok = ((st.get("CLIENT") or "") == "ok" and (st.get("total") or 0) > 0
+    from services import drive as _drive
+    a = db.application_get(app_id) or {}
+    st = _drive.status(app_id) or {}
+    files = len(_drive.docs_for_client(a.get("client_id"))) if a.get("client_id") else 0
+    ok = ((st.get("status") or "") == "ok" and (st.get("total") or 0) > 0
           and (st.get("done") or 0) >= (st.get("total") or 0))
-    return jsonify({"CLIENT": st.get("CLIENT") or "none", "done": st.get("done") or 0,
+    return jsonify({"status": st.get("status") or "none", "done": st.get("done") or 0,
                     "total": st.get("total") or 0, "note": st.get("note") or "",
                     "files": files, "ok": bool(ok)})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/regen", methods=["POST"])
+@bp.route("/applications/<int:app_id>/review/regen", methods=["POST"])
 def app_review_regen(app_id):
     """Сгенерировать значение заново по правилам."""
-    key = (CLIENT.form.get("key") or "").strip()
-    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
+    key = (request.form.get("key") or "").strip()
+    profession = (request.form.get("profession") or "").strip()
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
-    return jsonify(pool.regenerate(app_id, key, CLIENT=CLIENT))
+    return jsonify(pool.regenerate(app_id, key, profession=profession))
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENTs")
-def app_review_CLIENTs(app_id):
+@bp.route("/applications/<int:app_id>/review/professions")
+def app_review_professions(app_id):
     """Справочник профессий для резюме: из него администратор выбирает профессию."""
-    from CLIENT import cv_gen
+    from services import cv_gen
     items = [{"code": p["code"], "ru": p.get("ru", ""), "en": p.get("en", "")}
              for p in cv_gen.load_positions()]
     return jsonify({"ok": True, "items": items})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENTs")
-def app_review_CLIENTs(app_id):
+@bp.route("/applications/<int:app_id>/review/phrases")
+def app_review_phrases(app_id):
     """Готовые фразы («кусочки») для поля резюме: администратор отмечает нужные."""
-    key = (CLIENT.args.get("key") or "").strip()
-    CLIENT = (CLIENT.args.get("CLIENT") or "").strip()
+    key = (request.args.get("key") or "").strip()
+    profession = (request.args.get("profession") or "").strip()
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
-    return jsonify(pool.CLIENTs(app_id, key, CLIENT=CLIENT))
+    return jsonify(pool.phrases(app_id, key, profession=profession))
 
 
-@bp.route("/CLIENT/<int:app_id>/review/scratch", methods=["POST"])
+@bp.route("/applications/<int:app_id>/review/scratch", methods=["POST"])
 def app_review_scratch(app_id):
     """Собрать описание резюме «с нуля» по профессии (результат запоминается)."""
-    key = (CLIENT.form.get("key") or "").strip()
-    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
+    key = (request.form.get("key") or "").strip()
+    profession = (request.form.get("profession") or "").strip()
     if not key:
         return jsonify({"ok": False, "error": "не указано поле"}), 400
-    return jsonify(pool.gen_scratch(app_id, key, CLIENT=CLIENT))
+    return jsonify(pool.gen_scratch(app_id, key, profession=profession))
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENT_add", methods=["POST"])
-def app_review_CLIENT_add(app_id):
+@bp.route("/applications/<int:app_id>/review/profession_add", methods=["POST"])
+def app_review_profession_add(app_id):
     """Профессия, которой нет в справочнике: администратор вписал её руками."""
-    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
-    if not CLIENT:
+    title = (request.form.get("title") or "").strip()
+    if not title:
         return jsonify({"ok": False, "error": "впишите название профессии"}), 400
-    return jsonify(pool.add_CLIENT(CLIENT))
+    return jsonify(pool.add_profession(title))
 
 
-@bp.route("/CLIENT/<int:app_id>/review/statuses")
+@bp.route("/applications/<int:app_id>/review/statuses")
 def app_review_statuses(app_id):
     """Текущее состояние документов заявки: нужно плиткам и счётчику."""
     import json as _json
     rows = db.q(
-        "SELECT template_id, CLIENT FROM CLIENT_CLIENT "
-        "WHERE CLIENT_id=? ORDER BY id",
+        "SELECT template_id, status FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
         (app_id,),
     ) or []
     out = {}
     for r in rows:
-        out[str(r.get("template_id"))] = r.get("CLIENT") or ""
-    checked = sum(1 for v in out.CLIENT() if v in ("verified", "rejected"))
+        out[str(r.get("template_id"))] = r.get("status") or ""
+    checked = sum(1 for v in out.values() if v in ("verified", "rejected"))
     return _json.dumps({
         "ok": True,
         "statuses": out,
         "ready": checked,
         "total": len(out),
         "can_send": bool(out) and checked == len(out),
-    }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
+    }, ensure_ascii=False), 200, {"Content-Type": "application/json; charset=utf-8"}
 
 
-@bp.route("/CLIENT/<int:app_id>/review/file-vars")
+@bp.route("/applications/<int:app_id>/review/file-vars")
 def app_review_file_vars(app_id):
     """Какие переменные заявки взяты из этого входящего документа.
 
@@ -385,20 +385,20 @@ def app_review_file_vars(app_id):
     значения переменных: что нашлось, то и подставлено из этого документа.
     """
     import re
-    name = (CLIENT.args.get("name") or "").strip()
-    if not name or "/" in name or "\\" in name or name.CLIENTswith("."):
+    name = (request.args.get("name") or "").strip()
+    if not name or "/" in name or "\\" in name or name.startswith("."):
         return jsonify({"ok": False, "error": "не указан файл"}), 400
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a or not a.get("client_id"):
         return jsonify({"ok": False, "error": "заявка не найдена"}), 404
-    root = (Path("/opt/wolf_v2/data/gCLIENT_cache") / ("client_%s" % a["client_id"])).resolve()
+    root = (Path("/opt/wolf_v2/data/gdrive_cache") / ("client_%s" % a["client_id"])).resolve()
     target = (root / name).resolve()
-    if not str(target).CLIENTswith(str(root)) or not target.is_file():
+    if not str(target).startswith(str(root)) or not target.is_file():
         return jsonify({"ok": False, "error": "файл не найден"}), 404
 
     text = ""
     try:
-        from CLIENT.doc_read import read_text
+        from services.doc_read import read_text
         text = read_text(target) or ""
     except Exception as e:
         log.warning("не удалось прочитать документ %s: %s", name, str(e)[:120])
@@ -410,7 +410,7 @@ def app_review_file_vars(app_id):
     found, checked = [], 0
     if len(flat) > 20:
         for g in pool.build_pool(app_id):
-            raw = str(g.get("CLIENT") or "")
+            raw = str(g.get("value") or "")
             val = norm(raw)
             if len(val) < 4:
                 continue
@@ -419,46 +419,46 @@ def app_review_file_vars(app_id):
             if not hit:
                 # Скан читается с ошибками: сверяем по словам — если в документе
                 # нашлась большая часть значения, считаем его взятым отсюда.
-                CLIENT = [w for w in re.split(r"[^0-9A-Za-zА-Яа-я]+", raw) if len(w) >= 4]
-                if len(CLIENT) >= 2:
-                    got = sum(1 for w in CLIENT if norm(w) in flat)
-                    hit = got >= max(2, int(len(CLIENT) * 0.6))
+                words = [w for w in re.split(r"[^0-9A-Za-zА-Яа-я]+", raw) if len(w) >= 4]
+                if len(words) >= 2:
+                    got = sum(1 for w in words if norm(w) in flat)
+                    hit = got >= max(2, int(len(words) * 0.6))
             if hit:
-                found.extend(list(g["names"].CLIENT()))
+                found.extend(list(g["names"].values()))
     return jsonify({"ok": True, "file": name, "vars": sorted(set(found)),
                     "checked": checked, "text_len": len(text)})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/rebuild", methods=["POST"])
+@bp.route("/applications/<int:app_id>/review/rebuild", methods=["POST"])
 def app_review_rebuild(app_id):
     """Пересобрать все документы заявки по правилам — даже уже готовые.
 
     Нужно, чтобы любую заявку, включая архивную, можно было открыть и увидеть
     документы такими, какими они должны быть сейчас.
     """
-    from CLIENT import autofill
-    CLIENTed = autofill.build_all_async(app_id)
-    return jsonify({"ok": True, "CLIENTed": CLIENTed})
+    from services import autofill
+    started = autofill.build_all_async(app_id)
+    return jsonify({"ok": True, "started": started})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/CLIENT", methods=["POST"])
-def app_review_CLIENT(app_id):
-    """Прикрепить к заявке ссылку на папку Google CLIENT."""
-    url = (CLIENT.form.get("url") or "").strip()
-    if url and not url.CLIENTswith(("http://", "https://")):
+@bp.route("/applications/<int:app_id>/review/drive", methods=["POST"])
+def app_review_drive(app_id):
+    """Прикрепить к заявке ссылку на папку Google Drive."""
+    url = (request.form.get("url") or "").strip()
+    if url and not url.startswith(("http://", "https://")):
         return jsonify({"ok": False, "error": "ссылка должна начинаться с http"}), 400
-    db.exec_sql("UPDATE CLIENT SET gCLIENT_url=? WHERE id=?", (url, app_id))
+    db.exec_sql("UPDATE applications SET gdrive_url=? WHERE id=?", (url, app_id))
     return jsonify({"ok": True, "url": url})
 
 
-@bp.route("/CLIENT/<int:app_id>/review/options")
+@bp.route("/applications/<int:app_id>/review/options")
 def app_review_options(app_id):
     """Варианты значения для поля: прошлые значения и примеры из шаблона."""
-    key = (CLIENT.args.get("key") or "").strip()
-    return jsonify({"ok": True, "options": pool.CLIENT_options(app_id, key)})
+    key = (request.args.get("key") or "").strip()
+    return jsonify({"ok": True, "options": pool.history_options(app_id, key)})
 
 
-@bp.CLIENT_app_CLIENT
+@bp.before_app_request
 def _old_app_screen_redirect():
     """Старый экран заявки заменён новым: держим один вид, без развилки.
 
@@ -466,17 +466,17 @@ def _old_app_screen_redirect():
     закладки тоже должны открывать рабочий экран, а не позавчерашнюю вёрстку.
     """
     import re as _re
-    from flask import redirect, CLIENT
-    m = _re.match(r"^/CLIENT/(\d+)/view/?$", CLIENT.path or "")
+    from flask import redirect, request
+    m = _re.match(r"^/applications/(\d+)/view/?$", request.path or "")
     if m:
-        qs = ("?" + CLIENT.query_string.decode()) if CLIENT.query_string else ""
-        return redirect("/CLIENT/%s/review%s" % (m.group(1), qs), code=302)
+        qs = ("?" + request.query_string.decode()) if request.query_string else ""
+        return redirect("/applications/%s/review%s" % (m.group(1), qs), code=302)
     return None
 
 
-@bp.route("/CLIENT/<int:app_id>/review")
+@bp.route("/applications/<int:app_id>/review")
 def app_review(app_id: int):
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
@@ -486,60 +486,60 @@ def app_review(app_id: int):
     files = _client_files(a["client_id"]) if a.get("client_id") else []
 
     docs = db.q(
-        "SELECT id, template_id, CLIENT, pdf_path, rendered_at FROM CLIENT_CLIENT "
-        "WHERE CLIENT_id=? ORDER BY id",
+        "SELECT id, template_id, status, pdf_path, rendered_at FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
         (app_id,),
     ) or []
 
-    picked = CLIENT.args.get("tpl", type=int)
+    picked = request.args.get("tpl", type=int)
     tpl_ids = [d.get("template_id") for d in docs if d.get("template_id")]
     if picked not in tpl_ids:
         picked = tpl_ids[0] if tpl_ids else None
 
-    checked = sum(1 for d in docs if (d.get("CLIENT") or "") in ("verified", "rejected"))
+    checked = sum(1 for d in docs if (d.get("status") or "") in ("verified", "rejected"))
     can_send = bool(docs) and checked == len(docs)
 
-    # Ссылка на папку заявки на Google CLIENT. У архивных заявок своей ссылки
+    # Ссылка на папку заявки на Google Drive. У архивных заявок своей ссылки
     # обычно нет — показываем папку клиента и даём прикрепить ссылку заявки.
-    CLIENT_url = (a.get("gCLIENT_url") or "").strip()
-    client_CLIENT = ""
+    drive_url = (a.get("gdrive_url") or "").strip()
+    client_drive = ""
     try:
         _cl = db.client_get(a["client_id"]) if a.get("client_id") else None
-        client_CLIENT = ((_cl or {}).get("gCLIENT_folder_url") or "").strip()
+        client_drive = ((_cl or {}).get("gdrive_folder_url") or "").strip()
     except Exception:
-        client_CLIENT = ""
-    # Логотип Google Диска — узнаваемая кнопка CLIENTа в папку клиента
+        client_drive = ""
+    # Логотип Google Диска — узнаваемая кнопка перехода в папку клиента
     # Значок разбора: логотип Диска и стрелка — «забираем документы с Диска»
-    CLIENT_dl_icon = ('<svg width="20" height="15" viewBox="0 0 22 15" aria-hidden="true">'
+    drive_dl_icon = ('<svg width="20" height="15" viewBox="0 0 22 15" aria-hidden="true">'
                      '<path d="M5.3 1h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
                      '<path d="M5.3 1 0 10.2l2.7 4.6L8 5.6z" fill="#11A861"/>'
                      '<path d="M2.7 14.8h10.6L16 10.2H5.4z" fill="#2684FC"/>'
                      '<path d="M18.6 1v7.2M15.8 5.6l2.8 2.8 2.8-2.8" stroke="#fff" stroke-width="1.5"'
                      ' fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>')
-    gCLIENT_logo = ('<svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">'
+    gdrive_logo = ('<svg width="15" height="13" viewBox="0 0 16 14" aria-hidden="true">'
                    '<path d="M5.3 0h5.4l5.3 9.2h-5.4z" fill="#FFCF63"/>'
                    '<path d="M5.3 0 0 9.2l2.7 4.6L8 4.6z" fill="#11A861"/>'
                    '<path d="M2.7 13.8h10.6L16 9.2H5.4z" fill="#2684FC"/></svg>')
-    CLIENT_link = CLIENT_url or client_CLIENT
-    if CLIENT_link:
-        CLIENT_html = ('<a CLIENT="btn sm rv-CLIENT-btn" href="%s" target="_blank" rel="noopener"'
-                      ' CLIENT="Папка клиента на Google CLIENT">%sПерейти в Google Диск клиента</a>'
-                      % (_html.escape(CLIENT_link, quote=True), gCLIENT_logo))
+    drive_link = drive_url or client_drive
+    if drive_link:
+        drive_html = ('<a class="btn sm rv-drive-btn" href="%s" target="_blank" rel="noopener"'
+                      ' title="Папка клиента на Google Drive">%sПерейти в Google Диск клиента</a>'
+                      % (_html.escape(drive_link, quote=True), gdrive_logo))
     else:
-        CLIENT_html = ('<input type="text" id="rv-CLIENT-input" CLIENT="rv-CLIENT-input"'
-                      ' CLIENTholder="вставьте ссылку на папку клиента на Google Диске">'
-                      '<button type="button" CLIENT="btn sm rv-CLIENT-btn" id="rv-CLIENT-save">'
-                      + gCLIENT_logo + 'Указать папку на Google Диске</button>')
+        drive_html = ('<input type="text" id="rv-drive-input" class="rv-drive-input"'
+                      ' placeholder="вставьте ссылку на папку клиента на Google Диске">'
+                      '<button type="button" class="btn sm rv-drive-btn" id="rv-drive-save">'
+                      + gdrive_logo + 'Указать папку на Google Диске</button>')
 
     # Всё, что нужно шапке: собранные переменные, сколько заполнено и разобраны
     # ли документы клиента. Считаем до отрисовки, чтобы значки кнопок были верные.
     # Если у заявки ещё нет своих документов — заводим их по типу продукта.
     # Так открытие любой заявки (в том числе архивной) сразу даёт панель переменных.
     try:
-        if not (db.CLIENT_CLIENT(app_id) or []):
-            for _t in db.q("SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? "
-                           "ORDER BY sort_order, id", (a.get("CLIENT_id"),)) or []:
-                db.CLIENT_doc_create(app_id, _t.get("template_id"))
+        if not (db.application_documents(app_id) or []):
+            for _t in db.q("SELECT template_id FROM product_documents WHERE product_id=? "
+                           "ORDER BY sort_order, id", (a.get("product_id"),)) or []:
+                db.application_doc_create(app_id, _t.get("template_id"))
     except Exception as _e:
         log.warning("документы заявки %s не завелись: %s", app_id, str(_e)[:100])
 
@@ -553,14 +553,14 @@ def app_review(app_id: int):
     scan_note = ""
     scan_files = 0
     try:
-        from CLIENT import CLIENT as _CLIENT
+        from services import drive as _drive
         _cid = a.get("client_id")
-        _st = _CLIENT.CLIENT(app_id) or {}
-        scan_files = len(_CLIENT.docs_for_client(_cid)) if _cid else 0
-        if (_st.get("CLIENT") or "") == "ok" and (_st.get("total") or 0) > 0 \
+        _st = _drive.status(app_id) or {}
+        scan_files = len(_drive.docs_for_client(_cid)) if _cid else 0
+        if (_st.get("status") or "") == "ok" and (_st.get("total") or 0) > 0 \
                 and (_st.get("done") or 0) >= (_st.get("total") or 0):
             scan_done = "1"
-        elif (_st.get("CLIENT") or "") == "running":
+        elif (_st.get("status") or "") == "running":
             scan_note = "идёт разбор документов…"
         else:
             scan_note = (_st.get("note") or "документы с Google Диска ещё не разобраны")
@@ -569,75 +569,75 @@ def app_review(app_id: int):
 
     # Продукты для смены типа заявки: список статический, из пакетов документов.
     # У каждого продукта видно, сколько документов он требует.
-    CLIENT = []
+    products = []
     try:
-        CLIENT = db.q(
+        products = db.q(
             "SELECT p.id, p.name, COUNT(pd.template_id) AS docs "
-            "FROM CLIENT p LEFT JOIN CLIENT_CLIENT pd ON pd.CLIENT_id = p.id "
+            "FROM products p LEFT JOIN product_documents pd ON pd.product_id = p.id "
             "WHERE COALESCE(p.active, 1) = 1 GROUP BY p.id ORDER BY p.id"
         ) or []
     except Exception:
-        CLIENT = []
-    cur_CLIENT = a.get("CLIENT_id")
+        products = []
+    cur_product = a.get("product_id")
     # Список продуктов: строка того продукта, что стоит в заявке, подсвечена
     # жёлтым внутри списка — при выборе другого видно, чем он отличается.
-    CLIENT_options = "".join(
-        '<button type="button" CLIENT="rv-opt%s" data-CLIENT="%s">'
-        '<span CLIENT="rv-opt-name">%s</span>'
-        '<span CLIENT="rv-opt-docs">документов: %s</span>%s</button>' % (
-            " is-current" if str(pr.get("id")) == str(cur_CLIENT) else "",
+    product_options = "".join(
+        '<button type="button" class="rv-opt%s" data-value="%s">'
+        '<span class="rv-opt-name">%s</span>'
+        '<span class="rv-opt-docs">документов: %s</span>%s</button>' % (
+            " is-current" if str(pr.get("id")) == str(cur_product) else "",
             pr.get("id"),
             _html.escape(str(pr.get("name") or "продукт")),
             pr.get("docs") or 0,
-            '<span CLIENT="rv-opt-tag">нужен по заявке</span>'
-            if str(pr.get("id")) == str(cur_CLIENT) else "",
+            '<span class="rv-opt-tag">нужен по заявке</span>'
+            if str(pr.get("id")) == str(cur_product) else "",
         )
-        for pr in CLIENT
+        for pr in products
     )
-    cur_CLIENT_name = next((str(pr.get("name") or "") for pr in CLIENT
-                             if str(pr.get("id")) == str(cur_CLIENT)), "продукт не указан")
-    cur_docs = next((pr.get("docs") or 0 for pr in CLIENT
-                     if str(pr.get("id")) == str(cur_CLIENT)), 0)
+    cur_product_name = next((str(pr.get("name") or "") for pr in products
+                             if str(pr.get("id")) == str(cur_product)), "продукт не указан")
+    cur_docs = next((pr.get("docs") or 0 for pr in products
+                     if str(pr.get("id")) == str(cur_product)), 0)
     scan_note_cls = " is-warn" if scan_note else ""
 
     head = f"""
-<div CLIENT="rv-head">
+<div class="rv-head">
   <div>
-    <div CLIENT="rv-CLIENT">Заявка #{app_id} · {client_name}</div>
-    <div CLIENT="rv-sub">создана {str(a.get('created_at') or '')[:16]} ·
-      <span CLIENT="rv-chip">{_status_label(a.get('CLIENT'))}</span>
+    <div class="rv-title">Заявка #{app_id} · {client_name}</div>
+    <div class="rv-sub">создана {str(a.get('created_at') or '')[:16]} ·
+      <span class="rv-chip">{_status_label(a.get('status'))}</span>
     </div>
   </div>
-  <div CLIENT="rv-prod rv-prod-top">
-    <span CLIENT="rv-prod-k">Тип продукта</span>
-    <div CLIENT="rv-select" id="rv-CLIENT" data-CLIENT="{cur_CLIENT}">
-      <button type="button" CLIENT="rv-select-btn" id="rv-CLIENT-btn"
-              CLIENT="От типа продукта зависят документы и переменные заявки">
-        <span id="rv-CLIENT-cur">{cur_CLIENT_name}</span>
-        <span CLIENT="rv-select-caret" aria-hidden="true">▾</span>
+  <div class="rv-prod rv-prod-top">
+    <span class="rv-prod-k">Тип продукта</span>
+    <div class="rv-select" id="rv-product" data-value="{cur_product}">
+      <button type="button" class="rv-select-btn" id="rv-product-btn"
+              title="От типа продукта зависят документы и переменные заявки">
+        <span id="rv-product-cur">{cur_product_name}</span>
+        <span class="rv-select-caret" aria-hidden="true">▾</span>
       </button>
-      <div CLIENT="rv-select-list" id="rv-CLIENT-list" hidden>{CLIENT_options}</div>
+      <div class="rv-select-list" id="rv-product-list" hidden>{product_options}</div>
     </div>
-    <span CLIENT="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
+    <span class="rv-prod-note" id="rv-prod-note">документов по продукту: {cur_docs}</span>
   </div>
-  <div CLIENT="rv-CLIENT">
-    <button type="button" CLIENT="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
-            CLIENT="Документы клиента с Google CLIENT читаются и разбираются автоматически">
-      <span CLIENT="rv-nn" aria-hidden="true">{CLIENT_dl_icon}</span>
-      <span CLIENT="rv-auto-t">Разобрать документы</span>
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
-    <button type="button" CLIENT="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
-            CLIENT="Переменные заполняются автоматически по правилам системы">
-      <span CLIENT="rv-nn" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"
+  <div class="rv-tools">
+    <button type="button" class="btn sm rv-auto" id="rv-scan" data-done="{scan_done}"
+            title="Документы клиента с Google Drive читаются и разбираются автоматически">
+      <span class="rv-nn" aria-hidden="true">{drive_dl_icon}</span>
+      <span class="rv-auto-t">Разобрать документы</span>
+      <span class="rv-auto-dot" aria-hidden="true"></span></button>
+    <button type="button" class="btn sm rv-auto rv-auto-fill" id="rv-autofill" data-done="{fill_done}"
+            title="Переменные заполняются автоматически по правилам системы">
+      <span class="rv-nn" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24"
         fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
         <circle cx="12" cy="4.5" r="2"/><circle cx="4.5" cy="17" r="2"/><circle cx="19.5" cy="17" r="2"/>
         <path d="M10.6 6.2 5.7 15.2M13.4 6.2l4.9 9M6.5 17h11"/></svg></span>
-      <span CLIENT="rv-auto-t">Заполнить автоматически</span>
-      <span CLIENT="rv-auto-dot" aria-hidden="true"></span></button>
-    <span CLIENT="rv-CLIENT-box" id="rv-CLIENT-box">{CLIENT_html}</span>
-    <button type="button" CLIENT="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
+      <span class="rv-auto-t">Заполнить автоматически</span>
+      <span class="rv-auto-dot" aria-hidden="true"></span></button>
+    <span class="rv-drive-box" id="rv-drive-box">{drive_html}</span>
+    <button type="button" class="btn ghost rv-vars-btn" id="rv-vars-btn">Переменные значения ({filled_n})</button>
   </div>
-  <div CLIENT="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>
+  <div class="rv-scan-note{scan_note_cls}" id="rv-scan-note">{scan_note}</div>
 </div>
 """
 
@@ -653,55 +653,55 @@ def app_review(app_id: int):
 
     def _preview_of(name: str, ext: str) -> str:
         if ext in (".png", ".jpg", ".jpeg", ".webp", ".gif"):
-            return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
+            return ('<img src="/applications/%s/file?name=%s" alt="%s" loading="lazy">'
                     % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".pdf",):
             # PDF показываем отрисованной страницей: встроенный просмотрщик
             # браузера открывает файл не всегда, картинка работает везде.
-            return ('<img data-src="/CLIENT/%s/file-page?name=%s" alt="%s" loading="lazy">'
+            return ('<img data-src="/applications/%s/file-page?name=%s" alt="%s" loading="lazy">'
                     % (app_id, url_quote(name), _html.escape(name, quote=True)))
         if ext in (".heic", ".heif"):
             twin = name.rsplit(".", 1)[0] + ".photo.png"
             # Браузер не показывает HEIC — для плитки берём сконвертированную копию.
             # Копии нет в отфильтрованном списке, поэтому ищем по исходному.
             if any(f["name"] == twin for f in all_files):
-                return ('<img src="/CLIENT/%s/file?name=%s" alt="%s" loading="lazy">'
+                return ('<img src="/applications/%s/file?name=%s" alt="%s" loading="lazy">'
                         % (app_id, url_quote(twin), _html.escape(twin, quote=True)))
             return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">🖼️</div>'
         return '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:30px">📄</div>'
 
     files_html = "".join(
-        '<div CLIENT="rv-thumb rv-file-thumb" data-file="%s" data-page="%s">'
-        '<div CLIENT="rv-thumb-frame is-loading">%s<span CLIENT="rv-spinner"></span></div>'
-        '<div CLIENT="rv-thumb-cap"><span CLIENT="rv-thumb-name">%s</span>'
-        '<span CLIENT="rv-thumb-CLIENT">%s</span></div></div>'
+        '<div class="rv-thumb rv-file-thumb" data-file="%s" data-page="%s">'
+        '<div class="rv-thumb-frame is-loading">%s<span class="rv-spinner"></span></div>'
+        '<div class="rv-thumb-cap"><span class="rv-thumb-name">%s</span>'
+        '<span class="rv-thumb-status">%s</span></div></div>'
         % (_html.escape(f["name"], quote=True),
-           ('/CLIENT/%s/file-page?name=%s' % (app_id, url_quote(f["name"])))
+           ('/applications/%s/file-page?name=%s' % (app_id, url_quote(f["name"])))
            if f["ext"] == ".pdf" else "",
            _preview_of(f["name"], f["ext"]),
            _html.escape(f["name"][:34]),
            _human_size(f["size"]))
         for f in files
-    ) or '<div CLIENT="rv-empty">Файлы клиента в локальном кэше не найдены</div>'
+    ) or '<div class="rv-empty">Файлы клиента в локальном кэше не найдены</div>'
 
-    CLIENT_link = (('<a href="%s" target="_blank" rel="noopener">папка заявки на Google CLIENT</a>'
-                   % a.get("gCLIENT_url")) if a.get("gCLIENT_url") else "ссылка не указана")
+    drive_link = (('<a href="%s" target="_blank" rel="noopener">папка заявки на Google Drive</a>'
+                   % a.get("gdrive_url")) if a.get("gdrive_url") else "ссылка не указана")
 
     pane_src = f"""
-  <div CLIENT="rv-pane is-on" id="pane-src">
-    <div CLIENT="rv-body">
-      <p CLIENT="rv-sec">Документы клиента ({len(files)}) — нажмите плитку, документ откроется в окне справа</p>
-      <div CLIENT="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
-      <div CLIENT="rv-note" style="margin-top:10px">Нажмите плитку — документ откроется в центральном окне.
+  <div class="rv-pane is-on" id="pane-src">
+    <div class="rv-body">
+      <p class="rv-sec">Документы клиента ({len(files)}) — нажмите плитку, документ откроется в окне справа</p>
+      <div class="rv-thumbs" id="rv-file-thumbs">{files_html}</div>
+      <div class="rv-note" style="margin-top:10px">Нажмите плитку — документ откроется в центральном окне.
         Справа останутся переменные, которые из него вытащены.</div>
 
-      <p CLIENT="rv-sec" style="margin-top:16px">Карточка заявки</p>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Клиент</span><span CLIENT="rv-v">{client_name}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Продукт</span><span CLIENT="rv-v rv-mark-yellow">{a.get('CLIENT_name') or '—'}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Статус заявки</span><span CLIENT="rv-v">{_status_label(a.get('CLIENT'))}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Создана</span><span CLIENT="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Взял в работу</span><span CLIENT="rv-v">{a.get('taken_CLIENT') or '—'}</span></div>
-      <div CLIENT="rv-row"><span CLIENT="rv-k">Комментарий менеджера</span><span CLIENT="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
+      <p class="rv-sec" style="margin-top:16px">Карточка заявки</p>
+      <div class="rv-row"><span class="rv-k">Клиент</span><span class="rv-v">{client_name}</span></div>
+      <div class="rv-row"><span class="rv-k">Продукт</span><span class="rv-v rv-mark-yellow">{a.get('product_name') or '—'}</span></div>
+      <div class="rv-row"><span class="rv-k">Статус заявки</span><span class="rv-v">{_status_label(a.get('status'))}</span></div>
+      <div class="rv-row"><span class="rv-k">Создана</span><span class="rv-v">{str(a.get('created_at') or '—')[:16]}</span></div>
+      <div class="rv-row"><span class="rv-k">Взял в работу</span><span class="rv-v">{a.get('taken_login') or '—'}</span></div>
+      <div class="rv-row"><span class="rv-k">Комментарий менеджера</span><span class="rv-v rv-mark-yellow">{(a.get('comment') or '—')[:400]}</span></div>
     </div>
   </div>
 """
@@ -710,46 +710,46 @@ def app_review(app_id: int):
     # Плитки документов: миниатюра подгружается лениво, при открытии вкладки.
     # Клик по плитке разворачивает документ в визоре слева.
     thumbs = "".join(
-        '<div CLIENT="rv-thumb%s" data-tpl="%s">'
-        '<div CLIENT="rv-thumb-frame is-loading"><span CLIENT="rv-spinner"></span>'
-        '<iframe data-src="/CLIENT/%s/doc/%s/html" CLIENT="%s" loading="lazy" scrolling="no"></iframe>'
+        '<div class="rv-thumb%s" data-tpl="%s">'
+        '<div class="rv-thumb-frame is-loading"><span class="rv-spinner"></span>'
+        '<iframe data-src="/applications/%s/doc/%s/html" title="%s" loading="lazy" scrolling="no"></iframe>'
         '</div>'
-        '<div CLIENT="rv-thumb-cap">'
-        '<span CLIENT="rv-thumb-name">%s</span>'
-        '<span CLIENT="rv-thumb-CLIENT" id="rv-thumb-CLIENT-%s">%s</span>'
-        '<div CLIENT="rv-thumb-CLIENT">'
-        '<button type="button" CLIENT="rv-mark%s" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
-        '<button type="button" CLIENT="rv-mark%s" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
+        '<div class="rv-thumb-cap">'
+        '<span class="rv-thumb-name">%s</span>'
+        '<span class="rv-thumb-status" id="rv-thumb-status-%s">%s</span>'
+        '<div class="rv-thumb-tools">'
+        '<button type="button" class="rv-mark%s" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
+        '<button type="button" class="rv-mark%s" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
         '</div>'
         '</div></div>'
         % (" is-on" if d.get("template_id") == picked else "", d.get("template_id"),
            app_id, d.get("template_id"), _template_name(d.get("template_id")),
            _template_name(d.get("template_id")), d.get("template_id"),
-           _doc_status_label(d.get("CLIENT")),
-           " rv-on-ok" if (d.get("CLIENT") or "") == "verified" else "", d.get("template_id"),
-           " rv-on-no" if (d.get("CLIENT") or "") == "rejected" else "", d.get("template_id"))
+           _doc_status_label(d.get("status")),
+           " rv-on-ok" if (d.get("status") or "") == "verified" else "", d.get("template_id"),
+           " rv-on-no" if (d.get("status") or "") == "rejected" else "", d.get("template_id"))
         for d in docs
-    ) or '<div CLIENT="rv-empty">У заявки пока нет документов</div>'
+    ) or '<div class="rv-empty">У заявки пока нет документов</div>'
 
     verdict_rows = "".join(
-        '<div CLIENT="rv-row" data-row-tpl="%s">'
-        '<span CLIENT="rv-k">%s</span>'
-        '<span CLIENT="rv-v" id="rv-CLIENT-%s">%s</span>'
+        '<div class="rv-row" data-row-tpl="%s">'
+        '<span class="rv-k">%s</span>'
+        '<span class="rv-v" id="rv-status-%s">%s</span>'
         '<span style="margin-left:auto;display:flex;gap:6px">'
-        '<button type="button" CLIENT="btn sm rv-mark" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
-        '<button type="button" CLIENT="btn sm rv-mark" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
+        '<button type="button" class="btn sm rv-mark" data-verdict="verify" data-tpl="%s">✓ Проверен</button>'
+        '<button type="button" class="btn sm rv-mark" data-verdict="reject" data-tpl="%s">✕ Не нужен</button>'
         '</span></div>'
         % (d.get("template_id"), _template_name(d.get("template_id")),
-           d.get("template_id"), _doc_status_label(d.get("CLIENT")),
+           d.get("template_id"), _doc_status_label(d.get("status")),
            d.get("template_id"), d.get("template_id"))
         for d in docs
-    ) or '<div CLIENT="rv-empty">Согласовывать пока нечего</div>'
+    ) or '<div class="rv-empty">Согласовывать пока нечего</div>'
 
     pane_ready = f"""
-  <div CLIENT="rv-pane" id="pane-ready">
-    <div CLIENT="rv-thumbs" id="rv-thumbs">{thumbs}</div>
-    <div CLIENT="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
-    <div CLIENT="rv-note" style="margin:0 13px 13px">Нажмите плитку — документ откроется поверх
+  <div class="rv-pane" id="pane-ready">
+    <div class="rv-thumbs" id="rv-thumbs">{thumbs}</div>
+    <div class="rv-thumbs-bar"><span id="rv-thumbs-count">миниатюры загружаются по мере готовности</span></div>
+    <div class="rv-note" style="margin:0 13px 13px">Нажмите плитку — документ откроется поверх
       страницы на две трети слева. Подтвердить или отклонить можно и на самой плитке, и в окне.
       Справа — переменные заявки: нажмите на переменную, и её место подсветится
         в документе; жёлтым в документе отмечены подставленные значения.</div>
@@ -767,7 +767,7 @@ def app_review(app_id: int):
     # Прошлые значения есть далеко не у всех переменных: список открываем только
     # для тех, где выбор из истории действительно нужен и возможен.
     try:
-        hist_names = pool.names_with_CLIENT()
+        hist_names = pool.names_with_history()
     except Exception:
         hist_names = set()
 
@@ -780,31 +780,31 @@ def app_review(app_id: int):
     # на заголовок. Внутри поля идут строго одинаково: название переменной,
     # значение, откуда оно взято.
     cur_section = None
-    sec_CLIENT = 0
+    sec_index = 0
     for g in pool_groups:
         sec = g.get("section") or "Переменные"
         if sec != cur_section:
             if cur_section is not None:
                 fields_html.append('</div></div>')
-            sec_CLIENT += 1
+            sec_index += 1
             fields_html.append(
-                '<div CLIENT="rv-blk" data-sec="%d">'
-                '<button type="button" CLIENT="rv-blk-head">'
-                '<span CLIENT="rv-blk-t">%s</span>'
-                '<span CLIENT="rv-blk-n">%d</span>'
-                '<span CLIENT="rv-blk-arrow" aria-hidden="true">▾</span>'
-                '</button><div CLIENT="rv-blk-body">'
-                % (sec_CLIENT, _html.escape(sec), sec_counts.get(sec, 0)))
+                '<div class="rv-blk" data-sec="%d">'
+                '<button type="button" class="rv-blk-head">'
+                '<span class="rv-blk-t">%s</span>'
+                '<span class="rv-blk-n">%d</span>'
+                '<span class="rv-blk-arrow" aria-hidden="true">▾</span>'
+                '</button><div class="rv-blk-body">'
+                % (sec_index, _html.escape(sec), sec_counts.get(sec, 0)))
             cur_section = sec
 
         label = g["label"]
-        if g["doc_count"] == 1 and g.get("CLIENT_split"):
-            label = "%s · %s" % (label, g["doc_CLIENTs"][0] if g["doc_CLIENTs"] else "документ")
+        if g["doc_count"] == 1 and g.get("value_split"):
+            label = "%s · %s" % (label, g["doc_titles"][0] if g["doc_titles"] else "документ")
         docs_note = ("в %d документах" % g["doc_count"]) if g["doc_count"] > 1 \
                     else "в 1 документе"
 
-        vars_all = ",".join(g["names"].CLIENT())
-        var_CLIENT = next(iter(g["names"].CLIENT()), "")
+        vars_all = ",".join(g["names"].values())
+        var_first = next(iter(g["names"].values()), "")
         src = g.get("src") or "сгенерировано"
         if not g["filled"]:
             # пустое значение честно помечаем: источник появится после заполнения
@@ -814,17 +814,17 @@ def app_review(app_id: int):
         # номера справки и счёта, Ref., остаток, маска карты, адрес.
         kind = g.get("kind") or "gen"
         if kind == "gen":
-            regen = ('<button type="button" CLIENT="rv-act" data-act="regen" data-key="%s"'
-                     ' CLIENT="Сгенерировать значение заново">🎲</button>'
+            regen = ('<button type="button" class="rv-act" data-act="regen" data-key="%s"'
+                     ' title="Сгенерировать значение заново">🎲</button>'
                      % _html.escape(g["key"], quote=True))
         else:
-            regen = ('<span CLIENT="rv-act rv-act-off" CLIENT="Значение берётся как есть —'
+            regen = ('<span class="rv-act rv-act-off" title="Значение берётся как есть —'
                      ' перевыпускать нечего">·</span>')
 
         # Инструкция переменной: правило из конструктора плюс источник значения.
         rule_txt = (g.get("rule_note") or "").strip()
         info_bits = [rule_txt] if rule_txt else []
-        if var_CLIENT == "doc_date":
+        if var_first == "doc_date":
             info_bits.append("Это дата формирования документа. Она же период по — "
                              "одна и та же дата, текущая.")
         info_bits.append("Источник: %s." % src)
@@ -844,11 +844,11 @@ def app_review(app_id: int):
             _cv = _html.escape(str(conflict.get("card") or ""))
             _src_name = _html.escape(str(conflict.get("from") or "документ клиента"))
             conflict_html = (
-                '<div CLIENT="rv-conflict">'
-                '<div CLIENT="rv-conflict-head">⚠ данные в анкете отличаются</div>'
-                '<select CLIENT="rv-conflict-sel" data-key="%s">'
-                '<option CLIENT="doc" data-CLIENT="%s" selected>из документа (файл «%s»): %s</option>'
-                '<option CLIENT="card" data-CLIENT="%s">из анкеты: %s</option>'
+                '<div class="rv-conflict">'
+                '<div class="rv-conflict-head">⚠ данные в анкете отличаются</div>'
+                '<select class="rv-conflict-sel" data-key="%s">'
+                '<option value="doc" data-value="%s" selected>из документа (файл «%s»): %s</option>'
+                '<option value="card" data-value="%s">из анкеты: %s</option>'
                 '</select></div>' % (_html.escape(g["key"], quote=True),
                                      _dv, _src_name, _dv, _cv, _cv)
             )
@@ -858,48 +858,48 @@ def app_review(app_id: int):
         cv_picker = ""
         # Список профессий нужен только там, где есть текст описания: имя, паспорт
         # и даты генерировать по профессии не нужно.
-        CV_GEN_VARS = ("cv_CLIENT", "cv_job1_CLIENT", "cv_job2_CLIENT", "cv_job3_CLIENT",
-                       "cv_CLIENT_hard", "cv_CLIENT_soft", "cv_CLIENT_CLIENT",
-                       "cv_CLIENT_CLIENT", "cv_CLIENT_note", "cv_job1_CLIENT")
-        if str(var_CLIENT or "") in CV_GEN_VARS:
+        CV_GEN_VARS = ("cv_summary", "cv_job1_bullets", "cv_job2_bullets", "cv_job3_bullets",
+                       "cv_skills_hard", "cv_skills_soft", "cv_skills_tools",
+                       "cv_education_degree", "cv_education_note", "cv_job1_title")
+        if str(var_first or "") in CV_GEN_VARS:
             _ck = _html.escape(g["key"], quote=True)
-            cv_picker = ('<div CLIENT="rv-cvgen">'
-                         '<select CLIENT="rv-cvprof" data-key="%s" CLIENT="Профессия для описания">'
-                         '<option CLIENT="">профессия…</option>'
-                         '<option CLIENT="__custom__">✎ своя профессия…</option></select>'
-                         '<button type="button" CLIENT="rv-cvbtn" data-key="%s"'
-                         ' CLIENT="Собрать описание резюме по профессии">Собрать описание</button>'
-                         '<button type="button" CLIENT="rv-cvpieces" data-key="%s"'
-                         ' CLIENT="Отметить готовые фразы и собрать из них текст">Кусочки</button>'
-                         '<button type="button" CLIENT="rv-cvscratch" data-key="%s"'
-                         ' CLIENT="Собрать описание заново, другими словами">С нуля</button>'
+            cv_picker = ('<div class="rv-cvgen">'
+                         '<select class="rv-cvprof" data-key="%s" title="Профессия для описания">'
+                         '<option value="">профессия…</option>'
+                         '<option value="__custom__">✎ своя профессия…</option></select>'
+                         '<button type="button" class="rv-cvbtn" data-key="%s"'
+                         ' title="Собрать описание резюме по профессии">Собрать описание</button>'
+                         '<button type="button" class="rv-cvpieces" data-key="%s"'
+                         ' title="Отметить готовые фразы и собрать из них текст">Кусочки</button>'
+                         '<button type="button" class="rv-cvscratch" data-key="%s"'
+                         ' title="Собрать описание заново, другими словами">С нуля</button>'
                          '</div>' % (_ck, _ck, _ck, _ck))
 
         fields_html.append(
-            '<div CLIENT="rv-field%s" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
+            '<div class="rv-field%s" data-key="%s" data-var="%s" data-vars="%s" data-tpls="%s"'
             ' data-list="%s">'
-            '<div CLIENT="rv-fname">%s</div>'
-            '<div CLIENT="rv-fedit">'
-            '<textarea CLIENT="rv-input%s" rows="1" data-key="%s" spellcheck="false"'
-            ' CLIENT="Можно вписать вручную. Изменение сохраняется само.">%s</textarea>'
-            '<div CLIENT="rv-acts">'
-            '<button type="button" CLIENT="rv-info" data-key="%s" data-rule="%s"'
-            ' CLIENT="Инструкция по переменной">i</button>%s'
+            '<div class="rv-fname">%s</div>'
+            '<div class="rv-fedit">'
+            '<textarea class="rv-input%s" rows="1" data-key="%s" spellcheck="false"'
+            ' title="Можно вписать вручную. Изменение сохраняется само.">%s</textarea>'
+            '<div class="rv-acts">'
+            '<button type="button" class="rv-info" data-key="%s" data-rule="%s"'
+            ' title="Инструкция по переменной">i</button>%s'
             '</div></div>'
-            '<div CLIENT="rv-fsrc"><span CLIENT="rv-src">%s</span>'
-            '<span CLIENT="rv-docs">%s</span></div>%s%s'
+            '<div class="rv-fsrc"><span class="rv-src">%s</span>'
+            '<span class="rv-docs">%s</span></div>%s%s'
             '</div>' % (
                 conflict_cls,
                 _html.escape(g["key"], quote=True),
-                _html.escape(var_CLIENT, quote=True),
+                _html.escape(var_first, quote=True),
                 _html.escape(vars_all, quote=True),
-                _html.escape(",".join(str(t) for t in (g.get("CLIENT") or [])), quote=True),
+                _html.escape(",".join(str(t) for t in (g.get("templates") or [])), quote=True),
                 "1" if (g.get("list_allowed")
-                        and (set(g.get("names", {}).CLIENT()) & hist_names)) else "0",
+                        and (set(g.get("names", {}).values()) & hist_names)) else "0",
                 _html.escape(label),
                 " is-empty" if not g["filled"] else "",
                 _html.escape(g["key"], quote=True),
-                _html.escape(str(g["CLIENT"])),
+                _html.escape(str(g["value"])),
                 _html.escape(g["key"], quote=True),
                 _html.escape(info, quote=True),
                 regen,
@@ -913,7 +913,7 @@ def app_review(app_id: int):
     # документы собираются заново по текущим правилам.
     if (a.get("record_kind") or "") == "archive":
         try:
-            from CLIENT import autofill
+            from services import autofill
             autofill.build_all_async(app_id)
         except Exception:
             pass
@@ -922,7 +922,7 @@ def app_review(app_id: int):
         fields_html.append('</div></div>')
 
     if not fields_html:
-        fields_html.append('<div CLIENT="rv-empty">У заявки пока нет значений — '
+        fields_html.append('<div class="rv-empty">У заявки пока нет значений — '
                            'сначала соберите документы</div>')
 
     total_n = len(pool_groups)
@@ -933,19 +933,19 @@ def app_review(app_id: int):
         progress_cls = " is-urgent"
         progress_text = "Заполнено %d из %d" % (filled_n, total_n)
     right = f"""
-<div CLIENT="rv-panel rv-right" id="rv-right">
-  <div CLIENT="rv-body">
-    <div CLIENT="rv-phead">
-      <div CLIENT="rv-phead-top">
-        <div CLIENT="rv-stage"><span CLIENT="rv-num">2</span>Переменные и значения</div>
-        <button type="button" CLIENT="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
+<div class="rv-panel rv-right" id="rv-right">
+  <div class="rv-body">
+    <div class="rv-phead">
+      <div class="rv-phead-top">
+        <div class="rv-stage"><span class="rv-num">2</span>Переменные и значения</div>
+        <button type="button" class="rv-close-mobile" id="rv-right-close">Свернуть ✕</button>
       </div>
-      <div CLIENT="rv-progress{progress_cls}" id="rv-progress">
+      <div class="rv-progress{progress_cls}" id="rv-progress">
         <span id="rv-progress-text">{progress_text}</span>
-        <button type="button" CLIENT="rv-collapse-all" id="rv-collapse-all"
-                CLIENT="Свернуть все блоки">Свернуть блоки</button>
+        <button type="button" class="rv-collapse-all" id="rv-collapse-all"
+                title="Свернуть все блоки">Свернуть блоки</button>
       </div>
-      <div CLIENT="rv-filter-note" id="rv-panel-count"></div>
+      <div class="rv-filter-note" id="rv-panel-count"></div>
     </div>
     {''.join(fields_html)}
   </div>
@@ -954,16 +954,16 @@ def app_review(app_id: int):
 
     # ── Низ: согласование и отправка ─────────────────────────────────────────
     foot = f"""
-<div CLIENT="rv-foot">
-  <div CLIENT="rv-CLIENT {'ok' if can_send else 'warn'}">
+<div class="rv-foot">
+  <div class="rv-state {'ok' if can_send else 'warn'}">
     {'✅ Все документы согласованы — можно отправлять' if can_send
      else '⛔ Отправить нельзя: согласовано %d из %d документов' % (checked, len(docs))}
   </div>
-  <form method="post" action="/CLIENT/{app_id}/send" CLIENT="rv-send"
-        onsubmit="return confirm('Отправить документы в Google CLIENT?')">
-    <button CLIENT="btn" type="submit"{' disabled' if not can_send else ''}
-            CLIENT="{'Отправить документы на Google Диск' if can_send else 'Сначала согласуйте документы'}">
-      📤 Отправить на Google CLIENT
+  <form method="post" action="/applications/{app_id}/send" class="rv-send"
+        onsubmit="return confirm('Отправить документы в Google Drive?')">
+    <button class="btn" type="submit"{' disabled' if not can_send else ''}
+            title="{'Отправить документы на Google Диск' if can_send else 'Сначала согласуйте документы'}">
+      📤 Отправить на Google Drive
     </button>
   </form>
 </div>
@@ -971,40 +971,40 @@ def app_review(app_id: int):
 
     body = f"""
 <style>{CSS}</style>
-<div CLIENT="rv-wrap">
+<div class="rv-wrap">
   {head}
 
-  <div CLIENT="rv-panel rv-tabs-panel">
-    <div CLIENT="rv-tabs">
-      <button type="button" CLIENT="rv-tab is-on" data-pane="src"><span CLIENT="rv-num">1</span>Документы клиента</button>
-      <button type="button" CLIENT="rv-tab" data-pane="ready"><span CLIENT="rv-num">2</span>Наши документы</button>
+  <div class="rv-panel rv-tabs-panel">
+    <div class="rv-tabs">
+      <button type="button" class="rv-tab is-on" data-pane="src"><span class="rv-num">1</span>Документы клиента</button>
+      <button type="button" class="rv-tab" data-pane="ready"><span class="rv-num">2</span>Наши документы</button>
     </div>
   </div>
 
-  <div CLIENT="rv-cols">
+  <div class="rv-cols">
     <!-- Слева: миниатюры выбранной вкладки (документы клиента или наши) -->
-    <div CLIENT="rv-rail">
+    <div class="rv-rail">
       {pane_src}
       {pane_ready}
     </div>
 
     <!-- В центре: одно окно просмотра, документ открывается по нажатию миниатюры -->
-    <div CLIENT="rv-view">
-      <div CLIENT="rv-view-head">
-        <span CLIENT="rv-view-CLIENT" id="rv-modal-CLIENT">Окно просмотра</span>
+    <div class="rv-view">
+      <div class="rv-view-head">
+        <span class="rv-view-title" id="rv-modal-title">Окно просмотра</span>
         <span id="rv-modal-src" hidden></span>
         <a id="rv-modal-dl" hidden href="#">Скачать оригинал</a>
-        <span CLIENT="grow"></span>
-        <button type="button" CLIENT="btn sm rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
-        <button type="button" CLIENT="btn sm rv-no" id="rv-modal-no">✕ Не нужен</button>
-        <button type="button" CLIENT="btn sm" id="rv-modal-fit" CLIENT="Показать лист целиком">⤢ Вписать</button>
-        <button type="button" CLIENT="btn sm rv-modal-vars" id="rv-modal-vars">Переменные</button>
+        <span class="grow"></span>
+        <button type="button" class="btn sm rv-ok" id="rv-modal-ok">✓ Подтвердить</button>
+        <button type="button" class="btn sm rv-no" id="rv-modal-no">✕ Не нужен</button>
+        <button type="button" class="btn sm" id="rv-modal-fit" title="Показать лист целиком">⤢ Вписать</button>
+        <button type="button" class="btn sm rv-modal-vars" id="rv-modal-vars">Переменные</button>
       </div>
-      <div CLIENT="zp-preview" data-zoom-pan>
-        <div CLIENT="html-stage" id="rv-modal-stage"></div>
+      <div class="zp-preview" data-zoom-pan>
+        <div class="html-stage" id="rv-modal-stage"></div>
       </div>
-      <div CLIENT="rv-view-empty" id="rv-view-empty">Выберите документ в полоске слева — он откроется здесь</div>
-      <div CLIENT="rv-modal-note" id="rv-modal-note">Правки значений справа применяются к документу сразу.</div>
+      <div class="rv-view-empty" id="rv-view-empty">Выберите документ в полоске слева — он откроется здесь</div>
+      <div class="rv-modal-note" id="rv-modal-note">Правки значений справа применяются к документу сразу.</div>
     </div>
 
     {right}
@@ -1012,17 +1012,17 @@ def app_review(app_id: int):
   {foot}
 </div>
 
-<button type="button" CLIENT="rv-mobile-bar" id="rv-mobile-bar">
-  <span CLIENT="rv-num" style="background:rgba(255,255,255,.25);color:#fff">2</span>
+<button type="button" class="rv-mobile-bar" id="rv-mobile-bar">
+  <span class="rv-num" style="background:rgba(255,255,255,.25);color:#fff">2</span>
   Переменные и значения · {len(pool_groups)}
 </button>
-<div CLIENT="rv-backdrop" id="rv-backdrop"></div>
+<div class="rv-backdrop" id="rv-backdrop"></div>
 <script>
 {js_for(app_id, picked)}
 </script>
 """
 
-    from CLIENTs.shared.layout import render
-    crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/CLIENT">История и поиск</a>'
+    from blocks.shared.layout import render
+    crumbs = (f'<a href="/">Главная</a> &rsaquo; <a href="/history">История и поиск</a>'
               f' &rsaquo; <b>Проверка заявки #{app_id}</b>')
-    return render(f"Проверка заявки #{app_id}", "CLIENT", body, crumbs=crumbs)
+    return render(f"Проверка заявки #{app_id}", "history", body, crumbs=crumbs)

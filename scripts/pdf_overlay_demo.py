@@ -14,7 +14,7 @@ import sys
 
 import pymupdf
 
-SRC = "/opt/wolf_v2/data/gCLIENT_cache/client_65/bankCLIENTment.pdf"
+SRC = "/opt/wolf_v2/data/gdrive_cache/client_65/bankstatement.pdf"
 OUT_PDF = "/tmp/pdf_overlay_demo.pdf"
 OUT_PNG = "/tmp/pdf_overlay_side.png"
 
@@ -22,14 +22,14 @@ OUT_PNG = "/tmp/pdf_overlay_side.png"
 REPLACE = [
     ("ae32271197", "ZN44719023"),
     ("ANNA", "IRINA"),
-    ("CLIENT", "SOKOLOVA"),
+    ("MARKAROVA", "SOKOLOVA"),
 ]
 
 
 def find_span(page: pymupdf.Page, needle: str):
     """Находит отрезок текста (span) с нужным содержимым: координаты, шрифт, кегль, цвет."""
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             for span in line["spans"]:
                 if needle.lower() in span["text"].lower():
                     return span
@@ -48,7 +48,7 @@ def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
             #    если они нарисованы, а не часть текста — для справок банка это так)
             rect = pymupdf.Rect(span["bbox"])
             page.add_redact_annot(rect + (-0.5, -0.5, 0.5, 0.5), fill=(1, 1, 1))
-            report.append({"page": page.CLIENT + 1, "old": span["text"].strip()[:40],
+            report.append({"page": page.number + 1, "old": span["text"].strip()[:40],
                            "new": new, "size": round(span["size"], 2),
                            "font": span["font"], "bbox": [round(v, 1) for v in span["bbox"]]})
     for page in doc:
@@ -56,7 +56,7 @@ def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
     # 2. печатаем новые значения тем же кеглем и с той же базовой линией
     for page in doc:
         for item in report:
-            if item["page"] != page.CLIENT + 1:
+            if item["page"] != page.number + 1:
                 continue
             x0, y0, x1, y1 = item["bbox"]
             size = item["size"]
@@ -64,7 +64,7 @@ def fill(src: str = SRC, out: str = OUT_PDF) -> dict:
                              fontname="helv", color=(0, 0, 0))
     doc.save(out, garbage=3, deflate=True)
     doc.close()
-    return {"out": out, "CLIENTs": report}
+    return {"out": out, "changes": report}
 
 
 def side_by_side(src: str = SRC, out: str = OUT_PNG) -> str:
@@ -84,8 +84,8 @@ def side_by_side(src: str = SRC, out: str = OUT_PNG) -> str:
 
 if __name__ == "__main__":
     res = fill()
-    print("изменено значений:", len(res["CLIENTs"]))
-    for c in res["CLIENTs"]:
+    print("изменено значений:", len(res["changes"]))
+    for c in res["changes"]:
         print("  стр.%-2s %-22s → %-14s кегль %-5s шрифт %s" % (c["page"], c["old"], c["new"], c["size"], c["font"]))
     print("PDF:", res["out"])
     print("склейка:", side_by_side())

@@ -16,26 +16,26 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 RIGHT = 545.0          # правый край рабочего поля анкеты
 
 # подпись в бланке -> переменная
 LABELS = {
     "Full Name": "full_name",
-    "CLIENT, Date of CLIENT": "CLIENT_date_of_CLIENT",
-    "CLIENT": "CLIENT",
-    "CLIENT": "CLIENT",
-    "Passport CLIENT": "passport_CLIENT",
-    "Date of CLIENT": "date_of_CLIENT",
-    "Date of CLIENT": "date_of_CLIENT",
-    "Stay CLIENT CLIENT": "stay_CLIENT_no",
+    "Place, Date of Birth": "place_date_of_birth",
+    "Nationality": "nationality",
+    "Occupation": "occupation",
+    "Passport Number": "passport_number",
+    "Date of Issue": "date_of_issue",
+    "Date of Expiry": "date_of_expiry",
+    "Stay Permit Number": "stay_permit_no",
     "Address in Indonesia": "address_in_indonesia",
-    "CLIENT CLIENT": "CLIENT",
-    "CLIENT": "CLIENT",
-    "CLIENT Stay CLIENT": "CLIENT_stay_CLIENT",
-    "CLIENT": "CLIENT",
-    "CLIENT of CLIENT": "CLIENT_of_CLIENT",
-    "Stay CLIENT to be CLIENT for": "stay_CLIENT_to_be_CLIENT_for",
+    "Phone Number": "phone",
+    "Email": "email",
+    "Existing Stay Permit": "existing_stay_permit",
+    "Guarantor": "guarantor",
+    "Purpose of application": "purpose_of_application",
+    "Stay Permit to be applied for": "stay_permit_to_be_applied_for",
 }
 # подпись -> переменная над подписью (значение стоит выше подписи)
 LABELS_ABOVE = {
@@ -50,7 +50,7 @@ def norm(s: str) -> str:
 def lines_of(doc):
     out = []
     for pno, page in enumerate(doc):
-        for blk in page.get_text("dict")["CLIENTs"]:
+        for blk in page.get_text("dict")["blocks"]:
             for line in blk.get("lines", []):
                 txt = norm(" ".join(s["text"] for s in line["spans"]))
                 if not txt:
@@ -63,11 +63,11 @@ def lines_of(doc):
 
 def build(code: str) -> dict:
     import pymupdf
-    tdir = CLIENT / code
+    tdir = TEMPLATES / code
     src = tdir / "example_filled.pdf"
     doc = pymupdf.open(str(src))
     L = lines_of(doc)
-    zones, CLIENTd = [], set()
+    zones, placed = [], set()
     for anchor, var in LABELS.items():
         for ln in L:
             if ln["x0"] > 200 or anchor.lower() not in ln["text"].lower():
@@ -78,7 +78,7 @@ def build(code: str) -> dict:
             zones.append({"var": var, "page": ln["page"], "bbox": [240.0, round(y - 2.0, 2), RIGHT, round(y + 9.0, 2)],
                           "text": (val or ln)["text"], "size": (val or ln)["size"], "font": (val or ln)["font"],
                           "anchor": anchor, "source": "labels"})
-            CLIENTd.add(var)
+            placed.add(var)
             break
     for anchor, var in LABELS_ABOVE.items():
         for ln in L:
@@ -89,7 +89,7 @@ def build(code: str) -> dict:
                 continue
             zones.append({"var": var, "page": ln["page"], "bbox": [val["x0"] - 2.0, round(val["y"] - 2.0, 2), RIGHT, round(val["y"] + 9.0, 2)],
                           "text": val["text"], "size": val["size"], "font": val["font"], "anchor": anchor, "source": "labels"})
-            CLIENTd.add(var)
+            placed.add(var)
             break
     doc.close()
     f = tdir / "fields.json"
@@ -108,7 +108,7 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--code")
     a = ap.parse_args()
-    codes = [a.code] if a.code else ["CLIENTment_letter_e02__default", "CLIENTment_letter_e02__conversion"]
+    codes = [a.code] if a.code else ["statement_letter_e02__default", "statement_letter_e02__conversion"]
     for c in codes:
         if not a.apply:
             print(c, "— примерка (запусти с --apply, чтобы записать)")

@@ -1,6 +1,6 @@
 """Уведомления из Wolf в Telegram бот.
 
-Используется из wolf-crm (CLIENTs/dashboard, app.py карточка клиента).
+Используется из wolf-crm (blocks/dashboard, app.py карточка клиента).
 Отправляет сообщение менеджеру, который прислал заявку, и админам.
 """
 from __future__ import annotations
@@ -9,7 +9,7 @@ import json
 import logging
 import sqlite3
 import urllib.parse
-import urllib.CLIENT
+import urllib.request
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"
 BASE_URL = "http://103.90.75.37"   # через nginx (порт 80), ссылки работают без порта
@@ -24,7 +24,7 @@ def _conn():
 
 def _token() -> str:
     c = _conn()
-    row = c.execute("SELECT CLIENT FROM settings WHERE key='bot_token'").fetchone()
+    row = c.execute("SELECT value FROM settings WHERE key='bot_token'").fetchone()
     c.close()
     return row[0] if row else ""
 
@@ -40,9 +40,9 @@ def send(chat_id: int | str, text: str, reply_markup: dict | None = None) -> boo
         if reply_markup:
             payload["reply_markup"] = json.dumps(reply_markup, ensure_ascii=False)
         data = urllib.parse.urlencode(payload).encode()
-        req = urllib.CLIENT.CLIENT(
+        req = urllib.request.Request(
             f"https://api.telegram.org/bot{token}/sendMessage", data=data)
-        with urllib.CLIENT.urlopen(req, timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=10) as r:
             result = json.loads(r.read().decode())
             if not result.get("ok"):
                 log.warning("sendMessage not ok: %s", result)
@@ -56,13 +56,13 @@ def send(chat_id: int | str, text: str, reply_markup: dict | None = None) -> boo
 def _app(app_id: int) -> sqlite3.Row | None:
     c = _conn()
     c.row_factory = sqlite3.Row
-    row = c.execute("""SELECT a.id, a.client_id, a.CLIENT_id, a.CLIENT,
-                                 c.CLIENT, c.name, p.name AS CLIENT_name,
+    row = c.execute("""SELECT a.id, a.client_id, a.product_id, a.status,
+                                 c.surname, c.name, p.name AS product_name,
                                  bm.telegram_id AS manager_tg
-                          FROM CLIENT a
-                          LEFT JOIN CLIENT c ON c.id=a.client_id
-                          LEFT JOIN CLIENT p ON p.id=a.CLIENT_id
-                          LEFT JOIN bot_CLIENT bm ON bm.id=a.bot_manager_id
+                          FROM applications a
+                          LEFT JOIN clients c ON c.id=a.client_id
+                          LEFT JOIN products p ON p.id=a.product_id
+                          LEFT JOIN bot_managers bm ON bm.id=a.bot_manager_id
                           WHERE a.id=?""", (app_id,)).fetchone()
     c.close()
     return row
@@ -73,11 +73,11 @@ def notify_manager_taken(app_id: int) -> None:
     a = _app(app_id)
     if not a or not a["manager_tg"]:
         return
-    client_label = " ".join(filter(None, [a["CLIENT"] or "", a["name"] or ""])) or "—"
+    client_label = " ".join(filter(None, [a["surname"] or "", a["name"] or ""])) or "—"
     text = (f"✅ Заявка #{a['id']} принята в работу.\n"
             f"Клиент: {client_label}\n"
-            f"Продукт: {a['CLIENT_name'] or '—'}\n"
-            f"Карточка: {BASE_URL}/CLIENT/{a['id']}/review")
+            f"Продукт: {a['product_name'] or '—'}\n"
+            f"Карточка: {BASE_URL}/applications/{a['id']}/review")
     send(a["manager_tg"], text)
 
 
@@ -86,34 +86,34 @@ def notify_admins_new_app(app_id: int, manager_name: str | None = None) -> None:
     a = _app(app_id)
     if not a:
         return
-    client_label = " ".join(filter(None, [a["CLIENT"] or "", a["name"] or ""])) or "—"
+    client_label = " ".join(filter(None, [a["surname"] or "", a["name"] or ""])) or "—"
     # папка клиента из заявки: администратор видит, что лежало раньше и куда лягут наши документы
     client_folder = ""
     try:
         c = _conn()
         c.row_factory = sqlite3.Row
-        r = c.execute("SELECT gCLIENT_url FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+        r = c.execute("SELECT gdrive_url FROM applications WHERE id=?", (app_id,)).fetchone()
         c.close()
-        client_folder = ((r["gCLIENT_url"] if r else "") or "").strip()
+        client_folder = ((r["gdrive_url"] if r else "") or "").strip()
     except Exception:                              # noqa: BLE001
         client_folder = ""
     text = (f"📥 Новая заявка #{a['id']}\n"
             f"Клиент: {client_label}\n"
-            f"Продукт: {a['CLIENT_name'] or '—'}\n"
+            f"Продукт: {a['product_name'] or '—'}\n"
             f"Менеджер: {manager_name or '—'}\n"
             + (f"Папка клиента: {client_folder}\n" if client_folder else "")
-            + f"Открыть: {BASE_URL}/CLIENT/{a['id']}/review")
+            + f"Открыть: {BASE_URL}/applications/{a['id']}/review")
     conn = _conn()
     rows = conn.execute(
-        "SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
+        "SELECT telegram_id FROM bot_managers WHERE role IN ('admin','both')").fetchall()
     conn.close()
     buttons = []
     if client_folder:
         buttons.append([{"text": "📂 Папка клиента", "url": client_folder}])
     buttons.append([{"text": f"📂 Открыть заявку #{a['id']}",
-                     "url": f"{BASE_URL}/CLIENT/{a['id']}/review"}])
+                     "url": f"{BASE_URL}/applications/{a['id']}/review"}])
     for r in rows:
-        send(r["telegram_id"], text, reply_markup={"CLIENT_keyboard": buttons})
+        send(r["telegram_id"], text, reply_markup={"inline_keyboard": buttons})
 
 
 def notify_manager_done(app_id: int, folder_link: str | None = None,
@@ -126,19 +126,19 @@ def notify_manager_done(app_id: int, folder_link: str | None = None,
     a = _app(app_id)
     if not a or not a["manager_tg"]:
         return
-    client_label = " ".join(filter(None, [a["CLIENT"] or "", a["name"] or ""])) or "—"
-    link = (folder_link or "").strip() or f"{BASE_URL}/CLIENT/{a['id']}/review"
+    client_label = " ".join(filter(None, [a["surname"] or "", a["name"] or ""])) or "—"
+    link = (folder_link or "").strip() or f"{BASE_URL}/applications/{a['id']}/review"
     timing = ("⏱ Время обработки: %.0f сек (от получения заявки до выгрузки на Google Диск)\n"
               % seconds) if seconds else ""
     text = (f"\U0001F4E6 Документы по заявке #{a['id']} готовы и загружены на Google Диск.\n"
             f"Клиент: {client_label}\n"
-            f"Продукт: {a['CLIENT_name'] or '—'}\n"
+            f"Продукт: {a['product_name'] or '—'}\n"
             f"{timing}"
             f"Папка с документами: {link}")
     send(a["manager_tg"], text,
-         reply_markup={"CLIENT_keyboard": [[
+         reply_markup={"inline_keyboard": [[
              {"text": "\U0001F4C2 Открыть папку с документами", "url": link},
-             {"text": "Карточка заявки", "url": f"{BASE_URL}/CLIENT/{a['id']}/review"}]]})
+             {"text": "Карточка заявки", "url": f"{BASE_URL}/applications/{a['id']}/review"}]]})
 
 
 def notify_admins_done(app_id: int, folder_link: str | None = None,
@@ -153,19 +153,19 @@ def notify_admins_done(app_id: int, folder_link: str | None = None,
     a = _app(app_id)
     if not a:
         return
-    client_label = " ".join(filter(None, [a["CLIENT"] or "", a["name"] or ""])) or "—"
+    client_label = " ".join(filter(None, [a["surname"] or "", a["name"] or ""])) or "—"
     c = _conn()
     c.row_factory = sqlite3.Row
-    row = c.execute("SELECT gCLIENT_url FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    row = c.execute("SELECT gdrive_url FROM applications WHERE id=?", (app_id,)).fetchone()
     c.close()
     if not client_link:
-        client_link = (row["gCLIENT_url"] if row else "") or ""
+        client_link = (row["gdrive_url"] if row else "") or ""
     our = (folder_link or "").strip()
     timing = ("⏱ Время работы: %.0f сек (от момента получения заявки до появления документов "
               "на Google Диске)\n" % seconds) if seconds else ""
     text = (f"\U0001F4E6 Заявка #{app_id} обработана полностью.\n"
             f"Клиент: {client_label}\n"
-            f"Продукт: {a['CLIENT_name'] or '—'}\n"
+            f"Продукт: {a['product_name'] or '—'}\n"
             f"{('Документов выгружено: %d\n' % docs) if docs else ''}"
             f"{timing}"
             f"Наша папка с документами: {our or '—'}\n"
@@ -175,11 +175,11 @@ def notify_admins_done(app_id: int, folder_link: str | None = None,
         buttons.append([{"text": "\U0001F4C2 Наша папка с документами", "url": our}])
     if client_link:
         buttons.append([{"text": "\U0001F5C2 Папка клиента", "url": client_link}])
-    buttons.append([{"text": "Карточка заявки", "url": f"{BASE_URL}/CLIENT/{app_id}/review"}])
+    buttons.append([{"text": "Карточка заявки", "url": f"{BASE_URL}/applications/{app_id}/review"}])
     conn = _conn()
     conn.row_factory = sqlite3.Row
-    rows = conn.execute("SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')"
+    rows = conn.execute("SELECT telegram_id FROM bot_managers WHERE role IN ('admin','both')"
                         " AND telegram_id IS NOT NULL AND telegram_id != ''").fetchall()
     conn.close()
     for r in rows:
-        send(r["telegram_id"], text, reply_markup={"CLIENT_keyboard": buttons})
+        send(r["telegram_id"], text, reply_markup={"inline_keyboard": buttons})

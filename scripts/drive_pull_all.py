@@ -2,10 +2,10 @@
 
 Зачем: анализ 446 документов (типы, переменные, образцы) идёт по локальным копиям —
 это быстрее, не упирается в сеть и даёт повторяемость. На самом Диске ничего не
-меняется: робот имеет только scope CLIENT.readonly.
+меняется: робот имеет только scope drive.readonly.
 
-Раскладка: data/gCLIENT_archive/<клиент>/<имя файла> (имя санитизируется).
-Прогресс: data/gCLIENT_archive/_progress.json — можно прерывать и дозапускать.
+Раскладка: data/gdrive_archive/<клиент>/<имя файла> (имя санитизируется).
+Прогресс: data/gdrive_archive/_progress.json — можно прерывать и дозапускать.
 """
 import json
 import re
@@ -15,10 +15,10 @@ from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
 
-from CLIENT import gCLIENT_api as G  # noqa: E402
+from services import gdrive_api as G  # noqa: E402
 
-ROOT = Path('/opt/wolf_v2/data/gCLIENT_archive')
-CLIENT = Path('/root/.hermes/cache/scratch/CLIENT_unique.json')
+ROOT = Path('/opt/wolf_v2/data/gdrive_archive')
+INDEX = Path('/root/.hermes/cache/scratch/drive_unique.json')
 PROGRESS = ROOT / '_progress.json'
 
 
@@ -28,20 +28,20 @@ def safe(name: str) -> str:
 
 
 def main() -> int:
-    files = json.loads(CLIENT.read_text(encoding='utf-8'))
+    files = json.loads(INDEX.read_text(encoding='utf-8'))
     ROOT.mkdir(parents=True, exist_ok=True)
-    CLIENT = {}
+    state = {}
     if PROGRESS.is_file():
         try:
-            CLIENT = json.loads(PROGRESS.read_text(encoding='utf-8'))
+            state = json.loads(PROGRESS.read_text(encoding='utf-8'))
         except Exception:
-            CLIENT = {}
-    done = int(CLIENT.get('done', 0))
-    failed = list(CLIENT.get('failed', []))
+            state = {}
+    done = int(state.get('done', 0))
+    failed = list(state.get('failed', []))
     t0 = time.time()
     for i, f in enumerate(files, 1):
         dest = ROOT / safe(f['client']) / safe(f['name'])
-        if f['id'] in (CLIENT.get('ids') or []) and dest.is_file():
+        if f['id'] in (state.get('ids') or []) and dest.is_file():
             continue
         if dest.is_file() and dest.stat().st_size > 0:
             done += 1

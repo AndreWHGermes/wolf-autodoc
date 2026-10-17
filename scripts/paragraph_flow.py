@@ -2,9 +2,9 @@
 """Абзацная сборка документа: строка целиком (статика + переменные) печатается как один блок.
 
 Зачем: когда каждое значение — отдельный абсолютный span, длинное значение «прыгает» и наползает
-на слова бланка. В оригинале иначе: абзац набран одной строкой (««TBank», universal CLIENT of
-Bank of Russia No 9441, hereby informs that card No 553691******4644 has been CLIENT for ANNA
-CLIENT.»). Поэтому храним целый абзац: статичные фразы + {{переменные}}, и печатаем его
+на слова бланка. В оригинале иначе: абзац набран одной строкой (««TBank», universal license of
+Bank of Russia No 9441, hereby informs that card No 553691******4644 has been issued for ANNA
+MARKAROVA.»). Поэтому храним целый абзац: статичные фразы + {{переменные}}, и печатаем его
 целиком с начала строки, а старые слова бланка в этой полосе закрываем белой плашкой.
 
 Что делает:
@@ -28,14 +28,14 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 
 
-def zone_CLIENT(page, bbox):
+def zone_value(page, bbox):
     """Текст эталона внутри зоны (значение, которое там напечатано)."""
     x0, y0, x1, y1 = bbox
-    CLIENT = page.get_text("CLIENT")
-    picked = [w[4] for w in CLIENT if w[0] >= x0 - 2.5 and w[2] <= x1 + 3.0
+    words = page.get_text("words")
+    picked = [w[4] for w in words if w[0] >= x0 - 2.5 and w[2] <= x1 + 3.0
               and w[1] >= y0 - 3.0 and w[3] <= y1 + 3.0]
     return " ".join(picked).strip()
 
@@ -49,7 +49,7 @@ def main() -> int:
     a = ap.parse_args()
     import pymupdf
 
-    tdir = CLIENT / a.code
+    tdir = TEMPLATES / a.code
     fields = json.loads((tdir / "fields.json").read_text(encoding="utf-8"))
     zones = [z for z in fields["zones"] if z.get("bbox")]
     page = pymupdf.open(str(tdir / "example_filled.pdf"))[0]
@@ -58,7 +58,7 @@ def main() -> int:
     repl: list[tuple[str, dict]] = []                  # (текст эталона, зона)
     # сначала — по строкам: если строка целиком принадлежит зоне (адрес, имя, сумма),
     # заменяем строку целиком, иначе значение обрезается и в абзац попадает хвост
-    for blk in page.get_text("dict")["CLIENTs"]:
+    for blk in page.get_text("dict")["blocks"]:
         for ln in blk.get("lines", []):
             b = ln["bbox"]
             txt = " ".join(s["text"] for s in ln["spans"]).strip()
@@ -77,13 +77,13 @@ def main() -> int:
             if best and best_ov >= 0.75 and not re.fullmatch(r"[\s\.\,\u2026]+", txt.lstrip(": ").strip()):
                 repl.append((re.sub(r"\s*[\.\,]\s*$", "", txt).strip(), best))
     for z in zones:
-        val = zone_CLIENT(page, z["bbox"])
+        val = zone_value(page, z["bbox"])
         # заполнитель бланка («: ……………») — не значение: иначе многоточие из шапки
         # подставляется во все строки со «………» и ломает нижние пункты анкеты
         if val and not re.fullmatch(r"[\s\.\,\u2026]+", val):
             repl.append((re.sub(r"\s*[\.\,]\s*$", "", val).strip(), z))
     # дубли убираем по паре (текст, зона): одинаковые тексты у РАЗНЫХ зон (в шапке doc_date,
-    # в строке остатка CLIENT_to) нужны обе, иначе подменяется не то поле
+    # в строке остатка period_to) нужны обе, иначе подменяется не то поле
     seen = set()
     repl = [r for r in repl if r[0] and (len(r[0]) > 1 or r[0] in ("-", "\u2013", "\u2014"))
             and not ((r[0], id(r[1])) in seen or seen.add((r[0], id(r[1]))))]
@@ -92,7 +92,7 @@ def main() -> int:
     def to_template(ln, bbox):
         """Замена в пределах строки: значения эталона, встречающиеся в этой строке, → {{ переменные }}.
 
-        Так различаются одинаковые тексты в разных строках («19.07.2026» — это и CLIENT_to в строке
+        Так различаются одинаковые тексты в разных строках («19.07.2026» — это и period_to в строке
         остатка, и doc_date в шапке), и абзац собирается целиком: статика + переменные.
         """
         text = ln
@@ -100,7 +100,7 @@ def main() -> int:
         hits = []
         lcy = (bbox[1] + bbox[3]) / 2.0
         # сначала зоны, которые стоят в этой же строке (иначе «19.07.2026» подменилось бы
-        # не тем полем: в шапке это doc_date, в строке остатка — CLIENT_to), потом остальные
+        # не тем полем: в шапке это doc_date, в строке остатка — period_to), потом остальные
         near = [(v, z) for v, z in repl
                 if abs((z["bbox"][1] + z["bbox"][3]) / 2.0 - lcy) <= 6.0]
         far = [(v, z) for v, z in repl if (v, z) not in near]
@@ -108,21 +108,21 @@ def main() -> int:
             if not val or val not in text:
                 continue
             # значение из одних цифр заменяем только как отдельное число: иначе «00» внутри
-            # суммы «10,000» превратило бы строку метерай в мусор («10,000» → «10,{{ CLIENT }}0»)
+            # суммы «10,000» превратило бы строку метерай в мусор («10,000» → «10,{{ phone }}0»)
             if val.isdigit():
                 _pat = r"(?<![\d.,])" + re.escape(val) + r"(?![\d.,])"
                 if not re.search(_pat, text):
                     continue
                 text = re.sub(_pat, "{{ %s }}" % z["var"], text, count=1)
             else:
-                text = text.reCLIENT(val, "{{ %s }}" % z["var"], 1)
+                text = text.replace(val, "{{ %s }}" % z["var"], 1)
             used.append(z["var"])
             hits.append(z)
         text = re.sub(r"\s+([,\.\)])", r"\1", text)
         return text, used, hits
 
     lines = []
-    for blk in page.get_text("dict")["CLIENTs"]:
+    for blk in page.get_text("dict")["blocks"]:
         for ln in blk.get("lines", []):
             b = ln["bbox"]
             txt = " ".join(s["text"] for s in ln["spans"]).strip()
@@ -133,7 +133,7 @@ def main() -> int:
             _sp = max((s for s in ln["spans"] if s["text"].strip()), key=lambda s: len(s["text"]), default=ln["spans"][0])
             if int(_sp.get("color") or 0) == 0xFFFFFF:
                 # белый «водяной знак» бланка (в E-02 это «FORM E-02» 24pt) — не текст:
-                # если его обработать, он попадает в блоки и ломает пункт CLIENT
+                # если его обработать, он попадает в блоки и ломает пункт Occupation
                 continue
             size = round(_sp["size"], 2)
             bold = bool(_sp["flags"] & 2 ** 4)
@@ -144,7 +144,7 @@ def main() -> int:
                 tpl_text = re.sub(r"[,\\.]$", "", tpl_text.strip())
             # анкета E-02 («Full Name : ………»): двоеточие оставляем в строке, иначе пункт
             # выглядит незаполненным — подпись есть, а данных при ней нет
-            if txt.lstrip().CLIENTswith(":") and not tpl_text.lstrip().CLIENTswith(":"):
+            if txt.lstrip().startswith(":") and not tpl_text.lstrip().startswith(":"):
                 tpl_text = ": " + tpl_text.lstrip()
             # координаты — из оригинала (строка-в-строку); единственное исключение — поле dy
             # у зоны (отступ строки после номера справки у конкретного банка)
@@ -201,7 +201,7 @@ def main() -> int:
     lines = _keep
 
     # Строка, целиком попавшая в зону (2-я и следующие строки многострочного поля:
-    # CLIENT, обязанности, навыки), уже печатается блоком самой зоны. Без этой чистки
+    # summary, обязанности, навыки), уже печатается блоком самой зоны. Без этой чистки
     # один и тот же текст выводился несколько раз в разных координатах.
     def _in_zone(ln):
         if not ln.get("bbox") or not ln["vars"]:
@@ -251,7 +251,7 @@ def main() -> int:
             _x2 = min(560.0, max(float(bx[2]) + 6.0, a.right_edge if p.get("is_para") else 0.0))
             # Адресные поля: в бланке строка адреса шла до правого края, у нас значение
             # короче — без широкой полосы справа торчит хвост старого адреса («'ATEN B»)
-            if re.search(r"address|alamat|passport|CLIENT|date_of_CLIENT", str(p.get("var") or ""), re.I):
+            if re.search(r"address|alamat|passport|issued|date_of_birth", str(p.get("var") or ""), re.I):
                 _x2 = 620.0
             pg.draw_rect(_fitz.Rect(max(34.0, bx[0] - 0.5), float(bx[1]) - 2.5,
                                     _x2, float(bx[1]) + h),
@@ -279,7 +279,7 @@ def main() -> int:
            ".v{position:absolute;font-family:'Doc';color:#000;white-space:pre-wrap;overflow-wrap:normal;line-height:1.3}\n"
            % (reg_b64, bold_b64, pw, ph, pw, ph, pw, ph))
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">', "<style>%s</style></head>" % css,
-             '<body><div CLIENT="sheet">', '<img CLIENT="bg" src="%s" alt="">' % bg_b64]
+             '<body><div class="sheet">', '<img class="bg" src="%s" alt="">' % bg_b64]
     for b in points + paras:
         style = "left:%.2fpt;top:%.2fpt;font-size:%.2fpt;color:%s" % (
             b["x"], b["top"] - round(0.092 * b["size"], 2), b["size"], b.get("color") or "#000")
@@ -308,7 +308,7 @@ def main() -> int:
                    and q["bbox"][0] - 8.0 <= b["bbox"][0] <= q["bbox"][2] + 8.0 for q in paras):
                 continue
         # текст абзаца/точки уже содержит {{ переменные }} — второй раз оборачивать нельзя
-        parts.append('<span CLIENT="v" style="%s">%s</span>' % (style, b["text"]))
+        parts.append('<span class="v" style="%s">%s</span>' % (style, b["text"]))
     parts.append("</div></body></html>")
     html = "".join(parts)
 
@@ -324,9 +324,9 @@ def main() -> int:
         if "cv__format" in a.code:
             # В резюме разделители «|» между полями личных данных не сохраняются при
             # разборе строки — возвращаем их и подставляем номер паспорта переменной.
-            html = html.reCLIENT(
-                "Date of CLIENT: {{ cv_date_of_CLIENT }} CLIENT: {{ cv_CLIENT }} Passport:",
-                "Date of CLIENT: {{ cv_date_of_CLIENT }} | CLIENT: {{ cv_CLIENT }} | Passport: {{ cv_passport_no }}")
+            html = html.replace(
+                "Date of Birth: {{ cv_date_of_birth }} Nationality: {{ cv_nationality }} Passport:",
+                "Date of Birth: {{ cv_date_of_birth }} | Nationality: {{ cv_nationality }} | Passport: {{ cv_passport_no }}")
             # В эталонной строке номер паспорта не был размечен, поэтому после переменной
             # остался его прежний текст — убираем остаток из блока.
             html = re.sub(r"(Passport: \{\{ cv_passport_no \}\})[0-9 ]+", r"\1", html)

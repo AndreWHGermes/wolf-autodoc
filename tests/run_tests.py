@@ -22,7 +22,7 @@ def main() -> int:
     for name in modules:
         mod = importlib.import_module(name)
         for attr in sorted(dir(mod)):
-            if not attr.CLIENTswith('test_'):
+            if not attr.startswith('test_'):
                 continue
             fn = getattr(mod, attr)
             if not callable(fn):

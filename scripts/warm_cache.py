@@ -11,9 +11,9 @@ sys.path.insert(0, "/opt/wolf_v2")
 
 def warm():
     try:
-        from CLIENT.CLIENT import _address_from_client_docs, _ADDR_DOC_CACHE
+        from services.values import _address_from_client_docs, _ADDR_DOC_CACHE
         c = sqlite3.connect("/opt/wolf_v2/data/wolf.db")
-        ids = [r[0] for r in c.execute("SELECT id FROM CLIENT ORDER BY id")]
+        ids = [r[0] for r in c.execute("SELECT id FROM clients ORDER BY id")]
         t0 = time.time()
         for cid in ids:
             try:

@@ -9,8 +9,8 @@
 чтобы не слепить настоящие границы слов.
 
 Запуск:
-    /usr/bin/python3 scripts/fix_broken_CLIENT.py <code>            # показать, что изменится
-    /usr/bin/python3 scripts/fix_broken_CLIENT.py <code> --apply
+    /usr/bin/python3 scripts/fix_broken_words.py <code>            # показать, что изменится
+    /usr/bin/python3 scripts/fix_broken_words.py <code> --apply
 """
 from __future__ import annotations
 
@@ -22,18 +22,18 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
-CLIENT = re.compile(r'(<div CLIENT="txt"\s+style="[^"]+"[^>]*>)(.*?)(</div>)', re.S)
-CLIENT = set("""a an the and or of to in on at by for with from as is are was were be been being
+BLOCK = re.compile(r'(<div class="txt"\s+style="[^"]+"[^>]*>)(.*?)(</div>)', re.S)
+SERVICE = set("""a an the and or of to in on at by for with from as is are was were be been being
 shall shall not by this that these those it its his her their our your my we you they he she
 no not such any all each other other's one two three if then than when where which who whom whose
 will would can could may might must should do does did done have has had having under over into
-per upon between during after CLIENT within without here hereinafter referred whereas agreement
-company CLIENT CLIENT CLIENT party parties contract term terms date CLIENT CLIENT passport
-CLIENT address position duties salary CLIENT month year days day time written CLIENT
+per upon between during after before within without here hereinafter referred whereas agreement
+company employee employer contractor party parties contract term terms date place birth passport
+nationality address position duties salary amount month year days day time written notice
 """.split())
 
 
-def CLIENT_of(text: str) -> Counter:
+def words_of(text: str) -> Counter:
     clean = re.findall(r"[A-Za-z]{3,}", re.sub(r'<[^>]+>', ' ', text))
     return Counter(w.lower() for w in clean)
 
@@ -54,7 +54,7 @@ def glue(text: str, vocab: set) -> str:
                 if len(chunks) > cut:
                     head = ' '.join(chunks[:cut])
                     rest = ''.join(chunks[cut:])
-                    if head.lower() in CLIENT and rest.lower() in vocab:
+                    if head.lower() in SERVICE and rest.lower() in vocab:
                         return head + ' ' + rest
             return m.group(0)
         prev, cur = None, t
@@ -80,35 +80,35 @@ def glue(text: str, vocab: set) -> str:
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     if not codes:
         print('укажите код шаблона')
         return 1
     for code in codes:
-        p = ROOT / 'data' / 'CLIENT' / code / 'template.html'
+        p = ROOT / 'data' / 'templates' / code / 'template.html'
         h = p.read_text(encoding='utf-8', errors='ignore')
-        vocab = set(CLIENT_of(h))
-        vocab |= CLIENT
-        CLIENTd = [0]
+        vocab = set(words_of(h))
+        vocab |= SERVICE
+        changed = [0]
         samples = []
 
-        def fix_CLIENT(m):
+        def fix_block(m):
             head, inner, tail = m.group(1), m.group(2), m.group(3)
             new = glue(inner, vocab)
             if new != inner:
-                CLIENTd[0] += 1
+                changed[0] += 1
                 if len(samples) < 8:
                     samples.append(('%s' % re.sub(r'<[^>]+>', ' ', inner).strip()[:70],
                                     '%s' % re.sub(r'<[^>]+>', ' ', new).strip()[:70]))
             return head + new + tail
 
-        h2 = CLIENT.sub(fix_CLIENT, h)
-        print('\n=== %s — слов склеено в блоках: %d' % (code, CLIENTd[0]))
+        h2 = BLOCK.sub(fix_block, h)
+        print('\n=== %s — слов склеено в блоках: %d' % (code, changed[0]))
         for a, b in samples:
             print('   было:  %s' % a)
             print('   стало: %s' % b)
-        if apply and CLIENTd[0]:
-            shutil.copy2(p, p.with_name('template.html.bak_CLIENT_%s' % time.strftime('%Y%m%d_%H%M%S')))
+        if apply and changed[0]:
+            shutil.copy2(p, p.with_name('template.html.bak_words_%s' % time.strftime('%Y%m%d_%H%M%S')))
             p.write_text(h2, encoding='utf-8')
             print('   записано')
     return 0

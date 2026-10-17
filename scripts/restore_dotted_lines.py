@@ -1,7 +1,7 @@
 """Вернуть точечные линии в бланк формы (E-02 и подобные).
 
 В подлиннике под каждым значением идёт точечная линия «: ………………». При подготовке
-чистого бланка вырезание значений стирало линию вместе с текстом, и документ CLIENTил
+чистого бланка вырезание значений стирало линию вместе с текстом, и документ выходил
 без точек — не как бумага иммиграции.
 
 Линия РИСУЕТСЯ заново вектором (ряд точек). Копировать полосу из подлинника нельзя:
@@ -23,7 +23,7 @@ LEFT_SKIP = 6.0        # отступ от начала линии (там ст�
 def dotted_spans(page):
     """Спаны-линии подлинника: строка из точек (': ………………')."""
     out = []
-    for blk in page.get_text("dict")["CLIENTs"]:
+    for blk in page.get_text("dict")["blocks"]:
         for ln in blk.get("lines", []):
             for s in ln.get("spans", []):
                 t = s["text"]
@@ -53,7 +53,7 @@ def _rgb(c):
 
 
 def restore(code: str, apply: bool = False) -> int:
-    tpl = ROOT / "data" / "CLIENT" / code
+    tpl = ROOT / "data" / "templates" / code
     src, blank = tpl / "example_filled.pdf", tpl / "blank.pdf"
     if not src.exists() or not blank.exists():
         return 0
@@ -96,7 +96,7 @@ def restore(code: str, apply: bool = False) -> int:
         have_y = [h["rect"].y0 for h in have] + [g["rect"].y0 for g in doc[0].get_drawings()
                                                  if g["rect"].height < 4 and g["rect"].width > 40]
         have_y += [l["rect"].y0 for l in lines]
-        for blk in doc[0].get_text("dict")["CLIENTs"]:
+        for blk in doc[0].get_text("dict")["blocks"]:
             for ln in blk.get("lines", []):
                 t = " ".join(sp["text"] for sp in ln["spans"]).strip()
                 if not t.endswith(":") or len(t) < 5:
@@ -120,8 +120,8 @@ def restore(code: str, apply: bool = False) -> int:
 def main():
     args = sys.argv[1:]
     apply = "--apply" in args
-    for code in [a for a in args if not a.CLIENTswith("--")]:
-        tpl = ROOT / "data" / "CLIENT" / code
+    for code in [a for a in args if not a.startswith("--")]:
+        tpl = ROOT / "data" / "templates" / code
         ref, blank = tpl / "example_filled.pdf", tpl / "blank.pdf"
         if not ref.exists() or not blank.exists():
             print("нет файлов у %s" % code)

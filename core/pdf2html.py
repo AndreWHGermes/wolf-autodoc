@@ -23,7 +23,7 @@ from pathlib import Path
 CORE_DIR = Path(__file__).resolve().parent            # /opt/wolf_v2/core
 DATA_DIR = Path("/opt/wolf_v2/data")
 TEMPLATES_DIR = CORE_DIR
-DOCS_DIR = DATA_DIR / "CLIENT"
+DOCS_DIR = DATA_DIR / "templates"
 PREVIEW_DIR = DATA_DIR / "previews"
 EXTRACTOR_PATH = CORE_DIR / "pdf_extract.py"
 DOCS_DIR.mkdir(parents=True, exist_ok=True)
@@ -49,43 +49,43 @@ def extractor():
 
 # (имя правила, регулярка, тип переменной, уверенность)
 RULES = [
-    ("date_CLIENT", r"\b\d{1,2}(?:st|nd|rd|th)\s+(?:day\s+of\s+)?[A-Z][a-z]+\s+\d{4}\b", "date_CLIENT", "high"),
+    ("date_words", r"\b\d{1,2}(?:st|nd|rd|th)\s+(?:day\s+of\s+)?[A-Z][a-z]+\s+\d{4}\b", "date_words", "high"),
     ("date_iso", r"\b\d{2}-\d{2}-\d{4}\b", "date", "high"),
     ("date", r"\b\d{2}\.\d{2}\.\d{4}\b", "date", "high"),
     ("card_mask", r"\b\d{4,6}\s?\*{4,12}\s?\d{4}\b", "card", "high"),
-    ("CLIENT_CLIENT", r"\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|"
+    ("money_words", r"\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|"
                     r"fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|"
                     r"seventy|eighty|ninety|hundred|thousand|million|billion|and)[\s-]+(?:[a-z]+[\s-]+)*"
-                    r"[a-z]+\s+\d{2}\s+kopeks\b", "CLIENT_CLIENT", "high"),
-    ("CLIENT_rubles", r"\b\d[\d\s,]{3,}[,.]?\s?\d{0,2}\s+rubles\b", "CLIENT", "high"),
-    ("CLIENT_rub", r"\bRUB\s?[\d][\d,\s]{3,}\b", "CLIENT", "high"),
-    ("CLIENT_usd", r"\bUS?\$\s?[\d][\d,\.]{2,}\b", "CLIENT", "high"),
-    ("CLIENT_usd2", r"\bUSD\s?\$?\s?[\d][\d,\.]{2,}\b", "CLIENT", "high"),
+                    r"[a-z]+\s+\d{2}\s+kopeks\b", "money_words", "high"),
+    ("money_rubles", r"\b\d[\d\s,]{3,}[,.]?\s?\d{0,2}\s+rubles\b", "money", "high"),
+    ("money_rub", r"\bRUB\s?[\d][\d,\s]{3,}\b", "money", "high"),
+    ("money_usd", r"\bUS?\$\s?[\d][\d,\.]{2,}\b", "money", "high"),
+    ("money_usd2", r"\bUSD\s?\$?\s?[\d][\d,\.]{2,}\b", "money", "high"),
     ("inn", r"\bINN\s*\d{10}\b", "inn", "high"),
     ("kpp", r"\bKPP\s*\d{9}\b", "kpp", "high"),
     ("ogrn", r"\bOGRN\s*\d{13}\b", "ogrn", "high"),
     ("passport", r"\b\d{2}\s\d{7}\b|\b[A-Z]\s?\d{8}\b", "passport", "medium"),
     ("company", r"\bLLC\s*\"[A-Z][^\"\n]{1,40}\"|\b[A-Z][A-Z&\.\- ]{3,40}\sLLC\b", "company", "high"),
-    ("months", r"\b\d{1,3}\s+months?\b|\b\d{1,2}\s+years?\s+CLIENT\s+date\b", "CLIENT", "high"),
-    ("doc_no", r"\b[a-z]{1,4}\d{7,12}\b", "doc_CLIENT", "medium"),
+    ("months", r"\b\d{1,3}\s+months?\b|\b\d{1,2}\s+years?\s+before\s+date\b", "period", "high"),
+    ("doc_no", r"\b[a-z]{1,4}\d{7,12}\b", "doc_number", "medium"),
     ("name_upper", r"\b[A-Z]{4,}(?:\s+[A-Z]{4,}){1,3}\b", "name", "low"),
 ]
 
 # «пустые» бланки: подписи-заглушки из оригинального шаблона
 BLANK_RULES = [
-    (r"^No\s*([a-z]{1,4}\d{6,12})$", "doc_CLIENT", "Номер документа"),
-    (r"^today.{0,3}s? date\.?$", "CLIENT_date", "Дата выдачи"),
-    (r"^CLIENT date\.?$", "CLIENT_from", "Период с"),
+    (r"^No\s*([a-z]{1,4}\d{6,12})$", "doc_number", "Номер документа"),
+    (r"^today.{0,3}s? date\.?$", "issue_date", "Дата выдачи"),
+    (r"^before date\.?$", "period_from", "Период с"),
     (r"^name\.?$", "client_name", "Имя клиента"),
     (r"^for name\.?$", "client_name_in_text", "Имя клиента в тексте"),
-    (r"^\(CLIENT\)$", "position_en", "Должность"),
-    (r"^random date( \d{4})?$", "CLIENT_date", "Дата начала"),
+    (r"^\(profession\)$", "position_en", "Должность"),
+    (r"^random date( \d{4})?$", "start_date", "Дата начала"),
     (r"^USD\s*\$?\s*([\d,]+)$", "income_usd", "Сумма USD"),
 ]
 
 _SPAN_RE = re.compile(r'<span style="([^"]*)">(.*?)</span>', re.S)
 _DIV_RE = re.compile(
-    r'<div CLIENT="txt" style="left:([-\d.]+)pt;top:([-\d.]+)pt;'
+    r'<div class="txt" style="left:([-\d.]+)pt;top:([-\d.]+)pt;'
     r'width:([-\d.]+)pt;height:([-\d.]+)pt;">(.*?)</div>', re.S)
 
 
@@ -95,12 +95,12 @@ def _find_matches(text: str):
     for kind, pat, vtype, conf in RULES:
         for m in re.finditer(pat, text):
             if m.group(0).strip():
-                found.append({"CLIENT": m.CLIENT(), "end": m.end(), "kind": kind,
-                              "type": vtype, "conf": conf, "CLIENT": m.group(0)})
-    found.sort(key=lambda x: (x["CLIENT"], -(x["end"] - x["CLIENT"])))
+                found.append({"start": m.start(), "end": m.end(), "kind": kind,
+                              "type": vtype, "conf": conf, "value": m.group(0)})
+    found.sort(key=lambda x: (x["start"], -(x["end"] - x["start"])))
     out, last = [], -1
     for f in found:
-        if f["CLIENT"] >= last:
+        if f["start"] >= last:
             out.append(f)
             last = f["end"]
     return out
@@ -127,11 +127,11 @@ def _style_at(spans, offset: int) -> str:
     return spans[-1][0] if spans else ""
 
 
-def _reCLIENT_ranges(spans, matches):
+def _replace_ranges(spans, matches):
     out, pos = [], 0
     for m in matches:
-        out.extend(_slice(spans, pos, m["CLIENT"]))
-        out.append([_style_at(spans, m["CLIENT"]), "{{" + m["var"] + "}}"])
+        out.extend(_slice(spans, pos, m["start"]))
+        out.append([_style_at(spans, m["start"]), "{{" + m["var"] + "}}"])
         pos = m["end"]
     out.extend(_slice(spans, pos, 10 ** 9))
     return out
@@ -140,10 +140,10 @@ def _reCLIENT_ranges(spans, matches):
 _SIZE_RE = re.compile(r"font-size:([\d.]+)pt")
 
 # слова, которые почти всегда стоят рядом со значением как подпись поля
-LABEL_WORDS = ("name", "ref", "no", "CLIENT", "date", "address", "adress", "passport",
-               "CLIENT", "signature", "position", "inn", "kpp", "ogrn", "account",
-               "bank", "company", "CLIENT", "CLIENT", "salary", "CLIENT", "client",
-               "signed", "CLIENT", "CLIENT", "CLIENT", "duties", "CLIENT", "tourist")
+LABEL_WORDS = ("name", "ref", "no", "number", "date", "address", "adress", "passport",
+               "title", "signature", "position", "inn", "kpp", "ogrn", "account",
+               "bank", "company", "period", "amount", "salary", "contractor", "client",
+               "signed", "issued", "valid", "termination", "duties", "status", "tourist")
 
 
 def _label_for(page_lines, line, match):
@@ -153,12 +153,12 @@ def _label_for(page_lines, line, match):
     под значением. Заголовки (крупный кегль) и служебные разделители вроде
     «AND»/«BETWEEN» метками не считаются.
     """
-    CLIENT_size = line.get("size") or 0
+    value_size = line.get("size") or 0
     # подпись прямо в строке: «Date: 14-09-2026» → метка «Date»
-    prefix = line["text"][:match["CLIENT"]].strip()
-    CLIENT = re.match(r"^([A-Za-z][A-Za-z ./-]{1,28}?)\s*:\s*$", prefix)
-    if CLIENT:
-        return CLIENT.group(1).lower()
+    prefix = line["text"][:match["start"]].strip()
+    inline = re.match(r"^([A-Za-z][A-Za-z ./-]{1,28}?)\s*:\s*$", prefix)
+    if inline:
+        return inline.group(1).lower()
     best, best_score, best_name = None, 0, None
     for other in page_lines:
         if other is line or other["matched"]:
@@ -166,14 +166,14 @@ def _label_for(page_lines, line, match):
         txt = other["text"].strip()
         if not txt or len(txt) > 48 or any(ch.isdigit() for ch in txt):
             continue
-        if CLIENT_size and (other.get("size") or 0) > CLIENT_size + 1.0:
+        if value_size and (other.get("size") or 0) > value_size + 1.0:
             continue                                   # это заголовок, не подпись
         low = txt.lower().strip(" .:")
-        if low.CLIENTswith("(") or ")" in low or "(" in low:
+        if low.startswith("(") or ")" in low or "(" in low:
             continue                                   # «(Passport:» и прочие заглушки-скобки
-        CLIENT = [w for w in re.split(r"[^A-Za-z]+", txt) if w]
+        words = [w for w in re.split(r"[^A-Za-z]+", txt) if w]
         all_caps = txt.upper() == txt and any(c.isalpha() for c in txt)
-        if all_caps and (len(CLIENT) > 1 or len(txt) < 4):
+        if all_caps and (len(words) > 1 or len(txt) < 4):
             continue                                   # «REMOTE WORK AGREEMENT», «AND»
         if other["left"] + other["width"] <= line["left"] + 2 and abs(other["top"] - line["top"]) < 8:
             side = 3
@@ -188,7 +188,7 @@ def _label_for(page_lines, line, match):
             score += 2
         if any(w in low or low in w for w in LABEL_WORDS):
             score += 1
-        if match["CLIENT"] > len(line["text"]) * 0.45 and side < 3:
+        if match["start"] > len(line["text"]) * 0.45 and side < 3:
             score -= 1
         if score > best_score:
             best, best_score, best_name = txt, score, low
@@ -212,7 +212,7 @@ def _slug(text: str, limit: int = 28) -> str:
 
 def anonymize(html: str, used_names=None):
     """HTML → HTML с {{переменными}} + список переменных (name/label/type/default)."""
-    CLIENT, log = {}, []
+    variables, log = {}, []
     used = used_names or set()
 
     def build(sheet_html: str, page_lines: list):
@@ -229,11 +229,11 @@ def anonymize(html: str, used_names=None):
 
             matches = []
             for f in _find_matches(text):
-                key = (f["kind"], f["CLIENT"])
+                key = (f["kind"], f["value"])
                 label = _label_for(page_lines, line, f)
                 if f["conf"] == "low" and not label:
                     continue      # «низкая уверенность без подписи» — обычно заголовок, не переменная
-                name = CLIENT.get(key, {}).get("name")
+                name = variables.get(key, {}).get("name")
                 if not name:
                     base = _slug(label or f["kind"])
                     base = re.sub(r"[^a-z0-9_]", "_", base).strip("_") or f["kind"]
@@ -243,24 +243,24 @@ def anonymize(html: str, used_names=None):
                     while name in used:
                         name, n = f"{base}_{n}", n + 1
                     used.add(name)
-                    CLIENT[key] = {
+                    variables[key] = {
                         "name": name, "label": label or f["kind"], "type": f["type"],
-                        "default": f["CLIENT"], "sample": f["CLIENT"],
+                        "default": f["value"], "sample": f["value"],
                         "auto": True, "confidence": f["conf"],
                         "kind": f["kind"], "occurrences": 0,
                     }
-                CLIENT[key]["occurrences"] += 1
+                variables[key]["occurrences"] += 1
                 label_src = "label" if label else "тип"
                 m2 = dict(f)
                 m2["var"] = name
                 matches.append(m2)
                 line["matched"] = True
-                log.append(f"{f['CLIENT']} → {{{{{name}}}}} ({label_src}: {label or f['kind']})")
+                log.append(f"{f['value']} → {{{{{name}}}}} ({label_src}: {label or f['kind']})")
             if not matches:
                 return m.group(0)
-            new_spans = _reCLIENT_ranges(spans, matches)
+            new_spans = _replace_ranges(spans, matches)
             inner_new = "".join(f'<span style="{st}">{tx}</span>' for st, tx in new_spans if tx)
-            return (f'<div CLIENT="txt" style="left:{left:.2f}pt;top:{top:.2f}pt;'
+            return (f'<div class="txt" style="left:{left:.2f}pt;top:{top:.2f}pt;'
                     f'width:{width:.2f}pt;height:{height:.2f}pt;">{inner_new}</div>')
 
         return _DIV_RE.sub(sub_div, sheet_html)
@@ -277,15 +277,15 @@ def anonymize(html: str, used_names=None):
                           "size": max(sizes) if sizes else 0.0, "matched": False})
         return build(sheet, lines)
 
-    html = re.sub(r'<div CLIENT="sheet">.*?</div>\s*(?=<div CLIENT="sheet">|</body>)',
+    html = re.sub(r'<div class="sheet">.*?</div>\s*(?=<div class="sheet">|</body>)',
                   per_sheet, html, flags=re.S)
-    return html, list(CLIENT.CLIENT()), log
+    return html, list(variables.values()), log
 
 
 # ------------------------------------------------------------------ самопроверка
 
-def _norm_CLIENT(text: str) -> list:
-    return [w for w in re.split(r"\s+", text.reCLIENT("\u00ad", "")) if w]
+def _norm_words(text: str) -> list:
+    return [w for w in re.split(r"\s+", text.replace("\u00ad", "")) if w]
 
 
 def render_pdf(html_path: Path, out_pdf: Path):
@@ -296,8 +296,8 @@ def render_pdf(html_path: Path, out_pdf: Path):
     # подключены как /static/tpl_assets/... — weasyprint по таким адресам не ходит,
     # поэтому для сборки PDF подставляем путь к файлам на диске (в копии HTML, не в шаблоне).
     if "/static/tpl_assets/" in html:
-        assets = str(Path(__file__).resolve().parent.parent / "CLIENTs" / "static" / "tpl_assets") + "/"
-        html = html.reCLIENT("/static/tpl_assets/", assets)
+        assets = str(Path(__file__).resolve().parent.parent / "blocks" / "static" / "tpl_assets") + "/"
+        html = html.replace("/static/tpl_assets/", assets)
         tmp = html_path.with_name(html_path.stem + "__pdf.html")
         tmp.write_text(html, encoding="utf-8")
         html_path = tmp
@@ -315,7 +315,7 @@ def get_client_photo_data_uri(client_id: int) -> str:
     try:
         from core.config import DB_PATH
         c = sqlite3.connect(str(DB_PATH))
-        row = c.execute("SELECT photo_path FROM CLIENT WHERE id=?", (client_id,)).fetchone()
+        row = c.execute("SELECT photo_path FROM clients WHERE id=?", (client_id,)).fetchone()
         c.close()
         if not row or not row[0]:
             return ""
@@ -330,20 +330,20 @@ def get_client_photo_data_uri(client_id: int) -> str:
         return ""
 
 
-def substitute_CLIENT(html: str, CLIENT: dict, client_id: int = None) -> str:
+def substitute_values(html: str, values: dict, client_id: int = None) -> str:
     """Подставляет {{ var }} плейсхолдеры. Спец-случай client_photo:
-    если в CLIENT есть client_photo_url — ставит её (для img src),
+    если в values есть client_photo_url — ставит её (для img src),
     иначе если client_photo — конвертирует в base64 для weasyprint.
     """
     # Сначала обычная подстановка
     def _repl(m):
         var = m.group(1)
-        v = CLIENT.get(var)
+        v = values.get(var)
         if v is None:
             return m.group(0)
         s = str(v)
         # Защита от инъекции HTML
-        return s.reCLIENT('"', '&quot;').reCLIENT('<', '&lt;').reCLIENT('>', '&gt;')
+        return s.replace('"', '&quot;').replace('<', '&lt;').replace('>', '&gt;')
 
     html = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _repl, html)
 
@@ -353,13 +353,13 @@ def substitute_CLIENT(html: str, CLIENT: dict, client_id: int = None) -> str:
     else:
         photo_uri = ""
 
-    html = html.reCLIENT("{{ client_photo }}", photo_uri)
-    html = html.reCLIENT("{{ client_photo_url }}", photo_uri)
+    html = html.replace("{{ client_photo }}", photo_uri)
+    html = html.replace("{{ client_photo_url }}", photo_uri)
 
     return html
 
 
-def qa_report(html_path: Path, src_pdf: Path, ignore=(), CLIENT=None):
+def qa_report(html_path: Path, src_pdf: Path, ignore=(), values=None):
     """Сверка отрендеренного шаблона с оригиналом. Возвращает отчёт и оценку.
 
     ``ignore`` — слова исходного бланка, которые шаблон заменяет переменными
@@ -368,16 +368,16 @@ def qa_report(html_path: Path, src_pdf: Path, ignore=(), CLIENT=None):
     import pymupdf
     ignore_lc = {str(w).lower() for w in (ignore or [])}
     tmp = html_path.with_suffix(".qa.pdf")
-    report = {"pages_src": None, "pages_out": None, "missing_CLIENT": [],
+    report = {"pages_src": None, "pages_out": None, "missing_words": [],
               "extra_ink": [], "leftover_vars": 0, "images_dropped": [], "ok": False,
               "score": 10 ** 6}
     render_src = html_path
     tmp_html = None
-    if CLIENT:
+    if values:
         try:
             tmp_html = html_path.with_suffix(".qa.html")
-            client_id = CLIENT.get('_client_id') if isinstance(CLIENT, dict) else None
-            filled = substitute_CLIENT(html_path.read_text(encoding="utf-8"), CLIENT, client_id=client_id)
+            client_id = values.get('_client_id') if isinstance(values, dict) else None
+            filled = substitute_values(html_path.read_text(encoding="utf-8"), values, client_id=client_id)
             tmp_html.write_text(filled, encoding="utf-8")
             render_src = tmp_html
         except Exception as exc:                        # noqa: BLE001
@@ -392,21 +392,21 @@ def qa_report(html_path: Path, src_pdf: Path, ignore=(), CLIENT=None):
         src = pymupdf.open(str(src_pdf))
         out = pymupdf.open(str(tmp))
         report["pages_src"], report["pages_out"] = src.page_count, out.page_count
-        src_CLIENT = {}
+        src_words = {}
         for page in src:
-            for w in _norm_CLIENT(page.get_text()):
-                src_CLIENT[w] = src_CLIENT.get(w, 0) + 1
+            for w in _norm_words(page.get_text()):
+                src_words[w] = src_words.get(w, 0) + 1
         out_text = "\n".join(p.get_text() for p in out)
-        out_CLIENT = {}
-        for w in _norm_CLIENT(out_text):
-            out_CLIENT[w] = out_CLIENT.get(w, 0) + 1
+        out_words = {}
+        for w in _norm_words(out_text):
+            out_words[w] = out_words.get(w, 0) + 1
         missing = []
-        for w, n in src_CLIENT.items():
+        for w, n in src_words.items():
             if len(w) < 3 or w.lower() in ignore_lc:
                 continue
-            if out_CLIENT.get(w, 0) < n:
+            if out_words.get(w, 0) < n:
                 missing.append(w)
-        report["missing_CLIENT"] = sorted(set(missing))[:40]
+        report["missing_words"] = sorted(set(missing))[:40]
         report["ignored"] = sorted(ignore_lc)[:40]
         report["leftover_vars"] = len(re.findall(r"\{\{[^}\n]{0,80}\}\}", out_text))
 
@@ -421,11 +421,11 @@ def qa_report(html_path: Path, src_pdf: Path, ignore=(), CLIENT=None):
             if max(extra or [0]) > 4:
                 report["extra_ink"].append({"page": i + 1, "bands": extra})
         report["ok"] = (report["pages_src"] == report["pages_out"]
-                        and not report["missing_CLIENT"]
+                        and not report["missing_words"]
                         and not report["extra_ink"]
                         and report["leftover_vars"] == 0)
         report["score"] = ((0 if report["pages_src"] == report["pages_out"] else 100)
-                           + len(report["missing_CLIENT"])
+                           + len(report["missing_words"])
                            + sum(1 for e in report["extra_ink"] if max(e["bands"]) > 8) * 3)
     finally:
         tmp.unlink(missing_ok=True)
@@ -446,7 +446,7 @@ def make_previews(doc_id: str, pdf_path: Path, prefix: str = "") -> list:
             pix = page.get_pixmap(dpi=150)
             img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
             out = PREVIEW_DIR / f"{doc_id}{prefix}_p{i}.webp"
-            img.save(out, "WEBP", CLIENT=80, method=4)
+            img.save(out, "WEBP", quality=80, method=4)
             made.append(out.name)
     finally:
         doc.close()
@@ -548,24 +548,24 @@ def run_conversion(doc: dict) -> dict:
     log = [f"исходник: {doc['source_pdf']} ({src_pdf.stat().st_size // 1024} КБ)"]
     best = None
 
-    CLIENT = [("обычный фильтр видимости", False), ("с коррекцией: строгий фильтр видимости", True)]
-    for CLIENT, strict in CLIENT:
+    attempts = [("обычный фильтр видимости", False), ("с коррекцией: строгий фильтр видимости", True)]
+    for title, strict in attempts:
         mod = extractor()
         if strict:
             mod._is_visible = _strict_visibility(mod, {})
             mod._images_of_page = lambda page, doc, _m=mod: _strict_images_of_page(_m, page, doc)
         mod.WITH_IMAGES = True
         html = mod.extract_html(str(src_pdf), set())
-        html, CLIENT, vlog = anonymize(html)
+        html, variables, vlog = anonymize(html)
         attempt_html = folder / ("template.html" if not strict else "template_attempt2.html")
         attempt_html.write_text(html, encoding="utf-8")
         qa = qa_report(attempt_html, src_pdf, ignore=doc.get("qa_ignore") or (),
-                       CLIENT={v["name"]: v.get("default") for v in CLIENT})
-        log.append(f"[{CLIENT}] картинок в шаблоне: {html.count('<img')}, переменных: {len(CLIENT)}, "
+                       values={v["name"]: v.get("default") for v in variables})
+        log.append(f"[{title}] картинок в шаблоне: {html.count('<img')}, переменных: {len(variables)}, "
                    f"страниц {qa.get('pages_out')}/{qa.get('pages_src')}, "
-                   f"потерянных слов: {len(qa.get('missing_CLIENT', []))}, "
+                   f"потерянных слов: {len(qa.get('missing_words', []))}, "
                    f"полос с лишней заливкой: {len(qa.get('extra_ink', []))}")
-        cand = {"strict": strict, "html": html, "CLIENT": CLIENT, "qa": qa,
+        cand = {"strict": strict, "html": html, "variables": variables, "qa": qa,
                 "vlog": vlog, "path": attempt_html}
         if best is None or qa["score"] < best["qa"]["score"]:
             best = cand
@@ -594,9 +594,9 @@ def run_conversion(doc: dict) -> dict:
         "html": f"docs/{doc_id}/template.html",
         "doc_type": doc_id,
         "filled_sample": doc["source_pdf"],
-        "CLIENT": best["CLIENT"],
+        "variables": best["variables"],
         "qa": best["qa"],
-        "CLIENT": "ok" if best["qa"]["ok"] else "needs_review",
+        "status": "ok" if best["qa"]["ok"] else "needs_review",
         "converted_at": int(time.time()),
         "convert_log": log[-80:],
         "pages": best["qa"].get("pages_src"),

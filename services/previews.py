@@ -92,21 +92,21 @@ COMPACT_MIN_BYTES = 400 * 1024  # мелочь не трогаем
 
 
 def compact_image(target: Path, long_side: int = COMPACT_LONG,
-                  CLIENT: int = COMPACT_QUALITY, min_bytes: int = COMPACT_MIN_BYTES):
+                  quality: int = COMPACT_QUALITY, min_bytes: int = COMPACT_MIN_BYTES):
     """Облегчает скачанный снимок на месте: уменьшает и пересохраняет в JPEG.
 
     Возвращает (новый путь, было байт, стало байт) или None, если файл не
-    изображение, уже лёгкий или не читается. Оригинал удаляется — CLIENT просил
+    изображение, уже лёгкий или не читается. Оригинал удаляется — Андрей просил
     хранить сразу облегчённую версию, а не полный снимок.
     """
     target = Path(target)
     if not target.is_file() or target.suffix.lower() not in IMAGE_EXT:
         return None
     try:
-        CLIENT = target.stat().st_size
+        before = target.stat().st_size
     except OSError:
         return None
-    if CLIENT <= min_bytes:
+    if before <= min_bytes:
         return None
     try:
         from PIL import Image, ImageOps
@@ -122,11 +122,11 @@ def compact_image(target: Path, long_side: int = COMPACT_LONG,
             img = img.resize((max(1, int(img.width * k)), max(1, int(img.height * k))),
                              Image.LANCZOS)
         out = target.with_suffix(".jpg")
-        img.save(out, "JPEG", CLIENT=CLIENT, optimize=True, progressive=True)
+        img.save(out, "JPEG", quality=quality, optimize=True, progressive=True)
     except Exception:
         return None
     after = out.stat().st_size if out.exists() else 0
-    if not after or (out != target and after >= CLIENT):
+    if not after or (out != target and after >= before):
         # сжатие ничего не дало — оставляем как было
         try:
             if out != target and out.exists():
@@ -139,7 +139,7 @@ def compact_image(target: Path, long_side: int = COMPACT_LONG,
             target.unlink()
         except Exception:
             pass
-    return (out, CLIENT, after)
+    return (out, before, after)
 
 
 def process_client_image(target: Path, kind: str = "") -> dict:
@@ -171,7 +171,7 @@ def ensure_image(target: Path, width: int = 0):
     key = cache_key(target)
     # Отдаём WebP: для сканов и снимков он на четверть легче JPEG при том же
     # качестве, а кодируется один раз — при подготовке, не при открытии.
-    CLIENT = 72 if width <= 200 else 80
+    quality = 72 if width <= 200 else 80
     out = CACHE / ("%s_img%d.webp" % (key, width))
     if out.exists() and out.stat().st_size > 0:
         return out
@@ -186,7 +186,7 @@ def ensure_image(target: Path, width: int = 0):
         if img.width > width:
             h = max(1, int(round(img.height * width / float(img.width))))
             img = img.resize((width, h), Image.LANCZOS)
-        img.save(out, "WEBP", CLIENT=CLIENT, method=4)
+        img.save(out, "WEBP", quality=quality, method=4)
     except Exception:
         return None
     return out if out.exists() and out.stat().st_size > 0 else None
@@ -233,7 +233,7 @@ def doc_thumb(app_id: int, template_id: int, width: int = 220):
         import subprocess as _sp
         import tempfile as _tf
         from pathlib import Path as _P
-        from CLIENT import render as _render
+        from services import render as _render
         pdf = _render.render_pdf(html)
         prefix = _tf.mktemp(suffix="-thumb")
         _sp.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to", str(width * 3), "-png",
@@ -246,7 +246,7 @@ def doc_thumb(app_id: int, template_id: int, width: int = 220):
         if img.width > width:
             img = img.resize((width, max(1, int(round(img.height * width / float(img.width))))),
                              Image.LANCZOS)
-        img.save(out, "WEBP", CLIENT=70, method=4)
+        img.save(out, "WEBP", quality=70, method=4)
         for p in pages:
             try:
                 p.unlink()
@@ -264,17 +264,17 @@ def doc_thumb(app_id: int, template_id: int, width: int = 220):
 TPL_THUMB_DIR = CACHE / "tpl_thumbs"
 
 
-def _example_CLIENT(template_id: int) -> dict:
+def _example_values(template_id: int) -> dict:
     """Значения примера документа: пример переменной → значение по умолчанию → автозначение.
 
-    Порядок ровно как в конструкторе (`CLIENTs/CLIENT/page.py`, `_hl`), иначе миниатюра
+    Порядок ровно как в конструкторе (`blocks/templates/page.py`, `_hl`), иначе миниатюра
     и окно визора разойдутся: в миниатюре будет одно, в документе другое.
     """
     import json as _json
     vals: dict = {}
     try:
         from core import db as _db
-        rows = _db.q("SELECT name, default_CLIENT, examples_json FROM template_CLIENT "
+        rows = _db.q("SELECT name, default_value, examples_json FROM template_variables "
                      "WHERE template_id=?", (template_id,)) or []
     except Exception:
         return vals
@@ -287,7 +287,7 @@ def _example_CLIENT(template_id: int) -> dict:
         except Exception:
             val = ""
         if not val.strip():
-            val = str(r.get("default_CLIENT") or "")
+            val = str(r.get("default_value") or "")
         if val.strip():
             vals[str(r.get("name"))] = val
     return vals
@@ -296,18 +296,18 @@ def _example_CLIENT(template_id: int) -> dict:
 def _fill_example(html: str, template_id: int, code: str) -> str:
     """Подставляет значения примера прямо в HTML-шаблон (для миниатюры)."""
     import re as _re
-    vals = _example_CLIENT(template_id)
+    vals = _example_values(template_id)
     # Автозначения (сумма прописью, копейки и т. п.) — только как запасной вариант,
     # там где у переменной нет ни примера, ни значения по умолчанию.
     try:
-        from CLIENT.CLIENT import build_template_CLIENT
-        auto = build_template_CLIENT(dict(vals), code, dict(vals)) or {}
+        from services.values import build_template_values
+        auto = build_template_values(dict(vals), code, dict(vals)) or {}
         vals = {**auto, **vals}
     except Exception:
         pass
 
     def _esc(txt) -> str:
-        return str(txt).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
+        return str(txt).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     def _repl(m):
         nm = m.group(1)
@@ -315,13 +315,13 @@ def _fill_example(html: str, template_id: int, code: str) -> str:
         # как дефект — ставим ту же заглушку, что и в конструкторе.
         if nm in ("client_photo_url", "client_photo"):
             return _esc((vals.get(nm) or "").strip()
-                        or "/static/tpl_assets/cv_photo_CLIENTholder.png")
+                        or "/static/tpl_assets/cv_photo_placeholder.png")
         return _esc((vals.get(nm) or "").strip())
 
     return _re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _repl, html)
 
 
-def _pdf_has_CLIENTholders(pdf) -> bool:
+def _pdf_has_placeholders(pdf) -> bool:
     """В примере остались незаполненные `{{ переменные }}`?
 
     Часть «заполненных» примеров на самом деле выгружена из шаблона с пустыми датами —
@@ -355,7 +355,7 @@ def tpl_thumb(template_id: int, code: str, width: int = 170):
     _p = tdir / "example_filled.pdf"
     try:
         if (_p.is_file() and _p.stat().st_size > 8192
-                and not _pdf_has_CLIENTholders(_p)):
+                and not _pdf_has_placeholders(_p)):
             src_pdf = _p
     except Exception:
         src_pdf = None
@@ -388,7 +388,7 @@ def tpl_thumb(template_id: int, code: str, width: int = 170):
         import tempfile as _tf
         pdf = src_pdf
         if pdf is None:
-            from CLIENT import render as _render
+            from services import render as _render
             pdf = tmp_pdf = _render.render_pdf(html_src)
         prefix = _tf.mktemp(suffix="-tplthumb")
         _sp.run(["pdftoppm", "-f", "1", "-l", "1", "-scale-to", str(width * 3), "-png",
@@ -401,7 +401,7 @@ def tpl_thumb(template_id: int, code: str, width: int = 170):
         if img.width > width:
             img = img.resize((width, max(1, int(round(img.height * width / float(img.width))))),
                              Image.LANCZOS)
-        img.save(out, "WEBP", CLIENT=70, method=4)
+        img.save(out, "WEBP", quality=70, method=4)
         for p in pages:
             try:
                 p.unlink()
@@ -432,7 +432,7 @@ def tpl_thumb_client(template_id: int, code: str, app_id: int, width: int = 170)
     from core.config import BASE_DIR, HTML_DIR
 
     try:
-        from CLIENT import render as _render
+        from services import render as _render
     except Exception:
         return None
     cache_dir = _P(BASE_DIR) / "data" / "previews"
@@ -471,7 +471,7 @@ def tpl_thumb_client(template_id: int, code: str, app_id: int, width: int = 170)
         if img.width > width:
             img = img.resize((width, max(1, int(round(img.height * width / float(img.width))))),
                              Image.LANCZOS)
-        img.save(out, "WEBP", CLIENT=70, method=4)
+        img.save(out, "WEBP", quality=70, method=4)
         for p in pages:
             try:
                 p.unlink()

@@ -18,20 +18,20 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-DIRS = [Path('/opt/wolf_v2/data/gCLIENT_cache'),
-        Path('/opt/wolf_v2/data/gCLIENT_archive'),
-        Path('/opt/wolf_v2/data/gCLIENT_examples')]
+DIRS = [Path('/opt/wolf_v2/data/gdrive_cache'),
+        Path('/opt/wolf_v2/data/gdrive_archive'),
+        Path('/opt/wolf_v2/data/gdrive_examples')]
 EXT = ('.pdf', '.docx', '.doc', '.txt', '.html', '.rtf')
-KEYS = ['CLIENTal experience', 'work experience', 'employment CLIENT',
-        'CLIENTal CLIENT', 'curriculum vitae', 'резюме', 'опыт работы',
-        'key CLIENT', 'CLIENT', 'обязанности']
+KEYS = ['professional experience', 'work experience', 'employment history',
+        'professional summary', 'curriculum vitae', 'резюме', 'опыт работы',
+        'key skills', 'education', 'обязанности']
 MAX_MB = 12          # крупные сканы пропускаем — это не резюме
 FILE_TIMEOUT = 25    # секунд на файл
 DOCS = Path('/opt/wolf_v2/docs')
 CACHE = DOCS / 'txt_cache'
 
 
-CLIENT _Timeout(Exception):
+class _Timeout(Exception):
     pass
 
 
@@ -74,11 +74,11 @@ def check(path_str: str):
                 txt = _pdf_fast(f)
                 if len(txt.strip()) < 120:      # скан без текстового слоя
                     sys.path.insert(0, '/opt/wolf_v2')
-                    from CLIENT.doc_read import read_text
+                    from services.doc_read import read_text
                     txt = read_text(f) or ''
             else:
                 sys.path.insert(0, '/opt/wolf_v2')
-                from CLIENT.doc_read import read_text
+                from services.doc_read import read_text
                 txt = read_text(f) or ''
         except (_Timeout, Exception):
             txt = ''

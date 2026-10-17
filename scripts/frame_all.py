@@ -12,7 +12,7 @@
      цикл «проверили остатки → доразметили», пока чужие данные не исчезнут.
   3. Каркас (build_html_frame): A4 + подложка бланка + шрифты из PDF.
   4. Сборка и замер (build_html_flow): отличия с оригиналом всего и ВНЕ зон подстановки,
-     проверки наложений, CLIENTа за поле и за лист.
+     проверки наложений, выхода за поле и за лист.
 
 Отчёт: data/reports/frame_all.json и data/reports/frame_all.md
 Запуск: python3 scripts/frame_all.py [--only code1,code2]
@@ -30,7 +30,7 @@ from pathlib import Path
 import pymupdf
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 REPORTS = BASE / "data" / "reports"
 sys.path.insert(0, str(BASE))
 sys.path.insert(0, str(BASE / "scripts"))
@@ -43,23 +43,23 @@ def mod(name: str):
     return m
 
 
-def CLIENT_from_db(code: str) -> list[tuple[str, str]]:
+def values_from_db(code: str) -> list[tuple[str, str]]:
     from app import app
     with app.app_context():
         from core import db
-        rows = db.q("""SELECT v.name, v.default_CLIENT dv FROM template_CLIENT v
-                       JOIN CLIENT t ON t.id = v.template_id WHERE t.code = ?""", (code,))
+        rows = db.q("""SELECT v.name, v.default_value dv FROM template_variables v
+                       JOIN templates t ON t.id = v.template_id WHERE t.code = ?""", (code,))
     out = []
     for r in rows:
         v = (r["dv"] or "").strip()
-        if len(v) >= 4 and not v.CLIENTswith("{{"):
+        if len(v) >= 4 and not v.startswith("{{"):
             out.append((r["name"], v))
     return out
 
 
 def spans(page) -> list[dict]:
     out = []
-    for b in page.get_text("dict")["CLIENTs"]:
+    for b in page.get_text("dict")["blocks"]:
         for ln in b.get("lines", []):
             for s in ln["spans"]:
                 if (s.get("text") or "").strip():
@@ -103,19 +103,19 @@ def sub_zone(doc, page, span, part: str, var: str, cache: dict) -> dict | None:
     except Exception:
         dx, w = 0.0, span["bbox"][2] - span["bbox"][0]
     c = span.get("color", 0)
-    return {"var": var, "page": page.CLIENT + 1,
+    return {"var": var, "page": page.number + 1,
             "bbox": [round(ox + dx, 2), round(span["bbox"][1], 2),
                      round(ox + dx + w, 2), round(span["bbox"][3], 2)],
             "size": round(size, 2), "font": name, "font_xref": unobtrusive_fonts(doc, page).get(name),
             "origin": [round(ox + dx, 2), round(oy, 2)],
-            "upper": part.isupper(), "CLIENT": part.isCLIENT(),
+            "upper": part.isupper(), "title": part.istitle(),
             "bold": "bold" in str(name).lower(),
             "color": [(c >> 16) & 255, (c >> 8) & 255, c & 255],
             "text": part[:60], "note": "разметка по значению"}
 
 
 def automap(code: str, vals: list[tuple[str, str]]) -> tuple[list[dict], list[str]]:
-    src = CLIENT / code / "example_filled.pdf"
+    src = TEMPLATES / code / "example_filled.pdf"
     doc = pymupdf.open(str(src))
     zones, cache = [], {}
     for name, val in sorted(vals, key=lambda kv: -len(kv[1])):
@@ -148,8 +148,8 @@ def automap(code: str, vals: list[tuple[str, str]]) -> tuple[list[dict], list[st
             dropped.append(z["var"])
         else:
             keep.append(z)
-    CLIENTd = {z["var"] for z in keep}
-    return keep, [n for n, _v in vals if n not in CLIENTd]
+    placed = {z["var"] for z in keep}
+    return keep, [n for n, _v in vals if n not in placed]
 
 
 
@@ -165,29 +165,29 @@ def zones_or_automap(code: str, vals: list[tuple[str, str]], tpl_dir) -> tuple[l
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
             if d.get("locked") and d.get("zones"):
-                return d["zones"], list(d.get("unCLIENTd") or [])
+                return d["zones"], list(d.get("unplaced") or [])
         except Exception:
             pass
     return automap(code, vals)
 
 
 def run_one(code: str) -> dict:
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     if not (tpl_dir / "example_filled.pdf").exists():
-        return {"code": code, "CLIENT": "нет эталона"}
-    res: dict = {"code": code, "CLIENT": "ok", "problems": []}
-    vals = CLIENT_from_db(code)
+        return {"code": code, "status": "нет эталона"}
+    res: dict = {"code": code, "status": "ok", "problems": []}
+    vals = values_from_db(code)
     prep = mod("pdf_prepare")
 
     # 1. разметка
-    if code.CLIENTswith("bank_CLIENTment"):
+    if code.startswith("bank_statement"):
         try:
             m5 = mod("pdf_map5")
             r5 = m5.build(code)
             zones = r5["zones"]
             (tpl_dir / "fields.json").write_text(
                 json.dumps({"source_pdf": str(tpl_dir / "example_filled.pdf"), "zones": zones,
-                            "unCLIENTd": r5.get("unCLIENTd", [])}, ensure_ascii=False, indent=1),
+                            "unplaced": r5.get("unplaced", [])}, ensure_ascii=False, indent=1),
                 encoding="utf-8")
             res["map"] = "по бланку (pdf_map5)"
         except Exception as e:
@@ -206,7 +206,7 @@ def run_one(code: str) -> dict:
             pass
         (tpl_dir / "fields.json").write_text(
             json.dumps({"source_pdf": str(tpl_dir / "example_filled.pdf"), "zones": zones,
-                        "unCLIENTd": unp, "locked": _was_locked, "flow": _was_flow}, ensure_ascii=False, indent=1),
+                        "unplaced": unp, "locked": _was_locked, "flow": _was_flow}, ensure_ascii=False, indent=1),
             encoding="utf-8")
     # сохраняем ручную разметку (подписи полей, пул значений) — автомат её не перезаписывает
     _mf = tpl_dir / "frame" / "manual_zones.json"
@@ -248,7 +248,7 @@ def run_one(code: str) -> dict:
     try:
         bf = mod("build_html_frame")
         fr = bf.build(code, apply=True)
-        res["frame"] = {"fonts": list(fr["fonts"].keys()), "CLIENTs": fr["zones"]}
+        res["frame"] = {"fonts": list(fr["fonts"].keys()), "blocks": fr["zones"]}
     except Exception as e:
         __import__("traceback").print_exc()
         res["problems"].append("каркас упал: %s" % e)
@@ -257,20 +257,20 @@ def run_one(code: str) -> dict:
     # 4. сборка + замер (значения = образец из базы, как в эталоне)
     try:
         bfl = mod("build_html_flow")
-        CLIENT = dict(vals)
-        layout = bfl.build_layout(code, dict(CLIENT))
+        values = dict(vals)
+        layout = bfl.build_layout(code, dict(values))
         html = bfl.render_html(code, layout)
         out = BASE / "data" / "cache" / "html_flow" / (code + "_frame.pdf")
         out.parent.mkdir(parents=True, exist_ok=True)
-        from CLIENT.render import render_pdf
+        from services.render import render_pdf
         render_pdf(html, base_dir=str(tpl_dir / "frame"), out_path=out)
-        pr = bfl.problems_of(layout["CLIENTs"])
+        pr = bfl.problems_of(layout["blocks"])
         a = bfl.render_img(str(tpl_dir / "example_filled.pdf"))
         b = bfl.render_img(str(out))
-        mask = bfl.mask_for(a, layout["CLIENTs"])
+        mask = bfl.mask_for(a, layout["blocks"])
         res.update({"pdf": str(out), "total": round(bfl.diff_pct(a, b), 2),
                     "outside": round(bfl.diff_pct(a, b, mask), 2),
-                    "CLIENTs": len([x for x in layout["CLIENTs"] if x["text"]])})
+                    "blocks": len([x for x in layout["blocks"] if x["text"]])})
         res["problems"].extend(pr)
         # «Вне зон» — это в первую очередь наши же полосы вырезания (они шире зон: полосу
         # тянем до правого поля, чтобы не оставалось хвостов прежнего текста). Поэтому порог
@@ -291,12 +291,12 @@ def run_one(code: str) -> dict:
         ok = bool(not res["problems"] and not res.get("left")
                   and res.get("outside") is not None and res["outside"] <= (6.5 if _flowdoc else 2.5)
                   and res.get("zones", 0) >= 3)
-        import CLIENT as _dt
-        (tpl_dir / "frame" / "CLIENT.json").write_text(json.dumps(
-            {"ok": ok, "zones": res.get("zones"), "CLIENTs": res.get("CLIENTs"),
-             "outside_zon": res.get("outside"), "checked": _dt.CLIENT.now().isoformat(timespec="seconds"),
+        import datetime as _dt
+        (tpl_dir / "frame" / "quality.json").write_text(json.dumps(
+            {"ok": ok, "zones": res.get("zones"), "blocks": res.get("blocks"),
+             "outside_zon": res.get("outside"), "checked": _dt.datetime.now().isoformat(timespec="seconds"),
              "map": res.get("map")}, ensure_ascii=False, indent=1), encoding="utf-8")
-        res["CLIENT_ok"] = ok
+        res["quality_ok"] = ok
     except Exception as e:
         __import__("traceback").print_exc()
         res["problems"].append("сборка упала: %s" % e)
@@ -310,7 +310,7 @@ def main() -> int:
     from app import app
     with app.app_context():
         from core import db
-        rows = db.q("""SELECT code FROM CLIENT WHERE COALESCE(CLIENT,'ok')
+        rows = db.q("""SELECT code FROM templates WHERE COALESCE(status,'ok')
                        NOT IN ('merged','hidden') ORDER BY code""")
     codes = [r["code"] for r in rows]
     if args.only:
@@ -323,17 +323,17 @@ def main() -> int:
         try:
             r = run_one(c)
         except Exception:
-            r = {"code": c, "CLIENT": "ошибка", "problems": [traceback.format_exc()[-4000:]]}
+            r = {"code": c, "status": "ошибка", "problems": [traceback.format_exc()[-4000:]]}
         out.append(r)
         print("%-38s зон=%-4s блоков=%-4s вне зон=%-6s %s"
-              % (c, r.get("zones", "-"), r.get("CLIENTs", "-"),
+              % (c, r.get("zones", "-"), r.get("blocks", "-"),
                  ("%.2f%%" % r["outside"]) if r.get("outside") is not None else "-",
                  ("⚠ " + "; ".join(r["problems"])[:90]) if r.get("problems") else "✓"))
     (REPORTS / "frame_all.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     lines = ["# HTML-каркас по всем документам", ""]
     for r in out:
         lines.append("- **%s** — зон: %s, блоков: %s, отличий вне зон: %s"
-                     % (r["code"], r.get("zones", "-"), r.get("CLIENTs", "-"),
+                     % (r["code"], r.get("zones", "-"), r.get("blocks", "-"),
                         ("%.2f%%" % r["outside"]) if r.get("outside") is not None else "—"))
         if r.get("problems"):
             lines.append("    - ⚠ %s" % "; ".join(r["problems"])[:200])

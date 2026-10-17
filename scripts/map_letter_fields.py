@@ -21,20 +21,20 @@ import pymupdf  # noqa: E402
 
 # подпись поля -> (переменная в верхней анкете, переменная в нижней анкете)
 LABELS = {
-    "nama": ("CLIENT_CLIENT_name", "client_name"),
-    "pekerjaan": ("CLIENT", "CLIENT"),
-    "kewarganegaraan": ("CLIENT_CLIENT", "CLIENT"),
-    "nik": ("CLIENT_nik", "client_nik"),
-    "alamat": ("CLIENT_address", "client_address"),
-    "jenis kelamin": ("CLIENT", "CLIENT"),
-    "tempat/tgl. lahir": ("CLIENT_date_of_CLIENT", "CLIENT_date_of_CLIENT"),
-    "tempat/tanggal lahir": ("CLIENT_date_of_CLIENT", "CLIENT_date_of_CLIENT"),
-    "no. paspor": ("passport_CLIENT", "passport_CLIENT"),
-    "masa berlaku paspor": ("passport_CLIENT", "passport_CLIENT"),
-    "nomor itk": ("itk_CLIENT", "itk_CLIENT"),
-    "masa berlaku itk": ("itk_CLIENT", "itk_CLIENT"),
-    "tanggal lahir": ("date_of_CLIENT", "date_of_CLIENT"),
-    "paspor": ("passport_CLIENT", "passport_CLIENT"),
+    "nama": ("sponsor_person_name", "client_name"),
+    "pekerjaan": ("occupation", "occupation"),
+    "kewarganegaraan": ("sponsor_citizenship", "nationality"),
+    "nik": ("sponsor_nik", "client_nik"),
+    "alamat": ("sponsor_address", "client_address"),
+    "jenis kelamin": ("gender", "gender"),
+    "tempat/tgl. lahir": ("place_date_of_birth", "place_date_of_birth"),
+    "tempat/tanggal lahir": ("place_date_of_birth", "place_date_of_birth"),
+    "no. paspor": ("passport_number", "passport_number"),
+    "masa berlaku paspor": ("passport_expiry", "passport_expiry"),
+    "nomor itk": ("itk_number", "itk_number"),
+    "masa berlaku itk": ("itk_expiry", "itk_expiry"),
+    "tanggal lahir": ("date_of_birth", "date_of_birth"),
+    "paspor": ("passport_number", "passport_number"),
 }
 SPLIT = ("selaku penerima kuasa", "data sebagai berikut")
 
@@ -45,12 +45,12 @@ def main():
     ap.add_argument("--apply", action="store_true")
     a = ap.parse_args()
 
-    td = ROOT / "data" / "CLIENT" / a.code
+    td = ROOT / "data" / "templates" / a.code
     doc = pymupdf.open(str(td / "example_filled.pdf"))
     page = doc[0]
 
     lines = {}
-    for w in page.get_text("CLIENT"):
+    for w in page.get_text("words"):
         lines.setdefault(round(w[1], 1), []).append(w)
     y_split = min([y for y in lines
                    if any(s in " ".join(x[4] for x in lines[y]).lower() for s in SPLIT)] or [10 ** 6])

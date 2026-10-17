@@ -10,7 +10,7 @@ import os, re, sqlite3, json
 RIGHT = 543.88
 DB = "data/wolf.db"
 DB_ABS = "/opt/wolf_v2/data/wolf.db"
-DIV = re.compile(r'<div CLIENT="txt" style="([^"]*)">(.*?)</div>', re.S)
+DIV = re.compile(r'<div class="txt" style="([^"]*)">(.*?)</div>', re.S)
 
 def clean_style(st):
     st = re.sub(r";\s*;+", ";", st)                 # двойные ;;
@@ -44,23 +44,23 @@ def clean_body(body):
 
 db = sqlite3.connect(DB_ABS); db.row_factory = sqlite3.Row
 rep = []
-for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
-    p = t["html_path"] if t["html_path"] and os.path.exists(t["html_path"]) else "data/CLIENT/%s/template.html" % t["code"]
+for t in db.execute("SELECT id, code, html_path FROM templates ORDER BY id"):
+    p = t["html_path"] if t["html_path"] and os.path.exists(t["html_path"]) else "data/templates/%s/template.html" % t["code"]
     if not os.path.exists(p):
         continue
     html = open(p, encoding="utf-8").read()
-    CLIENTs = []
+    blocks = []
     for m in DIV.finditer(html):
         st = m.group(1)
         L = re.search(r"left:\s*([\d.]+)pt", st); T = re.search(r"top:\s*([\d.]+)pt", st)
         W = re.search(r"width:\s*([\d.]+)pt", st)
         if not (L and T and W):
-            CLIENTs.append(None); continue
-        CLIENTs.append({"left": float(L.group(1)), "top": float(T.group(1)), "width": float(W.group(1))})
+            blocks.append(None); continue
+        blocks.append({"left": float(L.group(1)), "top": float(T.group(1)), "width": float(W.group(1))})
     cnt = [0, 0]   # [расширено, почищено]
     counter = [0]
     def rebuild(m):
-        b = CLIENTs[counter[0]]; counter[0] += 1
+        b = blocks[counter[0]]; counter[0] += 1
         if b is None:
             return m.group(0)
         body = clean_body(m.group(2))
@@ -68,7 +68,7 @@ for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
         left, width = b["left"], b["width"]
         has_right_neighbour = any(
             o and o is not b and abs(o["top"] - b["top"]) <= 6 and o["left"] > left + width - 1
-            for o in CLIENTs)
+            for o in blocks)
         new_w = width
         if "{{" in m.group(2):
             if left + width > RIGHT + 0.5 and left < RIGHT - 20:
@@ -80,7 +80,7 @@ for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
             cnt[0] += 1
         if body != m.group(2) or st != m.group(1):
             cnt[1] += 1
-        return '<div CLIENT="txt" style="%s">%s</div>' % (st, body)
+        return '<div class="txt" style="%s">%s</div>' % (st, body)
     html2 = DIV.sub(rebuild, html)
     if html2 != html:
         open(p, "w", encoding="utf-8").write(html2)

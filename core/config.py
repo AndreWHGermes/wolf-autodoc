@@ -7,11 +7,11 @@ from pathlib import Path
 # Каталог проекта определяется от самого файла (или из окружения WOLF_BASE),
 # а не жёстко: иначе копия системы писала бы в данные оригинала.
 BASE_DIR = Path(os.environ.get("WOLF_BASE") or Path(__file__).resolve().parent.parent)
-BLOCKS_DIR = BASE_DIR / "CLIENTs"
+BLOCKS_DIR = BASE_DIR / "blocks"
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"          # оригиналы, загруженные вручную
 SOURCES_DIR = DATA_DIR / "sources"          # PDF-эталоны шаблонов
-HTML_DIR = DATA_DIR / "CLIENT"           # HTML-шаблоны после конвертации
+HTML_DIR = DATA_DIR / "templates"           # HTML-шаблоны после конвертации
 RENDER_DIR = DATA_DIR / "renders"           # сгенерированные PDF
 DOCS_DIR = BASE_DIR / "docs"                # документация по блокам
 

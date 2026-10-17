@@ -3,7 +3,7 @@
 Принцип заказчика: пакет — это НЕ всё, что система умеет собрать, и НЕ всё, что
 клиент принёс. В пакет входит только то, что:
 
-  1. требует регламент этого продукта (CLIENT.requirements), и
+  1. требует регламент этого продукта (services.requirements), и
   2. относится к этому клиенту.
 
 Практический случай, из-за которого модуль появился: в продукте C1-EXT в наборе
@@ -13,8 +13,8 @@
 «выключение» обязательно, а не косметика.
 
 Модуль отвечает на два вопроса:
-  - selected(CLIENT, client) -> какие документы идут в подачу;
-  - excluded(CLIENT, client) -> что выключили и почему (для легенды и лога).
+  - selected(product, client) -> какие документы идут в подачу;
+  - excluded(product, client) -> что выключили и почему (для легенды и лога).
 """
 from __future__ import annotations
 
@@ -25,8 +25,8 @@ DB = "/opt/wolf_v2/data/wolf.db"
 # Слоты, внутри которых допустим ТОЛЬКО ОДИН документ.
 # Значение — как выбрать нужный вариант по данным клиента.
 SINGLE_SLOTS = {
-    "bank_CLIENTment": "bank",      # справка об остатке — по банку клиента
-    "letter": "CLIENT",            # письмо в иммиграцию — по офису подачи
+    "bank_statement": "bank",      # справка об остатке — по банку клиента
+    "letter": "office",            # письмо в иммиграцию — по офису подачи
     "contract": "contract",        # договор — один на клиента, по продукту
     "cv": "single",
     "photo": "single",
@@ -65,28 +65,28 @@ def _contract_by_client(client_id):
 
 def _find_client_folder(client_id):
     try:
-        from CLIENT import CLIENT as _v
+        from services import values as _v
         return _v._find_client_folder_by_id(client_id)
     except Exception:                                          # noqa: BLE001
         return None
 
-# Банк клиента (CLIENT.bank_name) -> код шаблона
+# Банк клиента (clients.bank_name) -> код шаблона
 BANK_TEMPLATES = {
-    "TBANK": "bank_CLIENTment_3m__tbank",
-    "T-BANK": "bank_CLIENTment_3m__tbank",
-    "TINKOFF": "bank_CLIENTment_3m__tbank",
-    "SBER": "bank_CLIENTment_3m__sber",
-    "SBERBANK": "bank_CLIENTment_3m__sber",
-    "СБЕРБАНК": "bank_CLIENTment_3m__sber",
-    "ТБАНК": "bank_CLIENTment_3m__tbank",
+    "TBANK": "bank_statement_3m__tbank",
+    "T-BANK": "bank_statement_3m__tbank",
+    "TINKOFF": "bank_statement_3m__tbank",
+    "SBER": "bank_statement_3m__sber",
+    "SBERBANK": "bank_statement_3m__sber",
+    "СБЕРБАНК": "bank_statement_3m__sber",
+    "ТБАНК": "bank_statement_3m__tbank",
 }
 
 
-def _requirements(CLIENT_code) -> dict:
-    """Требования продукта (CLIENT.requirements) — источник истины по составу."""
+def _requirements(product_code) -> dict:
+    """Требования продукта (services.requirements) — источник истины по составу."""
     try:
-        from CLIENT import requirements as _req
-        return _req.for_CLIENT(CLIENT_code) or {}
+        from services import requirements as _req
+        return _req.for_product(product_code) or {}
     except Exception:                                          # noqa: BLE001
         return {}
 
@@ -104,12 +104,12 @@ NEEDS_BY_SLOT = {
 }
 
 
-def _slot_off_by_CLIENT(CLIENT_code, slot: str) -> bool:
+def _slot_off_by_product(product_code, slot: str) -> bool:
     """Слот выключен требованиями продукта?"""
     flag = NEEDS_BY_SLOT.get(slot or "")
     if not flag:
         return False
-    rq = _requirements(CLIENT_code)
+    rq = _requirements(product_code)
     if flag not in rq:
         return False
     return not bool(rq.get(flag))
@@ -121,18 +121,18 @@ def _conn():
     return c
 
 
-def _rows(CLIENT_code: str) -> list:
+def _rows(product_code: str) -> list:
     """Документы набора продукта: слот, код шаблона, обязательность, порядок."""
     try:
         c = _conn()
         rows = c.execute(
             "SELECT pd.slot_code, pd.required, pd.is_default, pd.sort_order, "
-            "       t.code AS tcode, t.CLIENT, t.CLIENT "
-            "FROM CLIENT_CLIENT pd "
-            "JOIN CLIENT p ON p.id = pd.CLIENT_id "
-            "JOIN CLIENT t ON t.id = pd.template_id "
-            "WHERE p.code = ? AND IFNULL(t.CLIENT,'') <> 'hidden' "
-            "ORDER BY pd.sort_order, t.code", (CLIENT_code,)).fetchall()
+            "       t.code AS tcode, t.title, t.status "
+            "FROM product_documents pd "
+            "JOIN products p ON p.id = pd.product_id "
+            "JOIN templates t ON t.id = pd.template_id "
+            "WHERE p.code = ? AND IFNULL(t.status,'') <> 'hidden' "
+            "ORDER BY pd.sort_order, t.code", (product_code,)).fetchall()
         c.close()
         return [dict(r) for r in rows]
     except Exception:
@@ -140,7 +140,7 @@ def _rows(CLIENT_code: str) -> list:
 
 
 def _client_bank(client_id) -> str:
-    """Банк клиента — из его карточки (CLIENT.bank_name).
+    """Банк клиента — из его карточки (clients.bank_name).
 
     Именно он решает, какую из готовых справок подаём: Т-Банка или Сбербанка.
     """
@@ -148,7 +148,7 @@ def _client_bank(client_id) -> str:
         return ""
     try:
         c = _conn()
-        r = c.execute("SELECT bank_name FROM CLIENT WHERE id=?", (client_id,)).fetchone()
+        r = c.execute("SELECT bank_name FROM clients WHERE id=?", (client_id,)).fetchone()
         c.close()
         if r and r["bank_name"]:
             return str(r["bank_name"]).upper()
@@ -160,7 +160,7 @@ def _client_bank(client_id) -> str:
 def _slot_key(row: dict) -> str:
     """Ключ слота: явный slot_code, иначе — по коду шаблона.
 
-    В БД слоты названы по-разному (`bank_stmt_3m`, `bank_CLIENTment_3m__tbank`),
+    В БД слоты названы по-разному (`bank_stmt_3m`, `bank_statement_3m__tbank`),
     поэтому имя слота приводим к одному виду: иначе выбор одного варианта из
     слота не срабатывает и в пакет попадают обе справки — и Т-Банка, и Сбера.
     """
@@ -170,8 +170,8 @@ def _slot_key(row: dict) -> str:
         if not src:
             continue
         if "bank" in src:
-            return "bank_CLIENTment"
-        if "e02" in src or "CLIENTment_letter" in src:
+            return "bank_statement"
+        if "e02" in src or "statement_letter" in src:
             return "e02"             # форма клиента — свой слот, не альтернатива письму
         if "letter" in src:
             return "letter"
@@ -189,9 +189,9 @@ def _slot_key(row: dict) -> str:
     return slot or code
 
 
-def selected(CLIENT_code: str, client_id=None) -> list:
+def selected(product_code: str, client_id=None) -> list:
     """Документы, которые идут в подачу (по одному на слот)."""
-    rows = _rows(CLIENT_code)
+    rows = _rows(product_code)
     if not rows:
         return []
     bank = _client_bank(client_id) if client_id else ""
@@ -210,12 +210,12 @@ def selected(CLIENT_code: str, client_id=None) -> list:
         group = by_slot[slot]
         # Документ слота не требуется регламентом продукта (например договор для
         # визитной визы) — в подачу он не идёт.
-        if _slot_off_by_CLIENT(CLIENT_code, slot):
+        if _slot_off_by_product(product_code, slot):
             continue
         pick = None
         if len(group) == 1:
             pick = group[0]
-        elif slot == "bank_CLIENTment" and bank:
+        elif slot == "bank_statement" and bank:
             want = BANK_TEMPLATES.get(bank, "")
             if want:
                 pick = next((g for g in group if g["tcode"] == want), None)
@@ -223,10 +223,10 @@ def selected(CLIENT_code: str, client_id=None) -> list:
                 # банк клиента не совпал ни с одним шаблоном: берём по умолчанию,
                 # чтобы справка вообще была (лучше один документ, чем ни одного)
                 pick = next((g for g in group if g.get("is_default")), None)
-        elif slot == "bank_CLIENTment" and not bank:
+        elif slot == "bank_statement" and not bank:
             pick = next((g for g in group if g.get("is_default")), None)
         elif slot == "contract":
-            want = (CONTRACT_BY_PRODUCT.get((CLIENT_code or "").upper(), "")
+            want = (CONTRACT_BY_PRODUCT.get((product_code or "").upper(), "")
                     or _contract_by_client(client_id)
                     or "employment_contract__default")
             if want:
@@ -235,41 +235,41 @@ def selected(CLIENT_code: str, client_id=None) -> list:
                 pick = next((g for g in group if g.get("is_default")), None)
         if pick is None:
             pick = group[0]
-        out.append({"code": pick["tcode"], "CLIENT": pick["CLIENT"] or pick["tcode"],
+        out.append({"code": pick["tcode"], "title": pick["title"] or pick["tcode"],
                     "slot": slot, "required": bool(pick.get("required"))})
     return out
 
 
-def excluded(CLIENT_code: str, client_id=None) -> list:
+def excluded(product_code: str, client_id=None) -> list:
     """Что выключили из пакета и почему — для легенды и журнала.
 
     Клиентские документы, не проходящие по регламенту, в пакет не попадают: их
     место занимает документ, собранный системой под проходные значения.
     """
-    rows = _rows(CLIENT_code)
-    keep = {d["code"] for d in selected(CLIENT_code, client_id)}
+    rows = _rows(product_code)
+    keep = {d["code"] for d in selected(product_code, client_id)}
     bank = _client_bank(client_id) if client_id else ""
     out = []
     for r in rows:
         if r["tcode"] in keep:
             continue
         slot = _slot_key(r)
-        if slot == "bank_CLIENTment" and bank:
+        if slot == "bank_statement" and bank:
             reason = ("у клиента банк %s — справка другого банка в пакет не входит "
                       "(справка об остатке нужна одна)" % bank)
         elif slot == "contract":
             reason = ("в пакете нужен один договор — для продукта %s выбран другой "
-                      "договор" % CLIENT_code)
+                      "договор" % product_code)
         else:
             reason = "в слоте «%s» выбран другой документ" % slot
-        out.append({"code": r["tcode"], "CLIENT": r["CLIENT"] or r["tcode"], "reason": reason})
+        out.append({"code": r["tcode"], "title": r["title"] or r["tcode"], "reason": reason})
     return out
 
 
-def CLIENTment_template(client_id=None) -> str:
+def statement_template(client_id=None) -> str:
     """Какой шаблон банковской справки подаём этому клиенту (или '')."""
     for code in ("C1-EXT", "C1", "E33G-NEW", "E33G-EXT", "BRIDGING", "CONV", "D12"):
         for d in selected(code, client_id):
-            if d["slot"] == "bank_CLIENTment" and d["code"]:
+            if d["slot"] == "bank_statement" and d["code"]:
                 return d["code"]
     return ""

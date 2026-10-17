@@ -6,7 +6,7 @@
   2) только те наши шаблоны, которые нужны этому продукту (отсечка по банку и т.п.),
   3) по каждому шаблону собран HTML с подставленными данными ИМЕННО этого клиента.
 
-Запуск: /usr/bin/python3 scripts/kit_consistency.py [--CLIENT C1] [--png]
+Запуск: /usr/bin/python3 scripts/kit_consistency.py [--product C1] [--png]
 Выход: docs/KIT_CONSISTENCY.md + картинки в /tmp/kit_check/ (если --png)
 """
 from __future__ import annotations
@@ -21,26 +21,26 @@ from pathlib import Path
 sys.path.insert(0, '/opt/wolf_v2')
 ROOT = Path('/opt/wolf_v2')
 VAR_RE = re.compile(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}')
-KEY_VARS = ('client_name', 'full_name_CLIENT', 'CLIENT_full_name', 'passport_no',
-            'passport_CLIENT', 'date_of_CLIENT', 'address_live', 'balance_rub', 'card_mask')
+KEY_VARS = ('client_name', 'full_name_latin', 'employee_full_name', 'passport_no',
+            'passport_number', 'date_of_birth', 'address_live', 'balance_rub', 'card_mask')
 
 from app import app  # noqa: E402
 
 with app.app_context():
     from core import db
-    from CLIENTs.CLIENT import page as P
-    from CLIENT import render
+    from blocks.templates import page as P
+    from services import render
 
     ap = argparse.ArgumentParser()
-    ap.add_argument('--CLIENT', default='')
+    ap.add_argument('--product', default='')
     ap.add_argument('--png', action='store_true')
     a = ap.parse_args()
 
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    prods = con.execute("SELECT id, code, name FROM CLIENT WHERE active=1 "
-                        + ("AND code=? " if a.CLIENT else "") + "ORDER BY id",
-                        ((a.CLIENT,) if a.CLIENT else ())).fetchall()
+    prods = con.execute("SELECT id, code, name FROM products WHERE active=1 "
+                        + ("AND code=? " if a.product else "") + "ORDER BY id",
+                        ((a.product,) if a.product else ())).fetchall()
     md = ['# Сходимость конструктора продукта', '',
           'Клиентские документы (Google Диск) ↔ наши шаблоны ↔ собранный HTML с данными клиента.', '']
     problems = []
@@ -50,18 +50,18 @@ with app.app_context():
     for p in prods:
         pcode = p['code']
         app_row = con.execute(
-            """SELECT a.id, a.client_id FROM CLIENT a
-               WHERE a.CLIENT_id=? ORDER BY (a.record_kind='real_test') DESC, a.id DESC LIMIT 1""",
+            """SELECT a.id, a.client_id FROM applications a
+               WHERE a.product_id=? ORDER BY (a.record_kind='real_test') DESC, a.id DESC LIMIT 1""",
             (p['id'],)).fetchone()
         if not app_row:
             continue
         app_id, cid = int(app_row['id']), int(app_row['client_id'])
-        cl = dict(con.execute("SELECT * FROM CLIENT WHERE id=?", (cid,)).fetchone())
-        fio = ('%s %s' % (cl.get('CLIENT') or '', cl.get('name') or '')).strip()
+        cl = dict(con.execute("SELECT * FROM clients WHERE id=?", (cid,)).fetchone())
+        fio = ('%s %s' % (cl.get('surname') or '', cl.get('name') or '')).strip()
         tpls = con.execute(
-            """SELECT t.id, t.code, t.CLIENT, t.html_path, pd.slot_code, COALESCE(t.CLIENT,'ok') st
-               FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-               WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')
+            """SELECT t.id, t.code, t.title, t.html_path, pd.slot_code, COALESCE(t.status,'ok') st
+               FROM product_documents pd JOIN templates t ON t.id=pd.template_id
+               WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('merged','hidden')
                ORDER BY pd.sort_order, t.code""", (p['id'],)).fetchall()
         client_files = P._client_files_of(cid)
         client_only = [f for f in client_files if not P._manager_kind(f.name)]
@@ -86,14 +86,14 @@ with app.app_context():
                 html_src = Path(t['html_path']).read_text(encoding='utf-8')
             names = sorted(set(VAR_RE.findall(html_src)))
             try:
-                vals = render.client_CLIENT(app_id) or {}
-                vals = {**vals, **{k: v for k, v in render.stored_CLIENT(app_id, t['id']).items() if v}}
+                vals = render.client_values(app_id) or {}
+                vals = {**vals, **{k: v for k, v in render.stored_values(app_id, t['id']).items() if v}}
             except Exception:
                 vals = {}
             filled = render.fill(html_src, vals, keep_unfilled=False, template_code=t['code'])
             left = sorted(set(VAR_RE.findall(filled)))
             shown = ['%s = %s' % (k, str(vals.get(k))[:40]) for k in KEY_VARS if vals.get(k)]
-            md.append('- `%s` — «%s» %s' % (t['code'], (t['CLIENT'] or '')[:44],
+            md.append('- `%s` — «%s» %s' % (t['code'], (t['title'] or '')[:44],
                                             '· ВЫКЛЮЧЕН правилом (банк клиента)' if off else ''))
             md.append('    - основа-образец: `%s`' % (Path(base).name if base else 'нет'))
             md.append('    - переменных %d, подставлено %d, осталось незаполненных %s'

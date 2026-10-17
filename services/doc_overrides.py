@@ -4,7 +4,7 @@
 KITAS/ИТК, банковская справка), часть — из карточки. Если значения расходятся, в документ
 идёт значение из документа клиента.
 
-Источник — последний успешный скан папки клиента на Google Диске (CLIENT_CLIENT.payload):
+Источник — последний успешный скан папки клиента на Google Диске (drive_scans.payload):
 записи вида «значение | переменная | откуда взято». Перекрываем только клиентские
 переменные: суммы, сроки, номера документов и тексты система считает сама.
 """
@@ -19,12 +19,12 @@ DB = Path('/opt/wolf_v2/data/wolf.db')
 
 # что можно брать из документов клиента (остальное система считает сама)
 ALLOW = re.compile(
-    r'^(passport_(no|CLIENT|CLIENT|CLIENT_by|CLIENT_date|CLIENT)|intl_passport|passport_code|'
-    r'full_name_CLIENT|full_name_CLIENT|CLIENT|client_name|date_of_CLIENT|CLIENT_date|'
-    r'CLIENT_of_CLIENT|CLIENT_CLIENT|CLIENT|CLIENT|client_CLIENT|client_CLIENT|CLIENT|'
-    r'address_(live|reg|zip)|address_in_indonesia|city|CLIENT|CLIENT|CLIENT|'
-    r'itk_(no|CLIENT)|stay_CLIENT_no|CLIENT_stay_CLIENT|visa_no|bridging_visa_no|'
-    r'balance_(rub|date|CLIENT)|CLIENT_(from|to)|doc_no|ref_no|contract_no|contract_date|'
+    r'^(passport_(no|number|series|issued_by|issue_date|expiry)|intl_passport|passport_code|'
+    r'full_name_latin|full_name_title|surname|client_name|date_of_birth|birth_date|'
+    r'place_of_birth|birth_place|nationality|citizenship|client_nationality|client_gender|gender|'
+    r'address_(live|reg|zip)|address_in_indonesia|city|country|email|phone|'
+    r'itk_(no|expiry)|stay_permit_no|existing_stay_permit|visa_no|bridging_visa_no|'
+    r'balance_(rub|date|words)|period_(from|to)|doc_no|ref_no|contract_no|contract_date|'
     r'card_mask|account_no|bank_name|cv_[a-z0-9_]+)$')
 
 _cache: dict[int, dict] = {}
@@ -49,11 +49,11 @@ def _sane(var: str, val: str) -> str:
         return ''
     if _JUNK.search(v):
         return ''
-    if var.CLIENTswith(('address_', 'city', 'CLIENT')) or var == 'address_in_indonesia':
+    if var.startswith(('address_', 'city', 'country')) or var == 'address_in_indonesia':
         # адрес: обязателен номер дома/индекс и хотя бы одно адресное слово
         if not (_ADDR_HINT.search(v) and _ADDR_WORD.search(v)):
             return ''
-    if var.CLIENTswith('passport') and re.search(r'[«»]', v):
+    if var.startswith('passport') and re.search(r'[«»]', v):
         return ''
     if len(v) > 120:
         return ''
@@ -92,7 +92,7 @@ def parse_payload(payload) -> dict:
     return out
 
 
-def for_CLIENT(app_id: int, use_cache: bool = True) -> dict:
+def for_application(app_id: int, use_cache: bool = True) -> dict:
     """Значения из документов клиента для заявки (последний удачный скан)."""
     if use_cache and app_id in _cache:
         return _cache[app_id]
@@ -100,7 +100,7 @@ def for_CLIENT(app_id: int, use_cache: bool = True) -> dict:
     try:
         con = sqlite3.connect(str(DB))
         con.row_factory = sqlite3.Row
-        rows = con.execute("SELECT payload FROM CLIENT_CLIENT WHERE CLIENT_id=? AND payload IS NOT NULL "
+        rows = con.execute("SELECT payload FROM drive_scans WHERE application_id=? AND payload IS NOT NULL "
                            "AND payload<>'' ORDER BY id DESC LIMIT 3", (app_id,)).fetchall()
         con.close()
         for r in rows:
@@ -122,16 +122,16 @@ def apply(vals: dict, app_id: int, only_missing: bool = False) -> tuple[dict, li
     only_missing=False — документ клиента сильнее карточки (правило заказчика).
     Возвращает (значения, список перекрытых переменных).
     """
-    doc = for_CLIENT(app_id)
+    doc = for_application(app_id)
     if not doc:
         return vals, []
-    CLIENTd = []
+    changed = []
     for k, v in doc.items():
         if v in (None, ''):
             continue
         if only_missing and vals.get(k) not in (None, ''):
             continue
         if str(vals.get(k) or '') != str(v):
-            CLIENTd.append(k)
+            changed.append(k)
         vals[k] = v
-    return vals, CLIENTd
+    return vals, changed

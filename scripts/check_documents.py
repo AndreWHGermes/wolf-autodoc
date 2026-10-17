@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Проверка готовых документов без глаз: наложения текста, CLIENT за поля, пустые поля.
+"""Проверка готовых документов без глаз: наложения текста, выход за поля, пустые поля.
 
 Зачем: подсветка внутри документа искажает вид бумаги, а «наползший» текст
 глазами замечаешь не сразу. Этот инструмент находит такие дефекты геометрически.
 
 Запуск:
-  /usr/bin/python3 scripts/check_CLIENT.py --pdf <файл.pdf> [ещё файлы]
-  /usr/bin/python3 scripts/check_CLIENT.py --dir reports/clean_check
+  /usr/bin/python3 scripts/check_documents.py --pdf <файл.pdf> [ещё файлы]
+  /usr/bin/python3 scripts/check_documents.py --dir reports/clean_check
 """
 from __future__ import annotations
 
@@ -27,14 +27,14 @@ def check(pdf: Path) -> list:
         return [f'не открывается: {str(e)[:80]}']
     for pno, page in enumerate(doc, 1):
         w, h = page.rect.width, page.rect.height
-        CLIENT = [x for x in page.get_text('CLIENT') if x[4].strip()]
-        for x0, y0, x1, y1, txt, *_ in CLIENT:
+        words = [x for x in page.get_text('words') if x[4].strip()]
+        for x0, y0, x1, y1, txt, *_ in words:
             if x1 > w - 3 or y1 > h - 3 or x0 < 2 or y0 < 2:
-                problems.append(f'стр.{pno}: «{txt[:26]}» CLIENTит за поля листа')
-        for i in range(len(CLIENT)):
-            x0, y0, x1, y1, t1 = CLIENT[i][:5]
-            for j in range(i + 1, len(CLIENT)):
-                a0, b0, a1, b1, t2 = CLIENT[j][:5]
+                problems.append(f'стр.{pno}: «{txt[:26]}» выходит за поля листа')
+        for i in range(len(words)):
+            x0, y0, x1, y1, t1 = words[i][:5]
+            for j in range(i + 1, len(words)):
+                a0, b0, a1, b1, t2 = words[j][:5]
                 if min(x1, a1) - max(x0, a0) > MIN_OVERLAP and min(y1, b1) - max(y0, b0) > MIN_OVERLAP:
                     problems.append(f'стр.{pno}: наложение «{t1[:22]}» и «{t2[:22]}»')
     doc.close()

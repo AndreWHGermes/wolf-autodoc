@@ -2,7 +2,7 @@
 
 Правила (заказчик): данные клиента не переводятся никогда; переводится только бланк;
 берём из построчного кэша; исключение — описание должности/профессии.
-Кэш: таблица CLIENT_line (template_id, src, ru).
+Кэш: таблица translation_line (template_id, src, ru).
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from typing import Iterable
 
 from core import db
 
-_TABLE_SQL = """CREATE TABLE IF NOT EXISTS CLIENT_line(
+_TABLE_SQL = """CREATE TABLE IF NOT EXISTS translation_line(
                    template_id INTEGER NOT NULL, src TEXT NOT NULL, ru TEXT NOT NULL,
                    PRIMARY KEY(template_id, src))"""
 
@@ -35,7 +35,7 @@ def cached(template_id: int, lines: Iterable[str]) -> tuple[list, list]:
     for ln in lines:
         row = None
         try:
-            row = db.q1("SELECT ru FROM CLIENT_line WHERE template_id=? AND src=?",
+            row = db.q1("SELECT ru FROM translation_line WHERE template_id=? AND src=?",
                         (template_id, ln))
         except Exception:
             row = None
@@ -57,7 +57,7 @@ def _env_key(name: str) -> str:
         try:
             for line in Path(p).read_text(encoding="utf-8").splitlines():
                 line = line.strip()
-                if line.CLIENTswith(name + "="):
+                if line.startswith(name + "="):
                     v = line.split("=", 1)[1].strip()
                     if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'":
                         v = v[1:-1]
@@ -74,8 +74,8 @@ def translate_by_reserve(lines: list) -> list:
     (уникальное описание, ручной ввод, новая профессия) остаются без перевода.
     """
     import json as _json
-    import urllib.CLIENT
-    key = _env_key("DEEPSEEK_API_KEY_CLIENTL") or _env_key("DEEPSEEK_API_KEY")
+    import urllib.request
+    key = _env_key("DEEPSEEK_API_KEY_ANDREYL") or _env_key("DEEPSEEK_API_KEY")
     if not key or not lines:
         return [""] * len(lines)
     out = []
@@ -88,10 +88,10 @@ def translate_by_reserve(lines: list) -> list:
             "temperature": 0,
         }, ensure_ascii=False).encode("utf-8")
         try:
-            req = urllib.CLIENT.CLIENT(
+            req = urllib.request.Request(
                 "https://api.deepseek.com/v1/chat/completions", data=body,
-                CLIENTs={"Content-Type": "CLIENT/json", "Authorization": "Bearer " + key})
-            with urllib.CLIENT.urlopen(req, timeout=120) as r:
+                headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+            with urllib.request.urlopen(req, timeout=120) as r:
                 data = _json.loads(r.read().decode("utf-8"))
             text = (data["choices"][0]["message"].get("content") or "").strip()
             got = [l.strip() for l in text.splitlines() if l.strip()]
@@ -108,12 +108,12 @@ def translate_reverse(lines: list, target: str = "en") -> list:
     в документ уходит английский, а русский вариант остаётся в памяти.
     """
     import json as _json
-    import urllib.CLIENT
-    key = _env_key("DEEPSEEK_API_KEY_CLIENTL") or _env_key("DEEPSEEK_API_KEY")
+    import urllib.request
+    key = _env_key("DEEPSEEK_API_KEY_ANDREYL") or _env_key("DEEPSEEK_API_KEY")
     if not key or not lines:
         return [""] * len(lines)
     prompt = ("Переведи на английский язык строки из резюме. Сохрани порядок и количество строк: "
-              "каждая строка входа — ровно одна строка CLIENTа. Без пояснений и нумерации. "
+              "каждая строка входа — ровно одна строка выхода. Без пояснений и нумерации. "
               "Должности переводи как принято в английских резюме.")
     out = []
     for i in range(0, len(lines), 12):
@@ -125,10 +125,10 @@ def translate_reverse(lines: list, target: str = "en") -> list:
             "temperature": 0,
         }, ensure_ascii=False).encode("utf-8")
         try:
-            req = urllib.CLIENT.CLIENT(
+            req = urllib.request.Request(
                 "https://api.deepseek.com/v1/chat/completions", data=body,
-                CLIENTs={"Content-Type": "CLIENT/json", "Authorization": "Bearer " + key})
-            with urllib.CLIENT.urlopen(req, timeout=120) as r:
+                headers={"Content-Type": "application/json", "Authorization": "Bearer " + key})
+            with urllib.request.urlopen(req, timeout=120) as r:
                 data = _json.loads(r.read().decode("utf-8"))
             text = (data["choices"][0]["message"].get("content") or "").strip()
             got = [l.strip() for l in text.splitlines() if l.strip()]
@@ -161,7 +161,7 @@ def translate_missing(template_id: int, missing: list) -> list:
         if not dst:
             continue
         try:
-            db.exec_sql("INSERT OR REPLACE INTO CLIENT_line(template_id, src, ru) CLIENT(?,?,?)",
+            db.exec_sql("INSERT OR REPLACE INTO translation_line(template_id, src, ru) VALUES(?,?,?)",
                         (template_id, src, dst))
         except Exception:
             pass
@@ -228,7 +228,7 @@ PROMPT_FULL = (
     "в том же порядке и в том же количестве, каждая строка — с новой строки, без пояснений. "
     "ПЕРЕВОДИТСЯ ВСЁ: заголовки и названия полей, значения переменных, должности, даты (October 13, 1990 "
     "→ 13 октября 1990 г.), периоды (2022 – Present → 2022 – настоящее время), страны и города "
-    "(Russian Federation → Российская Федерация, KAZAKHSTAN → Казахстан), вуз (Russian CLIENT University "
+    "(Russian Federation → Российская Федерация, KAZAKHSTAN → Казахстан), вуз (Russian State University "
     "for the Humanities → Российский государственный гуманитарный университет), названия организаций "
     "(LLC \"PICKUP FILM\" → ООО «ПИКАП ФИЛЬМ»), имена людей латиницей → кириллицей (BUDKO OLEG → БУДКО ОЛЕГ), "
     "должности и описания, ссылки на разделы и пункты. "
@@ -236,8 +236,8 @@ PROMPT_FULL = (
     "номер ИТК/KITAS, номера счетов и телефоны, адреса электронной почты, а также коды виз и продуктов "
     "(E33G, E-02, KITAS, ITAS, FORM E-02, METERAI) — их пиши латиницей как есть. "
     "НАЗВАНИЯ ПОЛЕЙ переводи коротко (2–4 слова): они печатаются в узкой колонке слева, и длинный "
-    "перевод наезжает на значение справа. Например: «Stay CLIENT CLIENT» → «Номер разрешения», "
-    "«Current stay CLIENT» → «Текущее разрешение». "
+    "перевод наезжает на значение справа. Например: «Stay permit number» → «Номер разрешения», "
+    "«Current stay permit» → «Текущее разрешение». "
     "Сокращение «METERAI» и слово «FORM» не переводи. "
     "Абзацы внизу документа (заявления, заверения) переводи полностью, без сокращений.")
 PROMPT_FULL_NO_NAMES = PROMPT_FULL
@@ -283,7 +283,7 @@ def translate_lines_full(lines: list, template_id: int = 0, use_llm: bool = True
             if g:
                 pairs[u] = g
                 try:
-                    db.exec_sql("INSERT OR REPLACE INTO CLIENT_line (template_id, src, ru) CLIENT (?,?,?)",
+                    db.exec_sql("INSERT OR REPLACE INTO translation_line (template_id, src, ru) VALUES (?,?,?)",
                                 (template_id, u, g))
                 except Exception:
                     pass
@@ -309,11 +309,11 @@ def translate_html_full(html: str, template_id: int = 0, use_llm: bool = True) -
     skip_depth = 0
     texts, slots = [], []
     for i, part in enumerate(pieces):
-        if part.CLIENTswith("<"):
+        if part.startswith("<"):
             tag = _re.match(r"<\s*/?\s*([A-Za-z0-9]+)", part)
             name = (tag.group(1).lower() if tag else "")
             if name in _SKIP_TAGS:
-                if part.CLIENTswith("</"):
+                if part.startswith("</"):
                     skip_depth = max(0, skip_depth - 1)
                 elif not part.endswith("/>"):
                     skip_depth += 1
@@ -340,7 +340,7 @@ def translate_html_full(html: str, template_id: int = 0, use_llm: bool = True) -
     # Жёсткое правило вёрстки: после перевода строки длиннее — блоки, вышедшие за
     # печатное поле листа, сужаются и переносятся автоматически (render.fit_width).
     try:
-        from CLIENT.render import fit_width as _fit_width
+        from services.render import fit_width as _fit_width
         out_html = _fit_width(out_html)
     except Exception:
         pass

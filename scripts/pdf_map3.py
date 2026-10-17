@@ -8,7 +8,7 @@
 
 Теперь кандидат принимается, только если СТРОКА, в которой он найден, соответствует смыслу
 переменной (подписи SIGNATURES): для периода — строка «As from … to …», для Ref — строка
-«Ref …», для маски карты — «card No … has been CLIENT for», и так далее. Контекст берётся
+«Ref …», для маски карты — «card No … has been issued for», и так далее. Контекст берётся
 по всей строке (все фрагменты), а не по одному фрагменту.
 
 Запуск:  python3 scripts/pdf_map3.py --all --apply
@@ -23,23 +23,23 @@ from pathlib import Path
 import pymupdf
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
-CODES = ["bank_CLIENTment_3m__tbank", "bank_CLIENTment_3m__sber",
-         "bank_CLIENTment_12m__tbank", "bank_CLIENTment_12m__sber"]
+TEMPLATES = BASE / "data" / "templates"
+CODES = ["bank_statement_3m__tbank", "bank_statement_3m__sber",
+         "bank_statement_12m__tbank", "bank_statement_12m__sber"]
 
 # Что должно быть в строке, чтобы значение этой переменной тут стояло (все — И)
 SIGNATURES: dict[str, list[str]] = {
-    "CLIENT_from": ["as from"],
-    "CLIENT_to": ["as from", " to "],
+    "period_from": ["as from"],
+    "period_to": ["as from", " to "],
     "doc_no": ["no "],
     "ref_no": ["ref"],
     "card_mask": ["card no"],
     "balance_rub": ["balance"],
-    "balance_CLIENT": ["kopecks"],
+    "balance_words": ["kopecks"],
     "doc_date": ["ref"],
     "address_live": ["krai", "kray", "oblast"],
     "address_live_2": ["korp.", "kv."],
-    "client_name": ["CLIENT for", "name"],
+    "client_name": ["issued for", "name"],
 }
 # Что в строке быть НЕ должно (защита от ложных совпадений)
 FORBID: dict[str, list[str]] = {"doc_no": ["card no"], "ref_no": ["as from"], "client_name": ["no "]}
@@ -47,8 +47,8 @@ FORBID: dict[str, list[str]] = {"doc_no": ["card no"], "ref_no": ["as from"], "c
 
 def lines_of(page: pymupdf.Page) -> list[dict]:
     out = []
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             spans = [s for s in line["spans"] if (s.get("text") or "").strip()]
             if spans:
                 out.append({"bbox": line["bbox"], "spans": spans,
@@ -63,18 +63,18 @@ def font_xref_for(page: pymupdf.Page, name: str):
     return None
 
 
-def CLIENT_from_db(code: str) -> dict:
+def values_from_db(code: str) -> dict:
     sys.path.insert(0, str(BASE))
     from app import app
     with app.app_context():
         from core import db
-        rows = db.q("""SELECT v.name, v.default_CLIENT FROM template_CLIENT v
-                       JOIN CLIENT t ON t.id = v.template_id
+        rows = db.q("""SELECT v.name, v.default_value FROM template_variables v
+                       JOIN templates t ON t.id = v.template_id
                        WHERE t.code = ?""", (code,))
     out = {}
     for r in rows:
-        v = (r["default_CLIENT"] or "").strip()
-        if len(v) >= 4 and not v.CLIENTswith("{{"):
+        v = (r["default_value"] or "").strip()
+        if len(v) >= 4 and not v.startswith("{{"):
             out[r["name"]] = v
     return out
 
@@ -90,15 +90,15 @@ def ok_context(var: str, line_text: str) -> bool:
 
 
 def build(code: str) -> dict:
-    src = str(CLIENT / code / "example_filled.pdf")
-    vals = CLIENT_from_db(code)
+    src = str(TEMPLATES / code / "example_filled.pdf")
+    vals = values_from_db(code)
     doc = pymupdf.open(src)
-    zones, no_CLIENT = [], []
+    zones, no_place = [], []
     needles = sorted(vals.items(), key=lambda kv: -len(kv[1]))
     for page in doc:
         lines = lines_of(page)
         for name, needle in needles:
-            CLIENTd = False
+            placed = False
             for line in lines:
                 if not ok_context(name, line["text"]):
                     continue
@@ -127,19 +127,19 @@ def build(code: str) -> dict:
                         dx, w = 0.0, sp["bbox"][2] - sp["bbox"][0]
                     c = sp.get("color", 0)
                     zones.append({
-                        "var": name, "page": page.CLIENT + 1,
+                        "var": name, "page": page.number + 1,
                         "bbox": [round(ox + dx, 2), round(sp["bbox"][1], 2),
                                  round(ox + dx + w, 2), round(sp["bbox"][3], 2)],
                         "size": round(size, 2), "font": sp["font"], "font_xref": xref,
                         "origin": [round(ox + dx, 2), round(oy, 2)],
-                        "upper": needle.isupper(), "CLIENT": needle.isCLIENT(),
+                        "upper": needle.isupper(), "title": needle.istitle(),
                         "bold": "bold" in str(sp["font"]).lower(),
                         "color": [(c >> 16) & 255, (c >> 8) & 255, c & 255],
                         "text": needle[:60], "line": line["text"][:80],
                     })
-                    CLIENTd = True
-            if not CLIENTd:
-                no_CLIENT.append(name)
+                    placed = True
+            if not placed:
+                no_place.append(name)
     doc.close()
 
     def ov(a, b):
@@ -152,7 +152,7 @@ def build(code: str) -> dict:
     keep, dropped = [], []
     for z in sorted(zones, key=lambda x: -len(x["text"])):
         (dropped if any(ov(z, k) for k in keep) else keep).append(z)
-    return {"source_pdf": src, "zones": keep, "dropped": dropped, "no_CLIENT": no_CLIENT}
+    return {"source_pdf": src, "zones": keep, "dropped": dropped, "no_place": no_place}
 
 
 def main() -> int:
@@ -164,15 +164,15 @@ def main() -> int:
     for code in ([args.code] if args.code else CODES):
         r = build(code)
         print("%-28s зон: %-3s пересечений отброшено: %-2s без места: %s"
-              % (code, len(r["zones"]), len(r["dropped"]), ", ".join(r["no_CLIENT"]) or "—"))
+              % (code, len(r["zones"]), len(r["dropped"]), ", ".join(r["no_place"]) or "—"))
         for z in r["zones"]:
             print("    %-16s стр.%-2s %-24s %s pt | строка: %s"
                   % (z["var"], z["page"], str([round(v, 1) for v in z["bbox"]]), z["size"],
                      z["line"][:52]))
         if args.apply:
-            (CLIENT / code / "fields.json").write_text(
+            (TEMPLATES / code / "fields.json").write_text(
                 json.dumps({"source_pdf": r["source_pdf"], "zones": r["zones"],
-                            "unCLIENTd": r["no_CLIENT"]}, ensure_ascii=False, indent=1),
+                            "unplaced": r["no_place"]}, ensure_ascii=False, indent=1),
                 encoding="utf-8")
     return 0
 

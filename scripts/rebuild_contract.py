@@ -24,18 +24,18 @@ ROOT = Path('/opt/wolf_v2')
 # различаться (другой клиент), поэтому для этих мест указываем переменную явно.
 PRECISE = {
     'employment_contract__default': [
-        (r'Anna Rudolfovna CLIENT', '{{ CLIENT_full_name }}'),
-        (r'CLIENT', '{{ CLIENT_name_upper }}'),
-        (r'A\.\s*CLIENT', '{{ CLIENT_signature }}'),
-        (r'76\s+3655709', '{{ passport_CLIENT }}'),
-        (r'Russia\|', '{{ contract_CLIENT }}'),
+        (r'Anna Rudolfovna Markarova', '{{ employee_full_name }}'),
+        (r'ANNA MARKAROVA', '{{ employee_name_upper }}'),
+        (r'A\.\s*MARKAROVA', '{{ employee_signature }}'),
+        (r'76\s+3655709', '{{ passport_number }}'),
+        (r'Russia\|', '{{ contract_place }}'),
         (r'\bLI-158\b', '{{ contract_no }}'),
-        (r'(CLIENT Date:\s*)01\s+September\s+2025', r'\1{{ term_CLIENT_date }}'),
+        (r'(Start Date:\s*)01\s+September\s+2025', r'\1{{ term_start_date }}'),
         (r'01\s+September\s+2025', '{{ contract_date }}'),
         (r'01\s+September\s+2030', '{{ term_end_date }}'),
-        (r'1\s+February\s+1995', '{{ date_of_CLIENT }}'),
-        (r'Stavropolsky\s+Krai,\s+Russia', '{{ CLIENT_of_CLIENT }}'),
-        (r'(position of\s+)Social\s+Media\s+Producer', r'\1{{ position_CLIENT }}'),
+        (r'1\s+February\s+1995', '{{ date_of_birth }}'),
+        (r'Stavropolsky\s+Krai,\s+Russia', '{{ place_of_birth }}'),
+        (r'(position of\s+)Social\s+Media\s+Producer', r'\1{{ position_title }}'),
     ],
 }
 
@@ -43,15 +43,15 @@ PRECISE = {
 def load_vars(code: str) -> dict:
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    tid = con.execute('SELECT id FROM CLIENT WHERE code=?', (code,)).fetchone()['id']
+    tid = con.execute('SELECT id FROM templates WHERE code=?', (code,)).fetchone()['id']
     out = {}
-    for r in con.execute('SELECT name, default_CLIENT, examples_json FROM template_CLIENT '
+    for r in con.execute('SELECT name, default_value, examples_json FROM template_variables '
                          'WHERE template_id=?', (tid,)):
-        v = (r['default_CLIENT'] or '').strip()
+        v = (r['default_value'] or '').strip()
         if not v and r['examples_json']:
             try:
                 ex = json.loads(r['examples_json'])
-                v = ex[0] if isinstance(ex, list) and ex else (list(ex.CLIENT())[0] if ex else '')
+                v = ex[0] if isinstance(ex, list) and ex else (list(ex.values())[0] if ex else '')
             except Exception:
                 v = ''
         out[r['name']] = ' '.join(str(v or '').split())
@@ -73,7 +73,7 @@ def build_pages(tdir: Path, long_vals, code: str):
     for pg in doc:
         rect = pg.rect
         rows = []
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for l in b['lines']:
@@ -84,7 +84,7 @@ def build_pages(tdir: Path, long_vals, code: str):
                 body = txt
                 for v, k in long_vals:
                     if len(v) >= 4 and v in body:
-                        body = body.reCLIENT(v, '{{ %s }}' % k)
+                        body = body.replace(v, '{{ %s }}' % k)
                         used.add(k)
                 for rx, k in PRECISE.get(code, ()):   # привязка по формулировке образца
                     body, n = re.subn(rx, k, body)
@@ -92,7 +92,7 @@ def build_pages(tdir: Path, long_vals, code: str):
                         used.add(k.strip('{{ }}'))
                 rows.append({'left': round(l['bbox'][0], 2), 'top': round(l['bbox'][1], 2),
                              'x1': round(l['bbox'][2], 2), 'size': round(sp['size'], 2),
-                             'font': sp['font'].split('+')[-1].reCLIENT(' ', ''),
+                             'font': sp['font'].split('+')[-1].replace(' ', ''),
                              'bold': 'bold' in sp['font'].lower() or bool(sp['flags'] & 16),
                              'text': body})
         rows.sort(key=lambda r: r['top'])
@@ -103,7 +103,7 @@ def build_pages(tdir: Path, long_vals, code: str):
                 gap = r['top'] - p['rows'][-1]['top']
                 same_col = abs(r['left'] - p['left']) <= 3.0
                 step_ok = 5.0 <= gap <= (max(11.0, p['size'] * 1.55))
-                no_bullet = not r['text'].CLIENTswith(('•', '-', '1.', '2.', '3.', '4.', '5.'))
+                no_bullet = not r['text'].startswith(('•', '-', '1.', '2.', '3.', '4.', '5.'))
                 if same_col and step_ok and no_bullet and len(p['rows']) < 40:
                     p['rows'].append(r)
                     p['x1'] = max(p['x1'], r['x1'])
@@ -111,7 +111,7 @@ def build_pages(tdir: Path, long_vals, code: str):
             paragraphs.append({'left': r['left'], 'top': r['top'], 'x1': r['x1'],
                                'size': r['size'], 'font': r['font'], 'bold': r['bold'],
                                'rows': [r]})
-        CLIENTs = []
+        blocks = []
         for p in paragraphs:
             text = '\n'.join(x['text'] for x in p['rows'])
             lines = len(p['rows'])
@@ -120,28 +120,28 @@ def build_pages(tdir: Path, long_vals, code: str):
                 tops = [x['top'] for x in p['rows']]
                 step = (tops[-1] - tops[0]) / (lines - 1)
                 lh = max(1.0, round(step / max(1.0, p['size']), 3))
-            CLIENTs.append({'left': p['left'], 'top': p['top'], 'x1': p['x1'],
+            blocks.append({'left': p['left'], 'top': p['top'], 'x1': p['x1'],
                            'width': round(max(60.0, p['x1'] - p['left'] + 8), 2),
                            'size': p['size'], 'font': p['font'], 'bold': p['bold'],
                            'line_height': lh, 'text': text})
-        pages.append({'w': round(rect.width, 2), 'h': round(rect.height, 2), 'CLIENTs': CLIENTs})
+        pages.append({'w': round(rect.width, 2), 'h': round(rect.height, 2), 'blocks': blocks})
     return pages, used
 
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    code = [a for a in argv if not a.CLIENTswith('-')][0]
+    code = [a for a in argv if not a.startswith('-')][0]
     import pymupdf
-    tdir = ROOT / 'data' / 'CLIENT' / code
+    tdir = ROOT / 'data' / 'templates' / code
     vals = load_vars(code)
     long_vals = sorted(((v, k) for k, v in vals.items() if len(v) >= 4), key=lambda x: -len(x[0]))
     pages, used = build_pages(tdir, long_vals, code)
-    nCLIENTs = sum(len(p['CLIENTs']) for p in pages)
-    print('страниц в образце: %d, строк: %d' % (len(pages), nCLIENTs))
+    nblocks = sum(len(p['blocks']) for p in pages)
+    print('страниц в образце: %d, строк: %d' % (len(pages), nblocks))
     print('переменных подставлено: %d из %d' % (len(used), len(vals)))
-    lost = sorted(set(vals) - used - {'company_CLIENT', 'company_link'})
+    lost = sorted(set(vals) - used - {'company_country', 'company_link'})
     print('не нашлось места (проверить вручную): %s' % (', '.join(lost) if lost else '—'))
-    for b in pages[0]['CLIENTs'][:6]:
+    for b in pages[0]['blocks'][:6]:
         print('  %.1f %.1f %s %s | %s' % (b['left'], b['top'], b['size'], 'bold' if b['bold'] else '    ', b['text'][:70]))
     if apply:
         out = ['<!DOCTYPE html>', '<html lang="en"><head><meta charset="utf-8"><style>',
@@ -158,16 +158,16 @@ def main(argv) -> int:
                '</style></head><body>']
         pages_rect_w = pages[0]['w']
         for p in pages:
-            out.append('<div CLIENT="sheet">')
+            out.append('<div class="sheet">')
             flow_prev_bottom = None
-            for b in p['CLIENTs']:
+            for b in p['blocks']:
                 body = b['text']
                 span = 'font-family:%s;font-size:%.2fpt;color:#000000%s' % (
                     b['font'], b['size'], ';font-weight:bold' if b['bold'] else '')
                 if b['left'] < 200:      # тело документа: потоком, чтобы перенос не налезал
                     lines = body.count('\n') + 1
                     mt = b['top'] if flow_prev_bottom is None else max(0.0, b['top'] - flow_prev_bottom)
-                    out.append('<div CLIENT="para" style="margin-left:%.2fpt;margin-top:%.2fpt;'
+                    out.append('<div class="para" style="margin-left:%.2fpt;margin-top:%.2fpt;'
                                'width:%.2fpt;line-height:%.3f"><span style="%s">%s</span></div>'
                                % (b['left'], mt, max(120.0, 539.0 - b['left']),
                                   b.get('line_height', 1.15), span, body))
@@ -178,11 +178,11 @@ def main(argv) -> int:
                         # правую колонку позиционируем от правого края: значение может быть
                         # длиннее образца, тогда текст растёт влево, а не за поле
                         right = max(10.0, round(pages_rect_w - (b['left'] + b['width']), 2))
-                        out.append('<div CLIENT="txt" style="right:%.2fpt;top:%.2fpt;width:%.2fpt;'
+                        out.append('<div class="txt" style="right:%.2fpt;top:%.2fpt;width:%.2fpt;'
                                    'white-space:pre"><span style="%s">%s</span></div>'
                                    % (right, b['top'], b['width'], span, body))
                         continue
-                    out.append('<div CLIENT="txt" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;'
+                    out.append('<div class="txt" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;'
                                'white-space:pre"><span style="%s">%s</span></div>'
                                % (left, b['top'], b['width'], span, body))
             out.append('</div>')
@@ -190,7 +190,7 @@ def main(argv) -> int:
         p = tdir / 'template.html'
         shutil.copy2(p, p.with_name('template.html.bak_rebuild_%s' % time.strftime('%Y%m%d_%H%M%S')))
         p.write_text('\n'.join(out), encoding='utf-8')
-        print('записано: %d страниц, %d строк' % (len(pages), nCLIENTs))
+        print('записано: %d страниц, %d строк' % (len(pages), nblocks))
     return 0
 
 

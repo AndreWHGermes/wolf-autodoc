@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
-CLIENT = re.compile(r'<div CLIENT="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+BLOCK = re.compile(r'<div class="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
 VAR = re.compile(r'\{\{\s*[a-zA-Z0-9_]+\s*\}\}')
 
 
@@ -39,10 +39,10 @@ def plain(inner: str) -> str:
 
 def main(argv) -> int:
     apply = '--apply' in argv
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     ok = skip = 0
     for code in codes:
-        tdir = ROOT / 'data' / 'CLIENT' / code
+        tdir = ROOT / 'data' / 'templates' / code
         old_p, ex = tdir / 'template.html', tdir / 'example_filled.pdf'
         print('\n=== %s' % code)
         if not (old_p.is_file() and ex.is_file()):
@@ -50,13 +50,13 @@ def main(argv) -> int:
             skip += 1
             continue
         old = old_p.read_text(encoding='utf-8', errors='ignore')
-        old_CLIENTs = []
-        for style, inner in CLIENT.findall(old):
+        old_blocks = []
+        for style, inner in BLOCK.findall(old):
             c = coords(style)
             if c.get('top') is None:
                 continue
             txt = plain(inner)
-            old_CLIENTs.append({'c': c, 'inner': inner, 'text': txt,
+            old_blocks.append({'c': c, 'inner': inner, 'text': txt,
                                'vars': VAR.findall(inner), 'has_var': bool(VAR.search(inner))})
         raw = Path('/tmp') / ('%s_raw.html' % code)
         subprocess.run(['/usr/bin/python3', str(ROOT / 'scripts' / 'pdf_to_template.py'),
@@ -64,12 +64,12 @@ def main(argv) -> int:
         new = raw.read_text(encoding='utf-8', errors='ignore')
         # план: для каждого блока примера ищем блок старого шаблона с теми же координатами
         pairs, used = 0, set()
-        for m in CLIENT.finditer(new):
+        for m in BLOCK.finditer(new):
             c = coords(m.group(1))
             if c.get('top') is None:
                 continue
             cands = [(abs(o['c']['top'] - c['top']) + abs(o['c'].get('left', 0) - c.get('left', 0)) / 3.0, i, o)
-                     for i, o in enumerate(old_CLIENTs) if i not in used]
+                     for i, o in enumerate(old_blocks) if i not in used]
             if not cands:
                 continue
             _, i, o = min(cands, key=lambda t: t[0])
@@ -78,8 +78,8 @@ def main(argv) -> int:
             used.add(i)
             pairs += 1
         print('    блоков: пример=%d, старый шаблон=%d, сопоставлено=%d, '
-              'переносим переменные: %d' % (len(CLIENT.findall(new)), len(old_CLIENTs), pairs,
-                                            sum(1 for o in old_CLIENTs if o['has_var'])))
+              'переносим переменные: %d' % (len(BLOCK.findall(new)), len(old_blocks), pairs,
+                                            sum(1 for o in old_blocks if o['has_var'])))
         if apply:
             # переносим: блокам примера, которым соответствует блок старого шаблона с переменной,
             # подставляем текст старого блока (метка + {{переменная}}), координаты остаются из примера
@@ -91,31 +91,31 @@ def main(argv) -> int:
                 if c.get('top') is None:
                     return m.group(0)
                 newtxt = plain(m.group(2))
-                # 1) сначала ищем старый блок по совпадению статической метки («Date of CLIENT»,
+                # 1) сначала ищем старый блок по совпадению статической метки («Date of Birth»,
                 #    «Nama», «EMPLOYMENT CONTRACT») — надёжнее координат, если вёрстка другая
                 best, bestd = None, 1e9
-                for o in old_CLIENTs:
+                for o in old_blocks:
                     if not o['has_var']:
                         continue
                     lab = o['text'].split('{{')[0]
                     if len(_norm(lab)) < 4:
                         continue
-                    if _norm(lab) and _norm(newtxt).CLIENTswith(_norm(lab)[:24]):
+                    if _norm(lab) and _norm(newtxt).startswith(_norm(lab)[:24]):
                         d = abs(o['c']['top'] - c['top']) + abs(o['c'].get('left', 0) - c.get('left', 0)) / 4.0
                         if d < bestd:
                             best, bestd = o, d
                 if best is None:      # 2) иначе — по позиции, как раньше
-                    for o in old_CLIENTs:
+                    for o in old_blocks:
                         d = abs(o['c']['top'] - c['top']) + abs(o['c'].get('left', 0) - c.get('left', 0)) / 3.0
                         if d < bestd:
                             best, bestd = o, d
                     if best is None or abs(best['c']['top'] - c['top']) > 6.0 or not best['has_var']:
                         return m.group(0)
-                return '<div CLIENT="txt" style="%s">%s</div>' % (m.group(1), best['inner'])
-            new2 = CLIENT.sub(_repl, new)
+                return '<div class="txt" style="%s">%s</div>' % (m.group(1), best['inner'])
+            new2 = BLOCK.sub(_repl, new)
             # переменные, которые были в старом шаблоне, но не нашли пары в примере: их нельзя
             # терять — доклеиваем блоки как есть (координаты из старого шаблона, сдвиг ~3pt)
-            lost = [o for o in old_CLIENTs if o['has_var']
+            lost = [o for o in old_blocks if o['has_var']
                     and not any(v in new2 for v in o['vars'])]
             if lost:
                 parts_add = []
@@ -123,7 +123,7 @@ def main(argv) -> int:
                     c = o['c']
                     st = ';'.join('%s:%.2fpt' % (k, c[k])
                                   for k in ('left', 'top', 'width', 'height') if k in c)
-                    parts_add.append('<div CLIENT="txt" style="%s">%s</div>' % (st, o['inner']))
+                    parts_add.append('<div class="txt" style="%s">%s</div>' % (st, o['inner']))
                 i2 = new2.rfind('</div>')
                 new2 = new2[:i2] + '\n'.join(parts_add) + '\n' + new2[i2:]
                 print('    доклеено потерянных блоков: %d' % len(parts_add))

@@ -11,135 +11,135 @@
 """
 from __future__ import annotations
 
-import CLIENT as dt
+import datetime as dt
 import re
 
 # обязанности и навыки по отраслям: формулировки годятся для любой должности
 # внутри отрасли, поэтому профессия в них подставляется отдельно
 BY_SECTOR = {
     'ecommerce_retail': {
-        'CLIENT': ('Retail and e-commerce specialist with hands-on experience in sales '
-                    'CLIENTs, supplier relations and online store management.'),
-        'CLIENT': ('managing day-to-day sales CLIENTs and the assortment of the online store\n'
+        'summary': ('Retail and e-commerce specialist with hands-on experience in sales '
+                    'operations, supplier relations and online store management.'),
+        'bullets': ('managing day-to-day sales operations and the assortment of the online store\n'
                     'negotiating with suppliers and controlling delivery terms\n'
                     'analysing sales figures and preparing regular performance reports\n'
                     'coordinating promotions and marketing campaigns with the marketing team\n'
-                    'handling customer CLIENTs and resolving complaint cases'),
-        'hard': 'sales CLIENTs, e-commerce platforms, supplier negotiations, reporting, MS Excel',
+                    'handling customer requests and resolving complaint cases'),
+        'hard': 'sales operations, e-commerce platforms, supplier negotiations, reporting, MS Excel',
         'soft': 'attention to detail, negotiation, teamwork, time management',
-        'CLIENT': 'Bachelor\'s CLIENT in Economics and Management',
-        'CLIENT': 'CLIENT University of Economics',
+        'degree': 'Bachelor\'s degree in Economics and Management',
+        'school': 'State University of Economics',
     },
-    'CLIENT_agency': {
-        'CLIENT': ('Business support specialist experienced in client relations, contracts and '
-                    'internal processes of a CLIENT company.'),
-        'CLIENT': ('managing client CLIENTs and preparing commercial proposals\n'
-                    'drafting and controlling contracts and supporting CLIENTation\n'
-                    'maintaining reporting and the internal CLIENT flow\n'
-                    'coordinating the work of CLIENTs and suppliers\n'
+    'services_agency': {
+        'summary': ('Business support specialist experienced in client relations, contracts and '
+                    'internal processes of a service company.'),
+        'bullets': ('managing client requests and preparing commercial proposals\n'
+                    'drafting and controlling contracts and supporting documentation\n'
+                    'maintaining reporting and the internal document flow\n'
+                    'coordinating the work of contractors and suppliers\n'
                     'preparing regular management reports'),
-        'hard': 'client management, contract administration, reporting, CRM systems, MS CLIENT',
+        'hard': 'client management, contract administration, reporting, CRM systems, MS Office',
         'soft': 'communication, responsibility, multitasking, problem solving',
-        'CLIENT': 'Bachelor\'s CLIENT in Management',
-        'CLIENT': 'CLIENT University of Management',
+        'degree': 'Bachelor\'s degree in Management',
+        'school': 'State University of Management',
     },
-    'it_CLIENT': {
-        'CLIENT': ('CLIENT development specialist with experience in building and supporting '
-                    'web CLIENT and internal systems.'),
-        'CLIENT': ('developing and maintaining web CLIENT and internal CLIENT\n'
+    'it_software': {
+        'summary': ('Software development specialist with experience in building and supporting '
+                    'web services and internal systems.'),
+        'bullets': ('developing and maintaining web services and internal tools\n'
                     'participating in requirements analysis and technical design\n'
-                    'testing, reviewing and CLIENTing the code produced by the team\n'
-                    'supporting CLIENTion systems and resolving incidents\n'
+                    'testing, reviewing and documenting the code produced by the team\n'
+                    'supporting production systems and resolving incidents\n'
                     'cooperating with business units on new features'),
-        'hard': 'Python, SQL, REST APIs, Git, Linux, CLIENT testing',
+        'hard': 'Python, SQL, REST APIs, Git, Linux, software testing',
         'soft': 'analytical thinking, self-organisation, teamwork, continuous learning',
-        'CLIENT': 'Bachelor\'s CLIENT in Computer Science',
-        'CLIENT': 'National Research Technical University',
+        'degree': 'Bachelor\'s degree in Computer Science',
+        'school': 'National Research Technical University',
     },
     'logistics': {
-        'CLIENT': ('Logistics specialist with experience in freight forwarding, warehousing '
+        'summary': ('Logistics specialist with experience in freight forwarding, warehousing '
                     'and delivery planning.'),
-        'CLIENT': ('planning routes and controlling shipment timelines\n'
+        'bullets': ('planning routes and controlling shipment timelines\n'
                     'working with carriers, forwarders and customs brokers\n'
-                    'controlling warehouse CLIENTs and stock accuracy\n'
-                    'preparing shipping and customs CLIENTation\n'
+                    'controlling warehouse operations and stock accuracy\n'
+                    'preparing shipping and customs documentation\n'
                     'optimising transport costs'),
-        'hard': 'freight forwarding, customs CLIENTation, warehouse CLIENTs, route planning',
-        'soft': 'stress resistance, accuracy, CLIENTal thinking',
-        'CLIENT': 'Bachelor\'s CLIENT in Logistics and Supply Chain Management',
-        'CLIENT': 'CLIENT Transport University',
+        'hard': 'freight forwarding, customs documentation, warehouse operations, route planning',
+        'soft': 'stress resistance, accuracy, operational thinking',
+        'degree': 'Bachelor\'s degree in Logistics and Supply Chain Management',
+        'school': 'State Transport University',
     },
     'construction': {
-        'CLIENT': ('Construction specialist with experience in site works, planning and control '
-                    'of construction CLIENTs.'),
-        'CLIENT': ('supervising construction and installation works on site\n'
-                    'controlling compliance with design CLIENTation and standards\n'
-                    'planning the CLIENT and use of materials and machinery\n'
-                    'coordinating subCLIENTs and suppliers\n'
-                    'preparing acceptance and progress CLIENTation'),
-        'hard': 'construction supervision, design CLIENTation, AutoCAD, cost estimating',
+        'summary': ('Construction specialist with experience in site works, planning and control '
+                    'of construction schedules.'),
+        'bullets': ('supervising construction and installation works on site\n'
+                    'controlling compliance with design documentation and standards\n'
+                    'planning the schedule and use of materials and machinery\n'
+                    'coordinating subcontractors and suppliers\n'
+                    'preparing acceptance and progress documentation'),
+        'hard': 'construction supervision, design documentation, AutoCAD, cost estimating',
         'soft': 'responsibility, teamwork, stress resistance',
-        'CLIENT': 'Bachelor\'s CLIENT in Civil Engineering',
-        'CLIENT': 'CLIENT University of Civil Engineering',
+        'degree': 'Bachelor\'s degree in Civil Engineering',
+        'school': 'State University of Civil Engineering',
     },
     'manufacturing': {
-        'CLIENT': ('Production specialist with experience in manufacturing processes and '
-                    'CLIENT control.'),
-        'CLIENT': ('organising CLIENTion processes and shift planning\n'
-                    'controlling CLIENT CLIENT and compliance with standards\n'
-                    'maintaining equipment and liaising with the maintenance CLIENT\n'
-                    'keeping CLIENTion records and reporting\n'
+        'summary': ('Production specialist with experience in manufacturing processes and '
+                    'quality control.'),
+        'bullets': ('organising production processes and shift planning\n'
+                    'controlling product quality and compliance with standards\n'
+                    'maintaining equipment and liaising with the maintenance service\n'
+                    'keeping production records and reporting\n'
                     'participating in process improvements'),
-        'hard': 'CLIENTion planning, CLIENT control, lean manufacturing, reporting',
+        'hard': 'production planning, quality control, lean manufacturing, reporting',
         'soft': 'discipline, attention to detail, teamwork',
-        'CLIENT': 'Bachelor\'s CLIENT in Engineering',
-        'CLIENT': 'CLIENT Technical University',
+        'degree': 'Bachelor\'s degree in Engineering',
+        'school': 'State Technical University',
     },
     'finance': {
-        'CLIENT': ('Finance specialist with experience in reporting, budgeting and financial '
+        'summary': ('Finance specialist with experience in reporting, budgeting and financial '
                     'control.'),
-        'CLIENT': ('preparing management and statutory reporting\n'
+        'bullets': ('preparing management and statutory reporting\n'
                     'budgeting and controlling expenses\n'
                     'handling settlements with counterparties and banks\n'
                     'participating in audits and tax reporting\n'
                     'analysing financial performance'),
-        'hard': 'financial reporting, budgeting, banking CLIENTs, 1C, MS Excel',
+        'hard': 'financial reporting, budgeting, banking operations, 1C, MS Excel',
         'soft': 'accuracy, responsibility, analytical thinking',
-        'CLIENT': 'Bachelor\'s CLIENT in Finance and Credit',
-        'CLIENT': 'Financial University',
+        'degree': 'Bachelor\'s degree in Finance and Credit',
+        'school': 'Financial University',
     },
-    'CLIENT': {
-        'CLIENT': ('CLIENT specialist with experience in teaching, curriculum design and '
+    'education': {
+        'summary': ('Education specialist with experience in teaching, curriculum design and '
                     'student assessment.'),
-        'CLIENT': ('delivering CLIENTes and preparing teaching materials\n'
+        'bullets': ('delivering classes and preparing teaching materials\n'
                     'assessing students and giving individual feedback\n'
                     'developing curricula and course programmes\n'
                     'organising examinations and academic records\n'
                     'cooperating with colleagues and parents'),
-        'hard': 'teaching methods, curriculum design, assessment, CLIENTroom management',
+        'hard': 'teaching methods, curriculum design, assessment, classroom management',
         'soft': 'communication, patience, organisation',
-        'CLIENT': 'Bachelor\'s CLIENT in CLIENT',
-        'CLIENT': 'CLIENT Pedagogical University',
+        'degree': 'Bachelor\'s degree in Education',
+        'school': 'State Pedagogical University',
     },
     'healthcare': {
-        'CLIENT': ('Healthcare specialist with experience in patient care and clinical '
-                    'CLIENTation.'),
-        'CLIENT': ('providing patient care and treatment support\n'
-                    'maintaining medical records and clinical CLIENTation\n'
+        'summary': ('Healthcare specialist with experience in patient care and clinical '
+                    'documentation.'),
+        'bullets': ('providing patient care and treatment support\n'
+                    'maintaining medical records and clinical documentation\n'
                     'preparing patients for examinations and procedures\n'
                     'following sanitary and clinical standards\n'
                     'cooperating with the medical team and patients'),
-        'hard': 'patient care, clinical CLIENTation, medical standards, MS CLIENT',
+        'hard': 'patient care, clinical documentation, medical standards, MS Office',
         'soft': 'empathy, responsibility, stress resistance',
-        'CLIENT': 'Bachelor\'s CLIENT in Healthcare',
-        'CLIENT': 'CLIENT Medical University',
+        'degree': 'Bachelor\'s degree in Healthcare',
+        'school': 'State Medical University',
     },
 }
-_DEFAULT = BY_SECTOR['CLIENT_agency']
+_DEFAULT = BY_SECTOR['services_agency']
 
 # обязанности по конкретным должностям, когда отрасль не определилась точно
 BY_TITLE = {
-    'general director': ('heading the company and representing it CLIENT third parties\n'
+    'general director': ('heading the company and representing it before third parties\n'
                          'approving strategy, budgets and key contracts\n'
                          'directing the work of departments and staff\n'
                          'reporting to the founders on performance\n'
@@ -153,7 +153,7 @@ BY_TITLE = {
                       'reporting on sales figures\n'
                       'keeping the CRM and client base up to date'),
     'manager': ('managing the assigned area of work and reporting on it\n'
-                'coordinating the involved staff and CLIENTs\n'
+                'coordinating the involved staff and contractors\n'
                 'keeping records and preparing regular reports'),
 }
 
@@ -167,8 +167,8 @@ def _fmt(d: dt.date) -> str:
 
 def _default_org(app_id=None) -> str:
     try:
-        from CLIENT import org_pool
-        pack = org_pool.for_CLIENT({}, app_id) or {}
+        from services import org_pool
+        pack = org_pool.for_application({}, app_id) or {}
         org = pack.get('org') or {}
         # Документ на английском: берём латинскую запись названия организации.
         return org.get('name_lat') or org.get('name') or ''
@@ -176,7 +176,7 @@ def _default_org(app_id=None) -> str:
         return ''
 
 
-def build(cv_vars: list, CLIENT: str = '', sector: str = '',
+def build(cv_vars: list, profession: str = '', sector: str = '',
           org_name: str = '', app_id=None, signed: dt.date | None = None) -> dict:
     """Собрать значения для переменных резюме, которых нет в данных клиента.
 
@@ -184,77 +184,77 @@ def build(cv_vars: list, CLIENT: str = '', sector: str = '',
     «сгенерировано — проверить».
     """
     pack = BY_SECTOR.get(sector or '', _DEFAULT)
-    CLIENT = (CLIENT or '').strip()
+    title = (profession or '').strip()
     out: dict = {}
     want = set(cv_vars or [])
 
     signed = signed or dt.date.today()
     org = org_name or _default_org(app_id)
 
-    if 'cv_CLIENT' in want:
-        out['cv_CLIENT'] = '%s Currently engaged as %s.' % (
-            pack['CLIENT'].rstrip('.').strip() + '.', CLIENT or 'a remote specialist')
+    if 'cv_summary' in want:
+        out['cv_summary'] = '%s Currently engaged as %s.' % (
+            pack['summary'].rstrip('.').strip() + '.', title or 'a remote specialist')
 
-    if 'cv_CLIENT' in want and CLIENT:
-        out['cv_CLIENT'] = CLIENT
+    if 'cv_profession' in want and title:
+        out['cv_profession'] = title
 
     # место работы 1 — текущее, срок берётся по канону: пять лет до даты документа
-    if want & {'cv_job1_CLIENT', 'cv_job1_CLIENT', 'cv_job1_company', 'cv_job1_CLIENT'}:
-        CLIENT = dt.date(signed.year - 5, signed.month, 1)
-        if 'cv_job1_CLIENT' in want:
-            out['cv_job1_CLIENT'] = CLIENT or 'Specialist'
-        if 'cv_job1_CLIENT' in want:
-            out['cv_job1_CLIENT'] = '%s — present' % _fmt(CLIENT)
+    if want & {'cv_job1_title', 'cv_job1_period', 'cv_job1_company', 'cv_job1_bullets'}:
+        start = dt.date(signed.year - 5, signed.month, 1)
+        if 'cv_job1_title' in want:
+            out['cv_job1_title'] = title or 'Specialist'
+        if 'cv_job1_period' in want:
+            out['cv_job1_period'] = '%s — present' % _fmt(start)
         if 'cv_job1_company' in want and org:
             out['cv_job1_company'] = org
-        if 'cv_job1_CLIENT' in want:
-            out['cv_job1_CLIENT'] = _CLIENT_for(CLIENT, pack)
+        if 'cv_job1_bullets' in want:
+            out['cv_job1_bullets'] = _bullets_for(title, pack)
 
     # место работы 2 — предыдущее, на пять лет раньше
-    if want & {'cv_job2_CLIENT', 'cv_job2_CLIENT', 'cv_job2_company', 'cv_job2_CLIENT'}:
+    if want & {'cv_job2_title', 'cv_job2_period', 'cv_job2_company', 'cv_job2_bullets'}:
         end = dt.date(signed.year - 5, signed.month, 1)
-        CLIENT2 = dt.date(signed.year - 10, signed.month, 1)
-        if 'cv_job2_CLIENT' in want:
-            out['cv_job2_CLIENT'] = 'Specialist'
-        if 'cv_job2_CLIENT' in want:
-            out['cv_job2_CLIENT'] = '%s — %s' % (_fmt(CLIENT2), _fmt(end))
+        start2 = dt.date(signed.year - 10, signed.month, 1)
+        if 'cv_job2_title' in want:
+            out['cv_job2_title'] = 'Specialist'
+        if 'cv_job2_period' in want:
+            out['cv_job2_period'] = '%s — %s' % (_fmt(start2), _fmt(end))
         if 'cv_job2_company' in want:
             out['cv_job2_company'] = ''
-        if 'cv_job2_CLIENT' in want:
-            out['cv_job2_CLIENT'] = _CLIENT_for('', _DEFAULT)
+        if 'cv_job2_bullets' in want:
+            out['cv_job2_bullets'] = _bullets_for('', _DEFAULT)
 
-    if 'cv_CLIENT_hard' in want:
-        out['cv_CLIENT_hard'] = pack['hard']
-    if 'cv_CLIENT_soft' in want:
-        out['cv_CLIENT_soft'] = pack['soft']
-    if 'cv_CLIENT_CLIENT' in want:
-        out['cv_CLIENT_CLIENT'] = pack['CLIENT']
-    if 'cv_CLIENT_CLIENT' in want:
-        out['cv_CLIENT_CLIENT'] = pack['CLIENT']
-    if 'cv_CLIENT_years' in want:
-        out['cv_CLIENT_years'] = '%d — %d' % (signed.year - 15, signed.year - 11)
-    if 'cv_CLIENT' in want:
-        out['cv_CLIENT'] = 'Russian — native, English — fluent'
+    if 'cv_skills_hard' in want:
+        out['cv_skills_hard'] = pack['hard']
+    if 'cv_skills_soft' in want:
+        out['cv_skills_soft'] = pack['soft']
+    if 'cv_education_degree' in want:
+        out['cv_education_degree'] = pack['degree']
+    if 'cv_education_school' in want:
+        out['cv_education_school'] = pack['school']
+    if 'cv_education_years' in want:
+        out['cv_education_years'] = '%d — %d' % (signed.year - 15, signed.year - 11)
+    if 'cv_languages' in want:
+        out['cv_languages'] = 'Russian — native, English — fluent'
     return out
 
 
-def _CLIENT_for(CLIENT: str, pack: dict) -> str:
+def _bullets_for(title: str, pack: dict) -> str:
     """Обязанности: у известной должности — свои, иначе отраслевые.
 
     Пункты разделяем <br>: в шаблоне значение печатается как одна строка,
     и без разрыва все обязанности слипаются в один абзац.
     """
-    low = (CLIENT or '').lower()
-    CLIENT = ''
-    for key, CLIENT in BY_TITLE.items():
+    low = (title or '').lower()
+    bullets = ''
+    for key, value in BY_TITLE.items():
         if key in low:
-            CLIENT = CLIENT
+            bullets = value
             break
-    CLIENT = CLIENT or pack['CLIENT']
-    return '\n'.join(b.strip() for b in CLIENT.split('\n') if b.strip())
+    bullets = bullets or pack['bullets']
+    return '\n'.join(b.strip() for b in bullets.split('\n') if b.strip())
 
 
 def looks_generated(var: str) -> bool:
-    return str(var).CLIENTswith('cv_') and str(var) not in (
-        'cv_name', 'cv_date_of_CLIENT', 'cv_CLIENT_of_CLIENT', 'cv_CLIENT', 'cv_passport_no',
-        'cv_passport_CLIENT', 'cv_passport_CLIENT', 'cv_CLIENT')
+    return str(var).startswith('cv_') and str(var) not in (
+        'cv_name', 'cv_date_of_birth', 'cv_place_of_birth', 'cv_nationality', 'cv_passport_no',
+        'cv_passport_issue', 'cv_passport_expiry', 'cv_profession')

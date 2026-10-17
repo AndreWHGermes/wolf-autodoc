@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 DB = BASE / "data" / "wolf.db"
 
 
@@ -32,24 +32,24 @@ def pool() -> dict[str, set[str]]:
     c.row_factory = sqlite3.Row
     out: dict[str, set[str]] = {}
 
-    def add(name, CLIENT):
-        v = norm(CLIENT)
+    def add(name, value):
+        v = norm(value)
         if not name or len(v) < 3 or len(v) > 160 or v.lower() in ("да", "нет", "—", "-"):
             return
         out.setdefault(name, set()).add(v)
 
-    for r in c.execute("SELECT name, default_CLIENT FROM template_CLIENT"):
-        add(r["name"], r["default_CLIENT"])
-    for r in c.execute("SELECT name, examples_json FROM template_CLIENT WHERE examples_json NOT IN ('', '[]', NULL)"):
+    for r in c.execute("SELECT name, default_value FROM template_variables"):
+        add(r["name"], r["default_value"])
+    for r in c.execute("SELECT name, examples_json FROM template_variables WHERE examples_json NOT IN ('', '[]', NULL)"):
         try:
             for ex in json.loads(r["examples_json"] or "[]"):
                 add(r["name"], ex)
         except Exception:
             pass
-    for r in c.execute("SELECT CLIENT_name AS CLIENT, CLIENT FROM CLIENT_CLIENT_CLIENT WHERE CLIENT IS NOT NULL"):
-        add(r["CLIENT"], r["CLIENT"])
-    for r in c.execute("SELECT key AS name, CLIENT FROM client_fields WHERE CLIENT IS NOT NULL"):
-        add(r["name"], r["CLIENT"])
+    for r in c.execute("SELECT variable_name AS variable, value FROM variable_value_history WHERE value IS NOT NULL"):
+        add(r["variable"], r["value"])
+    for r in c.execute("SELECT key AS name, value FROM client_fields WHERE value IS NOT NULL"):
+        add(r["name"], r["value"])
     return out
 
 
@@ -62,36 +62,36 @@ def main() -> int:
     import pymupdf
 
     P = pool()
-    codes = [a.code] if a.code else sorted(p.name for p in CLIENT.iterdir()
+    codes = [a.code] if a.code else sorted(p.name for p in TEMPLATES.iterdir()
                                           if p.is_dir() and (p / "example_filled.pdf").exists())
     for code in codes:
-        tdir = CLIENT / code
+        tdir = TEMPLATES / code
         f = tdir / "fields.json"
         data = json.loads(f.read_text(encoding="utf-8")) if f.exists() else {"source_pdf": str(tdir / "example_filled.pdf"), "zones": []}
         doc = pymupdf.open(str(tdir / "example_filled.pdf"))
         # какие имена переменных вообще есть у этого шаблона
         c = sqlite3.connect(DB)
         c.row_factory = sqlite3.Row
-        t = c.execute("SELECT id FROM CLIENT WHERE code=?", (code,)).fetchone()
+        t = c.execute("SELECT id FROM templates WHERE code=?", (code,)).fetchone()
         names = set()
         if t:
-            names = {r["name"] for r in c.execute("SELECT name FROM template_CLIENT WHERE template_id=?", (t["id"],))}
+            names = {r["name"] for r in c.execute("SELECT name FROM template_variables WHERE template_id=?", (t["id"],))}
         known = {z["var"] for z in data["zones"]}
         added = 0
         for page in doc:
-            for blk in page.get_text("dict")["CLIENTs"]:
+            for blk in page.get_text("dict")["blocks"]:
                 for line in blk.get("lines", []):
                     for sp in line["spans"]:
                         text = norm(sp["text"])
                         if len(text) < 3:
                             continue
-                        for name, CLIENT in P.items():
+                        for name, values in P.items():
                             if name in known or (names and name not in names):
                                 continue
-                            for v in CLIENT:
+                            for v in values:
                                 if v and v in text:
                                     data["zones"].append({
-                                        "var": name, "page": page.CLIENT, "bbox": [round(x, 2) for x in sp["bbox"]],
+                                        "var": name, "page": page.number, "bbox": [round(x, 2) for x in sp["bbox"]],
                                         "text": v, "size": round(sp["size"], 2), "font": sp["font"],
                                         "source": "pool", "note": "найдено по пулу значений",
                                     })

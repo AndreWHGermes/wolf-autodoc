@@ -30,23 +30,23 @@ USD_RUB_DEFAULT = 100.0
 #              но их отсутствие не дефицит и не блокер.
 # `not_needed` — поля, которые для этого продукта не спрашивают: в легенде их
 #              быть не должно, чтобы клиент не читал лишнее и не путался.
-CLIENT = {
+PRODUCTS = {
     "C1-EXT": {
-        "label": "CLIENT визы C1 (B211A)",
+        "label": "Продление визы C1 (B211A)",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
-            "indonesia.CLIENT_no",
-            "indonesia.CLIENT_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
+            "indonesia.permit_no",
+            "indonesia.permit_expiry",
             "finance.balance",
         ],
-        "optional": ["idCLIENT.CLIENT", "indonesia.address", "home.address"],
-        "not_needed": ["work.organization", "work.position", "work.CLIENT_CLIENT",
-                       "idCLIENT.CLIENT_CLIENT"],
+        "optional": ["identity.citizenship", "indonesia.address", "home.address"],
+        "not_needed": ["work.organization", "work.position", "work.annual_amount",
+                       "identity.birth_place"],
         "min_balance_usd": 2000,
-        "min_CLIENTment_months": 3,
+        "min_statement_months": 3,
         "needs_contract": False,
         "needs_cv": False,
         "needs_e02": False,
@@ -55,16 +55,16 @@ CLIENT = {
     "C1": {
         "label": "Виза C1 (B211A)",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
             "finance.balance",
         ],
-        "optional": ["idCLIENT.CLIENT", "indonesia.address"],
-        "not_needed": ["work.organization", "work.position", "work.CLIENT_CLIENT"],
+        "optional": ["identity.citizenship", "indonesia.address"],
+        "not_needed": ["work.organization", "work.position", "work.annual_amount"],
         "min_balance_usd": 2000,
-        "min_CLIENTment_months": 3,
+        "min_statement_months": 3,
         "needs_contract": False,
         "needs_cv": False,
         "needs_e02": False,
@@ -73,19 +73,19 @@ CLIENT = {
     "E33G-NEW": {
         "label": "Remote Worker KITAS (E33G), новая подача",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
             "work.organization",
             "work.position",
-            "work.CLIENT_CLIENT",
+            "work.annual_amount",
             "home.address",
         ],
-        "optional": ["idCLIENT.CLIENT"],
+        "optional": ["identity.citizenship"],
         "not_needed": [],
         "min_balance_usd": 2000,
-        "min_CLIENT_usd": 60000,
+        "min_annual_usd": 60000,
         "needs_contract": True,
         "needs_cv": True,
         "needs_e02": True,
@@ -94,41 +94,41 @@ CLIENT = {
     "E33G-EXT": {
         "label": "Remote Worker KITAS (E33G), продление",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
             "work.organization",
             "work.position",
-            "work.CLIENT_CLIENT",
-            "indonesia.CLIENT_no",
-            "indonesia.CLIENT_CLIENT",
+            "work.annual_amount",
+            "indonesia.permit_no",
+            "indonesia.permit_expiry",
             "home.address",
         ],
-        "optional": ["idCLIENT.CLIENT"],
+        "optional": ["identity.citizenship"],
         "not_needed": [],
         "min_balance_usd": 2000,
-        "min_CLIENT_usd": 60000,
+        "min_annual_usd": 60000,
         "needs_contract": True,
         "needs_cv": True,
         "needs_e02": True,
-        "note": "CLIENT рабочего KITAS: договор и доход подтверждаются заново.",
+        "note": "Продление рабочего KITAS: договор и доход подтверждаются заново.",
     },
     "BRIDGING": {
         "label": "Bridging visa (Izin Tinggal Peralihan)",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
-            "indonesia.CLIENT_no",
-            "indonesia.CLIENT_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
+            "indonesia.permit_no",
+            "indonesia.permit_expiry",
             "indonesia.address",
             "home.address",
             "finance.balance",
         ],
-        "optional": ["idCLIENT.CLIENT"],
-        "not_needed": ["work.organization", "work.position", "work.CLIENT_CLIENT"],
+        "optional": ["identity.citizenship"],
+        "not_needed": ["work.organization", "work.position", "work.annual_amount"],
         "min_balance_usd": 2000,
         "needs_contract": False,
         "needs_cv": False,
@@ -136,19 +136,19 @@ CLIENT = {
         "note": "60 дней, не продлевается, только на территории Индонезии.",
     },
     "CONV": {
-        "label": "CLIENT визы (CLIENT на ITAS)",
+        "label": "Конверсия визы (переход на ITAS)",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
-            "indonesia.CLIENT_no",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
+            "indonesia.permit_no",
             "indonesia.address",
             "home.address",
             "finance.balance",
         ],
-        "optional": ["idCLIENT.CLIENT"],
-        "not_needed": ["work.CLIENT_CLIENT"],
+        "optional": ["identity.citizenship"],
+        "not_needed": ["work.annual_amount"],
         "min_balance_usd": 2000,
         "needs_contract": False,
         "needs_cv": False,
@@ -158,15 +158,15 @@ CLIENT = {
     "D12": {
         "label": "Виза D12",
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
             "home.address",
             "finance.balance",
         ],
-        "optional": ["idCLIENT.CLIENT"],
-        "not_needed": ["work.CLIENT_CLIENT"],
+        "optional": ["identity.citizenship"],
+        "not_needed": ["work.annual_amount"],
         "min_balance_usd": 5000,
         "needs_contract": False,
         "needs_cv": True,
@@ -194,28 +194,28 @@ ALIASES = {
 }
 
 
-def for_CLIENT(CLIENT_code: str | None) -> dict:
+def for_product(product_code: str | None) -> dict:
     """Требования продукта. Для неизвестного продукта — безопасный минимум.
 
     Безопасный минимум: только личность. Так неизвестный код продукта не заставит
     систему требовать у клиента договор или доход, которых иммиграция не просит.
     """
-    code = (CLIENT_code or "").strip().upper()
+    code = (product_code or "").strip().upper()
     key = ALIASES.get(code) or code
-    req = CLIENT.get(key)
+    req = PRODUCTS.get(key)
     if req:
         return dict(req, code=key)
     return {
         "code": code or "?",
         "label": "Продукт не опознан (%s)" % (code or "—"),
         "fields": [
-            "idCLIENT.full_name_CLIENT",
-            "idCLIENT.CLIENT_date",
-            "idCLIENT.passport_no",
-            "idCLIENT.passport_CLIENT",
+            "identity.full_name_latin",
+            "identity.birth_date",
+            "identity.passport_no",
+            "identity.passport_expiry",
         ],
         "optional": [],
-        "not_needed": ["work.organization", "work.position", "work.CLIENT_CLIENT"],
+        "not_needed": ["work.organization", "work.position", "work.annual_amount"],
         "min_balance_usd": 0,
         "needs_contract": False,
         "needs_cv": False,
@@ -224,19 +224,19 @@ def for_CLIENT(CLIENT_code: str | None) -> dict:
     }
 
 
-def needed_fields(CLIENT_code: str | None) -> set:
-    return set(for_CLIENT(CLIENT_code).get("fields") or [])
+def needed_fields(product_code: str | None) -> set:
+    return set(for_product(product_code).get("fields") or [])
 
 
-def is_needed(CLIENT_code: str | None, layer_field: str) -> bool:
+def is_needed(product_code: str | None, layer_field: str) -> bool:
     """Нужно ли это поле продукту (для фильтра легенды)."""
-    req = for_CLIENT(CLIENT_code)
+    req = for_product(product_code)
     return layer_field in set(req.get("fields") or []) | set(req.get("optional") or [])
 
 
-def min_balance_rub(CLIENT_code: str | None, usd_rub: float | None = None) -> float:
+def min_balance_rub(product_code: str | None, usd_rub: float | None = None) -> float:
     """Порог остатка в рублях для этого продукта (0 — порога нет)."""
-    req = for_CLIENT(CLIENT_code)
+    req = for_product(product_code)
     usd = float(req.get("min_balance_usd") or 0)
     if usd <= 0:
         return 0.0
@@ -244,10 +244,10 @@ def min_balance_rub(CLIENT_code: str | None, usd_rub: float | None = None) -> fl
     return usd * rate
 
 
-def CLIENTments_needed(CLIENT_code: str | None) -> int:
+def statements_needed(product_code: str | None) -> int:
     """Сколько банковских справок (по числу разных банков) требует продукт.
 
     Справка об остатке — одна: дублировать её из разных банков нельзя, лишняя
     справка в пакете является замечанием иммиграции.
     """
-    return 1 if for_CLIENT(CLIENT_code).get("min_balance_usd") else 0
+    return 1 if for_product(product_code).get("min_balance_usd") else 0

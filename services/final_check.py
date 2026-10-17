@@ -18,7 +18,7 @@
   * визуальный дефект               → переделка сборки сразу;
   * всё чисто                       → готово к отправке.
 
-Запуск: /usr/bin/python3 -m CLIENT.final_check <app_id>
+Запуск: /usr/bin/python3 -m services.final_check <app_id>
 """
 from __future__ import annotations
 
@@ -42,25 +42,25 @@ def _conn() -> sqlite3.Connection:
 
 def visual(app_id: int) -> dict:
     """Визуальная проверка собранных документов (грязь, наложения, язык, поля)."""
-    CLIENTs: list[dict] = []
+    issues: list[dict] = []
     checked = 0
     try:
-        from CLIENT import doc_rules as dr
+        from services import doc_rules as dr
     except Exception:                                    # noqa: BLE001
         dr = None
     try:
         import pymupdf
         c = _conn()
         rows = [dict(r) for r in c.execute(
-            """SELECT t.code, ad.pdf_path FROM CLIENT_CLIENT ad
-                 JOIN CLIENT t ON t.id=ad.template_id
-                WHERE ad.CLIENT_id=? AND COALESCE(ad.CLIENT,'') != 'rejected'
-                  AND COALESCE(ad.CLIENT,'') != 'excluded'""", (app_id,))]
+            """SELECT t.code, ad.pdf_path FROM application_documents ad
+                 JOIN templates t ON t.id=ad.template_id
+                WHERE ad.application_id=? AND COALESCE(ad.status,'') != 'rejected'
+                  AND COALESCE(ad.status,'') != 'excluded'""", (app_id,))]
         c.close()
         for r in rows:
             path = r['pdf_path'] or ''
             if not path or not Path(path).exists():
-                CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'CLIENT',
+                issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'block',
                                'text': 'нет собранного PDF'})
                 continue
             checked += 1
@@ -69,57 +69,57 @@ def visual(app_id: int) -> dict:
                 text = page.get_text()
                 # пустая страница = документ не собрался
                 if len(text.strip()) < 40:
-                    CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'CLIENT',
+                    issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'block',
                                    'text': 'страница %d почти пустая — документ не собрался' % pno})
-                # текст CLIENTит за пределы листа
+                # текст выходит за пределы листа
                 rect = page.rect
-                for b in page.get_text('CLIENTs'):
+                for b in page.get_text('blocks'):
                     x0, y0, x1, y1 = b[:4]
                     if x1 > rect.width + 2 or x0 < -2 or y1 > rect.height + 2 or y0 < -2:
-                        CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'CLIENT',
-                                       'text': 'страница %d: текст CLIENTит за пределы листа' % pno})
+                        issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'block',
+                                       'text': 'страница %d: текст выходит за пределы листа' % pno})
                         break
                 # наложение строк друг на друга
-                CLIENTs = sorted([b for b in page.get_text('CLIENTs')], key=lambda b: b[1])
-                for i in range(len(CLIENTs) - 1):
-                    a, b = CLIENTs[i], CLIENTs[i + 1]
+                blocks = sorted([b for b in page.get_text('blocks')], key=lambda b: b[1])
+                for i in range(len(blocks) - 1):
+                    a, b = blocks[i], blocks[i + 1]
                     ov = min(a[3], b[3]) - max(a[1], b[1])
                     if ov > 2.5 and not (a[2] < b[0] or b[2] < a[0]):
-                        CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'CLIENT',
+                        issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'block',
                                        'text': 'страница %d: текст наложен друг на друга' % pno})
                         break
                 # русские символы там, где документ должен быть на английском/индонезийском
-                if dr and r['code'].CLIENTswith(('cv__', 'employment_contract', 'remote_work_agreement',
-                                                'bridging_CLIENT_letter', 'conversion_CLIENT_letter',
-                                                'CLIENTment_letter_e02')):
+                if dr and r['code'].startswith(('cv__', 'employment_contract', 'remote_work_agreement',
+                                                'bridging_request_letter', 'conversion_request_letter',
+                                                'statement_letter_e02')):
                     ru = re.findall(r'[А-ЯЁа-яё]{3,}', text)
                     if ru:
-                        CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'CLIENT',
+                        issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'block',
                                        'text': 'страница %d: русские символы — %s'
                                                % (pno, ', '.join(sorted(set(ru))[:4]))})
                 # шрифты: подозрительно мелкий/крупный текст
-                sizes = [s['size'] for bl in page.get_text('dict')['CLIENTs'] if bl.get('lines')
+                sizes = [s['size'] for bl in page.get_text('dict')['blocks'] if bl.get('lines')
                          for ln in bl['lines'] for s in ln['spans']]
                 if sizes and (min(sizes) < 5.0 or max(sizes) > 26.0):
-                    CLIENTs.append({'from': 'визуальная', 'doc': r['code'], 'level': 'warn',
+                    issues.append({'from': 'визуальная', 'doc': r['code'], 'level': 'warn',
                                    'text': 'страница %d: кегль вне обычного — %.1f..%.1f pt'
                                            % (pno, min(sizes), max(sizes))})
             d.close()
     except Exception as e:                                # noqa: BLE001
-        CLIENTs.append({'from': 'визуальная', 'doc': '—', 'level': 'warn',
+        issues.append({'from': 'визуальная', 'doc': '—', 'level': 'warn',
                        'text': 'визуальная проверка не завершилась: %s' % str(e)[:120]})
-    return {'name': 'визуальная', 'checked': checked, 'CLIENTs': CLIENTs,
-            'ok': not any(i['level'] == 'CLIENT' for i in CLIENTs)}
+    return {'name': 'визуальная', 'checked': checked, 'issues': issues,
+            'ok': not any(i['level'] == 'block' for i in issues)}
 
 
 # ---------------------------------------------------------------- логическая --
 
 def logic(app_id: int) -> dict:
     """Логическая проверка: пакет под продукт + стыковка данных + инструкция."""
-    CLIENTs: list[dict] = []
+    issues: list[dict] = []
     # 1) пакет под продукт: все ли документы собраны и подтверждены
     try:
-        from CLIENT import pack_check
+        from services import pack_check
         res = None
         for fn in ('check_package', 'check', 'run'):
             f = getattr(pack_check, fn, None)
@@ -130,23 +130,23 @@ def logic(app_id: int) -> dict:
                 except TypeError:
                     continue
         for item in (res or {}).get('problems', []) if isinstance(res, dict) else []:
-            CLIENTs.append({'from': 'логическая', 'doc': 'пакет', 'level': 'CLIENT',
+            issues.append({'from': 'логическая', 'doc': 'пакет', 'level': 'block',
                            'text': str(item)[:200]})
     except Exception:                                    # noqa: BLE001
         pass
     # 2) стыковка данных между документами: паспорт, имя, даты, суммы
     try:
-        from CLIENT import doc_rules as dr
+        from services import doc_rules as dr
         import pymupdf
         c = _conn()
-        client = c.execute("""SELECT c.* FROM CLIENT a JOIN CLIENT c ON c.id=a.client_id
+        client = c.execute("""SELECT c.* FROM applications a JOIN clients c ON c.id=a.client_id
                                WHERE a.id=?""", (app_id,)).fetchone()
         rows = [dict(r) for r in c.execute(
-            """SELECT t.code, ad.pdf_path FROM CLIENT_CLIENT ad
-                 JOIN CLIENT t ON t.id=ad.template_id
-                WHERE ad.CLIENT_id=? AND COALESCE(ad.CLIENT,'') NOT IN ('rejected','excluded')""", (app_id,))]
-        others = {r['passport_CLIENT'] for r in c.execute(
-            "SELECT passport_CLIENT FROM CLIENT WHERE COALESCE(passport_CLIENT,'') != ''")}
+            """SELECT t.code, ad.pdf_path FROM application_documents ad
+                 JOIN templates t ON t.id=ad.template_id
+                WHERE ad.application_id=? AND COALESCE(ad.status,'') NOT IN ('rejected','excluded')""", (app_id,))]
+        others = {r['passport_number'] for r in c.execute(
+            "SELECT passport_number FROM clients WHERE COALESCE(passport_number,'') != ''")}
         c.close()
         for r in rows:
             path = r['pdf_path'] or ''
@@ -155,33 +155,33 @@ def logic(app_id: int) -> dict:
             d = pymupdf.open(path)
             text = '\n'.join(p.get_text() for p in d)
             d.close()
-            for f in dr.check_text(r['code'], text, client['passport_CLIENT'] if client else None, others):
-                CLIENTs.append({'from': 'логическая', 'doc': r['code'],
+            for f in dr.check_text(r['code'], text, client['passport_number'] if client else None, others):
+                issues.append({'from': 'логическая', 'doc': r['code'],
                                'level': f['level'], 'text': f['text']})
     except Exception:                                    # noqa: BLE001
         pass
     # 3) документы клиента: хватает ли их для подачи по этому продукту
     missing = []
     try:
-        from CLIENT import immigration_CLIENT as _io
+        from services import immigration_office as _io
         c = _conn()
-        a = c.execute("SELECT CLIENT_id, client_id FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+        a = c.execute("SELECT product_id, client_id FROM applications WHERE id=?", (app_id,)).fetchone()
         c.close()
         if a:
-            need = {'паспорт': ['passport_CLIENT'], 'адрес': ['address_live', 'address_reg'],
-                    'банк': ['bank_name', 'account_no'], 'контакты': ['CLIENT']}
+            need = {'паспорт': ['passport_number'], 'адрес': ['address_live', 'address_reg'],
+                    'банк': ['bank_name', 'account_no'], 'контакты': ['phone']}
             for label, fields in need.items():
                 if not any((client[f] if client and f in client.keys() else None) for f in fields):
                     missing.append(label)
     except Exception:                                    # noqa: BLE001
         pass
     for m in missing:
-        CLIENTs.append({'from': 'логическая', 'doc': 'документы клиента', 'level': 'client',
+        issues.append({'from': 'логическая', 'doc': 'документы клиента', 'level': 'client',
                        'text': 'не хватает данных клиента: %s' % m})
-    CLIENTs = [i for i in CLIENTs if i['level'] == 'CLIENT']
-    client_CLIENTs = [i for i in CLIENTs if i['level'] == 'client']
-    return {'name': 'логическая', 'CLIENTs': CLIENTs, 'ok': not CLIENTs and not client_CLIENTs,
-            'need_client_docs': client_CLIENTs, 'own_faults': CLIENTs}
+    blocks = [i for i in issues if i['level'] == 'block']
+    client_issues = [i for i in issues if i['level'] == 'client']
+    return {'name': 'логическая', 'issues': issues, 'ok': not blocks and not client_issues,
+            'need_client_docs': client_issues, 'own_faults': blocks}
 
 
 def run(app_id: int, verbose: bool = True) -> dict:
@@ -190,7 +190,7 @@ def run(app_id: int, verbose: bool = True) -> dict:
     result = {'app_id': app_id, 'visual': v, 'logic': None, 'action': '', 'verdict': ''}
     if verbose:
         print('визуальная: %s (проверено документов: %s, замечаний: %s)'
-              % ('ок' if v['ok'] else 'ПРОВАЛ', v['checked'], len(v['CLIENTs'])))
+              % ('ок' if v['ok'] else 'ПРОВАЛ', v['checked'], len(v['issues'])))
     if not v['ok']:
         result['action'] = 'переделать'
         result['verdict'] = 'визуальная проверка не прошла — документы на переделку'

@@ -1,7 +1,7 @@
 """Самопроверка инструкции: собираем пакет по продукту и сверяем подстановку переменных.
 
 Для каждого продукта берём реальную заявку и все документы её пакета, собираем значения
-тем же путём, что и рабочий рендер (CLIENT/CLIENT.build_template_CLIENT), и проверяем:
+тем же путём, что и рабочий рендер (services/values.build_template_values), и проверяем:
 
   1. заполнение — у скольких переменных есть значение, какие пустые (и допустимо ли это);
   2. остатки {{ ... }} в готовом HTML (быть не должно);
@@ -9,7 +9,7 @@
      значение (проверка правила «внутри продукта документы логически связаны»);
   4. сборка PDF — документ реально рендерится без ошибок;
   5. сверка со тем, что подавалось на самом деле — состав папки клиента на Google Диске
-     (data/gCLIENT_archive/_kinds.json) против состава пакета в системе.
+     (data/gdrive_archive/_kinds.json) против состава пакета в системе.
 
 Выход: docs/PACK_SELFTEST.md + docs/pack_selftest.json
 """
@@ -21,50 +21,50 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT import render  # noqa: E402
+from services import render  # noqa: E402
 
 ROOT = Path('/opt/wolf_v2')
 OUT_MD = ROOT / 'docs' / 'PACK_SELFTEST.md'
 OUT_JSON = ROOT / 'docs' / 'pack_selftest.json'
-KINDS = ROOT / 'data' / 'gCLIENT_archive' / '_kinds.json'
-LINKS = Path('/root/.hermes/cache/scratch/app_CLIENT_folder.json')
+KINDS = ROOT / 'data' / 'gdrive_archive' / '_kinds.json'
+LINKS = Path('/root/.hermes/cache/scratch/app_product_folder.json')
 # пустые значения, которые для продукта допустимы (не дефект инструкции)
 # имя переменной шаблона → поле карточки клиента (чтобы отличать «данных нет» от «логика не подставила»)
 CARD_MAP = {
-    'passport_no': 'passport_CLIENT', 'passport_CLIENT': 'passport_CLIENT',
-    'passport_CLIENT': 'passport_CLIENT', 'passport_CLIENT_CLIENT': 'passport_CLIENT',
-    'passport_CLIENT_by': 'passport_CLIENT_by', 'passport_CLIENT_date': 'passport_CLIENT_date',
-    'date_of_CLIENT': 'CLIENT_date', 'CLIENT_date': 'CLIENT_date',
-    'CLIENT_of_CLIENT': 'CLIENT_CLIENT', 'CLIENT_CLIENT_CLIENT': 'CLIENT_CLIENT',
-    'CLIENT': 'CLIENT', 'client_CLIENT': 'CLIENT',
+    'passport_no': 'passport_number', 'passport_number': 'passport_number',
+    'passport_expiry': 'passport_expiry', 'passport_valid_until': 'passport_expiry',
+    'passport_issued_by': 'passport_issued_by', 'passport_issue_date': 'passport_issue_date',
+    'date_of_birth': 'birth_date', 'birth_date': 'birth_date',
+    'place_of_birth': 'birth_place', 'place_birth_inline': 'birth_place',
+    'nationality': 'citizenship', 'client_nationality': 'citizenship',
     'address_live': 'address_live', 'address_in_indonesia': 'address_live',
-    'client_name': 'full_name_CLIENT', 'full_name_CLIENT': 'full_name_CLIENT',
-    'position_CLIENT': 'position', 'cv_CLIENT': 'position',
-    'cv_job1_CLIENT': 'job2_CLIENT', 'balance_rub': 'balance_rub',
+    'client_name': 'full_name_latin', 'full_name_latin': 'full_name_latin',
+    'position_title': 'position', 'cv_profession': 'position',
+    'cv_job1_title': 'job2_title', 'balance_rub': 'balance_rub',
     'account_no': 'account_no', 'card_mask': 'card_mask', 'ref_no': 'ref_no',
     'doc_no': 'doc_no', 'contract_no': 'contract_no', 'contract_date': 'contract_date',
 }
 ALLOW_EMPTY = {
-    'company_kpp', 'company_ogrn', 'inn_kpp_ogrn', 'CLIENT', 'CLIENT', 'itk_no',
-    'itk_CLIENT', 'stay_CLIENT_no', 'CLIENT_stay_CLIENT', 'visa_no', 'CLIENT', 'CLIENT',
-    'CLIENT_company', 'CLIENT_nik_or_dash', 'cv_CLIENT', 'cv_CLIENT_hard',
-    'cv_job2_CLIENT', 'cv_job2_company', 'cv_job2_CLIENT', 'cv_job1_CLIENT',
-    'balance_rub', 'balance_date', 'account_no', 'card_mask', 'CLIENT_CLIENT_CLIENT',
-    'CLIENT_CLIENT_CLIENT', 'company_llc', 'position_CLIENT',
+    'company_kpp', 'company_ogrn', 'inn_kpp_ogrn', 'guarantor', 'occupation', 'itk_no',
+    'itk_expiry', 'stay_permit_no', 'existing_stay_permit', 'visa_no', 'email', 'phone',
+    'sponsor_company', 'signatory_nik_or_dash', 'cv_summary', 'cv_skills_hard',
+    'cv_job2_period', 'cv_job2_company', 'cv_job2_bullets', 'cv_job1_bullets',
+    'balance_rub', 'balance_date', 'account_no', 'card_mask', 'annual_amount_words',
+    'monthly_amount_words', 'company_llc', 'position_title',
 }
 VAR_RE = re.compile(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}')
 
 
-def CLIENT_for(con, app_id: int, tpl: dict) -> dict:
-    app = con.execute("SELECT * FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+def values_for(con, app_id: int, tpl: dict) -> dict:
+    app = con.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
     if not app:
         return {}
-    cl = con.execute("SELECT * FROM CLIENT WHERE id=?", (app['client_id'],)).fetchone()
+    cl = con.execute("SELECT * FROM clients WHERE id=?", (app['client_id'],)).fetchone()
     cl = dict(cl) if cl else {}
-    stored = {k: v for k, v in render.stored_CLIENT(app_id, tpl['id']).items() if v not in (None, '')}
+    stored = {k: v for k, v in render.stored_values(app_id, tpl['id']).items() if v not in (None, '')}
     try:
-        from CLIENT.CLIENT import build_template_CLIENT
-        vals = build_template_CLIENT(cl, tpl['code'], {**render.client_CLIENT(app_id), **stored})
+        from services.values import build_template_values
+        vals = build_template_values(cl, tpl['code'], {**render.client_values(app_id), **stored})
     except Exception as exc:  # noqa: BLE001
         vals = {'__error__': str(exc)[:120]}
     vals.update(stored)
@@ -90,15 +90,15 @@ def main() -> int:
           'переменных, согласованность значений между документами и сверка с тем, '
           'что лежит в папке клиента на Google Диске.', '']
     machine = {}
-    for prod_id, pcode in con.execute("SELECT id, code FROM CLIENT WHERE active=1 ORDER BY code"):
-        links_rows = con.execute("""SELECT t.* FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-                                    WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('merged','hidden')
+    for prod_id, pcode in con.execute("SELECT id, code FROM products WHERE active=1 ORDER BY code"):
+        links_rows = con.execute("""SELECT t.* FROM product_documents pd JOIN templates t ON t.id=pd.template_id
+                                    WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('merged','hidden')
                                     ORDER BY pd.sort_order, t.code""", (prod_id,)).fetchall()
         if not links_rows:
             continue
-        apps = con.execute("""SELECT a.id, c.CLIENT, c.name, c.record_kind FROM CLIENT a
-                              JOIN CLIENT c ON c.id=a.client_id
-                              WHERE a.CLIENT_id=? ORDER BY (c.record_kind='real_test') DESC, a.id DESC
+        apps = con.execute("""SELECT a.id, c.surname, c.name, c.record_kind FROM applications a
+                              JOIN clients c ON c.id=a.client_id
+                              WHERE a.product_id=? ORDER BY (c.record_kind='real_test') DESC, a.id DESC
                               LIMIT 1""", (prod_id,)).fetchall()
         if not apps:
             md += ['', '## %s' % pcode, '', '_нет заявок этого продукта — пакет не на чем проверить_']
@@ -107,23 +107,23 @@ def main() -> int:
         # в проверку берём только те документы, что реально активны в заявке:
         # у продукта бывает два варианта справки (банк), но в заявке остаётся один
         _active = set(r['template_id'] for r in con.execute(
-            "SELECT template_id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND COALESCE(CLIENT,'')!='rejected'",
+            "SELECT template_id FROM application_documents WHERE application_id=? AND COALESCE(status,'')!='rejected'",
             (app['id'],)))
         _use = [dict(r) for r in links_rows if r['id'] in _active]
         if not _use:
             _by_slot = {}
             for r in links_rows:
                 _by_slot.setdefault(r['slot_code'] if 'slot_code' in r.keys() else r['code'], dict(r))
-            _use = list(_by_slot.CLIENT())
+            _use = list(_by_slot.values())
         links_rows = _use
-        cl_row = dict(con.execute("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+        cl_row = dict(con.execute("SELECT * FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
                                   (app['id'],)).fetchone() or {})
         try:
-            from CLIENT import doc_overrides as _do
-            doc_vals = _do.for_CLIENT(app['id'])
+            from services import doc_overrides as _do
+            doc_vals = _do.for_application(app['id'])
         except Exception:  # noqa: BLE001
             doc_vals = {}
-        md += ['', '## %s — заявка №%s (%s %s)' % (pcode, app['id'], app['CLIENT'] or '', app['name'] or '')]
+        md += ['', '## %s — заявка №%s (%s %s)' % (pcode, app['id'], app['surname'] or '', app['name'] or '')]
         md += ['']
         seen_vals: dict[str, dict[str, str]] = collections.defaultdict(dict)
         total_vars = filled = 0
@@ -133,7 +133,7 @@ def main() -> int:
             tpl = dict(tpl)
             html = Path(tpl['html_path']).read_text(encoding='utf-8') if tpl.get('html_path') and Path(tpl['html_path']).is_file() else ''
             names = VAR_RE.findall(html)
-            vals = CLIENT_for(con, app['id'], tpl)
+            vals = values_for(con, app['id'], tpl)
             got = [n for n in names if vals.get(n) not in (None, '')]
             miss = sorted(set(n for n in names if vals.get(n) in (None, '')))
             filled_html = render.fill(html, vals, keep_unfilled=False, template_code=tpl['code'])
@@ -174,9 +174,9 @@ def main() -> int:
         # расхождения, допустимые по правилам: в индонезийских документах гражданство пишется
         # как RUSIA, в англоязычных договорах — RUSSIAN FEDERATION; перечень услуг у договоров
         # формируется из одного источника, но тексты могут отличаться формулировкой пунктов
-        ALLOW_DIFF = {'CLIENT', 'client_CLIENT', 'CLIENT_list'}
-        conflicts = {n: v for n, v in seen_vals.items() if len(set(v.CLIENT())) > 1 and n not in ALLOW_DIFF}
-        allowed_diff = {n: v for n, v in seen_vals.items() if len(set(v.CLIENT())) > 1 and n in ALLOW_DIFF}
+        ALLOW_DIFF = {'nationality', 'client_nationality', 'services_list'}
+        conflicts = {n: v for n, v in seen_vals.items() if len(set(v.values())) > 1 and n not in ALLOW_DIFF}
+        allowed_diff = {n: v for n, v in seen_vals.items() if len(set(v.values())) > 1 and n in ALLOW_DIFF}
         if pdf_fail:
             defects += pdf_fail
         md.append('**Документы пакета:**')
@@ -207,12 +207,12 @@ def main() -> int:
         folder = {}
         if isinstance(links, list):
             for it in links:
-                if isinstance(it, dict) and str(it.get('CLIENT_id') or it.get('app_id') or '') == str(app['id']):
+                if isinstance(it, dict) and str(it.get('application_id') or it.get('app_id') or '') == str(app['id']):
                     folder = it
                     break
         elif isinstance(links, dict):
             folder = links.get(str(app['id'])) or links.get(app['id']) or {}
-        cname = ((app['CLIENT'] or '') + ' ' + (app['name'] or '')).strip()
+        cname = ((app['surname'] or '') + ' ' + (app['name'] or '')).strip()
         real = by_client.get(cname) or collections.Counter()
         if real:
             md.append('**Что фактически лежит в папке клиента на Диске:**')
@@ -220,7 +220,7 @@ def main() -> int:
             for k, n in real.most_common():
                 md.append('- %s — %d файл(ов)' % (k, n))
             md.append('')
-        machine[str(app['id'])] = {'CLIENT': pcode, 'docs': rows_out, 'conflicts': conflicts,
+        machine[str(app['id'])] = {'product': pcode, 'docs': rows_out, 'conflicts': conflicts,
                                    'defects': defects, 'client_folder': dict(real),
                                    'total_vars': total_vars, 'filled': filled}
     OUT_MD.write_text('\n'.join(md) + '\n', encoding='utf-8')
@@ -228,7 +228,7 @@ def main() -> int:
     print('отчёт:', OUT_MD)
     for app_id, m in machine.items():
         print('  %-9s заявка %-4s: переменных %-4d заполнено %-4d конфликтов %-2d дефектов %d'
-              % (m['CLIENT'], app_id, m['total_vars'], m['filled'], len(m['conflicts']), len(m['defects'])))
+              % (m['product'], app_id, m['total_vars'], m['filled'], len(m['conflicts']), len(m['defects'])))
     return 0
 
 

@@ -1,1 +1,1 @@
-# Бизнес-логика: CLIENT, doc_render, CLIENT, translate, prepare.
+# Бизнес-логика: values, doc_render, drive, translate, prepare.

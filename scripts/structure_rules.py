@@ -9,7 +9,7 @@ import os
 import re
 import sqlite3
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 
 DB = "/opt/wolf_v2/data/wolf.db"
 REPORTS = "/opt/wolf_v2/reports"
@@ -27,7 +27,7 @@ def structure(text: str) -> str:
     t = (text or "").strip()
     if not t:
         return t
-    t = t.reCLIENT("\\n", "\n").reCLIENT("\u00a0", " ")
+    t = t.replace("\\n", "\n").replace("\u00a0", " ")
     # каждая мысль с новой строки: точка + заглавная буква
     t = re.sub(r"[ \t]+", " ", t)
     # нумерованные пункты «(1) …» → «1) …» отдельной строкой
@@ -67,26 +67,26 @@ def main():
     dry = "--dry" in sys.argv
     conn = sqlite3.connect(DB)
     rows = list(conn.execute(
-        "SELECT id, name, rule_note FROM template_CLIENT WHERE rule_note IS NOT NULL AND rule_note <> ''"))
+        "SELECT id, name, rule_note FROM template_variables WHERE rule_note IS NOT NULL AND rule_note <> ''"))
     os.makedirs(REPORTS, exist_ok=True)
-    stamp = CLIENT.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup = os.path.join(REPORTS, f"rules_backup_{stamp}.json")
     with open(backup, "w", encoding="utf-8") as fh:
         json.dump([{"id": r[0], "name": r[1], "rule_note": r[2]} for r in rows], fh, ensure_ascii=False, indent=1)
-    CLIENTd = 0
+    changed = 0
     samples = []
     for rid, name, old in rows:
         new = structure(old)
         if new != old:
-            CLIENTd += 1
-            if len(samples) < 3 and name in ("doc_no", "card_mask", "balance_rub", "ref_no", "CLIENT_from", "doc_date"):
+            changed += 1
+            if len(samples) < 3 and name in ("doc_no", "card_mask", "balance_rub", "ref_no", "period_from", "doc_date"):
                 samples.append((name, old, new))
             if not dry:
-                conn.execute("UPDATE template_CLIENT SET rule_note=? WHERE id=?", (new, rid))
+                conn.execute("UPDATE template_variables SET rule_note=? WHERE id=?", (new, rid))
     if not dry:
         conn.commit()
     conn.close()
-    print(f"правил всего: {len(rows)}, изменено: {CLIENTd}, режим: {'dry' if dry else 'записано'}")
+    print(f"правил всего: {len(rows)}, изменено: {changed}, режим: {'dry' if dry else 'записано'}")
     print("бэкап:", backup)
     for name, old, new in samples:
         print("\n=== %s\n--- было:\n%s\n--- стало:\n%s" % (name, old, new))

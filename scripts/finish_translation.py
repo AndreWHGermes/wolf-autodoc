@@ -9,7 +9,7 @@ import re
 import sqlite3
 import sys
 import time
-import urllib.CLIENT
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -44,10 +44,10 @@ def log(msg):
 def _ask(lines):
     body = {'model': MODEL, 'messages': [{'role': 'user', 'content': PROMPT + '\n'.join(lines)}],
             'temperature': 0}
-    req = urllib.CLIENT.CLIENT(URL, data=json.dumps(body).encode(),
-                                 CLIENTs={'Authorization': f'Bearer {KEY}',
-                                          'Content-Type': 'CLIENT/json'})
-    with urllib.CLIENT.urlopen(req, timeout=180) as r:
+    req = urllib.request.Request(URL, data=json.dumps(body).encode(),
+                                 headers={'Authorization': f'Bearer {KEY}',
+                                          'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=180) as r:
         out = json.loads(r.read().decode())['choices'][0]['message']['content'] or ''
     return [re.sub(r'^\s*\d+[.)]\s*', '', l).strip() for l in out.splitlines() if l.strip()]
 
@@ -64,7 +64,7 @@ def translate(line):
     return ''
 
 
-def needs_CLIENT(s: str) -> bool:
+def needs_translation(s: str) -> bool:
     """Переводим только осмысленный текст: есть латинские слова длиной >= 3."""
     return bool(re.search(r'[A-Za-z]{3,}', s)) and len(s) >= 6
 
@@ -80,14 +80,14 @@ def main():
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         for k in keys:
             if k in have:
                 continue
-            if needs_CLIENT(k):
+            if needs_translation(k):
                 todo.append((tid, code, k))
             else:
-                conn.execute('INSERT OR REPLACE INTO CLIENT_line(template_id, src, ru) CLIENT(?,?,?)',
+                conn.execute('INSERT OR REPLACE INTO translation_line(template_id, src, ru) VALUES(?,?,?)',
                              (tid, k, k))     # обрывок/номер — оставляем как есть
                 as_is += 1
     conn.commit()
@@ -104,7 +104,7 @@ def main():
                 dst = ''
             if not dst:
                 dst = src          # не удалось — оставляем исходный текст, чтобы документ не «дырявился»
-            conn.execute('INSERT OR REPLACE INTO CLIENT_line(template_id, src, ru) CLIENT(?,?,?)',
+            conn.execute('INSERT OR REPLACE INTO translation_line(template_id, src, ru) VALUES(?,?,?)',
                          (tid, src, dst))
             conn.commit()
             done += 1
@@ -116,7 +116,7 @@ def main():
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         miss = [k for k in keys if k not in have]
         if miss:
             all_ok = False

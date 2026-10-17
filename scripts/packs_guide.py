@@ -1,10 +1,10 @@
 """Сборка глобальной инструкции по пакетам документов для конструктора.
 
 Читает:
-  data/gCLIENT_archive/_kinds.json        — распознанные документы клиентов (тип по содержанию)
-  /root/.hermes/cache/scratch/app_CLIENT_folder.json — связь заявка ↔ продукт ↔ папка
-  /root/.hermes/cache/scratch/CLIENT_unique.json       — файлы с Диска (file_id → ссылка)
-  data/wolf.db (CLIENT, CLIENT_CLIENT, CLIENT)
+  data/gdrive_archive/_kinds.json        — распознанные документы клиентов (тип по содержанию)
+  /root/.hermes/cache/scratch/app_product_folder.json — связь заявка ↔ продукт ↔ папка
+  /root/.hermes/cache/scratch/drive_unique.json       — файлы с Диска (file_id → ссылка)
+  data/wolf.db (products, product_documents, templates)
 
 Пишет: docs/DOCUMENT_PACKS_GUIDE.md — продукт → обязательные документы, что даёт клиент,
 что генерируем мы, реальные образцы со ссылками на Диск, состав клиентских папок.
@@ -19,15 +19,15 @@ sys.path.insert(0, '/opt/wolf_v2')
 
 ROOT = Path('/opt/wolf_v2')
 OUT = ROOT / 'docs' / 'DOCUMENT_PACKS_GUIDE.md'
-KINDS = ROOT / 'data' / 'gCLIENT_archive' / '_kinds.json'
-LINKS = Path('/root/.hermes/cache/scratch/app_CLIENT_folder.json')
-UNIQ = Path('/root/.hermes/cache/scratch/CLIENT_unique.json')
+KINDS = ROOT / 'data' / 'gdrive_archive' / '_kinds.json'
+LINKS = Path('/root/.hermes/cache/scratch/app_product_folder.json')
+UNIQ = Path('/root/.hermes/cache/scratch/drive_unique.json')
 
 KIND_RU = {
     'BANK_STATEMENT': 'Справка банка об остатке', 'PHOTO': 'Фотография клиента',
     'PASSPORT': 'Паспорт клиента', 'REMOTE_WORK_AGREEMENT': 'Remote Work Agreement (наш договор)',
     'WORK_AGREEMENT': 'Work Agreement', 'EMPLOYMENT_AGREEMENT': 'Employment agreement',
-    'ITK': 'Трудовая книжка (ИТК) — опционально', 'STAY_PERMIT_KITAS': 'KITAS / stay CLIENT',
+    'ITK': 'Трудовая книжка (ИТК) — опционально', 'STAY_PERMIT_KITAS': 'KITAS / stay permit',
     'MARRIAGE_CERT': 'Свидетельство о браке', 'BIRTH_CERT': 'Свидетельство о рождении',
     'COMMITMENT_LETTER': 'Commitment / guarantee letter (генерируем)',
     'CV': 'Резюме (генерируем)', 'FORM_E02': 'FORM E-02 (генерируем)',
@@ -64,16 +64,16 @@ def main() -> int:
     links = json.loads(LINKS.read_text(encoding='utf-8'))
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    prods = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM CLIENT")}
-    tpls = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM CLIENT")}
+    prods = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM products")}
+    tpls = {r['id']: r['code'] for r in con.execute("SELECT id, code FROM templates")}
     prod_tpl = collections.defaultdict(list)
-    for r in con.execute("SELECT CLIENT_id, template_id, slot_code FROM CLIENT_CLIENT"):
-        prod_tpl[prods.get(r['CLIENT_id'], '?')].append((tpls.get(r['template_id'], '?'), r['slot_code'] or ''))
+    for r in con.execute("SELECT product_id, template_id, slot_code FROM product_documents"):
+        prod_tpl[prods.get(r['product_id'], '?')].append((tpls.get(r['template_id'], '?'), r['slot_code'] or ''))
 
     folder_prod = {}
     for l in links:
         if l.get('folder'):
-            folder_prod.setdefault(l['folder'], set()).add(l['CLIENT'])
+            folder_prod.setdefault(l['folder'], set()).add(l['product'])
     by_client = collections.defaultdict(list)
     for k in kinds:
         by_client[k['client']].append(k)
@@ -129,7 +129,7 @@ def main() -> int:
     # образцы каждой группы со ссылками
     L.append('## 4. Реальные образцы по группам документов')
     L.append('')
-    L.append('Ссылка на файл на Диске: `https://CLIENT.google.com/file/d/<id>/view`')
+    L.append('Ссылка на файл на Диске: `https://drive.google.com/file/d/<id>/view`')
     L.append('')
     groups = collections.defaultdict(list)
     for k in kinds:
@@ -145,7 +145,7 @@ def main() -> int:
                 continue
             seen.add(it['client'])
             fid = next((f['id'] for f in uniq if f['client'] == it['client'] and f['name'] == it['name']), '')
-            url = 'https://CLIENT.google.com/file/d/%s/view' % fid if fid else '—'
+            url = 'https://drive.google.com/file/d/%s/view' % fid if fid else '—'
             L.append('-%s — `%s` — %s' % ('' if not url else '', it['client'], url) if False else
                      '- %s — %s' % (it['client'], url))
             if len(seen) >= 6:
@@ -153,7 +153,7 @@ def main() -> int:
         L.append('')
     L.append('## 5. Проверка полноты пакета')
     L.append('')
-    L.append('Реализовано в `CLIENT/pack_check.py`: по заявке берётся продукт, требуемые '
+    L.append('Реализовано в `services/pack_check.py`: по заявке берётся продукт, требуемые '
              'документы, статусы наших документов и клиентские документы (карточка + скан '
              'папки на Диске). Отчёт: прогресс, чего нет из нашего, чего нет от клиента.')
     L.append('')

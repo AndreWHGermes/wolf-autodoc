@@ -8,8 +8,8 @@
      колонке (шапка: номер → ФИО → адрес → вторая строка адреса). Так длинное ФИО толкает
      адрес вниз, а не налезает на него. Кегль НЕ уменьшается никогда.
   4. Собирает PDF (weasyprint) из: A4-листа + подложка бланка из оригинала + текстовые блоки.
-  5. Автопроверки: пересечения блоков (наложения), CLIENT за пределы рабочего поля,
-     CLIENT за лист, пиксельное расхождение с оригиналом вне зон, остатки чужих данных.
+  5. Автопроверки: пересечения блоков (наложения), выход за пределы рабочего поля,
+     выход за лист, пиксельное расхождение с оригиналом вне зон, остатки чужих данных.
 
 Запуск:
     python3 scripts/build_html_flow.py <code> <app_id> [--test] [--save]
@@ -29,7 +29,7 @@ import pymupdf
 from PIL import Image, ImageChops
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 OUT = BASE / "data" / "cache" / "html_flow"
 sys.path.insert(0, str(BASE))
 sys.path.insert(0, str(BASE / "scripts"))
@@ -43,21 +43,21 @@ ASCENT = 0.905
 TEST_SETS = {
     "короткие": {"client_name": "Li Wu", "address_live": "12, Moscow, ul. Tverskaya,",
                  "address_live_2": "D. 1, Kv. 2"},
-    "длинные": {"client_name": "CLIENT Valentinovna CLIENTopolskaya",
+    "длинные": {"client_name": "Aleksandra Valentinovna Konstantinopolskaya",
                 "address_live": "628404, Khanty-Mansiyskiy Avtonomnyy Okrug, G Surgut, Ul Pervoprokhodtsev,",
                 "address_live_2": "D. 115/2, Korp. 3, Kv. 456"},
-    "предельные": {"client_name": "Bartolomeo Kristoforovich CLIENTilianovskiy-Shvedovskiy",
+    "предельные": {"client_name": "Bartolomeo Kristoforovich Maksimilianovskiy-Shvedovskiy",
                    "address_live": "693000, Sakhalinskaya Oblast, G Yuzhno-Sakhalinsk, Ul Imeni Kosmonavta Very Fedorovny Belovoy,",
                    "address_live_2": "D. 128/4, Korp. 12, Str. 3, Kv. 1024"},
 }
 
 
-def load_CLIENT(code: str, app_id: int) -> dict:
+def load_values(code: str, app_id: int) -> dict:
     import importlib.util
     spec = importlib.util.spec_from_file_location("pdf_fill_mod", str(BASE / "scripts" / "pdf_fill.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.CLIENT_for(app_id, code)
+    return mod.values_for(app_id, code)
 
 
 def font_paths(code: str) -> dict:
@@ -68,7 +68,7 @@ def font_paths(code: str) -> dict:
     Поэтому для каркаса берём полный шрифт, метрически совпадающий с Arial (Liberation Sans),
     а PDF-шрифт оставляем только как запасной.
     """
-    d = CLIENT / code / "frame" / "fonts"
+    d = TEMPLATES / code / "frame" / "fonts"
     d.mkdir(parents=True, exist_ok=True)
     lib_reg = Path("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")
     lib_bold = Path("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf")
@@ -103,11 +103,11 @@ def text_lines(text: str, width: float, size: float, ffile) -> list[str]:
         tw = lambda s: fobj.text_length(s, fontsize=size)
     except Exception:
         tw = lambda s: len(s) * size * 0.5
-    CLIENT = (text or "").split()
-    if not CLIENT:
+    words = (text or "").split()
+    if not words:
         return [""]
     lines, cur = [], ""
-    for w in CLIENT:
+    for w in words:
         trial = (cur + " " + w).strip()
         if cur and tw(trial) > width:
             lines.append(cur)
@@ -122,16 +122,16 @@ def blank_static(code: str) -> list[tuple[float, float, float]]:
     """Статика бланка: (x0, x1, y) по строкам чистого бланка.
 
     Нужна, чтобы значения вставали в свободные промежутки между словами бланка
-    («hereby informs that card No … has been CLIENT for») и не наезжали на них.
+    («hereby informs that card No … has been issued for») и не наезжали на них.
     """
     import pymupdf
-    blank = CLIENT / code / "blank.pdf"
+    blank = TEMPLATES / code / "blank.pdf"
     if not blank.exists():
         return []
     out = []
     d = pymupdf.open(str(blank))
     for page in d:
-        for blk in page.get_text("dict")["CLIENTs"]:
+        for blk in page.get_text("dict")["blocks"]:
             for ln in blk.get("lines", []):
                 t = " ".join(s["text"] for s in ln["spans"]).strip()
                 if t:
@@ -152,9 +152,9 @@ def blank_gap(static, y: float, x: float, tol: float = 3.0) -> float:
     return max(0.0, limit - x)
 
 
-def build_layout(code: str, CLIENT: dict) -> dict:
+def build_layout(code: str, values: dict) -> dict:
     """Считает блоки: текст, число строк, итоговые координаты (со сдвигами как в Word)."""
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     fields = json.loads((tpl_dir / "fields.json").read_text(encoding="utf-8"))
     # у части зон задан сдвиг печати (dy): так держим отступ строки после номера справки,
     # не ломая координаты эталона, по которым читаются значения
@@ -167,38 +167,38 @@ def build_layout(code: str, CLIENT: dict) -> dict:
     zones = [z for z in fields["zones"] if z.get("bbox")]
 
     # Сумма прописью в бланке разорвана на две строки — распределяем по ширине её зон
-    if CLIENT.get("balance_CLIENT") and any(z["var"] == "balance_CLIENT_2" for z in zones):
-        z1 = next(z for z in zones if z["var"] == "balance_CLIENT")
-        z2 = next(z for z in zones if z["var"] == "balance_CLIENT_2")
+    if values.get("balance_words") and any(z["var"] == "balance_words_2" for z in zones):
+        z1 = next(z for z in zones if z["var"] == "balance_words")
+        z2 = next(z for z in zones if z["var"] == "balance_words_2")
         size = float(z1.get("size") or 9.0)
         w1 = RIGHT_EDGE - float(z1["bbox"][0])
         fobj = pymupdf.Font(fontfile=str(fz["regular"])) if fz["regular"] else pymupdf.Font("helv")
-        CLIENT = str(CLIENT["balance_CLIENT"]).split()
+        words = str(values["balance_words"]).split()
         head, cur = [], ""
-        for wd in CLIENT:
+        for wd in words:
             trial = (cur + " " + wd).strip()
             if cur and fobj.text_length(trial, fontsize=size) > w1:
                 break
             cur = trial
         head = cur
-        tail = " ".join(CLIENT[len(head.split()):])
-        CLIENT["balance_CLIENT"] = head
-        CLIENT["balance_CLIENT_2"] = tail
+        tail = " ".join(words[len(head.split()):])
+        values["balance_words"] = head
+        values["balance_words_2"] = tail
 
     # колонки: блоки с близким левым краем и идущие друг под другом
     zones = sorted(zones, key=lambda z: (round(z["bbox"][0] / 10.0), z["bbox"][1]))
     cols: list[list[dict]] = []
     for z in zones:
-        CLIENTd = False
+        placed = False
         for col in cols:
             if abs(col[-1]["bbox"][0] - z["bbox"][0]) <= 12 and 0 < z["bbox"][1] - col[-1]["bbox"][3] < 60:
                 col.append(z)
-                CLIENTd = True
+                placed = True
                 break
-        if not CLIENTd:
+        if not placed:
             cols.append([z])
 
-    CLIENTs = []
+    blocks = []
     for col in cols:
         shift = 0.0
         for z in sorted(col, key=lambda z: z["bbox"][1]):
@@ -207,10 +207,10 @@ def build_layout(code: str, CLIENT: dict) -> dict:
             if _para:
                 _txt = str(_para)
                 for _v in sorted(set(re.findall(r"\{\{\s*([a-z_0-9]+)\s*\}\}", _txt))):
-                    _txt = re.sub(r"\{\{\s*%s\s*\}\}" % _v, lambda m, v=_v: str(CLIENT.get(v) or ""), _txt)
-                _txt = _txt.reCLIENT("[[b]]", "<b>").reCLIENT("[[/b]]", "</b>")
+                    _txt = re.sub(r"\{\{\s*%s\s*\}\}" % _v, lambda m, v=_v: str(values.get(v) or ""), _txt)
+                _txt = _txt.replace("[[b]]", "<b>").replace("[[/b]]", "</b>")
                 _w = float(z["bbox"][2]) - float(z["bbox"][0])
-                CLIENTs.append({"var": z["var"], "page": z.get("page") or 1, "text": _txt, "lines": 1,
+                blocks.append({"var": z["var"], "page": z.get("page") or 1, "text": _txt, "lines": 1,
                                "x": round(max(float(z["bbox"][0]), LEFT_EDGE), 2),
                                "top": round(float(z["bbox"][1]) - 0.15 * size, 2), "size": size,
                                "w": round(_w, 2), "tw": 0.0, "nowrap": False, "para": True,
@@ -220,13 +220,13 @@ def build_layout(code: str, CLIENT: dict) -> dict:
                 continue
             w_zone = float(z["bbox"][2]) - float(z["bbox"][0])
             ffile = fz["bold"] if z.get("bold") else fz["regular"]
-            text = str(CLIENT.get(z["var"]) or "").strip()
+            text = str(values.get(z["var"]) or "").strip()
             x = min(max(float(z["bbox"][0]), LEFT_EDGE), RIGHT_EDGE - 20)
             nowrap = z["var"] in ("doc_no", "ref_no", "doc_date", "card_mask",
-                                  "CLIENT_from", "CLIENT_to", "balance_rub")
+                                  "period_from", "period_to", "balance_rub")
             w_avail = RIGHT_EDGE - x                     # место до правого поля
             # свободный промежуток в этой строке бланка: значение обязано встать в него,
-            # иначе наезжает на статику («hereby informs that card No … has been CLIENT for»)
+            # иначе наезжает на статику («hereby informs that card No … has been issued for»)
             gap = 0.0 if z.get("source") == "manual" else blank_gap(static, float(z["bbox"][1]), x)
             if gap > 6.0:
                 w_avail = min(w_avail, gap - 2.0)
@@ -282,7 +282,7 @@ def build_layout(code: str, CLIENT: dict) -> dict:
             except Exception:
                 _flowdoc = False
             _fixed = bool(z.get("source") == "labels" or (z.get("anchor") and not _flowdoc))
-            CLIENTs.append({"var": z["var"], "page": z.get("page") or 1,
+            blocks.append({"var": z["var"], "page": z.get("page") or 1,
                            "text": "\n".join(lines), "lines": len(lines),
                            "x": round(x, 2), "top": round(top_base + shift, 2),
                            "size": size, "w": round(w, 2), "tw": round(tw, 2),
@@ -292,7 +292,7 @@ def build_layout(code: str, CLIENT: dict) -> dict:
                            "color": z.get("color") or [0, 0, 0]})
             # Значения печатаем строго на своих местах. Накопительный сдвиг нижестоящих строк
             # («как в Word») для форм недопустим: подписи бланка неподвижны, и значение уезжало
-            # от своей надписи (Full Name пустой, ФИО напротив «CLIENT, Date of CLIENT»).
+            # от своей надписи (Full Name пустой, ФИО напротив «Place, Date of Birth»).
             shift += 0.0
     # Потоковые документы (договоры: реквизиты, подписи идут сплошным списком) требуют сдвига:
     # если значение перенеслось на лишнюю строку, всё, что ниже в той же колонке, уезжает вниз.
@@ -302,8 +302,8 @@ def build_layout(code: str, CLIENT: dict) -> dict:
     except Exception:
         _flow = False
     if _flow:
-        for _pno in sorted({b.get("page") or 1 for b in CLIENTs}):
-            _pb = sorted([b for b in CLIENTs if (b.get("page") or 1) == _pno], key=lambda b: b["top"])
+        for _pno in sorted({b.get("page") or 1 for b in blocks}):
+            _pb = sorted([b for b in blocks if (b.get("page") or 1) == _pno], key=lambda b: b["top"])
             for _i in range(len(_pb)):
                 _a = _pb[_i]
                 if _a.get("fixed"):
@@ -319,11 +319,11 @@ def build_layout(code: str, CLIENT: dict) -> dict:
     # Наложения больше не «расталкиваем» сдвигом: длинное значение переносится внутри своей
     # полосы, а полосы вырезаются с запасом по высоте.
     #
-    # Исключение — многострочные группы одного адреса (CLIENT_line1/2/3 и подобные): это не
+    # Исключение — многострочные группы одного адреса (addressee_line1/2/3 и подобные): это не
     # самостоятельные поля формы, а продолжение одного блока. Если значение длиннее и
     # переносится, следующие строки должны уехать вниз, иначе они накладываются друг на друга.
     _groups: dict = {}
-    for _b in CLIENTs:
+    for _b in blocks:
         _k = re.sub(r"_line\d+$", "", str(_b.get("var") or ""))
         if _k:
             _groups.setdefault(_k, []).append(_b)
@@ -337,10 +337,10 @@ def build_layout(code: str, CLIENT: dict) -> dict:
                 _cur["top"] = _want
     for _ in range(40):
         _moved = False
-        for _b in CLIENTs:
+        for _b in blocks:
             if _b.get("fixed") or _b.get("para"):
                 continue
-            for _o in CLIENTs:
+            for _o in blocks:
                 if _o is _b or _o.get("fixed") or _o.get("para"):
                     continue
                 if _b["x"] + _b["tw"] <= _o["x"] + 1.5 or _o["x"] + _o["tw"] <= _b["x"] + 1.5:
@@ -353,11 +353,11 @@ def build_layout(code: str, CLIENT: dict) -> dict:
                 _moved = True
         if not _moved:
             break
-    return {"CLIENTs": CLIENTs, "fields": fields, "fonts": fz}
+    return {"blocks": blocks, "fields": fields, "fonts": fz}
 
 
 def render_html(code: str, layout: dict) -> str:
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     fr = font_paths(code)
     fz = layout["fonts"]
     reg = (fz["regular"] or Path("x")).name
@@ -388,11 +388,11 @@ html,body {{ margin:0; padding:0; }}
     # попасть в документ со своими значениями (bg-1.png, bg-2.png, ...).
     _pages = sorted(int(m.group(1)) for m in
                     (re.match(r"bg-(\d+)\.png$", x.name) for x in (tpl_dir / "frame").glob("bg-*.png")) if m) or [1]
-    _head = [f'<!doctype html><html lang="en"><head><meta charset="utf-8"><CLIENT>{code}</CLIENT>',
+    _head = [f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>{code}</title>',
              f'<style>{css}</style></head><body>']
     _by_page = {pno: [] for pno in _pages}
     parts = []
-    for b in layout["CLIENTs"]:
+    for b in layout["blocks"]:
         if not b["text"]:
             continue
         _dst = _by_page.get(b.get("page") or 1, _by_page[_pages[0]])
@@ -400,26 +400,26 @@ html,body {{ margin:0; padding:0; }}
         # печатаем КАЖДУЮ вычисленную строку отдельно и запрещаем движку переносить текст:
         # перенос считаем мы (как Word), иначе браузер рвёт слова по буквам
         if b.get("para"):
-            _dst.append('<span CLIENT="v para" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt;'
+            _dst.append('<span class="v para" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt;'
                          'width:%.2fpt; color:#%02X%02X%02X;%s">%s</span>'
                          % (b["x"], b["top"], b["size"], b["w"], c[0], c[1], c[2],
                             "font-weight:700;" if b["bold"] else "", b["text"]))
             continue
         for i, ln in enumerate(b["text"].split("\n")):
             top = b["top"] + i * b["size"] * LINE_FACTOR
-            _dst.append('<span CLIENT="v nowrap" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt;'
+            _dst.append('<span class="v nowrap" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt;'
                          'color:#%02X%02X%02X;%s">%s</span>'
                          % (b["x"], top, b["size"], c[0], c[1], c[2],
                             "font-weight:700;" if b["bold"] else "",
-                            ln.reCLIENT("&", "&amp;").reCLIENT("<", "&lt;")))
+                            ln.replace("&", "&amp;").replace("<", "&lt;")))
     parts = list(_head)
     for _pno in _pages:
-        parts.append('<div CLIENT="sheet">')
+        parts.append('<div class="sheet">')
         _bgname = 'bg-%d.png' % _pno
         if not (tpl_dir / 'frame' / _bgname).exists():
             _bgname = 'bg.png'      # подложка ещё не разложена по страницам
-        parts.append('<img CLIENT="bg" src="%s" alt="">' % _bgname)
-        parts.append('<div CLIENT="guide"></div>')
+        parts.append('<img class="bg" src="%s" alt="">' % _bgname)
+        parts.append('<div class="guide"></div>')
         parts.extend(_by_page[_pno])
         parts.append('</div>')
     parts.append("</body></html>")
@@ -443,10 +443,10 @@ def diff_pct(a: Image.Image, b: Image.Image, mask=None) -> float:
     return 100.0 * sum(d.histogram()[24:]) / (a.size[0] * a.size[1])
 
 
-def mask_for(img: Image.Image, CLIENTs: list[dict], dpi: int = 300) -> Image.Image:
+def mask_for(img: Image.Image, blocks: list[dict], dpi: int = 300) -> Image.Image:
     m = Image.new("L", img.size, 255)
     k = dpi / 72.0
-    for b in CLIENTs:
+    for b in blocks:
         if not b["text"]:
             continue
         x0, y0 = b["x"] * k, b["top"] * k
@@ -456,9 +456,9 @@ def mask_for(img: Image.Image, CLIENTs: list[dict], dpi: int = 300) -> Image.Ima
     return m
 
 
-def problems_of(CLIENTs: list[dict]) -> list[str]:
+def problems_of(blocks: list[dict]) -> list[str]:
     pr = []
-    for b in CLIENTs:
+    for b in blocks:
         if not b["text"]:
             continue
         if b["x"] < LEFT_EDGE - 0.6 or b["x"] + b["tw"] > RIGHT_EDGE + 0.6:
@@ -469,7 +469,7 @@ def problems_of(CLIENTs: list[dict]) -> list[str]:
             pr.append("вышло за лист A4: %s" % b["var"])
     # наложение считаем только между блоками ОДНОЙ страницы: иначе «налезают» друг на друга
     # блоки разных листов (например, строка сторон на стр.1 и дата подписи на стр.3)
-    vis = [b for b in CLIENTs if b["text"]]
+    vis = [b for b in blocks if b["text"]]
     vis.sort(key=lambda b: (b.get("page") or 1, b["top"], b["x"]))
     for i in range(len(vis)):
         for j in range(i + 1, len(vis)):
@@ -485,30 +485,30 @@ def problems_of(CLIENTs: list[dict]) -> list[str]:
 
 def run(code: str, app_id: int, overrides: dict | None = None, tag: str = "",
         save: bool = False) -> dict:
-    vals = load_CLIENT(code, app_id)
+    vals = load_values(code, app_id)
     if overrides:
         vals.update(overrides)
     layout = build_layout(code, vals)
     html = render_html(code, layout)
     OUT.mkdir(parents=True, exist_ok=True)
     out_pdf = OUT / ("%s%s.pdf" % (code, tag))
-    from CLIENT.render import render_pdf
-    render_pdf(html, base_dir=str(CLIENT / code / "frame"), out_path=out_pdf)
+    from services.render import render_pdf
+    render_pdf(html, base_dir=str(TEMPLATES / code / "frame"), out_path=out_pdf)
 
-    pr = problems_of(layout["CLIENTs"])
-    ref = str(CLIENT / code / "example_filled.pdf")
+    pr = problems_of(layout["blocks"])
+    ref = str(TEMPLATES / code / "example_filled.pdf")
     a, b = render_img(ref), render_img(str(out_pdf))
-    mask = mask_for(a, layout["CLIENTs"])
+    mask = mask_for(a, layout["blocks"])
     outside = diff_pct(a, b, mask)
     total = diff_pct(a, b)
     if not overrides and outside > 0.45:
         pr.append("бланк изменился вне зон: %.2f%%" % outside)
 
     if save and not pr:
-        (CLIENT / code / "frame" / "flow.html").write_text(html, encoding="utf-8")
+        (TEMPLATES / code / "frame" / "flow.html").write_text(html, encoding="utf-8")
 
-    return {"pdf": str(out_pdf), "html": html, "CLIENTs": layout["CLIENTs"],
-            "total": total, "outside": outside, "problems": pr, "CLIENT": vals}
+    return {"pdf": str(out_pdf), "html": html, "blocks": layout["blocks"],
+            "total": total, "outside": outside, "problems": pr, "values": vals}
 
 
 def main() -> int:
@@ -521,8 +521,8 @@ def main() -> int:
     r = run(a.code, a.app, save=a.save)
     print("=== HTML-каркас (поток как в Word): %s ===" % a.code)
     print("блоков: %d | отличий всего %.2f%% | вне зон %.2f%%"
-          % (len([b for b in r["CLIENTs"] if b["text"]]), r["total"], r["outside"]))
-    for b in r["CLIENTs"]:
+          % (len([b for b in r["blocks"] if b["text"]]), r["total"], r["outside"]))
+    for b in r["blocks"]:
         if b["text"]:
             print("   %-15s строк:%d  x=%.0f y=%.0f w=%.0f кегль=%s%s"
                   % (b["var"], b["lines"], b["x"], b["top"], b["w"], b["size"],
@@ -536,8 +536,8 @@ def main() -> int:
             rr = run(a.code, a.app, ov, tag="_" + name)
             print("%-11s строк у ФИО: %d, у адреса: %d → %s"
                   % (name,
-                     next(b["lines"] for b in rr["CLIENTs"] if b["var"] == "client_name"),
-                     next(b["lines"] for b in rr["CLIENTs"] if b["var"] == "address_live"),
+                     next(b["lines"] for b in rr["blocks"] if b["var"] == "client_name"),
+                     next(b["lines"] for b in rr["blocks"] if b["var"] == "address_live"),
                      "OK" if not rr["problems"] else "ПРОБЛЕМЫ: " + "; ".join(rr["problems"])[:120]))
             print("            %s" % rr["pdf"])
     return 0

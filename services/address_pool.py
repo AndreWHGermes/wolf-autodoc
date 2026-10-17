@@ -56,9 +56,9 @@ CITIES = [
         "name": "Novosibirsk", "region": "Novosibirskaya Obl", "zip": (630000, 630099),
         "streets": ["Krasnyy Prospekt", "Ul Lenina", "Ul Kirova", "Ul Gorkogo",
                     "Ul Sovetskaya", "Ul Frunze", "Ul Kommunisticheskaya", "Ul Michurina",
-                    "Ul Shamshurina", "Ul Ordzhonikidze", "Ul CLIENTova", "Ul Gogolya",
+                    "Ul Shamshurina", "Ul Ordzhonikidze", "Ul Romanova", "Ul Gogolya",
                     "Ul Chaplygina", "Ul Kamenskaya", "Ul Serebrennikovskaya",
-                    "Ul CLIENTa Gorkogo", "Ul Dostoevskogo", "Ul Narymskaya"],
+                    "Ul Maksima Gorkogo", "Ul Dostoevskogo", "Ul Narymskaya"],
     },
     {
         "name": "Yekaterinburg", "region": "Sverdlovskaya Obl", "zip": (620000, 620099),
@@ -73,7 +73,7 @@ CITIES = [
         "streets": ["Ul Baumana", "Ul Kremlyovskaya", "Ul Pushkina", "Ul Ostrovskogo",
                     "Ul Profsoyuznaya", "Ul Dostoevskogo", "Ul Universitetskaya",
                     "Ul Karla Marksa", "Ul Butlerova", "Ul Shchapova", "Ul Gogolya",
-                    "Ul Zhukovskogo", "Ul CLIENTa Gorkogo", "Ul Kavi Nadzhmi",
+                    "Ul Zhukovskogo", "Ul Maksima Gorkogo", "Ul Kavi Nadzhmi",
                     "Ul Telmana", "Ul Spartakovskaya", "Ul Ershova"],
     },
     {
@@ -107,7 +107,7 @@ CITIES = [
         "name": "Rostov-na-Donu", "region": "Rostovskaya Obl", "zip": (344000, 344099),
         "streets": ["Bolshaya Sadovaya Ul", "Ul Sadovaya", "Prospekt Voroshilovskiy",
                     "Ul Pushkinskaya", "Ul Krasnoarmeyskaya", "Ul Sokolova",
-                    "Ul Budennovskiy", "Ul Shaumyana", "Ul Gazetnyy", "Ul CLIENTa Gorkogo",
+                    "Ul Budennovskiy", "Ul Shaumyana", "Ul Gazetnyy", "Ul Maksima Gorkogo",
                     "Ul Ulyanovskaya", "Ul Temernitskaya"],
     },
     {
@@ -133,7 +133,7 @@ CITIES = [
         "name": "Perm", "region": "Permskiy Kray", "zip": (614000, 614099),
         "streets": ["Komsomolskiy Prospekt", "Ul Lenina", "Ul Sibirskaya",
                     "Ul Petropavlovskaya", "Ul Komsomolskiy", "Ul Pushkina",
-                    "Ul Lunacharskogo", "Ul CLIENTa Gorkogo", "Ul Ordzhonikidze",
+                    "Ul Lunacharskogo", "Ul Maksima Gorkogo", "Ul Ordzhonikidze",
                     "Ul Borchaninova", "Ul Kirova", "Ul Ekaterininskaya"],
     },
     {
@@ -219,7 +219,7 @@ CITIES = [
     {
         "name": "Stavropol", "region": "Stavropolskiy Kray", "zip": (355000, 355099),
         "streets": ["Prospekt Karla Marksa", "Ul Lenina", "Ul Mira", "Ul Dovatortsev",
-                    "Ul Pushkina", "Ul Sovetskaya", "Ul Morozova", "Ul CLIENTa",
+                    "Ul Pushkina", "Ul Sovetskaya", "Ul Morozova", "Ul Artema",
                     "Ul Kominterna", "Ul Lermontova", "Ul Serova"],
     },
     {
@@ -280,7 +280,7 @@ def _city_entry(name: str):
         if c["name"].lower() == key:
             return c
     for c in CITIES:                      # частичное совпадение: «Moscow g», «Moscow, Russia»
-        if key.CLIENTswith(c["name"].lower()):
+        if key.startswith(c["name"].lower()):
             return c
     return None
 
@@ -334,7 +334,7 @@ def generate_address(seed, city: str | None = None) -> dict:
 
 def resolve_address(seed, real_address: str = "", city_hint: str = "") -> dict:
     """Главная функция: реальный адрес -> адрес по городу клиента -> случайный город."""
-    from CLIENT.doc_parse import is_russian_address
+    from services.doc_parse import is_russian_address
 
     if real_address and is_russian_address(real_address):
         return {"address": str(real_address).strip(), "city": detect_city(real_address),

@@ -2,14 +2,14 @@
 
 Собирает по всем 16 шаблонам:
   1) семейство переменной (по имени) → правило формирования и источник;
-  2) фактические значения из базы (CLIENT_CLIENT_CLIENT: 5407 записей, used_count, approved);
-  3) в каких документах пакета переменная повторяется (docs/packs_by_CLIENT.json);
-  4) заметку из карточки переменной (rule_note) и вычисление в коде (CLIENT_guide.json).
+  2) фактические значения из базы (variable_value_history: 5407 записей, used_count, approved);
+  3) в каких документах пакета переменная повторяется (docs/packs_by_product.json);
+  4) заметку из карточки переменной (rule_note) и вычисление в коде (variables_guide.json).
 
 Семейства описаны один раз — так правило одно и то же в любом документе, а документы
 внутри продукта получают согласованные значения (см. решение работать по продуктам).
 
-Выход: docs/VARIABLES_RULES.md, docs/CLIENT_rules.json
+Выход: docs/VARIABLES_RULES.md, docs/variables_rules.json
 """
 import collections
 import json
@@ -20,93 +20,93 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 OUT_MD = ROOT / 'docs' / 'VARIABLES_RULES.md'
-OUT_JSON = ROOT / 'docs' / 'CLIENT_rules.json'
-PACKS = ROOT / 'docs' / 'packs_by_CLIENT.json'
-GUIDE = Path('/root/.hermes/cache/scratch/CLIENT_guide.json')
+OUT_JSON = ROOT / 'docs' / 'variables_rules.json'
+PACKS = ROOT / 'docs' / 'packs_by_product.json'
+GUIDE = Path('/root/.hermes/cache/scratch/variables_guide.json')
 
 # семейство → (как формируется, источник, документ-источник данных клиента)
 FAMILIES = [
-    (r'^(passport_no|passport_CLIENT|passport_CLIENT|intl_passport)$',
+    (r'^(passport_no|passport_number|passport_series|intl_passport)$',
      'Номер паспорта клиента — переносится в документ как есть, латиницей, без пробелов.',
      'загранпаспорт клиента', 'загранпаспорт'),
-    (r'^(passport_CLIENT_by|passport_CLIENT_date|passport_CLIENT|passport_code)$',
+    (r'^(passport_issued_by|passport_issue_date|passport_expiry|passport_code)$',
      'Паспортные данные клиента: кем выдан / дата выдачи / действует до — из загранпаспорта.',
      'загранпаспорт клиента', 'загранпаспорт'),
-    (r'^(full_name_CLIENT|full_name_CLIENT|CLIENT_name|CLIENT_full_name|CLIENT_CLIENT|client_name|CLIENT_name|CLIENT_full_name|CLIENT|CLIENT_name|CLIENT_CLIENT_name|CLIENT_name)$',
+    (r'^(full_name_latin|full_name_title|employee_name|employee_full_name|employee_short|client_name|signer_name|contractor_full_name|surname|sponsor_name|sponsor_person_name|attorney_name)$',
      'Имя в документе — транслитерация ФИО клиента (латиница), как в загранпаспорте. '
      'Одна и та же строка идёт во все документы пакета, поэтому берётся из карточки один раз.',
      'карточка клиента (латиница)', 'загранпаспорт'),
-    (r'^(date_of_CLIENT|CLIENT_date|client_dob)$',
+    (r'^(date_of_birth|birth_date|client_dob)$',
      'Дата рождения клиента из карточки; формат — как в бланке (латиницей: DD Month YYYY).',
      'карточка клиента / загранпаспорт', 'загранпаспорт'),
-    (r'^(CLIENT_of_CLIENT|CLIENT_CLIENT_CLIENT|CLIENT_date|CLIENT_date_of_CLIENT|CLIENT)$',
+    (r'^(place_of_birth|place_birth_inline|place_date|place_date_of_birth|place)$',
      'Место рождения клиента (город и страна), латиницей; в письмах — одна строка «Место, дата».',
      'карточка клиента / загранпаспорт', 'загранпаспорт'),
-    (r'^(CLIENT|client_CLIENT|CLIENT_CLIENT)$',
+    (r'^(nationality|client_nationality|signatory_citizenship)$',
      'Гражданство клиента (или подписанта), латиницей — из паспорта.',
      'карточка клиента / загранпаспорт', 'загранпаспорт'),
-    (r'^(client_CLIENT|CLIENT)$', 'Пол клиента — из карточки (влияет на Mr/Ms в письмах).',
+    (r'^(client_gender|gender)$', 'Пол клиента — из карточки (влияет на Mr/Ms в письмах).',
      'карточка клиента', 'загранпаспорт'),
-    (r'^(address_live|address_reg|address_in_indonesia|client_address|CLIENT_address|address_zip|city|CLIENT)$',
+    (r'^(address_live|address_reg|address_in_indonesia|client_address|employee_address|address_zip|city|country)$',
      'Адрес: адрес проживания и регистрации — латиницей из карточки; в индонезийских письмах '
      'используется адрес пребывания в Индонезии.',
      'карточка клиента', 'адрес проживания'),
-    (r'^(company_name_in_CLIENT|CLIENT_name|company_full_name|company_type|company_CLIENT|company_CLIENT_no|company_address_1|company_address_2|company_CLIENT_address|company_CLIENT|company_link|company_inn|company_kpp|company_ogrn|inn_kpp_ogrn|company_director|company_llc)$',
+    (r'^(company_name_in_quotes|employer_name|company_full_name|company_type|company_country|company_entity_no|company_address_1|company_address_2|company_registered_address|company_block|company_link|company_inn|company_kpp|company_ogrn|inn_kpp_ogrn|company_director|company_llc)$',
      'Организация-работодатель: одна запись подбирается на заявку из пула организаций '
      '(вне Индонезии) и подставляется во все документы пакета — шапка, юр. название, адрес, '
      'ИНН/КПП/ОГРН. Если КПП или ОГРН нет — остаётся пустое место, имя переменной не пишется.',
      'пул организаций (data/organizations.json)', '—'),
-    (r'^(position_CLIENT|CLIENT|cv_CLIENT)$',
+    (r'^(position_title|occupation|cv_profession)$',
      'Должность: берётся из заявки или из пула должностей организации; новые профессии не заводятся.',
      'пул должностей организации / заявка', '—'),
-    (r'^(CLIENT_list)$',
+    (r'^(services_list)$',
      'Перечень услуг по договору — типовой список из шаблона договора, при необходимости правится админом.',
      'шаблон договора / ввод администратора', '—'),
-    (r'^(base_salary|CLIENT_CLIENT_CLIENT|CLIENT_CLIENT_CLIENT|CLIENT_CLIENT_CLIENT|CLIENT_CLIENT_CLIENT|salary_CLIENT)$',
+    (r'^(base_salary|annual_amount_numeric|annual_amount_words|monthly_amount_numeric|monthly_amount_words|salary_amount)$',
      'Сумма: 50% случаев — значение из архива реальных договоров, 50% — случайное в границах '
      '(4 980 000–7 680 000 ₽/год, 415 000–640 000 ₽/мес, шаг 1 000, без копеек); '
      'прописью — из того же числа, чтобы цифры и слова всегда совпадали.',
-     'пул сумм (CLIENT/salary_pool.py)', '—'),
-    (r'^(term_CLIENT_date|term_end_date|contract_date|agreement_date|contract_no)$',
+     'пул сумм (services/salary_pool.py)', '—'),
+    (r'^(term_start_date|term_end_date|contract_date|agreement_date|contract_no)$',
      'Сроки и номер договора: дата — день формирования пакета, срок — 12 месяцев; '
      'номер договора один и тот же во всех документах пакета.',
      'расчёт системы (одна дата и один номер на заявку)', '—'),
-    (r'^(date|date_iso|date_iso_2|date_iso_3|letter_CLIENT_date|doc_date|CLIENT_date_doc)$',
+    (r'^(date|date_iso|date_iso_2|date_iso_3|letter_place_date|doc_date|place_date_doc)$',
      'Дата документа: день формирования; цифрами и в индонезийском формате — из одной даты.',
      'расчёт системы', '—'),
-    (r'^(letter_no|CLIENT_no|doc_no|ref_no|account_no|card_mask)$',
+    (r'^(letter_no|application_no|doc_no|ref_no|account_no|card_mask)$',
      'Служебный номер документа (письма/заявки/справки) — уникальный номер в рамках заявки.',
      'расчёт системы', '—'),
-    (r'^(balance_rub|balance_date|CLIENT_from|CLIENT_to|bank_name)$',
+    (r'^(balance_rub|balance_date|period_from|period_to|bank_name)$',
      'Остаток и период справки банка — из справки клиента (или из карточки клиента).',
      'справка банка клиента', 'справка банка'),
-    (r'^(itk_no|itk_CLIENT|stay_CLIENT_no|CLIENT_stay_CLIENT|visa_no)$',
+    (r'^(itk_no|itk_expiry|stay_permit_no|existing_stay_permit|visa_no)$',
      'Данные действующего разрешения (ИТК/KITAS): номер и срок — из документа клиента; '
      'если документа нет — поле остаётся пустым.',
      'документы клиента (KITAS/ITK)', 'KITAS / ITK'),
-    (r'^(CLIENT_of_CLIENT|stay_CLIENT_to_be_CLIENT_for|body_CLIENT_line|letter_CLIENT|the_company_CLIENT_that)$',
+    (r'^(purpose_of_application|stay_permit_to_be_applied_for|body_request_line|letter_subject|the_company_confirms_that)$',
      'Формулировка обращения — зависит от продукта заявки (мостовая/конверсия/продление), '
      'а не от документа: одна и та же в письме и в форме E-02.',
      'правило продукта (расчёт системы)', '—'),
-    (r'^(CLIENT_CLIENT|CLIENT_line1|CLIENT_line2|CLIENT_line3)$',
+    (r'^(addressee_office|addressee_line1|addressee_line2|addressee_line3)$',
      'Адресат письма — офис иммиграции выбирается по адресу клиента (Ngurah Rai / Denpasar / '
      'Tabanan); три строки адреса офиса — из справочника офисов.',
-     'правило выбора офиса (CLIENT/CLIENTs.py)', '—'),
-    (r'^(CLIENT_name|CLIENT_position|CLIENT_address|CLIENT_nik_or_dash|CLIENT_nik|CLIENT_address)$',
+     'правило выбора офиса (services/offices.py)', '—'),
+    (r'^(signatory_name|signatory_position|signatory_address|signatory_nik_or_dash|attorney_nik|attorney_address)$',
      'Подписант и представитель — постоянные лица компании (куратор и адвокат): имя, адрес, '
      'NIK/должность берутся из справочника, а не из карточки клиента.',
      'справочник подписантов', '—'),
-    (r'^(cv_name|cv_date_of_CLIENT|cv_CLIENT_of_CLIENT|cv_CLIENT|cv_passport_no)$',
+    (r'^(cv_name|cv_date_of_birth|cv_place_of_birth|cv_nationality|cv_passport_no)$',
      'Резюме, личные данные (латиница) — из карточки клиента.',
      'карточка клиента', 'загранпаспорт'),
-    (r'^(cv_CLIENT|cv_job1_CLIENT|cv_job1_CLIENT|cv_job1_company|cv_job1_CLIENT|cv_job2_CLIENT|cv_job2_company|cv_job2_CLIENT|cv_CLIENT|cv_CLIENT_hard|cv_CLIENT_CLIENT|cv_CLIENT_CLIENT|cv_CLIENT_years)$',
+    (r'^(cv_summary|cv_job1_title|cv_job1_period|cv_job1_company|cv_job1_bullets|cv_job2_period|cv_job2_company|cv_job2_bullets|cv_languages|cv_skills_hard|cv_education_degree|cv_education_school|cv_education_years)$',
      'Резюме, опыт и образование — составляется один раз на клиента (ввод администратора); '
      'описание компании-работодателя формируется моделью, персональные данные не додумываются.',
      'ввод администратора / генерация модели', '—'),
-    (r'^(CLIENT_company|CLIENT|CLIENT_CLIENT|CLIENT_full_name)$',
+    (r'^(sponsor_company|guarantor|signer_title|employee_full_name)$',
      'Гарант/подписант со стороны компании — из справочника организации заявки.',
      'справочник организации', '—'),
-    (r'^(CLIENT|CLIENT|telegram_username)$', 'Контакты клиента — из карточки (нужны для формы E-02).',
+    (r'^(email|phone|telegram_username)$', 'Контакты клиента — из карточки (нужны для формы E-02).',
      'карточка клиента', '—'),
 ]
 
@@ -121,14 +121,14 @@ def family_of(name: str):
 def main() -> int:
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM CLIENT")}
-    scopes = {r['name']: dict(r) for r in con.execute("SELECT * FROM CLIENT_scope")}
+    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM templates")}
+    scopes = {r['name']: dict(r) for r in con.execute("SELECT * FROM variable_scope")}
     # фактические значения из базы: чем чаще использовалось, тем показательнее пример
     hist = collections.defaultdict(list)
-    for r in con.execute("SELECT CLIENT_name, CLIENT, used_count, approved FROM CLIENT_CLIENT_CLIENT "
-                         "WHERE CLIENT IS NOT NULL AND CLIENT<>'' ORDER BY used_count DESC"):
-        if len(hist[r['CLIENT_name']]) < 5:
-            hist[r['CLIENT_name']].append((r['CLIENT'], r['used_count'], r['approved']))
+    for r in con.execute("SELECT variable_name, value, used_count, approved FROM variable_value_history "
+                         "WHERE value IS NOT NULL AND value<>'' ORDER BY used_count DESC"):
+        if len(hist[r['variable_name']]) < 5:
+            hist[r['variable_name']].append((r['value'], r['used_count'], r['approved']))
     guide = {}
     if GUIDE.is_file():
         try:
@@ -144,7 +144,7 @@ def main() -> int:
 
     where_used = collections.defaultdict(set)
     for code, m in packs.items():
-        for tcode, names in (m.get('CLIENT') or {}).items():
+        for tcode, names in (m.get('variables') or {}).items():
             for n in names:
                 where_used[n].add(tcode)
 
@@ -157,11 +157,11 @@ def main() -> int:
         code = t.get('code') or '?'
         if not code:
             continue
-        rows = con.execute("SELECT * FROM template_CLIENT WHERE template_id=? "
+        rows = con.execute("SELECT * FROM template_variables WHERE template_id=? "
                            "ORDER BY sort_order, name", (tid,)).fetchall()
         if not rows:
             continue
-        md += ['', '## `%s` — %s' % (code, t.get('CLIENT') or ''), '']
+        md += ['', '## `%s` — %s' % (code, t.get('title') or ''), '']
         tpl_machine = []
         for r in rows:
             name = r['name']
@@ -174,7 +174,7 @@ def main() -> int:
                                               if note else '— не описано —')
             if not src:
                 src = {'client': 'карточка клиента', 'client_fact': 'карточка клиента / документ клиента',
-                       'doc_CLIENT': 'служебное поле (система)', 'pool': 'пул значений',
+                       'doc_service': 'служебное поле (система)', 'pool': 'пул значений',
                        'calc': 'расчёт системы', 'manual': 'ввод администратора',
                        'descriptive': 'текст подбирает система / модель'}.get(
                            r['source_kind'] or '', r['source_kind'] or '—')

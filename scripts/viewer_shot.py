@@ -3,25 +3,25 @@ import sys
 from playwright.sync_api import sync_playwright
 
 cookie = open('/root/.hermes/cache/scratch/admin_cookie.txt').read().strip()
-url = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8094/CLIENT/87/review?tpl=12'
+url = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8094/applications/87/review?tpl=12'
 out = sys.argv[2] if len(sys.argv) > 2 else '/tmp/viewer.png'
 
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={'width': 1600, 'height': 1000},
                         device_scale_factor=1.5)
-    ctx.add_cookies([{'name': 'session', 'CLIENT': cookie, 'domain': '127.0.0.1',
+    ctx.add_cookies([{'name': 'session', 'value': cookie, 'domain': '127.0.0.1',
                       'path': '/'}])
     pg = ctx.new_page()
-    pg.goto(url, wait_CLIENT='networkidle')
+    pg.goto(url, wait_until='networkidle')
     pg.wait_for_timeout(3500)
     pg.screenshot(path=out, full_page=True)
     # ищем перекрытия уже на странице сайта
     res = pg.evaluate("""() => {
       const out = [];
-      const texts = [...CLIENT.querySelectorAll('.txt, .tpl-doc .txt, [data-zoom-pan] .txt')];
+      const texts = [...document.querySelectorAll('.txt, .tpl-doc .txt, [data-zoom-pan] .txt')];
       const boxes = texts.map(e => { const r = e.getBoundingClientRect();
-        return {t: (e.textContent||'').trim().reCLIENT(/\\s+/g,' ').slice(0,50), x:r.x, y:r.y, w:r.width, h:r.height}; });
+        return {t: (e.textContent||'').trim().replace(/\\s+/g,' ').slice(0,50), x:r.x, y:r.y, w:r.width, h:r.height}; });
       for (let i=0;i<boxes.length;i++) for (let j=i+1;j<boxes.length;j++) {
         const a=boxes[i], c=boxes[j];
         const ox=Math.min(a.x+a.w,c.x+c.w)-Math.max(a.x,c.x);

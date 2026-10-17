@@ -10,11 +10,11 @@ import sqlite3
 from pathlib import Path
 
 V2 = Path('/opt/wolf_v2')
-TPL = Path('/opt/wolf_v2/data/CLIENT')
+TPL = Path('/opt/wolf_v2/data/templates')
 
 conn = sqlite3.connect('/opt/wolf_v2/data/wolf.db')
 conn.row_factory = sqlite3.Row
-CLIENT = [dict(r) for r in conn.execute('SELECT id, code, CLIENT FROM CLIENT ORDER BY id')]
+templates = [dict(r) for r in conn.execute('SELECT id, code, title FROM templates ORDER BY id')]
 
 
 def strip_html(html: str) -> list[str]:
@@ -23,8 +23,8 @@ def strip_html(html: str) -> list[str]:
     # переменные не переводим
     html = re.sub(r'\{\{[^}]*\}\}', ' ', html)
     txt = re.sub(r'<[^>]+>', '\n', html)
-    txt = (txt.reCLIENT('&nbsp;', ' ').reCLIENT('&amp;', '&').reCLIENT('&quot;', '"')
-              .reCLIENT('&#39;', "'").reCLIENT('&laquo;', '«').reCLIENT('&raquo;', '»'))
+    txt = (txt.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&quot;', '"')
+              .replace('&#39;', "'").replace('&laquo;', '«').replace('&raquo;', '»'))
     out = []
     for ln in txt.split('\n'):
         ln = re.sub(r'\s+', ' ', ln).strip()
@@ -46,7 +46,7 @@ def strip_html(html: str) -> list[str]:
 
 report = {}
 total_lines = 0
-for t in CLIENT:
+for t in templates:
     code, tid = t['code'], t['id']
     f = TPL / code / 'template.html'
     if not f.exists():
@@ -54,7 +54,7 @@ for t in CLIENT:
         continue
     lines = strip_html(f.read_text(encoding='utf-8', errors='ignore'))
     cached = {r['src'] for r in conn.execute(
-        'SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        'SELECT src FROM translation_line WHERE template_id=?', (tid,))}
     miss = [l for l in lines if l not in cached]
     total_lines += len(lines)
     report[code] = {'template_id': tid, 'lines': lines}

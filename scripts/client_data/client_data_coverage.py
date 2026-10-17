@@ -10,14 +10,14 @@ os.chdir('/opt/wolf_v2')
 
 conn = sqlite3.connect('data/wolf.db')
 conn.row_factory = sqlite3.Row
-CLIENT = [dict(r) for r in conn.execute("SELECT id, full_name_CLIENT, position, company_name FROM CLIENT ORDER BY id")]
+clients = [dict(r) for r in conn.execute("SELECT id, full_name_latin, position, company_name FROM clients ORDER BY id")]
 conn.close()
 
-from CLIENT.CLIENT import _find_client_folder_by_id
+from services.values import _find_client_folder_by_id
 
 stat = {'нет папки': 0, 'папка без pdf': 0, 'есть pdf': 0}
 can_pos, need_adm, rows = 0, 0, []
-for c in CLIENT:
+for c in clients:
     try:
         folder = _find_client_folder_by_id(c['id'])
     except Exception:
@@ -37,7 +37,7 @@ for c in CLIENT:
         need_adm += 1
     rows.append((c, os.path.basename(str(folder)), len(pdfs), has_pos))
 
-print('всего клиентов: %d' % len(CLIENT))
+print('всего клиентов: %d' % len(clients))
 for k, v in stat.items():
     print('   %-16s %d' % (k, v))
 print('   с заполненной должностью: %d | без должности: %d (в т.ч. с документами: %d)'
@@ -46,4 +46,4 @@ print()
 print('— клиенты без должности, но с документами в папке (кандидаты на автозаполнение):')
 for c, folder, n, has_pos in rows:
     if not has_pos and n:
-        print('   #%-4s %-26s %s | pdf: %d' % (c['id'], (c['full_name_CLIENT'] or '')[:26], folder[:34], n))
+        print('   #%-4s %-26s %s | pdf: %d' % (c['id'], (c['full_name_latin'] or '')[:26], folder[:34], n))

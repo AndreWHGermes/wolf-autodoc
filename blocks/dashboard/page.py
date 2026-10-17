@@ -5,23 +5,24 @@
 """
 from __future__ import annotations
 from urllib.parse import quote
+import html
 import re
 import subprocess
 
 import json
 import re
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, flash, jsonify, current_app, redirect, render_template, CLIENT, send_file, url_for
+from flask import Blueprint, flash, jsonify, current_app, redirect, render_template, request, send_file, url_for
 
-from CLIENTs.shared.layout import card as ui_card, docs_CLIENT_html, CLIENT_stats, item, modal, render
-from CLIENT import render as doc_render
-from CLIENT import CLIENT
+from blocks.shared.layout import card as ui_card, docs_state_html, header_stats, item, modal, render
+from services import render as doc_render
+from services import marks
 from core import db
-from core.auth import current_user, CLIENT_required
+from core.auth import current_user, login_required
 from core.ru_labels import label_for
-from repositories import CLIENT as apps_repo, CLIENT as CLIENT_repo, CLIENT as tpl_repo, CLIENT as vars_repo
+from repositories import applications as apps_repo, clients as clients_repo, templates as tpl_repo, variables as vars_repo
 
 bp = Blueprint("dashboard", __name__)
 
@@ -41,21 +42,21 @@ def _bank_allows(template_code: str, bank: str) -> bool:
 
 
 
-def _app_pdf_path(tpl: dict, CLIENT: dict, app_id: int) -> Path:
+def _app_pdf_path(tpl: dict, values: dict, app_id: int) -> Path:
     """Путь готового PDF заявки: имя документа по-английски, ФИО латиницей, дата.
 
     Если файл с таким именем уже есть — добавляем время, чтобы не перезаписать.
     """
-    base = doc_render.doc_filename((tpl or {}).get("CLIENT") or (tpl or {}).get("code") or "CLIENT",
-                                   CLIENT or {}, code=(tpl or {}).get("code"))
+    base = doc_render.doc_filename((tpl or {}).get("title") or (tpl or {}).get("code") or "document",
+                                   values or {}, code=(tpl or {}).get("code"))
     out = Path('/opt/wolf_v2/data/renders') / base
     if out.exists():
         stem, ext = base.rsplit(".", 1)
-        out = Path('/opt/wolf_v2/data/renders') / f"{stem} {CLIENT.now():%H%M%S}.{ext}"
+        out = Path('/opt/wolf_v2/data/renders') / f"{stem} {datetime.now():%H%M%S}.{ext}"
     return out
 
 
-def human_CLIENT(text: str) -> str:
+def human_value(text: str) -> str:
     """Значение для показа: числа с разделителями разрядов, да/нет по-русски."""
     t = (text or "").strip()
     low = t.lower()
@@ -64,59 +65,297 @@ def human_CLIENT(text: str) -> str:
     if low in ("false", "no", "нет"):
         return "нет"
     if t.isdigit() and len(t) >= 5:
-        return "{:,}".format(int(t)).reCLIENT(",", " ")
+        return "{:,}".format(int(t)).replace(",", " ")
     return t
 
 
-# =============== ОРИГИНАЛЫ КЛИЕНТА (Google CLIENT) ===============
-GDRIVE_ROOT = Path("/opt/wolf_v2/data/gCLIENT_examples")
+# =============== ОРИГИНАЛЫ КЛИЕНТА (Google Drive) ===============
+GDRIVE_ROOT = Path("/opt/wolf_v2/data/gdrive_examples")
 
 ORIGINAL_PATTERNS = {
-    "bank": ["bankCLIENTment", "bank_CLIENTment", "bank CLIENTment", "funds_movement",
+    "bank": ["bankstatement", "bank_statement", "bank statement", "funds_movement",
              "funds movement", "account_activity", "account activity",
              "справка", "движение средств"],
     "work": ["workagreement", "work_agreement", "work agreement", "трудовой",
              "трудовой дог", "employment agreement", "employment_agreement",
              "договор"],
     "cv": ["resume", "cv", "itk"],
-    "CLIENTal": ["CLIENTal"],
+    "personal": ["personal"],
 }
 
 
-from CLIENT import CLIENT
-from CLIENT.CLIENT import (  # noqa: E402 — логика вынесена в сервис
+from services import drive
+from services.values import (  # noqa: E402 — логика вынесена в сервис
     GDRIVE_ROOT, ORIGINAL_PATTERNS,
-    _original_patterns_for, _find_client_folder_by_id, _find_original_file, _minus_months, _num2CLIENT_en, _date_id, _fio_CLIENT, _has_cyr, _translit, _ru_to_en, build_template_CLIENT)
+    _original_patterns_for, _find_client_folder_by_id, _find_original_file, _minus_months, _num2words_en, _date_id, _fio_latin, _has_cyr, _translit, _ru_to_en, build_template_values)
 
 
 def kind_badge(row) -> str:
-    """Пометка записи: архивная / тестовая / тест на реальных данных."""
+    """Пометка записи. Тестовых меток нет: остался только «архив».
+
+    Раньше «тест» и «тест с реальными данными» были разными плашками, хотя
+    означали одно и то же — обкатку системы. Метки убраны по просьбе заказчика.
+    """
     try:
         kind = (row.get("record_kind") or "").strip()
-    except Exception:
+    except Exception:                                  # noqa: BLE001
         kind = ""
     if kind == "archive":
-        return ' <span CLIENT="kind-badge kind-archive">архив</span>'
-    if kind == "real_test":
-        # Боевой тест на реальных заявках: клиенты и данные настоящие.
-        return ' <span CLIENT="kind-badge kind-real-test">🟢 тест с реальными данными</span>'
-    if kind == "test":
-        # Наши тестовые прогоны: данные учебные.
-        return ' <span CLIENT="kind-badge kind-test">тест</span>'
+        return ' <span class="kind-badge kind-archive">архив</span>'
     return ""
 
 
+AUTO_ON, AUTO_PAUSE = "on", "pause"
+
+
+def auto_mode() -> str:
+    """Режим автоматики: 'on' — заявки уходят в работу сразу, 'pause' — стоят."""
+    try:
+        val = (db.setting("auto_mode", "") or "").strip()
+    except Exception:                                  # noqa: BLE001
+        val = ""
+    return AUTO_ON if val == AUTO_ON else AUTO_PAUSE
+
+
+def _queue_state(app_id: int) -> str:
+    """Состояние заявки в очереди: queued / running / paused / failed / done."""
+    try:
+        r = db.q1("SELECT status FROM auto_queue WHERE application_id=? "
+                  "ORDER BY id DESC LIMIT 1", (app_id,))
+        return (r.get("status") or "") if r else ""
+    except Exception:                                  # noqa: BLE001
+        return ""
+
+
+def _last_run(app_id: int):
+    try:
+        return db.q1("SELECT ok, sent, stage, files, errors, finished_at FROM auto_runs "
+                     "WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+    except Exception:                                  # noqa: BLE001
+        return None
+
+
+def _err_list(row) -> list:
+    """Ошибки последнего прогона — списком коротких строк."""
+    raw = (row or {}).get("errors") if row else ""
+    if isinstance(row, dict):
+        raw = row.get("errors")
+    try:
+        data = json.loads(raw) if raw else []
+    except Exception:                                  # noqa: BLE001
+        data = [raw]
+    return [str(x).strip() for x in (data or []) if str(x).strip()]
+
+
+def _ts_fmt(ts) -> str:
+    if not ts:
+        return ""
+    try:
+        return datetime.fromisoformat(str(ts).replace("Z", "")).strftime("%d.%m %H:%M")
+    except Exception:                                  # noqa: BLE001
+        return str(ts)[:16]
+
+
+def _where_now(app_id: int) -> dict:
+    try:
+        from services import app_steps as _steps
+        return _steps.where_now(app_id) or {}
+    except Exception:                                  # noqa: BLE001
+        return {}
+
+
+def _is_active_elsewhere(app_id: int) -> bool:
+    """Есть ли другая заявка, которая сейчас обрабатывается (очередь идёт по одной)."""
+    try:
+        r = db.q1("SELECT application_id FROM auto_queue WHERE status='running' "
+                  "AND application_id<>? LIMIT 1", (app_id,))
+        return bool(r)
+    except Exception:                                  # noqa: BLE001
+        return False
+
+
+def steps_html(app_id: int) -> str:
+    """Этапы обработки заявки: что сделано, что идёт, где ступор. Раскрывается по клику."""
+    try:
+        from services import app_steps as _steps
+        rows = _steps.trail(app_id, limit=40)
+    except Exception:                                  # noqa: BLE001
+        rows = []
+    if not rows:
+        return ""
+    icon = {"ok": "✅", "warn": "⚠", "fail": "❌", "run": "⏳"}
+    lines = []
+    for r in rows:
+        ic = icon.get(r.get("status"), "•")
+        note = html.escape(str(r.get("note") or ""))
+        lines.append(f'<li>{ic} <b>{html.escape(str(r.get("step") or ""))}</b> '
+                     f'<span class="muted">{_ts_fmt(r.get("created_at"))}</span>'
+                     + (f' — {note}' if note else '') + '</li>')
+    return (f'<details class="stages"><summary>этапы ({len(rows)})</summary>'
+            f'<ol>{"".join(lines)}</ol></details>')
+
+
+def progress_html(app_id: int) -> str:
+    """Ход работы заявки: очередь, обработка, ошибка, отправка на Google Диск."""
+    q = _queue_state(app_id)
+    run = _last_run(app_id) or {}
+    errs = _err_list(run)
+    parts = []
+    if q == "running":
+        now = _where_now(app_id)
+        step = now.get("next") or now.get("last_ok") or str(run.get("stage") or "")
+        parts.append('<span class="pchip run">⏳ обрабатывается'
+                     + (f' · этап: {html.escape(step)}' if step else '') + '</span>')
+    if q == "queued" and _is_active_elsewhere(app_id):
+        parts.append('<span class="pchip wait">🕓 ждёт: сейчас обрабатывается другая заявка</span>')
+    elif q == "queued":
+        parts.append('<span class="pchip wait">🕓 в очереди</span>')
+    elif q == "paused":
+        parts.append('<span class="pchip paused">⏸ пауза</span>')
+    if run.get("sent"):
+        files = run.get("files")
+        parts.append('<span class="pchip done">✅ отправлено на Диск'
+                     + (f' · файлов {int(files)}' if files else '') + '</span>')
+    if errs:
+        title = html.escape("; ".join(errs)[:600], quote=True)
+        first = errs[0]
+        short = first if len(first) <= 96 else first[:94] + "…"
+        parts.append(f'<span class="pchip err" title="{title}">⚠ {html.escape(short)}</span>')
+        if len(errs) > 1:
+            parts.append(f'<span class="pchip err-more" title="{title}">ещё {len(errs) - 1}</span>')
+    if not parts:
+        parts.append('<span class="pchip idle">не в работе</span>')
+    return '<div class="prow">' + "".join(parts) + '</div>'
+
+
+def inbox_row(a) -> str:
+    """Карточка входящей заявки с кнопками: в работу / пауза / в архив."""
+    def esc(v):
+        return html.escape(str(v or ""), quote=True)
+    app_id = a["id"]
+    mgr = ""
+    if a.get("manager_name") or a.get("manager_username"):
+        name = a.get("manager_name") or a.get("manager_username") or ""
+        uname = a.get("manager_username") or ""
+        mgr = f'от {name}' + (f' (@{uname})' if uname else '')
+    subs = [x for x in (mgr, a.get("product_name") or "продукт не указан",
+                        _ts_fmt(a.get("created_at"))) if x]
+    state = _queue_state(app_id)
+    active = state in ("queued", "running")
+    btn_main = ('<button type="button" class="ibtn pause" data-act="pause"'
+                f' data-app="{app_id}" title="Остановить эту заявку">⏸ Пауза</button>'
+                if active else
+                '<button type="button" class="ibtn go" data-act="start"'
+                f' data-app="{app_id}" title="Поставить эту заявку в работу">▶ В работу</button>')
+    price = f' · IDR {a["price_idr"]:,}' if a.get("price_idr") else ''
+    return f"""
+<div class="inbox-row" data-app="{app_id}" data-state="{esc(state)}">
+  <div class="inbox-top">
+    <a class="inbox-main" href="/applications/{app_id}/review">
+      <div class="inbox-title">Заявка #{app_id} · {esc(db.client_label(a))}{kind_badge(a)}</div>
+      <div class="inbox-sub">{esc(" · ".join(subs))}{price}</div>
+      {progress_html(app_id)}
+      {docs_state_html(db.application_doc_summary(app_id))}
+    </a>
+    <div class="inbox-actions">{btn_main}
+      <button type="button" class="ibtn arch" data-act="archive" data-app="{app_id}"
+        title="Убрать из входящих: заявка останется в истории">🗄 В архив</button>
+    </div>
+  </div>
+  {steps_html(app_id)}
+</div>"""
+
+
+def auto_switch_html() -> str:
+    """Кнопки управления всей автоматикой: Старт и Пауза."""
+    on = auto_mode() == AUTO_ON
+    return f"""
+<div class="auto-switch" id="auto-switch" data-mode="{'on' if on else 'pause'}">
+  <span class="auto-lbl">Автоматика</span>
+  <button type="button" class="asw-btn start{' active' if on else ''}" data-mode="on"
+    title="Заявки уходят в работу сразу после поступления">▶ Старт</button>
+  <button type="button" class="asw-btn stopr{' active' if not on else ''}" data-mode="pause"
+    title="Новые заявки стоят и ждут запуска">⏸ Пауза</button>
+  <span class="auto-state" id="auto-state">{'включена' if on else 'на паузе'}</span>
+</div>"""
+
+
+def _inbox_script() -> str:
+    """Кнопки главной работают без перезагрузки: страница не «моргает»."""
+    return """
+<script>
+(function () {
+  function post(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: {'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body || '', credentials: 'same-origin'
+    }).then(function (r) { return r.json().catch(function () { return {}; }); });
+  }
+  function applyRow(row, res) {
+    if (!row || !res || !res.ok) return;
+    row.dataset.state = res.state || '';
+    var chip = row.querySelector('.prow');
+    if (chip && res.progress) { chip.outerHTML = res.progress; }
+    var btn = row.querySelector('.ibtn.go, .ibtn.pause');
+    if (btn) {
+      if (res.queued) {
+        btn.dataset.act = 'pause'; btn.className = 'ibtn pause'; btn.textContent = '⏸ Пауза';
+      } else {
+        btn.dataset.act = 'start'; btn.className = 'ibtn go'; btn.textContent = '▶ В работу';
+      }
+    }
+  }
+  document.addEventListener('click', function (ev) {
+    var sw = ev.target.closest ? ev.target.closest('.asw-btn') : null;
+    if (sw) {
+      ev.preventDefault();
+      var box = document.getElementById('auto-switch');
+      post('/auto/mode', 'mode=' + encodeURIComponent(sw.dataset.mode)).then(function (res) {
+        if (!res || !res.ok) { return; }
+        box.dataset.mode = res.mode;
+        box.querySelectorAll('.asw-btn').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.mode === res.mode);
+        });
+        var st = document.getElementById('auto-state');
+        if (st) { st.textContent = (res.mode === 'on') ? 'включена' : 'на паузе'; }
+      });
+      return;
+    }
+    var btn = ev.target.closest ? ev.target.closest('.ibtn') : null;
+    if (!btn) { return; }
+    ev.preventDefault();
+    ev.stopPropagation();
+    var app = btn.dataset.app, act = btn.dataset.act;
+    var row = document.querySelector('.inbox-row[data-app="' + app + '"]');
+    if (act === 'archive') {
+      post('/applications/' + app + '/archive', '').then(function (res) {
+        if (!res || !res.ok || !row) { return; }
+        row.style.opacity = '0';
+        setTimeout(function () { row.remove(); }, 220);
+      });
+      return;
+    }
+    post('/applications/' + app + '/queue/' + act, '').then(function (res) { applyRow(row, res); });
+  }, true);
+})();
+</script>
+"""
+
+
 @bp.route("/")
-@CLIENT_required
+@login_required
 def page():
     s = db.stats()
-    new_apps = db.CLIENT_list("new")
+    # Архивные заявки в «Входящих» не показываем — они уехали в историю.
+    new_apps = [a for a in db.application_list("new")
+                if (a.get("record_kind") or "") != "archive"]
 
     def _fmt_time(ts):
         if not ts:
             return ""
         try:
-            return CLIENT.fromisoformat(ts.reCLIENT("Z", "")).strftime("%d.%m %H:%M")
+            return datetime.fromisoformat(ts.replace("Z", "")).strftime("%d.%m %H:%M")
         except Exception:
             return ts[:16]
 
@@ -127,58 +366,41 @@ def page():
         uname = a.get("manager_username") or ""
         return f"от {name}" + (f" (@{uname})" if uname else "")
 
-    new_items = "".join(
-        item("📥", f'Заявка #{a["id"]} · {db.client_label(a)}' + kind_badge(a),
-             sub=(
-                 (f'{_manager_label(a)} · ' if _manager_label(a) else '')
-                 + f'{a.get("CLIENT_name") or "продукт не указан"} · '
-                 + _fmt_time(a["created_at"])
-                 + (f' · IDR {a["price_idr"]:,}' if a["price_idr"] else '')
-                 + (' · ' + CLIENT.badge(a["created_at"]) if CLIENT.badge(a["created_at"]) else '')),
-             href=f'/CLIENT/{a["id"]}/review',
-             tone="amber", extra=docs_CLIENT_html(db.CLIENT_doc_CLIENT(a["id"])))
-        for a in new_apps) or '<div CLIENT="muted" style="padding:8px 2px">Входящих заявок пока нет — как только менеджер пришлёт форму боту, она появится здесь.</div>'
+    new_items = "".join(inbox_row(a) for a in new_apps) or (
+        '<div class="muted" style="padding:8px 2px">Входящих заявок пока нет — как только '
+        'менеджер пришлёт форму боту, она появится здесь.</div>')
 
-    topbar = CLIENT_stats(s["CLIENT_in"], s["sum_new_idr"],
-                          s["CLIENT_all"], s["sum_all_idr"])
+    topbar = header_stats(s["applications_in"], s["sum_new_idr"],
+                          s["applications_all"], s["sum_all_idr"])
 
-    # Метка периода: зелёная — идёт тест с реальными данными (record_mode=test),
-    # заявки периода помечаются зелёной плашкой «тест с реальными данными».
-    try:
-        _mode = (db.q1("SELECT CLIENT FROM settings WHERE key='record_mode'") or {}).get("CLIENT") or ""
-    except Exception:
-        _mode = ""
-    _mode = str(_mode).strip()
-    if _mode == "real_test":
-        _mark_line = (
-            '<div CLIENT="page-sub" style="color:#15803D;font-weight:700">'
-            '🟢 Тест с реальными данными — заявки этого периода помечены зелёной меткой'
-            '</div>')
-    elif _mode == "test":
-        _mark_line = (
-            '<div CLIENT="page-sub" style="color:#8A6100;font-weight:700">'
-            '🧪 Тестовый режим — новые заявки помечаются плашкой «тест»'
-            '</div>')
-    else:
-        _mark_label = CLIENT.label()
-        _mark_line = (f'<div CLIENT="page-sub" style="color:#92400E;font-weight:700">'
-                      f'{_mark_label} · заявок периода: {CLIENT.count()}</div>') if _mark_label else ''
+    # Строка о периоде: тестовые метки убраны, остаётся только подпись периода.
+    _mark_label = marks.label()
+    _mark_line = (f'<div class="page-sub" style="color:#92400E;font-weight:700">'
+                  f'{_mark_label} · заявок периода: {marks.count()}</div>') if _mark_label else ''
 
     body = f"""
-<h1>Входящие заявки</h1>
-<div CLIENT="page-sub">Заявки приходят от Telegram-бота. Нажмите на карточку, чтобы открыть клиента и начать работу.</div>
+<div class="inbox-head">
+  <div class="inbox-headrow">
+    <h1>Входящие заявки</h1>
+    <div class="inbox-headmid">{auto_switch_html()}</div>
+    <div class="inbox-headspacer"></div>
+  </div>
+  <div class="inbox-hint">Заявка из Telegram-бота появляется здесь сразу. «Старт» — заявки уходят в работу
+по очереди, по одной; «Пауза» — стоят и ждут. Каждую заявку можно остановить или убрать в архив отдельно.</div>
+</div>
 {_mark_line}
 {ui_card(f'Входящие · {len(new_apps)}', new_items, emoji="📥", tone="amber", open=True)}
+{_inbox_script()}
 """
     return render("Главная", "dashboard", body, topbar=topbar)
 
 
-@bp.route("/CLIENT/<int:app_id>/take", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/take", methods=["POST"])
+@login_required
 def app_take(app_id: int):
     user = current_user()
-    db.CLIENT_take(app_id, user["id"])
-    db.log_event("CLIENT", app_id, "taken", actor=user["CLIENT"])
+    db.application_take(app_id, user["id"])
+    db.log_event("application", app_id, "taken", actor=user["login"])
     # уведомляем менеджера, который прислал заявку через бота
     try:
         from bot.notify import notify_manager_taken
@@ -188,47 +410,105 @@ def app_take(app_id: int):
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
-@bp.route("/CLIENT/<int:app_id>/CLIENT-CLIENT", methods=["POST"])
-@CLIENT_required
-def app_CLIENT_CLIENT(app_id: int):
-    """Смена продукта администратором. Пересоздаёт CLIENT_CLIENT."""
-    from flask import CLIENT
-    new_pid = CLIENT.form.get("CLIENT_id", type=int)
+@bp.route("/auto/mode", methods=["POST"])
+@login_required
+def auto_mode_set():
+    """Кнопка «Старт/Пауза» на главной: включает и выключает автоматику."""
+    want = AUTO_ON if (request.form.get("mode") or "").strip() == AUTO_ON else AUTO_PAUSE
+    db.set_setting("auto_mode", want)
+    db.log_event("system", 0, "auto_mode", payload=want,
+                 actor=(current_user() or {}).get("login", ""))
+    return jsonify({"ok": True, "mode": want})
+
+
+def _queue_ensure() -> None:
+    db.exec_sql("""CREATE TABLE IF NOT EXISTS auto_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        application_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'queued',
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        started_at TEXT, finished_at TEXT, last_error TEXT)""")
+
+
+def _queue_set(app_id: int, action: str) -> str:
+    """Поставить заявку в работу или остановить её."""
+    _queue_ensure()
+    state = "queued" if action == "start" else "paused"
+    row = db.q1("SELECT id FROM auto_queue WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+    if row:
+        db.exec_sql("UPDATE auto_queue SET status=?, last_error=NULL WHERE id=?", (state, row["id"]))
+    else:
+        db.exec_sql("INSERT INTO auto_queue (application_id, status) VALUES (?,?)", (app_id, state))
+    return state
+
+
+@bp.route("/applications/<int:app_id>/queue/<action>", methods=["POST"])
+@login_required
+def app_queue(app_id: int, action: str):
+    """Кнопка на заявке: «в работу» или «пауза»."""
+    if action not in ("start", "pause"):
+        return jsonify({"ok": False, "error": "unknown action"}), 400
+    state = _queue_set(app_id, action)
+    db.log_event("application", app_id, "queue_" + action,
+                 actor=(current_user() or {}).get("login", ""))
+    return jsonify({"ok": True, "state": state, "queued": state in ("queued", "running"),
+                    "progress": progress_html(app_id)})
+
+
+@bp.route("/applications/<int:app_id>/archive", methods=["POST"])
+@login_required
+def app_archive(app_id: int):
+    """Убрать заявку из входящих: она остаётся в истории."""
+    db.exec_sql("UPDATE applications SET record_kind='archive' WHERE id=?", (app_id,))
+    _queue_ensure()
+    db.exec_sql("UPDATE auto_queue SET status='archived' WHERE application_id=? "
+                "AND status IN ('queued','running','paused')", (app_id,))
+    db.log_event("application", app_id, "archived", actor=(current_user() or {}).get("login", ""))
+    return jsonify({"ok": True, "state": "archive"})
+
+
+@bp.route("/applications/<int:app_id>/change-product", methods=["POST"])
+@login_required
+def app_change_product(app_id: int):
+    """Смена продукта администратором. Пересоздаёт application_documents."""
+    from flask import request
+    new_pid = request.form.get("product_id", type=int)
     if not new_pid:
         flash("Не выбран продукт", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     # обновляем заявку
-    prod = db.q1("SELECT id, code, name, CLIENT FROM CLIENT WHERE id=?", (new_pid,))
+    prod = db.q1("SELECT id, code, name, description FROM products WHERE id=?", (new_pid,))
     if not prod:
         flash("Продукт не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     # Тот же продукт — не трогаем ни документы, ни галочки: повторное сохранение
     # карточки не должно пересобирать список документов заявки.
-    _cur = db.q1("SELECT CLIENT_id FROM CLIENT WHERE id=?", (app_id,)) or {}
-    if int((_cur.get("CLIENT_id") or 0)) == new_pid:
+    _cur = db.q1("SELECT product_id FROM applications WHERE id=?", (app_id,)) or {}
+    if int((_cur.get("product_id") or 0)) == new_pid:
         flash("Продукт не изменился — список документов оставлен как есть.", "ok")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
-    # вытащим price_idr из CLIENT или 0
+    # вытащим price_idr из description или 0
     new_price = 0
-    if prod.get("CLIENT"):
+    if prod.get("description"):
         import re as _re
-        m = _re.search(r"price_idr\s*=\s*(\d+)", prod["CLIENT"])
+        m = _re.search(r"price_idr\s*=\s*(\d+)", prod["description"])
         if m:
             new_price = int(m.group(1))
-    db.exec_sql("UPDATE CLIENT SET CLIENT_id=?, price_idr=? WHERE id=?",
+    db.exec_sql("UPDATE applications SET product_id=?, price_idr=? WHERE id=?",
               (prod["id"], new_price, app_id))
-    # Удаляем старые CLIENT_CLIENT и создаём новые под новый продукт.
+    # Удаляем старые application_documents и создаём новые под новый продукт.
     # Подтверждённые (verified) и уже отправленные (sent) не трогаем: это
     # зафиксированные документы заявки, они переживают смену продукта.
-    db.exec_sql("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=? "
-                "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (app_id,))
-    new_CLIENT = db.q(
-        """SELECT t.id, t.code, t.CLIENT FROM CLIENT_CLIENT pd
-              JOIN CLIENT t ON t.id=pd.template_id
-              WHERE pd.CLIENT_id=? ORDER BY t.id""",
+    db.exec_sql("DELETE FROM application_documents WHERE application_id=? "
+                "AND IFNULL(status,'') NOT IN ('verified','sent')", (app_id,))
+    new_templates = db.q(
+        """SELECT t.id, t.code, t.title FROM product_documents pd
+              JOIN templates t ON t.id=pd.template_id
+              WHERE pd.product_id=? ORDER BY t.id""",
         (new_pid,))
-    import CLIENT as _dt
-    now = _dt.CLIENT.now().isoformat(timespec="seconds")
+    import datetime as _dt
+    now = _dt.datetime.now().isoformat(timespec="seconds")
     _cl_bank = ""
     try:
         _cl_row = db.client_get(a["client_id"]) or {}
@@ -238,8 +518,8 @@ def app_CLIENT_CLIENT(app_id: int):
     # Взаимозаменяемые документы (банковские справки Тинькофф/Сбер, форма резюме, письмо
     # Нгурах-Рай/Денпасар) — это один слот: в заявке должен быть ОДИН документ из группы.
     _rows = db.q("""SELECT t.id, t.code, pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
-                      FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id = pd.template_id
-                      WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY t.id""", (new_pid,))
+                      FROM product_documents pd JOIN templates t ON t.id = pd.template_id
+                      WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('blocked','hidden','merged') ORDER BY t.id""", (new_pid,))
     _by_slot = {}
     for _r in _rows:
         _by_slot.setdefault(_r["slot_code"] or ("tpl_" + str(_r["id"])), []).append(_r)
@@ -247,20 +527,20 @@ def app_CLIENT_CLIENT(app_id: int):
         _ok = [v for v in _variants if _bank_allows(v["code"], _cl_bank)] or _variants
         _def = [v for v in _ok if v["is_default"]] or _ok
         db.exec_sql(
-            "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, rendered_at) "
+            "INSERT INTO application_documents (application_id, template_id, status, rendered_at) "
             "SELECT ?, ?, 'pending', ? WHERE NOT EXISTS ("
-            "SELECT 1 FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?)",
+            "SELECT 1 FROM application_documents WHERE application_id=? AND template_id=?)",
             (app_id, _def[0]["id"], now, app_id, _def[0]["id"]))
-    db.log_event("CLIENT", app_id, "CLIENT_CLIENTd", actor=current_user()["CLIENT"],
-                 payload=json.dumps({"new_CLIENT": prod["code"]}, ensure_ascii=False))
+    db.log_event("application", app_id, "product_changed", actor=current_user()["login"],
+                 payload=json.dumps({"new_product": prod["code"]}, ensure_ascii=False))
     flash(f"Продукт изменён: {prod['name']}. Список документов обновлён.", "ok")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
 # Переменные, которые система заполняет сама или которых может не быть: в проверку готовности не входят
 _AUTO_OR_OPTIONAL_VARS = {
-    "doc_no", "ref_no", "card_mask", "doc_date", "balance_rub", "balance_CLIENT",
-    "balance_CLIENT", "balance_CLIENT", "CLIENT_from", "CLIENT_to",
+    "doc_no", "ref_no", "card_mask", "doc_date", "balance_rub", "balance_value",
+    "balance_words", "balance_cents", "period_from", "period_to",
     "account_no", "contract_date", "contract_no",
 }
 
@@ -272,38 +552,38 @@ def doc_missing_fields(app_id: int, template_id: int) -> list:
     формировании PDF): незаполненными считаются переменные, оставшиеся в шаблоне без значения.
     """
     try:
-        from CLIENT.CLIENT import build_template_CLIENT
-        from CLIENT.render import VAR_RE, fill
+        from services.values import build_template_values
+        from services.render import VAR_RE, fill
     except Exception:                                       # noqa: BLE001
         return []
     tpl = tpl_repo.get(template_id)
     if not tpl:
         return []
     code = tpl["code"]
-    path = Path("/opt/wolf_v2/data/CLIENT") / code / "template.html"
+    path = Path("/opt/wolf_v2/data/templates") / code / "template.html"
     if not path.exists():
         return []
-    a = db.CLIENT_get(app_id) or {}
+    a = db.application_get(app_id) or {}
     client = db.client_get(a.get("client_id")) or {}
-    ad = db.q1("SELECT CLIENT_json FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+    ad = db.q1("SELECT values_json FROM application_documents WHERE application_id=? AND template_id=?",
                (app_id, template_id)) or {}
-    doc_CLIENT = {}
-    if ad.get("CLIENT_json"):
+    doc_values = {}
+    if ad.get("values_json"):
         try:
-            doc_CLIENT = json.loads(ad["CLIENT_json"] or "{}") or {}
+            doc_values = json.loads(ad["values_json"] or "{}") or {}
         except Exception:                                   # noqa: BLE001
-            doc_CLIENT = {}
+            doc_values = {}
     try:
-        vals = build_template_CLIENT(client, code, doc_CLIENT) or {}
+        vals = build_template_values(client, code, doc_values) or {}
     except Exception:                                       # noqa: BLE001
-        vals = dict(doc_CLIENT)
+        vals = dict(doc_values)
     html = path.read_text(encoding="utf-8")
     filled = fill(html, vals, keep_unfilled=True, template_code=code)
     return sorted(set(VAR_RE.findall(filled)) - _AUTO_OR_OPTIONAL_VARS)
 
 
 
-def _app_loader_frame(app_id: int, CLIENT: str):
+def _app_loader_frame(app_id: int, title: str):
     """Каркас страницы заявки: шапка уже видна, содержимое догружается.
 
     Тяжёлые блоки (сборка документов, предпросмотр) готовятся секундами,
@@ -323,11 +603,11 @@ def _app_loader_frame(app_id: int, CLIENT: str):
 </div>
 <script>
 (function(){
-  var url = "/CLIENT/__APPID__/review";
+  var url = "/applications/__APPID__/review";
   fetch(url, {credentials: "same-origin"})
     .then(function(r){ return r.text(); })
     .then(function(h){
-      var box = CLIENT.getElementById("wolf-content");
+      var box = document.getElementById("wolf-content");
       if (!box) return;
       // HTML приходит с этого же сайта (same-origin, наш собственный рендер),
       // пользовательский ввод в него не попадает, вставка безопасна.
@@ -337,52 +617,52 @@ def _app_loader_frame(app_id: int, CLIENT: str):
       else { box.innerHTML = '<div style="padding:20px;color:#B91C1C">Не удалось собрать страницу заявки</div>'; }
       var sc = doc.querySelectorAll("script");
       for (var i = 0; i < sc.length; i++) {
-        var el = CLIENT.createElement("script");
+        var el = document.createElement("script");
         if (sc[i].src) { el.src = sc[i].src; } else { el.textContent = sc[i].textContent; }
-        CLIENT.body.appendChild(el);
+        document.body.appendChild(el);
       }
     })
     .catch(function(e){
-      var box = CLIENT.getElementById("wolf-content");
+      var box = document.getElementById("wolf-content");
       if (box) box.innerHTML = '<div style="padding:20px;color:#B91C1C">Ошибка загрузки: '
         + (e && e.message ? e.message : "") + '</div>';
     });
 })();
 </script>
-""".reCLIENT("__APPID__", str(app_id))
-    return render(CLIENT, "dashboard", frame)
+""".replace("__APPID__", str(app_id))
+    return render(title, "dashboard", frame)
 
 
-@bp.route("/CLIENT/<int:app_id>/view")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/view")
+@login_required
 def app_view(app_id: int):
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
     # Первый заход отдаём мгновенно: шапка со спиннером, блоки приезжают fetch-запросом.
-    if not CLIENT.args.get("full"):
+    if not request.args.get("full"):
         return _app_loader_frame(app_id, "Заявка #" + str(app_id))
     # вернулись из редактора документа с сохранением значений
-    if CLIENT.args.get("saved"):
+    if request.args.get("saved"):
         flash("Значения документа сохранены — документ соберётся заново при следующем просмотре PDF", "ok")
     # Автоматический take убран — заявка остаётся "new" во входящих,
     # пока админ сам не нажмёт "Взять в работу"
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
 
     client = db.client_get(a["client_id"]) or {}
     client_id_for_originals = a["client_id"]
-    docs = db.CLIENT_CLIENT(app_id)
-    CLIENT = db.CLIENT_CLIENT_CLIENT(app_id) if hasattr(db, 'CLIENT_CLIENT_CLIENT') else None
+    docs = db.application_documents(app_id)
+    summary = db.application_documents_summary(app_id) if hasattr(db, 'application_documents_summary') else None
 
     # === АВТО-ГЕНЕРАЦИЯ PDF для всех pending-документов этой заявки ===
-    # Срабатывает один раз: если у документа CLIENT='pending' и нет PDF — генерируем сразу
+    # Срабатывает один раз: если у документа status='pending' и нет PDF — генерируем сразу
     # Авто-сборка PDF идёт В ФОНЕ: раньше она выполнялась прямо здесь,
     # последовательно по каждому документу, и открытие карточки ждало
     # 9-40 секунд. Теперь страница отвечает сразу, документы доводятся
     # отдельным потоком теми же значениями, что и в редакторе.
     try:
-        from CLIENT.autofill import build_pending_async as _build_async
+        from services.autofill import build_pending_async as _build_async
         _build_async(app_id)
     except Exception as _exc:
         current_app.logger.warning("авто-сборка не запущена для заявки %s: %s", app_id, _exc)
@@ -390,11 +670,11 @@ def app_view(app_id: int):
     status_label = {"new": ("новая", "amber"), "in_progress": ("в работе", "blue"),
                     "ready": ("готова", "ok"), "sent": ("отправлена", "ok"),
                     "closed": ("закрыта", "muted"), "error": ("ошибка", "bad")}.get(
-                        a["CLIENT"], (a["CLIENT"], ""))
+                        a["status"], (a["status"], ""))
 
     manager = db.q1(
         """SELECT bm.telegram_id, bm.full_name, bm.username
-             FROM bot_CLIENT bm WHERE bm.id=?""",
+             FROM bot_managers bm WHERE bm.id=?""",
 
         (a["bot_manager_id"],)) if a.get("bot_manager_id") else None
     manager_label = "—"
@@ -410,24 +690,24 @@ def app_view(app_id: int):
     manager_btn = ""
     if manager and manager_tg_url:
         manager_btn = (
-            '<a CLIENT="from-write-btn" target="_blank" rel="noopener" '
-            'href="' + manager_tg_url + '" CLIENT="Написать менеджеру в Telegram">'
+            '<a class="from-write-btn" target="_blank" rel="noopener" '
+            'href="' + manager_tg_url + '" title="Написать менеджеру в Telegram">'
             '✉️ ' + manager_label + '</a>'
         )
     else:
-        manager_btn = '<span CLIENT="from-CLIENT">' + manager_label + '</span>'
+        manager_btn = '<span class="from-value">' + manager_label + '</span>'
 
-    CLIENT = db.q1("SELECT name, code FROM CLIENT WHERE id=?", (a["CLIENT_id"],)) if a.get("CLIENT_id") else None
-    CLIENT_label = (CLIENT["name"] if CLIENT else a.get("CLIENT_name") or "—")
-    CLIENT_code = (CLIENT["code"] if CLIENT else "—")
+    product = db.q1("SELECT name, code FROM products WHERE id=?", (a["product_id"],)) if a.get("product_id") else None
+    product_label = (product["name"] if product else a.get("product_name") or "—")
+    product_code = (product["code"] if product else "—")
 
-    CLIENT_url = (a.get("gCLIENT_url") or client.get("gCLIENT_folder_url") or "").strip()
+    drive_url = (a.get("gdrive_url") or client.get("gdrive_folder_url") or "").strip()
 
     # Ключи, которые уже показаны в других местах карточки (продукт, комментарий,
-    # ссылка на CLIENT, цена) — в таблице «как пришло в заявке» их не дублируем.
-    _SHOWN_ELSEWHERE = {"CLIENT", "CLIENT_name", "CLIENT_id", "price", "price_idr",
-                        "comment", "comments", "_raw_text", "gCLIENT_url",
-                        "gCLIENT_folder_url", "source_channel", "record_kind"}
+    # ссылка на Drive, цена) — в таблице «как пришло в заявке» их не дублируем.
+    _SHOWN_ELSEWHERE = {"product", "product_name", "product_id", "price", "price_idr",
+                        "comment", "comments", "_raw_text", "gdrive_url",
+                        "gdrive_folder_url", "source_channel", "record_kind"}
     raw_payload_rows = []
     raw_payload_text = ""
     raw_notes = []
@@ -440,7 +720,7 @@ def app_view(app_id: int):
             parsed = None
         if isinstance(parsed, dict):
             for k, v in parsed.items():
-                raw_payload_rows.append((str(k), "" if v is None else human_CLIENT(str(v))))
+                raw_payload_rows.append((str(k), "" if v is None else human_value(str(v))))
         else:
             for line in raw.split("\n"):
                 line = line.strip()
@@ -457,11 +737,11 @@ def app_view(app_id: int):
 
     client_bank = ""
     # --- банк клиента для фильтрации банковских справок ---
-    # Приоритет: карточка клиента (CLIENT.bank_name) → raw_payload заявки.
-    # CLIENT.bank_name заполняется автоматически при разборе Google CLIENT.
+    # Приоритет: карточка клиента (clients.bank_name) → raw_payload заявки.
+    # clients.bank_name заполняется автоматически при разборе Google Drive.
     client_bank = ""
     try:
-        _cl_row = db.q1("SELECT bank_name FROM CLIENT WHERE id=?",
+        _cl_row = db.q1("SELECT bank_name FROM clients WHERE id=?",
                         (a["client_id"],)) if a.get("client_id") else None
         if _cl_row and _cl_row.get("bank_name"):
             client_bank = str(_cl_row["bank_name"]).strip().lower()
@@ -480,7 +760,7 @@ def app_view(app_id: int):
             return True
         cl = client_bank
         c = (code or "").lower()
-        non_bank_kw = ("work_agreement", "contract", "cv", "CLIENTment_letter", "d12", "wna")
+        non_bank_kw = ("work_agreement", "contract", "cv", "statement_letter", "d12", "wna")
         if any(k in c for k in non_bank_kw):
             return True
         if any(k in cl for k in ("т-банк", "t-bank", "tbank", "тинькофф", "tinkoff")):
@@ -489,92 +769,92 @@ def app_view(app_id: int):
             return any(k in c for k in ("sber", "сбер", "sberbank"))
         return True
 
-    CLIENT_all = db.q(
-        """SELECT t.id, t.code, t.CLIENT, t.pages, t.html_path, t.doc_CLIENT,
+    templates_all = db.q(
+        """SELECT t.id, t.code, t.title, t.pages, t.html_path, t.doc_index,
                   pd.slot_code, COALESCE(pd.is_default, 0) AS is_default
-             FROM CLIENT_CLIENT pd
-             JOIN CLIENT t ON t.id=pd.template_id
-            WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY COALESCE(t.doc_CLIENT, 999), pd.sort_order, t.id""",
-        (a["CLIENT_id"],)) if a.get("CLIENT_id") else []
+             FROM product_documents pd
+             JOIN templates t ON t.id=pd.template_id
+            WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('blocked','hidden','merged') ORDER BY COALESCE(t.doc_index, 999), pd.sort_order, t.id""",
+        (a["product_id"],)) if a.get("product_id") else []
     # Слот = обязательный документ; варианты (банк, формат CV, офис иммиграции) — внутри слота
     _slots = {}
-    for _t in CLIENT_all:
+    for _t in templates_all:
         _slots.setdefault(_t["slot_code"] or ("doc_" + str(_t["id"])), []).append(_t)
-    docs_in_CLIENT = []
+    docs_in_product = []
     for _slot, _rows in _slots.items():
         _pick = next((_r for _r in _rows if _bank_match(_r["code"])), None)
         if _pick is None:
             _pick = next((_r for _r in _rows if _r["is_default"]), _rows[0])
         _pick = dict(_pick)
         _pick["variants"] = _rows
-        docs_in_CLIENT.append(_pick)
+        docs_in_product.append(_pick)
     adoc_by_tpl = {d["template_id"]: d for d in docs}
 
     # Документы в 2 колонки: список слева + iframe справа
     doc_items_html = ""
-    for t in docs_in_CLIENT:
+    for t in docs_in_product:
         ad = adoc_by_tpl.get(t["id"])
-        CLIENT = ad["CLIENT"] if ad else "новый"
+        status = ad["status"] if ad else "новый"
         pdf_name = ""
         if ad and ad.get("pdf_path"):
             pdf_name = Path(ad["pdf_path"]).name
         # есть ли оригинал клиента для этого типа документа
         has_original = bool(_find_original_file(client_id_for_originals, t["code"])) \
             if client_id_for_originals else False
-        is_ok = CLIENT in ("verified", "sent")
-        ok_btn_CLIENT = "btn-ok-active" if is_ok else "btn-ok-idle"
+        is_ok = status in ("verified", "sent")
+        ok_btn_class = "btn-ok-active" if is_ok else "btn-ok-idle"
         ok_btn_label = ("✓ Проверен" if is_ok else "☐ Отметить Ок")
-        status_CLIENT = {
+        status_class = {
             "verified": "ok", "sent": "ok", "filled": "amber",
             "error": "bad", "pending": "grey", "rejected": "rej",
-        }.get(CLIENT, "grey")
+        }.get(status, "grey")
         status_label_txt = {"verified": "проверен", "sent": "отправлен", "filled": "заполнен",
                             "pending": "ожидает", "draft": "черновик",
-                            "rejected": "не нужен"}.get(CLIENT, CLIENT)
+                            "rejected": "не нужен"}.get(status, status)
         # чего не хватает этому документу: считается по тем же значениям, что уходят в PDF
         _miss = doc_missing_fields(app_id, t["id"])
         _miss_txt = ", ".join(_miss)
-        _fill_badge = ('<span CLIENT="badge fill-ok" CLIENT="Все поля документа заполнены">\u2705 все поля заполнены</span>'
+        _fill_badge = ('<span class="badge fill-ok" title="Все поля документа заполнены">\u2705 все поля заполнены</span>'
                        if not _miss else
-                       '<span CLIENT="badge fill-warn" CLIENT="Не заполнено: ' + _miss_txt + '">'
+                       '<span class="badge fill-warn" title="Не заполнено: ' + _miss_txt + '">'
                        '\u26a0\ufe0f не заполнено полей: ' + str(len(_miss)) + '</span>')
 
         doc_items_html += (
-            '<li CLIENT="doc-row" data-pdf-name="' + pdf_name + '"'
+            '<li class="doc-row" data-pdf-name="' + pdf_name + '"'
             ' data-tpl-id="' + str(t["id"]) + '"'
             ' data-has-original="' + ("1" if has_original else "0") + '">'
-            '<div CLIENT="doc-name">' + ('<span CLIENT="check-ok">✓</span>' if is_ok else "") + ' '
-            + '<span CLIENT="doc-no">№' + str(t.get("doc_CLIENT") or t["id"]) + '</span> ' + t["CLIENT"]
-            + '<div CLIENT="doc-meta">'
-            + ('<select CLIENT="doc-variant" data-slot="' + str(t.get("slot_code") or "") + '">'
-               + ''.join('<option CLIENT="' + str(_v["id"]) + '"'
-                         + (' selected' if _v["id"] == t["id"] else '') + '>' + _v["CLIENT"] + '</option>'
+            '<div class="doc-name">' + ('<span class="check-ok">✓</span>' if is_ok else "") + ' '
+            + '<span class="doc-no">№' + str(t.get("doc_index") or t["id"]) + '</span> ' + t["title"]
+            + '<div class="doc-meta">'
+            + ('<select class="doc-variant" data-slot="' + str(t.get("slot_code") or "") + '">'
+               + ''.join('<option value="' + str(_v["id"]) + '"'
+                         + (' selected' if _v["id"] == t["id"] else '') + '>' + _v["title"] + '</option>'
                          for _v in t.get("variants", []))
                + '</select> ' if len(t.get("variants", [])) > 1 else '')
             + str(t["pages"] or 0) + ' стр. · '
-            + '<span CLIENT="badge ' + status_CLIENT + '">' + status_label_txt + '</span> '
+            + '<span class="badge ' + status_class + '">' + status_label_txt + '</span> '
             + _fill_badge
-            + ('<span CLIENT="badge orig-badge" style="margin-left:4px;background:#E0F2FE;color:#075985">📁 есть оригинал</span>' if has_original else "")
+            + ('<span class="badge orig-badge" style="margin-left:4px;background:#E0F2FE;color:#075985">📁 есть оригинал</span>' if has_original else "")
             + '</div></div>'
-            '<div CLIENT="doc-actions">'
-            '<button type="button" CLIENT="doc-btn doc-view" data-pdf="' + pdf_name + '" '
+            '<div class="doc-actions">'
+            '<button type="button" class="doc-btn doc-view" data-pdf="' + pdf_name + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
-            + ' CLIENT="Показать документ с данными клиента">👁</button>'
-            '<a CLIENT="doc-btn" href="/CLIENT/' + str(t["id"]) + '?app=' + str(app_id) + '" CLIENT="Редактировать документ заявки" target="_blank" rel="noopener">\u270f\ufe0f</a>'
-            '<button type="button" CLIENT="doc-btn doc-paper" '
-            'data-paper="' + ('/CLIENT/file/renders/' + pdf_name if pdf_name else '') + '" '
+            + ' title="Показать документ с данными клиента">👁</button>'
+            '<a class="doc-btn" href="/templates/' + str(t["id"]) + '?app=' + str(app_id) + '" title="Редактировать документ заявки" target="_blank" rel="noopener">\u270f\ufe0f</a>'
+            '<button type="button" class="doc-btn doc-paper" '
+            'data-paper="' + ('/templates/file/renders/' + pdf_name if pdf_name else '') + '" '
             'data-tpl-id="' + str(t["id"]) + '" '
-            + ' CLIENT="Посмотреть PDF поверх экрана">\U0001f4c4</button>'
-            '<div CLIENT="verdict-pair">'
-            '<button type="button" CLIENT="doc-btn verdict-btn verdict-yes ' + ('is-on' if is_ok else '') + (' is-locked' if (_miss and not is_ok) else '') + '" '
+            + ' title="Посмотреть PDF поверх экрана">\U0001f4c4</button>'
+            '<div class="verdict-pair">'
+            '<button type="button" class="doc-btn verdict-btn verdict-yes ' + ('is-on' if is_ok else '') + (' is-locked' if (_miss and not is_ok) else '') + '" '
             'data-verify-app="' + str(app_id) + '" data-verify-tpl="' + str(t["id"]) + '" '
             + ('disabled ' if (_miss and not is_ok) else '')
-            + 'CLIENT="' + ('Проверен. Нажмите, чтобы снять проверку' if is_ok else
+            + 'title="' + ('Проверен. Нажмите, чтобы снять проверку' if is_ok else
                            ('Нельзя подтвердить: не заполнено — ' + _miss_txt if _miss else 'Проверен — документ согласован')) + '">'
             + '\u2713</button>'
-            '<button type="button" CLIENT="doc-btn verdict-btn verdict-no ' + ('is-on' if CLIENT == 'rejected' else '') + '" '
+            '<button type="button" class="doc-btn verdict-btn verdict-no ' + ('is-on' if status == 'rejected' else '') + '" '
             'data-reject-app="' + str(app_id) + '" data-reject-tpl="' + str(t['id']) + '" '
-            'CLIENT="' + ('Не нужен. Нажмите, чтобы вернуть в комплект' if CLIENT == 'rejected'
+            'title="' + ('Не нужен. Нажмите, чтобы вернуть в комплект' if status == 'rejected'
                           else 'Не нужен — исключить документ из комплекта') + '">'
             + '\u2715</button>'
             '</div>'
@@ -585,12 +865,12 @@ def app_view(app_id: int):
     # Готовность к отправке. Считаем по ПАКЕТУ ПРОДУКТА: одна позиция пакета = один тип
     # документа. Для C1 это только банковская справка, поэтому три файла в папке заявки
     # (варианты банков вперемешку) не должны превращаться в «проверено 1 из 3».
-    _send_sum = db.CLIENT_doc_CLIENT(app_id) or {}
+    _send_sum = db.application_doc_summary(app_id) or {}
     _slot_by_tpl = {}
     _pkg_slots = []
-    _pid = a.get("CLIENT_id") if isinstance(a, dict) else (a["CLIENT_id"] if "CLIENT_id" in a.keys() else None)
+    _pid = a.get("product_id") if isinstance(a, dict) else (a["product_id"] if "product_id" in a.keys() else None)
     if _pid:
-        for _r in db.q("SELECT template_id, slot_code FROM CLIENT_CLIENT WHERE CLIENT_id=?", (_pid,)):
+        for _r in db.q("SELECT template_id, slot_code FROM product_documents WHERE product_id=?", (_pid,)):
             _sc = _r["slot_code"] or ("tpl_" + str(_r["template_id"]))
             _slot_by_tpl[_r["template_id"]] = _sc
             if _sc not in _pkg_slots:
@@ -599,65 +879,65 @@ def app_view(app_id: int):
     for _d in docs:
         _sl = _slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))
         # в зачёт идёт и «проверен», и «не нужен» — администратор так или иначе решил по документу
-        if _d.get("CLIENT") in ("verified", "sent", "rejected"):
+        if _d.get("status") in ("verified", "sent", "rejected"):
             _checked_slots.add(_sl)
     _checked = len(_checked_slots)
     _total = len(_pkg_slots) if _pkg_slots else (len({(_slot_by_tpl.get(_d["template_id"]) or ("tpl_" + str(_d["template_id"]))) for _d in docs}) or 0)
     # Незаполненные поля блокируют отправку только у НЕподтверждённых документов:
     # галочка означает, что админ сверил документ и зафиксировал его значения.
     _send_missing = sorted({m for _d in docs
-                            if (_d.get("CLIENT") or "") not in ("verified", "sent", "rejected")
+                            if (_d.get("status") or "") not in ("verified", "sent", "rejected")
                             for m in doc_missing_fields(app_id, _d["template_id"])})
-    _CLIENTers = []
+    _blockers = []
     if _checked < _total:
-        _CLIENTers.append("согласовано " + str(_checked) + " из " + str(_total) + " документов")
+        _blockers.append("согласовано " + str(_checked) + " из " + str(_total) + " документов")
     if _send_missing:
-        _CLIENTers.append("не заполнены поля: " + ", ".join(_send_missing[:6])
+        _blockers.append("не заполнены поля: " + ", ".join(_send_missing[:6])
                          + (" и ещё " + str(len(_send_missing) - 6) if len(_send_missing) > 6 else ""))
-    _send_ready = not _CLIENTers
-    send_CLIENT = (
-        '<div CLIENT="send-CLIENT ok">\u2705 Все документы согласованы — можно отправлять на Google Диск</div>'
+    _send_ready = not _blockers
+    send_state = (
+        '<div class="send-state ok">\u2705 Все документы согласованы — можно отправлять на Google Диск</div>'
         if _send_ready else
-        '<div CLIENT="send-CLIENT warn">\u26d4 Отправить нельзя: ' + "; ".join(_CLIENTers) + '</div>'
+        '<div class="send-state warn">\u26d4 Отправить нельзя: ' + "; ".join(_blockers) + '</div>'
     )
 
-    all_CLIENT = db.q("SELECT id, code, name FROM CLIENT ORDER BY id")
-    CLIENT_select = ""
-    if all_CLIENT:
+    all_products = db.q("SELECT id, code, name FROM products ORDER BY id")
+    product_select = ""
+    if all_products:
         opts = "".join(
-            '<option CLIENT="' + str(p["id"]) + '"'
-            + (' selected' if p["id"] == a.get("CLIENT_id") else '')
+            '<option value="' + str(p["id"]) + '"'
+            + (' selected' if p["id"] == a.get("product_id") else '')
             + '>' + p["name"] + ' (' + p["code"] + ')</option>'
-            for p in all_CLIENT
+            for p in all_products
         )
-        CLIENT_select = (
-            '<form method="post" action="/CLIENT/' + str(app_id) + '/CLIENT-CLIENT" style="margin:6px 0 0">'
-            '<select name="CLIENT_id" onCLIENT="this.form.submit()" '
+        product_select = (
+            '<form method="post" action="/applications/' + str(app_id) + '/change-product" style="margin:6px 0 0">'
+            '<select name="product_id" onchange="this.form.submit()" '
             'style="width:100%;padding:6px 8px;border:1px solid #DCEEE2;border-radius:6px;font-size:12.5px;background:#fff">'
             + opts + '</select>'
             '</form>'
         )
 
     try:
-        _CLIENT_scan = db.q1("SELECT CLIENT, docs_total, docs_done, note, created_at FROM CLIENT_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,))
+        _drive_scan = db.q1("SELECT status, docs_total, docs_done, note, created_at FROM drive_scans WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,))
     except Exception:
-        _CLIENT_scan = None
-    if _CLIENT_scan:
-        _st = (_CLIENT_scan["CLIENT"] or "").lower()
+        _drive_scan = None
+    if _drive_scan:
+        _st = (_drive_scan["status"] or "").lower()
         if _st == "ok":
-            _mark = '<span CLIENT="CLIENT-mark ok" CLIENT="Документы с Google CLIENT прочитаны автоматически">✅ разобрано ' + str(_CLIENT_scan["docs_done"] or 0) + ' из ' + str(_CLIENT_scan["docs_total"] or 0) + '</span>'
+            _mark = '<span class="drive-mark ok" title="Документы с Google Drive прочитаны автоматически">✅ разобрано ' + str(_drive_scan["docs_done"] or 0) + ' из ' + str(_drive_scan["docs_total"] or 0) + '</span>'
         elif _st == "running":
-            _mark = '<span CLIENT="CLIENT-mark run" CLIENT="Разбор выполняется">⏳ разбор идёт…</span>'
+            _mark = '<span class="drive-mark run" title="Разбор выполняется">⏳ разбор идёт…</span>'
         else:
-            _mark = '<span CLIENT="CLIENT-mark fail" CLIENT="' + (_CLIENT_scan["note"] or "Автоматическое прочтение не выполнено") + '">❗ не разобрано</span>'
+            _mark = '<span class="drive-mark fail" title="' + (_drive_scan["note"] or "Автоматическое прочтение не выполнено") + '">❗ не разобрано</span>'
     else:
-        _mark = '<span CLIENT="CLIENT-mark">ещё не разбиралось</span>'
-    # Перечень того, что реально лежит в папке Google CLIENT (по свежему разбору).
+        _mark = '<span class="drive-mark">ещё не разбиралось</span>'
+    # Перечень того, что реально лежит в папке Google Drive (по свежему разбору).
     # Устаревшие отметки автопроверки не показываем — они противоречат разбору.
     try:
         import json as _json
-        _rk = db.q1("""SELECT payload FROM CLIENT_CLIENT
-                       WHERE CLIENT_id=? AND payload IS NOT NULL
+        _rk = db.q1("""SELECT payload FROM drive_scans
+                       WHERE application_id=? AND payload IS NOT NULL
                        ORDER BY id DESC LIMIT 1""", (app_id,))
         _payload = _json.loads((_rk or {}).get("payload") or "[]")
     except Exception:
@@ -672,93 +952,93 @@ def app_view(app_id: int):
         _listing = ", ".join((k + " \u00d7" + str(v)) if v > 1 else k for k, v in _kinds.items())
         _read = sum(1 for it in _payload if it.get("found") or it.get("note"))
         _has_pass = any((it.get("doc_type") == "passport") for it in _payload)
-        _mark += ('<span CLIENT="CLIENT-mark ok" CLIENT="Что лежит в папке Google CLIENT">'
+        _mark += ('<span class="drive-mark ok" title="Что лежит в папке Google Drive">'
                   '\U0001f4c1 в наличии ' + str(len(_payload)) + ': ' + _listing + '</span>')
         if _has_pass:
-            _mark += '<span CLIENT="CLIENT-mark ok" CLIENT="Паспорт клиента прочитан">✅ паспорт прочитан</span>'
+            _mark += '<span class="drive-mark ok" title="Паспорт клиента прочитан">✅ паспорт прочитан</span>'
         else:
-            _mark += '<span CLIENT="CLIENT-mark fail" CLIENT="В папке нет паспорта клиента">⚠️ паспорта в папке нет</span>'
-    CLIENT_btn = (
-        '<div CLIENT="CLIENT-actions">'
-        '<a href="' + CLIENT_url + '" target="_blank" rel="noopener" CLIENT="CLIENT-btn">'
-        '📂 Google CLIENT клиента</a>'
-        '<button type="button" CLIENT="CLIENT-scan-btn" CLIENT="Прочитает документы из папки Google CLIENT заявки и вытащит значения. Если разбор уже сделан — скажет об этом" '
+            _mark += '<span class="drive-mark fail" title="В папке нет паспорта клиента">⚠️ паспорта в папке нет</span>'
+    drive_btn = (
+        '<div class="drive-actions">'
+        '<a href="' + drive_url + '" target="_blank" rel="noopener" class="drive-btn">'
+        '📂 Google Drive клиента</a>'
+        '<button type="button" class="drive-scan-btn" title="Прочитает документы из папки Google Drive заявки и вытащит значения. Если разбор уже сделан — скажет об этом" '
         'onclick="wolfDriveScan(' + str(app_id) + ', this)">'
         '🧠 Разобрать документы (нейросеть)</button>'
-        '<button type="button" CLIENT="CLIENT-see-btn" onclick="wolfDriveShow(' + str(app_id) + ')">'
+        '<button type="button" class="drive-see-btn" onclick="wolfDriveShow(' + str(app_id) + ')">'
         '🔍 Что вытащено</button>'
-        '<button type="button" CLIENT="af-all-btn" CLIENT="Соберёт все документы заявки по правилам и покажет их в окне просмотра" '
+        '<button type="button" class="af-all-btn" title="Соберёт все документы заявки по правилам и покажет их в окне просмотра" '
         'onclick="wolfAutofillAll(' + str(app_id) + ', this)">'
         '⚡ Заполнить автоматически</button>' 
         + _mark
-        + '</div><div id="CLIENT-scan-note" style="font-size:12px;color:#3A4A40;margin-top:6px"></div>'
-        if CLIENT_url else '<span CLIENT="muted" style="font-size:12.5px">ссылка не указана</span>'
-        + '<button type="button" CLIENT="CLIENT-scan-btn" onclick="wolfDriveScan(' + str(app_id) + ')">🧠 Разобрать документы (нейросеть)</button>'
+        + '</div><div id="drive-scan-note" style="font-size:12px;color:#3A4A40;margin-top:6px"></div>'
+        if drive_url else '<span class="muted" style="font-size:12.5px">ссылка не указана</span>'
+        + '<button type="button" class="drive-scan-btn" onclick="wolfDriveScan(' + str(app_id) + ')">🧠 Разобрать документы (нейросеть)</button>'
     )
 
         # Продукт добавляем первым с жёлтой подсветкой
     extra_rows = []
-    # Данные, вытащенные из документов Google CLIENT — администратор должен видеть,
+    # Данные, вытащенные из документов Google Drive — администратор должен видеть,
     # что именно распознано, и сверить с первоисточником.
     try:
-        _cd = db.q1("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+        _cd = db.q1("SELECT * FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
                     (app_id,)) or {}
     except Exception:
         _cd = {}
     # комментарий клиента/менеджера — держим наверху блока и выделяем ярко
     try:
-        _rp = db.q1("SELECT raw_payload FROM CLIENT WHERE id=?", (app_id,)) or {}
+        _rp = db.q1("SELECT raw_payload FROM applications WHERE id=?", (app_id,)) or {}
         import json as _json
         _cmt = str((_json.loads(_rp.get("raw_payload") or "{}") or {}).get("comment") or "").strip()
     except Exception:
         _cmt = ""
     if _cmt:
-        extra_rows.append('<tr CLIENT="kv-comment-row"><td CLIENT="kv-key kv-key-comment">'
-                          '💬 Комментарий заявки</td><td CLIENT="kv-val kv-val-comment">'
+        extra_rows.append('<tr class="kv-comment-row"><td class="kv-key kv-key-comment">'
+                          '💬 Комментарий заявки</td><td class="kv-val kv-val-comment">'
                           + _cmt + '</td></tr>')
-    _DRIVE_FIELDS = [("full_name_CLIENT", "ФИО латиницей"), ("CLIENT", "Фамилия"),
-                     ("name", "Имя"), ("CLIENT", "Отчество"),
-                     ("CLIENT_date", "Дата рождения"), ("CLIENT_CLIENT", "Место рождения"),
-                     ("passport_CLIENT", "Номер паспорта"), ("CLIENT", "Гражданство"),
-                     ("address_live", "Адрес проживания"), ("CLIENT", "Телефон"),
-                     ("CLIENT", "E-mail"), ("bank_name", "Банк")]
+    _DRIVE_FIELDS = [("full_name_latin", "ФИО латиницей"), ("surname", "Фамилия"),
+                     ("name", "Имя"), ("patronymic", "Отчество"),
+                     ("birth_date", "Дата рождения"), ("birth_place", "Место рождения"),
+                     ("passport_number", "Номер паспорта"), ("citizenship", "Гражданство"),
+                     ("address_live", "Адрес проживания"), ("phone", "Телефон"),
+                     ("email", "E-mail"), ("bank_name", "Банк")]
     for _f, _lbl in _DRIVE_FIELDS:
         _v = str(_cd.get(_f) or "").strip()
         if not _v:
             continue
-        extra_rows.append('<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
-                          + _lbl + '</td><td CLIENT="kv-val">' + _v
-                          + ' <span CLIENT="kv-src" CLIENT="Значение распознано из документов Google CLIENT">из документов</span></td></tr>')
-    if CLIENT:
+        extra_rows.append('<tr class="kv-drive-row"><td class="kv-key kv-key-drive">'
+                          + _lbl + '</td><td class="kv-val">' + _v
+                          + ' <span class="kv-src" title="Значение распознано из документов Google Drive">из документов</span></td></tr>')
+    if product:
         extra_rows.append(
-            '<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
+            '<tr class="kv-product-row"><td class="kv-key kv-key-product">'
             'Продукт</td>'
-            '<td CLIENT="kv-val kv-val-CLIENT">' + CLIENT_label + ' '
-            '<span CLIENT="kv-CLIENT-code">· код ' + CLIENT_code + '</span></td></tr>'
+            '<td class="kv-val kv-val-product">' + product_label + ' '
+            '<span class="kv-product-code">· код ' + product_code + '</span></td></tr>'
         )
-    elif a.get("CLIENT_id"):
+    elif a.get("product_id"):
         extra_rows.append(
-            '<tr CLIENT="kv-CLIENT-row"><td CLIENT="kv-key kv-key-CLIENT">'
+            '<tr class="kv-product-row"><td class="kv-key kv-key-product">'
             'Продукт</td>'
-            '<td CLIENT="kv-val kv-val-CLIENT">ещё не выбран (ID ' + str(a["CLIENT_id"]) + ')</td></tr>'
+            '<td class="kv-val kv-val-product">ещё не выбран (ID ' + str(a["product_id"]) + ')</td></tr>'
         )
     if raw_payload_rows:
         _raw_payload_html = (
-            '<table CLIENT="kv-table">'
+            '<table class="kv-table">'
             + ''.join(extra_rows)
-            + ''.join('<tr><td CLIENT="kv-key">' + label_for(k) + '</td><td CLIENT="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE)
+            + ''.join('<tr><td class="kv-key">' + label_for(k) + '</td><td class="kv-val">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE)
             + '</table>'
         )
     elif raw_payload_text or extra_rows:
         _raw_payload_html = (
-            '<table CLIENT="kv-table">'
+            '<table class="kv-table">'
             + ''.join(extra_rows)
-            + (''.join('<tr><td CLIENT="rp-k">' + label_for(k) + '</td><td CLIENT="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE) if raw_payload_rows else '')
-            + (('<tr><td colspan="2" CLIENT="rp-note">' + ' · '.join(raw_notes[:6]) + '</td></tr>') if raw_notes else '')
+            + (''.join('<tr><td class="rp-k">' + label_for(k) + '</td><td class="rp-v">' + v + '</td></tr>' for k, v in raw_payload_rows if k.lower() not in _SHOWN_ELSEWHERE) if raw_payload_rows else '')
+            + (('<tr><td colspan="2" class="rp-note">' + ' · '.join(raw_notes[:6]) + '</td></tr>') if raw_notes else '')
             + '</table>'
         )
     else:
-        _raw_payload_html = '<div CLIENT="muted">Нет данных</div>' 
+        _raw_payload_html = '<div class="muted">Нет данных</div>' 
 
     # ── комментарий менеджера: необязательное, но важное поле (ускорение, партнёр, сроки) ──
     _comment_txt = ""
@@ -769,128 +1049,128 @@ def app_view(app_id: int):
         _comment_txt = ""
     _comment_html = ""
     if _comment_txt:
-        _safe_comment = _comment_txt.reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
-        _comment_html = ('<div CLIENT="app-comment-flash">'
-                         '<span CLIENT="acf-label">\U0001f4ac Комментарий менеджера</span>'
-                         '<div CLIENT="acf-text">' + _safe_comment + '</div></div>')
+        _safe_comment = _comment_txt.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        _comment_html = ('<div class="app-comment-flash">'
+                         '<span class="acf-label">\U0001f4ac Комментарий менеджера</span>'
+                         '<div class="acf-text">' + _safe_comment + '</div></div>')
 
     # окно с полным текстом заявки (открывается из заголовка блока 3)
     _text_modal_html = modal("app-text-modal", "\U0001f4c4 Текст заявки",
-                             '<pre CLIENT="app-text-pre" id="app-text-pre">Загрузка…</pre>')
+                             '<pre class="app-text-pre" id="app-text-pre">Загрузка…</pre>')
 
-    # Подставлены ли данные из Google CLIENT? Если нет — на просмотре документа
+    # Подставлены ли данные из Google Drive? Если нет — на просмотре документа
     # показываем красный водяной знак, но сам документ открывать не запрещаем.
-    _scan = db.q1("SELECT CLIENT, docs_done, note FROM CLIENT_CLIENT "
-                  "WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1", (app_id,)) or {}
-    _cl_row = db.q1("SELECT CLIENT, full_name_CLIENT, passport_CLIENT, CLIENT_date "
-                    "FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+    _scan = db.q1("SELECT status, docs_done, note FROM drive_scans "
+                  "WHERE application_id=? ORDER BY id DESC LIMIT 1", (app_id,)) or {}
+    _cl_row = db.q1("SELECT surname, full_name_latin, passport_number, birth_date "
+                    "FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
                     (app_id,)) or {}
-    _has_client_data = bool((_cl_row.get("full_name_CLIENT") or "").strip()
-                            or ((_cl_row.get("CLIENT") or "").strip()
-                                and (_cl_row.get("passport_CLIENT") or "").strip()))
-    _scan_ok = (str(_scan.get("CLIENT") or "").lower() == "ok") and int(_scan.get("docs_done") or 0) > 0
+    _has_client_data = bool((_cl_row.get("full_name_latin") or "").strip()
+                            or ((_cl_row.get("surname") or "").strip()
+                                and (_cl_row.get("passport_number") or "").strip()))
+    _scan_ok = (str(_scan.get("status") or "").lower() == "ok") and int(_scan.get("docs_done") or 0) > 0
     # Знак показываем, когда данные клиента НЕ распознаны (нет ФИО и паспорта).
-    # Если данные есть (из CLIENT или введены вручную) — документ чистый.
+    # Если данные есть (из Drive или введены вручную) — документ чистый.
     _data_ready = bool(_has_client_data)
-    _wm_note = ("Google CLIENT не разобран" if not _scan_ok
+    _wm_note = ("Google Drive не разобран" if not _scan_ok
                 else "Данные клиента не распознаны")
     _wm_html = ("" if _data_ready else
-                '<div CLIENT="paper-watermark" id="paper-watermark">'
-                '<div CLIENT="paper-watermark-text">ДАННЫЕ НЕ ПОДСТАВЛЕНЫ'
-                '<span CLIENT="paper-watermark-sub">' + _wm_note + '</span></div></div>')
+                '<div class="paper-watermark" id="paper-watermark">'
+                '<div class="paper-watermark-text">ДАННЫЕ НЕ ПОДСТАВЛЕНЫ'
+                '<span class="paper-watermark-sub">' + _wm_note + '</span></div></div>')
     _data_ready_js = "true" if _data_ready else "false"
 
     body = """
-<div CLIENT="app-card-green">
+<div class="app-card-green">
 
-<div CLIENT="app-head">
-  <div CLIENT="app-head-left">
-    <span CLIENT="app-head-id">Заявка #""" + str(app_id) + """</span>
-    <span CLIENT="app-head-client">· """ + (db.client_label(client) or '—') + """</span>
-    <span CLIENT="badge """ + status_label[1] + """>""" + status_label[0] + """</span>""" + kind_badge(a) + """
+<div class="app-head">
+  <div class="app-head-left">
+    <span class="app-head-id">Заявка #""" + str(app_id) + """</span>
+    <span class="app-head-client">· """ + (db.client_label(client) or '—') + """</span>
+    <span class="badge """ + status_label[1] + """>""" + status_label[0] + """</span>""" + kind_badge(a) + """
   </div>
-  <div CLIENT="app-head-right">
-    <span CLIENT="from-label">👤 Откуда:</span>
+  <div class="app-head-right">
+    <span class="from-label">👤 Откуда:</span>
     """ + manager_btn + """
   </div>
 </div>
 
-""" + _comment_html + """<div CLIENT="stage-CLIENT">Этапы сбора данных</div>
+""" + _comment_html + """<div class="stage-title">Этапы сбора данных</div>
 
-<div CLIENT="row two-col stage-grid">
-  <div CLIENT="kv-cell stage-CLIENT">
-    <div CLIENT="stage-no">1</div>
-    <div CLIENT="kv-label">📦 Продукт</div>
-    <div CLIENT="kv-main">""" + CLIENT_label + """</div>
-    <div CLIENT="kv-sub">код: """ + CLIENT_code + """ · IDR """ + ('{:,}'.format(a["price_idr"]) if a.get("price_idr") else '0') + """</div>
-    """ + CLIENT_select + """
+<div class="row two-col stage-grid">
+  <div class="kv-cell stage-block">
+    <div class="stage-no">1</div>
+    <div class="kv-label">📦 Продукт</div>
+    <div class="kv-main">""" + product_label + """</div>
+    <div class="kv-sub">код: """ + product_code + """ · IDR """ + ('{:,}'.format(a["price_idr"]) if a.get("price_idr") else '0') + """</div>
+    """ + product_select + """
   </div>
-  <div CLIENT="kv-cell stage-CLIENT">
-    <div CLIENT="stage-no">2</div>
-    <div CLIENT="kv-label">📁 Google CLIENT клиента</div>
-    """ + CLIENT_btn + """
+  <div class="kv-cell stage-block">
+    <div class="stage-no">2</div>
+    <div class="kv-label">📁 Google Drive клиента</div>
+    """ + drive_btn + """
   </div>
 </div>
 
-<CLIENT CLIENT="ui-card stage-CLIENT stage-fold" id="stage-3" open>
-  <CLIENT CLIENT="ui-card-head">
-    <span CLIENT="stage-no">3</span><span CLIENT="ui-card-emoji">📋</span>
-    Входные данные заявки <span CLIENT="ui-card-meta">""" + str(len(raw_payload_rows)) + """ полей</span>
-    <button type="button" CLIENT="app-text-btn" data-app-text="1"
-            CLIENT="Полный текст заявки: как её прислал менеджер — уходит на Google Диск вместе с документами">\U0001f4c4 Текст заявки</button>
-    <span CLIENT="stage-fold-hint">свернуть</span><span CLIENT="chev">›</span>
-  </CLIENT>
-  <div CLIENT="ui-card-body">
+<details class="ui-card stage-block stage-fold" id="stage-3" open>
+  <summary class="ui-card-head">
+    <span class="stage-no">3</span><span class="ui-card-emoji">📋</span>
+    Входные данные заявки <span class="ui-card-meta">""" + str(len(raw_payload_rows)) + """ полей</span>
+    <button type="button" class="app-text-btn" data-app-text="1"
+            title="Полный текст заявки: как её прислал менеджер — уходит на Google Диск вместе с документами">\U0001f4c4 Текст заявки</button>
+    <span class="stage-fold-hint">свернуть</span><span class="chev">›</span>
+  </summary>
+  <div class="ui-card-body">
     """ + _raw_payload_html + """
   </div>
-</CLIENT>
+</details>
 
 """ + _text_modal_html + """
-<div CLIENT="stage-CLIENT">Документы</div>
-<div CLIENT="docs-section">
-  <div CLIENT="docs-list-wrap stage-CLIENT">
-    <div CLIENT="docs-list-head">
-      <span CLIENT="stage-no">4</span> 📑 Перечень документов <span CLIENT="docs-count">· """ + str(len(docs_in_CLIENT)) + """</span>
+<div class="stage-title">Документы</div>
+<div class="docs-section">
+  <div class="docs-list-wrap stage-block">
+    <div class="docs-list-head">
+      <span class="stage-no">4</span> 📑 Перечень документов <span class="docs-count">· """ + str(len(docs_in_product)) + """</span>
     </div>
-    <ul CLIENT="docs-list">
-      """ + (doc_items_html or '<li CLIENT="muted">Нет документов</li>') + """
+    <ul class="docs-list">
+      """ + (doc_items_html or '<li class="muted">Нет документов</li>') + """
     </ul>
   </div>
-  <div CLIENT="docs-viewer stage-CLIENT" id="docs-viewer">
-    <div CLIENT="docs-list-head">
-      <span CLIENT="stage-no">5</span> 🖥 Просмотр готового документа
-      <span CLIENT="viewer-fill" id="viewer-fill"></span>
+  <div class="docs-viewer stage-block" id="docs-viewer">
+    <div class="docs-list-head">
+      <span class="stage-no">5</span> 🖥 Просмотр готового документа
+      <span class="viewer-fill" id="viewer-fill"></span>
     </div>
-    <div CLIENT="viewer-tabs" id="viewer-tabs" style="display:none;gap:8px;align-items:center;margin:8px 0">
-      <span CLIENT="vtab-name" id="viewer-doc-name" style="font-weight:600"></span>
+    <div class="viewer-tabs" id="viewer-tabs" style="display:none;gap:8px;align-items:center;margin:8px 0">
+      <span class="vtab-name" id="viewer-doc-name" style="font-weight:600"></span>
     </div>
-    <div CLIENT="docs-viewer-empty" id="docs-viewer-empty">
+    <div class="docs-viewer-empty" id="docs-viewer-empty">
       <div style="font-size:48px;opacity:.4;margin-bottom:8px">\U0001f4c4</div>
       <div>Нажмите «👁» рядом с документом,<br>чтобы открыть готовый документ</div>
     </div>
     """ + _wm_html + """
-    <div CLIENT="app-paper-wrap" id="app-paper-wrap" style="display:none">
-      <iframe id="app-paper-frame" CLIENT="Готовый документ"></iframe>
+    <div class="app-paper-wrap" id="app-paper-wrap" style="display:none">
+      <iframe id="app-paper-frame" title="Готовый документ"></iframe>
     </div>
-    <div CLIENT="zp-preview" data-zoom-pan><div id="app-preview-stage" CLIENT="html-stage"></div></div>
-    <div CLIENT="docs-viewer-err" id="docs-viewer-err" style="display:none">
+    <div class="zp-preview" data-zoom-pan><div id="app-preview-stage" class="html-stage"></div></div>
+    <div class="docs-viewer-err" id="docs-viewer-err" style="display:none">
       <div style="font-size:40px;opacity:.5;margin-bottom:8px">🚫</div>
       <div id="docs-viewer-err-text">Документ недоступен</div>
-      <div CLIENT="muted" style="font-size:12px;margin-top:6px" id="docs-viewer-err-hint"></div>
+      <div class="muted" style="font-size:12px;margin-top:6px" id="docs-viewer-err-hint"></div>
     </div>
   </div>
 </div>
 
-<form method="post" action="/CLIENT/""" + str(app_id) + """/send" CLIENT="stage-CLIENT send-CLIENT">
-  <div CLIENT="stage-no">6</div>
-  """ + send_CLIENT + """
-  <div CLIENT="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b>.</div>
-  """ + ('' if _send_ready else '<div CLIENT="send-hint send-todo">Чтобы кнопка стала активной, у каждого документа блока 4 нажмите <b>✓ Проверен</b> (документ нужен и согласован) или <b>✕</b> (документ не нужен). Счётчик блока 6 считает и то, и другое.</div>') + """
-  <button CLIENT="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
-          onclick="return confirm('Отправить документы в Google CLIENT и уведомить менеджера?')"
-          """ + ('' if _send_ready else 'disabled ') + 'CLIENT="' + ('Отправить документы в Google CLIENT'
+<form method="post" action="/applications/""" + str(app_id) + """/send" class="stage-block send-block">
+  <div class="stage-no">6</div>
+  """ + send_state + """
+  <div class="send-hint">На Google Диск уйдут <b>все подтверждённые документы</b> и <b>текст заявки</b>.</div>
+  """ + ('' if _send_ready else '<div class="send-hint send-todo">Чтобы кнопка стала активной, у каждого документа блока 4 нажмите <b>✓ Проверен</b> (документ нужен и согласован) или <b>✕</b> (документ не нужен). Счётчик блока 6 считает и то, и другое.</div>') + """
+  <button class="send-final-btn" type="submit\"""" + ('' if _send_ready else ' disabled') + """
+          onclick="return confirm('Отправить документы в Google Drive и уведомить менеджера?')"
+          """ + ('' if _send_ready else 'disabled ') + 'title="' + ('Отправить документы в Google Drive'
                  if _send_ready else 'Сначала согласуйте документы: проверьте или отмените каждый') + '\">'"""
-    📤 Отправить документы на Google CLIENT
+    📤 Отправить документы на Google Drive
   </button>
 </form>
 
@@ -899,13 +1179,13 @@ def app_view(app_id: int):
 <script>
 (function() {
   const APP_ID = """ + str(app_id) + """;
-  const DATA_READY = """ + _data_ready_js + """;   // данные из Google CLIENT подставлены?
-  const stage = CLIENT.getElementById('app-preview-stage');
-  const empty = CLIENT.getElementById('docs-viewer-empty');
-  const err = CLIENT.getElementById('docs-viewer-err');
-  const errText = CLIENT.getElementById('docs-viewer-err-text');
-  const errHint = CLIENT.getElementById('docs-viewer-err-hint');
-  const docName = CLIENT.getElementById('viewer-doc-name');
+  const DATA_READY = """ + _data_ready_js + """;   // данные из Google Drive подставлены?
+  const stage = document.getElementById('app-preview-stage');
+  const empty = document.getElementById('docs-viewer-empty');
+  const err = document.getElementById('docs-viewer-err');
+  const errText = document.getElementById('docs-viewer-err-text');
+  const errHint = document.getElementById('docs-viewer-err-hint');
+  const docName = document.getElementById('viewer-doc-name');
 
   function hideAll() {
     if (err) err.style.display = 'none';
@@ -914,32 +1194,32 @@ def app_view(app_id: int):
     hideAll();
     if (errText) errText.textContent = text;
     if (errHint) errHint.textContent = hint || '';
-    if (err) err.style.display = 'CLIENT';
+    if (err) err.style.display = 'block';
   }
   /* HTML-лист с реальными данными — тот же контейнер и тот же вид, что в конструкторе */
   var curTpl = '', savedNodes = null, busyTr = false;
   function showToolbar(on) {
-    var tb = CLIENT.getElementById('doc-toolbar');
+    var tb = document.getElementById('doc-toolbar');
     if (tb) tb.style.display = on ? 'flex' : 'none';
   }
-  function note(id, txt) { var el = CLIENT.getElementById(id); if (el) el.textContent = txt || ''; }
+  function note(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt || ''; }
   function setBtn(sel, attr, val) {
-    var all = CLIENT.querySelectorAll('.doc-toolbar ' + sel);
-    for (var i = 0; i < all.length; i++) all[i].CLIENTList.toggle('is-on', all[i].dataset[attr] === val);
+    var all = document.querySelectorAll('.doc-toolbar ' + sel);
+    for (var i = 0; i < all.length; i++) all[i].classList.toggle('is-on', all[i].dataset[attr] === val);
   }
   function syncWatermark() {
     /* Знак «данные не подставлены»: держим его видимым над превью, пока этап 2 не пройден */
-    var wm = CLIENT.getElementById('paper-watermark');
+    var wm = document.getElementById('paper-watermark');
     if (!wm) return;
-    var viewer = CLIENT.querySelector('.docs-viewer');
+    var viewer = document.querySelector('.docs-viewer');
     if (!viewer) return;
     if (typeof DATA_READY !== 'undefined' && !DATA_READY) {
       if (wm.parentNode !== viewer) viewer.appendChild(wm);
       wm.style.display = 'flex';
-      viewer.CLIENTList.add('has-watermark');
+      viewer.classList.add('has-watermark');
     } else {
       wm.style.display = 'none';
-      viewer.CLIENTList.remove('has-watermark');
+      viewer.classList.remove('has-watermark');
     }
   }
 
@@ -947,7 +1227,7 @@ def app_view(app_id: int):
     hideAll();
     if (stage) stage.innerHTML = '<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Загружаю ' + (what || '') + '…</div>';
     fetch(url, { credentials: 'same-origin' })
-      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.CLIENT); return r.text(); })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(function(h) {
         if (!stage) return;
         stage.innerHTML = h;
@@ -955,11 +1235,11 @@ def app_view(app_id: int):
         /* Режимы PDF (оригинал клиента, чистый/размеченный пример, PDF-шаблон):
            растягиваем окно визора, чтобы страницы были видны целиком.
            innerHTML — из ответа нашего же сервера (внутренняя админка). */
-        if (stage.CLIENTList) {
+        if (stage.classList) {
           var isPdf = /pdf-page-img/.test(h);
-          stage.CLIENTList.toggle('is-pdfmode', isPdf);
-          var v = CLIENT.querySelector('.rv-view');
-          if (v && v.CLIENTList) v.CLIENTList.toggle('is-orig', isPdf);
+          stage.classList.toggle('is-pdfmode', isPdf);
+          var v = document.querySelector('.rv-view');
+          if (v && v.classList) v.classList.toggle('is-orig', isPdf);
         }
       })
       .catch(function() { showErr('Этот вид недоступен для документа', 'Попробуйте другой режим просмотра'); });
@@ -967,14 +1247,14 @@ def app_view(app_id: int):
   /* Готовый сформированный документ показываем сразу — PDF с данными клиента.
      Сравнение с бланком и разметку менеджер в заявке не делает: это делается один раз в настройках. */
   function showPaper(pdfName) {
-    var wrap = CLIENT.getElementById('app-paper-wrap');
-    var fr = CLIENT.getElementById('app-paper-frame');
-    var zp = CLIENT.querySelector('.docs-viewer .zp-preview');
+    var wrap = document.getElementById('app-paper-wrap');
+    var fr = document.getElementById('app-paper-frame');
+    var zp = document.querySelector('.docs-viewer .zp-preview');
     if (!wrap || !fr) return false;
-    fr.src = '/CLIENT/file/renders/' + pdfName;
-    wrap.style.display = 'CLIENT';
+    fr.src = '/templates/file/renders/' + pdfName;
+    wrap.style.display = 'block';
     if (zp) zp.style.display = 'none';
-    var mt = CLIENT.getElementById('docs-viewer-empty');
+    var mt = document.getElementById('docs-viewer-empty');
     if (mt) mt.style.display = 'none';
     return true;
   }
@@ -982,14 +1262,14 @@ def app_view(app_id: int):
     hideAll();
     if (!tplId) { showErr('Шаблон документа не найден', ''); return; }
     curTpl = tplId; savedNodes = null;
-    var wrap = CLIENT.getElementById('app-paper-wrap');
-    var zp = CLIENT.querySelector('.docs-viewer .zp-preview');
+    var wrap = document.getElementById('app-paper-wrap');
+    var zp = document.querySelector('.docs-viewer .zp-preview');
     if (pdfName) { showPaper(pdfName); return; }
     /* PDF ещё не сформирован — показываем лист с данными заявки */
     if (wrap) wrap.style.display = 'none';
-    if (zp) zp.style.display = 'CLIENT';
+    if (zp) zp.style.display = 'block';
     if (stage) stage.innerHTML = '<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Открываю документ…</div>';
-    fetch('/CLIENT/' + APP_ID + '/doc/' + tplId + '/html', { credentials: 'same-origin' })
+    fetch('/applications/' + APP_ID + '/doc/' + tplId + '/html', { credentials: 'same-origin' })
       .then(function(r) { return r.text(); })
       .then(function(h) {
         if (!stage) return;
@@ -1000,36 +1280,36 @@ def app_view(app_id: int):
   }
   /* перевод: бланк шаблона переводим, данные клиента — нет.
      Исключение: описание должности/профессии переводить нужно. */
-  var TR_FIELDS = ['position', 'CLIENT', 'CLIENT', 'job', 'job_CLIENT',
-                   'job_and_position', 'position_CLIENT', 'CLIENT_CLIENT', 'duties',
+  var TR_FIELDS = ['position', 'profession', 'occupation', 'job', 'job_title',
+                   'job_and_position', 'position_title', 'profession_title', 'duties',
                    'position_name', 'work_position', 'speciality', 'specialty',
                    /* кусочки резюме: описание, обязанности, навыки, образование, должности —
                       их администратор читает по-русски, а в документ уходит английский */
-                   'cv_CLIENT', 'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
-                   'cv_job1_CLIENT', 'cv_job2_CLIENT', 'cv_job3_CLIENT',
-                   'cv_CLIENT_hard', 'cv_CLIENT_soft', 'cv_CLIENT_CLIENT',
-                   'cv_CLIENT_CLIENT', 'cv_CLIENT_note',
+                   'cv_summary', 'cv_job1_bullets', 'cv_job2_bullets', 'cv_job3_bullets',
+                   'cv_job1_title', 'cv_job2_title', 'cv_job3_title',
+                   'cv_skills_hard', 'cv_skills_soft', 'cv_skills_tools',
+                   'cv_education_degree', 'cv_education_note',
                    /* договор работы с организацией: должность и обязанности */
-                   'CLIENT_list'];
+                   'services_list'];
   function textNodes() {
     var pv = [];
     try {
-      var el = CLIENT.getElementById('app-CLIENT');
+      var el = document.getElementById('app-values');
       if (el) { var m = JSON.parse(el.textContent || '{}'); Object.keys(m).forEach(function(k) { var v = String(m[k] || '').trim(); if (v) pv.push(v); }); }
     } catch (e) { pv = []; }
-    var out = [], w = CLIENT.createTreeWalker(stage, NodeFilter.SHOW_TEXT, null), n;
+    var out = [], w = document.createTreeWalker(stage, NodeFilter.SHOW_TEXT, null), n;
     while (n = w.nextNode()) {
       var p = n.parentElement;
       if (!p) continue;
       var tag = (p.nodeName || '').toLowerCase();
-      if (tag === 'script' || tag === 'style' || tag === 'CLIENT') continue;
+      if (tag === 'script' || tag === 'style' || tag === 'title') continue;
       var holder = p.closest('.var-val');
       if (holder) {
         var nm = (holder.dataset.var || '').toLowerCase();
         /* данные клиента переводим тоже: промпт сохраняет имена, номера и адреса */
       }
       var v = (n.nodeValue || '').trim();
-      if (v.length < 2 || v.CLIENTOf('{{') >= 0) continue;
+      if (v.length < 2 || v.indexOf('{{') >= 0) continue;
       if (!/[A-Za-z]{3}/.test(v)) continue;
       /* значения переменных тоже переводим: нужен полный русский текст документа */
       out.push(n);
@@ -1046,16 +1326,16 @@ def app_view(app_id: int):
     ns.forEach(function(n) { var k = n.nodeValue.trim(); if (!seen[k]) { seen[k] = 1; uniq.push(k); } });
     uniq = uniq.slice(0, 400);
     note('ls-note', '⏳ перевожу ' + uniq.length + ' строк…');
-    fetch('/CLIENT/' + curTpl + '/translate', {
+    fetch('/templates/' + curTpl + '/translate', {
       method: 'POST', credentials: 'same-origin',
-      CLIENTs: { 'Content-Type': 'CLIENT/json', 'X-Requested-With': 'fetch' },
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
       body: JSON.stringify({ lines: uniq, cache_only: false })
     }).then(function(r) { return r.json(); }).then(function(j) {
       busyTr = false;
       if (!j || !j.ok) { note('ls-note', 'ошибка перевода'); return; }
       var m = {};
       uniq.forEach(function(s, i) { m[s] = (j.ru || [])[i] || s; });
-      textNodes().forEach(function(n) { var k = n.nodeValue.trim(); if (m[k]) n.nodeValue = n.nodeValue.reCLIENT(k, m[k]); });
+      textNodes().forEach(function(n) { var k = n.nodeValue.trim(); if (m[k]) n.nodeValue = n.nodeValue.replace(k, m[k]); });
       var miss = j.missing || 0;
       note('ls-note', miss ? ('🇷🇺 из кэша · ещё не переведено строк: ' + miss)
                            : '🇷🇺 перевод (из кэша)');
@@ -1069,12 +1349,12 @@ def app_view(app_id: int):
     note('ls-note', '');
   }
   function autoOpen() {
-    var CLIENT = CLIENT.querySelector('.doc-row');
-    if (!CLIENT) return;
-    var btn = CLIENT.querySelector('.doc-view');
+    var first = document.querySelector('.doc-row');
+    if (!first) return;
+    var btn = first.querySelector('.doc-view');
     if (btn && !btn.disabled) btn.click();
   }
-  CLIENT.addEventListener('click', function(e) {
+  document.addEventListener('click', function(e) {
     var t = e.target;
     if (!t || !t.closest) return;
     /* режимы просмотра: HTML-шаблон / PDF-шаблон / размеченный / чистый / оригинал клиента */
@@ -1086,10 +1366,10 @@ def app_view(app_id: int):
       if (m === 'html') {
         openDoc(curTpl);
       } else if (m === 'orig') {
-        loadRemote('/CLIENT/' + APP_ID + '/original-pages/' + curTpl, 'оригинал клиента');
+        loadRemote('/applications/' + APP_ID + '/original-pages/' + curTpl, 'оригинал клиента');
       } else {
         var what = m === 'source' ? 'PDF-шаблон' : (m === 'marked' ? 'размеченный пример' : 'чистый пример');
-        loadRemote('/CLIENT/pdfview/' + curTpl + '?kind=' + m, what);
+        loadRemote('/templates/pdfview/' + curTpl + '?kind=' + m, what);
       }
       return;
     }
@@ -1101,26 +1381,26 @@ def app_view(app_id: int):
       if (lb.dataset.lang === 'ru') toRu(); else toOrig();
       return;
     }
-    /* кнопка «бумажка» — PDF поверх экрана, без CLIENTа на другую страницу */
+    /* кнопка «бумажка» — PDF поверх экрана, без перехода на другую страницу */
     if (t.closest('.doc-paper')) {
       var pb = t.closest('.doc-paper');
       curTpl = pb.dataset.tplId || curTpl;
       if (pb.dataset.paper) { openPaper(pb.dataset.paper); return; }
-      note('CLIENT-scan-note', '⏳ формирую PDF…');
-      fetch('/CLIENT/' + APP_ID + '/doc/' + pb.dataset.tplId + '/ensure-pdf',
-            { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+      note('drive-scan-note', '⏳ формирую PDF…');
+      fetch('/applications/' + APP_ID + '/doc/' + pb.dataset.tplId + '/ensure-pdf',
+            { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
         .then(function(r) { return r.json(); })
         .then(function(j) {
-          note('CLIENT-scan-note', '');
+          note('drive-scan-note', '');
           if (j && j.ok && j.pdf_name) {
-            pb.dataset.paper = '/CLIENT/file/renders/' + j.pdf_name;
+            pb.dataset.paper = '/templates/file/renders/' + j.pdf_name;
             openPaper(pb.dataset.paper);
           } else { showErr('Не удалось сформировать PDF', 'Проверьте, заполнены ли поля документа'); }
         })
-        .catch(function() { note('CLIENT-scan-note', ''); showErr('Не удалось сформировать PDF', ''); });
+        .catch(function() { note('drive-scan-note', ''); showErr('Не удалось сформировать PDF', ''); });
       return;
     }
-    if (t.CLIENTList && t.CLIENTList.contains('doc-view')) {
+    if (t.classList && t.classList.contains('doc-view')) {
       var r = e.target.closest('.doc-row');
       var tplId = (r && (r.dataset.tplId || '')) || '';
       var nm = r ? r.querySelector('.doc-name') : null;
@@ -1128,92 +1408,92 @@ def app_view(app_id: int):
       if (empty) empty.style.display = 'none';
       openDoc(tplId, '');   /* всегда HTML-лист с реальными данными клиента */
       /* индикатор: все поля заполнены (зелёный) или нет (красный) */
-      var vf = CLIENT.getElementById('viewer-fill');
+      var vf = document.getElementById('viewer-fill');
       if (vf) {
         var fb = r ? r.querySelector('.badge.fill-ok, .badge.fill-warn') : null;
-        if (!fb) { vf.CLIENTName = 'viewer-fill'; vf.textContent = ''; }
-        else if (fb.CLIENTList.contains('fill-ok')) {
-          vf.CLIENTName = 'viewer-fill ok';
+        if (!fb) { vf.className = 'viewer-fill'; vf.textContent = ''; }
+        else if (fb.classList.contains('fill-ok')) {
+          vf.className = 'viewer-fill ok';
           vf.textContent = '✅ все поля заполнены';
         } else {
-          vf.CLIENTName = 'viewer-fill warn';
-          vf.textContent = '⚠️ ' + fb.textContent.trim().reCLIENT('⚠️', '').trim();
+          vf.className = 'viewer-fill warn';
+          vf.textContent = '⚠️ ' + fb.textContent.trim().replace('⚠️', '').trim();
         }
       }
       /* подсвечиваем документ, который сейчас в просмотре */
-      CLIENT.querySelectorAll('.doc-view').forEach(function(b) { b.CLIENTList.remove('is-on'); });
-      e.target.CLIENTList.add('is-on');
-      CLIENT.querySelectorAll('.doc-row').forEach(function(rr) { rr.CLIENTList.remove('active'); });
-      if (r) r.CLIENTList.add('active');
+      document.querySelectorAll('.doc-view').forEach(function(b) { b.classList.remove('is-on'); });
+      e.target.classList.add('is-on');
+      document.querySelectorAll('.doc-row').forEach(function(rr) { rr.classList.remove('active'); });
+      if (r) r.classList.add('active');
       return;
     }
   });
   function sendVariant(sel) {
-    fetch('/CLIENT/' + APP_ID + '/doc-variant', {
+    fetch('/applications/' + APP_ID + '/doc-variant', {
       method: 'POST', credentials: 'same-origin',
-      CLIENTs: { 'Content-Type': 'CLIENT/json', 'X-Requested-With': 'fetch' },
-      body: JSON.stringify({ slot: sel.dataset.slot, template_id: sel.CLIENT })
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+      body: JSON.stringify({ slot: sel.dataset.slot, template_id: sel.value })
     }).then(function() { location.reload(); })
       .catch(function() { location.reload(); });
   }
-  CLIENT.addEventListener('CLIENT', function(e) {
-    if (e.target.CLIENTList && e.target.CLIENTList.contains('doc-variant')) sendVariant(e.target);
+  document.addEventListener('change', function(e) {
+    if (e.target.classList && e.target.classList.contains('doc-variant')) sendVariant(e.target);
   });
   /* ── «Бумажка»: PDF открывается поверх этого же экрана, никуда не уходим ── */
   var paperOv = null;
   function openPaper(url) {
     if (!url) return;
     if (!paperOv) {
-      paperOv = CLIENT.createElement('div');
-      paperOv.CLIENTName = 'paper-overlay';
-      paperOv.innerHTML = '<div CLIENT="paper-bar">'
-        + '<span CLIENT="paper-name" id="paper-name"></span>'
-        + '<button type="button" CLIENT="paper-dl" id="paper-dl">⬇ Скачать</button>'
-        + '<button type="button" CLIENT="paper-big" id="paper-big">⤢ Во всё окно</button>'
-        + '<button type="button" CLIENT="paper-ok" id="paper-ok">✓ Ок — документ проверен</button>'
-        + '<button type="button" CLIENT="paper-close" id="paper-close">✕ Закрыть (Esc)</button></div>'
-        + '<div CLIENT="paper-body"><div CLIENT="paper-stage" id="paper-stage">'
-        + '<iframe id="paper-frame" CLIENT="PDF"></iframe>'
+      paperOv = document.createElement('div');
+      paperOv.className = 'paper-overlay';
+      paperOv.innerHTML = '<div class="paper-bar">'
+        + '<span class="paper-name" id="paper-name"></span>'
+        + '<button type="button" class="paper-dl" id="paper-dl">⬇ Скачать</button>'
+        + '<button type="button" class="paper-big" id="paper-big">⤢ Во всё окно</button>'
+        + '<button type="button" class="paper-ok" id="paper-ok">✓ Ок — документ проверен</button>'
+        + '<button type="button" class="paper-close" id="paper-close">✕ Закрыть (Esc)</button></div>'
+        + '<div class="paper-body"><div class="paper-stage" id="paper-stage">'
+        + '<iframe id="paper-frame" title="PDF"></iframe>'
         + '</div></div>';
-      CLIENT.body.appendChild(paperOv);
+      document.body.appendChild(paperOv);
       paperOv.addEventListener('click', function(ev) {
         if (ev.target === paperOv || (ev.target.id === 'paper-close')) closePaper();
       });
-      CLIENT.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') closePaper(); });
+      document.addEventListener('keydown', function(ev) { if (ev.key === 'Escape') closePaper(); });
     }
-    CLIENT.getElementById('paper-frame').src = url;
-    CLIENT.getElementById('paper-dl').onclick = function() { window.open(url, '_blank'); };
-    CLIENT.getElementById('paper-name').textContent = decodeURIComponent(url.split('/').pop());
-    var bigBtn = CLIENT.getElementById('paper-big');
+    document.getElementById('paper-frame').src = url;
+    document.getElementById('paper-dl').onclick = function() { window.open(url, '_blank'); };
+    document.getElementById('paper-name').textContent = decodeURIComponent(url.split('/').pop());
+    var bigBtn = document.getElementById('paper-big');
     if (bigBtn) bigBtn.onclick = function() { window.open(url, '_blank'); };
-    var okBtn = CLIENT.getElementById('paper-ok');
+    var okBtn = document.getElementById('paper-ok');
     if (okBtn) okBtn.onclick = function() {
       var tpl = curTpl;
       if (!tpl) { closePaper(); return; }
       okBtn.disabled = true; okBtn.textContent = '⏳ отмечаю…';
-      fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify',
-            { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+      fetch('/applications/' + APP_ID + '/doc/' + tpl + '/verify',
+            { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
         .then(function() { closePaper(); location.reload(); })
         .catch(function() { closePaper(); location.reload(); });
     };
-    var _stage = CLIENT.getElementById('paper-stage');
-    var _wm = CLIENT.getElementById('paper-watermark');
+    var _stage = document.getElementById('paper-stage');
+    var _wm = document.getElementById('paper-watermark');
     if (_wm && _stage) {
       _stage.appendChild(_wm);                       // переносим знак в окно просмотра
       _wm.style.display = DATA_READY ? 'none' : 'flex';
     }
-    paperOv.CLIENTList.add('is-on');
-    CLIENT.CLIENTElement.style.overflow = 'hidden';
+    paperOv.classList.add('is-on');
+    document.documentElement.style.overflow = 'hidden';
   }
   function closePaper() {
     if (!paperOv) return;
-    paperOv.CLIENTList.remove('is-on');
-    var f = CLIENT.getElementById('paper-frame');
+    paperOv.classList.remove('is-on');
+    var f = document.getElementById('paper-frame');
     if (f) f.src = 'about:blank';
-    CLIENT.CLIENTElement.style.overflow = '';
+    document.documentElement.style.overflow = '';
   }
   /* подпись «свернуть/развернуть» у блока 3 */
-  var s3 = CLIENT.getElementById('stage-3');
+  var s3 = document.getElementById('stage-3');
   if (s3) s3.addEventListener('toggle', function() {
     var h = s3.querySelector('.stage-fold-hint');
     if (h) h.textContent = s3.open ? 'свернуть' : 'развернуть';
@@ -1222,22 +1502,22 @@ def app_view(app_id: int):
   /* обновление блока «готовность к отправке» без перезагрузки страницы */
   function refreshSendState() {
     // Лёгкий запрос: только состояние готовности, без рендера всей карточки.
-    fetch('/CLIENT/' + APP_ID + '/send-CLIENT', { credentials: 'same-origin' })
+    fetch('/applications/' + APP_ID + '/send-state', { credentials: 'same-origin' })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         if (!d || !d.ok) return;
-        var mine = CLIENT.querySelector('.send-CLIENT');
+        var mine = document.querySelector('.send-state');
         if (mine) {
-          mine.textContent = (d.CLIENT === 'ok' ? '\u2705 ' : '\u26d4 ') + d.hint;
-          mine.CLIENTName = 'send-CLIENT ' + (d.CLIENT || 'warn');
+          mine.textContent = (d.state === 'ok' ? '\u2705 ' : '\u26d4 ') + d.hint;
+          mine.className = 'send-state ' + (d.state || 'warn');
         }
-        var btn = CLIENT.querySelector('.send-final-btn');
+        var btn = document.querySelector('.send-final-btn');
         if (btn) {
           btn.disabled = !d.can_send;
-          btn.CLIENT = d.can_send ? 'Отправить документы в Google CLIENT'
+          btn.title = d.can_send ? 'Отправить документы в Google Drive'
                                  : 'Сначала согласуйте документы: проверьте или отмените каждый';
         }
-        var todo = CLIENT.querySelector('.send-todo');
+        var todo = document.querySelector('.send-todo');
         if (todo && d.can_send) todo.remove();
       }).catch(function() {});
   }
@@ -1245,30 +1525,30 @@ def app_view(app_id: int):
   function applyVerdict(row, verified, rejected) {
     if (!row) return;
     var y = row.querySelector('.verdict-yes'), nbtn = row.querySelector('.verdict-no');
-    if (y) y.CLIENTList.toggle('is-on', !!verified);
-    if (nbtn) nbtn.CLIENTList.toggle('is-on', !!rejected);
+    if (y) y.classList.toggle('is-on', !!verified);
+    if (nbtn) nbtn.classList.toggle('is-on', !!rejected);
     var nm = row.querySelector('.doc-name');
     if (nm) {
       var ck = nm.querySelector('.check-ok');
       if (verified && !ck) {
-        ck = CLIENT.createElement('span'); ck.CLIENTName = 'check-ok'; ck.textContent = '\u2713';
-        nm.insertBefore(ck, nm.CLIENTChild);
-        nm.insertBefore(CLIENT.createTextNode(' '), ck.nextSibling);
+        ck = document.createElement('span'); ck.className = 'check-ok'; ck.textContent = '\u2713';
+        nm.insertBefore(ck, nm.firstChild);
+        nm.insertBefore(document.createTextNode(' '), ck.nextSibling);
       } else if (!verified && ck) { ck.remove(); }
     }
     var bd = row.querySelector('.badge');
     if (bd) {
-      if (rejected) { bd.CLIENTName = 'badge rej'; bd.textContent = 'не нужен'; }
-      else if (verified) { bd.CLIENTName = 'badge ok'; bd.textContent = 'проверен'; }
-      else { bd.CLIENTName = 'badge amber'; bd.textContent = 'заполнен'; }
+      if (rejected) { bd.className = 'badge rej'; bd.textContent = 'не нужен'; }
+      else if (verified) { bd.className = 'badge ok'; bd.textContent = 'проверен'; }
+      else { bd.className = 'badge amber'; bd.textContent = 'заполнен'; }
     }
-    row.CLIENTList.toggle('is-rejected', !!rejected);
+    row.classList.toggle('is-rejected', !!rejected);
   }
   /* ── Вердикт по документу: «✓» и «✕» — нажимаемые, взаимоисключающие ── */
   function postVerdict(url, btn) {
     var oldText = btn.textContent;
     btn.disabled = true;
-    fetch(url, { method: 'POST', credentials: 'same-origin', CLIENTs: { 'X-Requested-With': 'fetch' } })
+    fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' } })
       .then(function(r) { return r.json(); })
       .then(function(d) {
         btn.disabled = false;
@@ -1277,32 +1557,32 @@ def app_view(app_id: int):
       })
       .catch(function() { btn.disabled = false; btn.textContent = oldText; });
   }
-  CLIENT.addEventListener('click', function(e) {
+  document.addEventListener('click', function(e) {
     if (!e.target || !e.target.closest) return;
     var y = e.target.closest('[data-verify-app]');
     if (y && !y.disabled) {
       e.preventDefault();
-      postVerdict('/CLIENT/' + y.getAttribute('data-verify-app')
+      postVerdict('/applications/' + y.getAttribute('data-verify-app')
                   + '/doc/' + y.getAttribute('data-verify-tpl') + '/verify', y);
       return;
     }
     var x = e.target.closest('[data-reject-app]');
     if (x && !x.disabled) {
       e.preventDefault();
-      postVerdict('/CLIENT/' + x.getAttribute('data-reject-app')
+      postVerdict('/applications/' + x.getAttribute('data-reject-app')
                   + '/doc/' + x.getAttribute('data-reject-tpl') + '/reject', x);
     }
   });
   /* -- Tekst zayavki: vsplyvayushcheye okno -- */
-  CLIENT.addEventListener('click', function(e) {
+  document.addEventListener('click', function(e) {
     var b = e.target && e.target.closest ? e.target.closest('[data-app-text]') : null;
     if (!b) return;
     e.preventDefault();
     e.stopPropagation();
-    var pre = CLIENT.getElementById('app-text-pre');
+    var pre = document.getElementById('app-text-pre');
     if (pre) {
       pre.textContent = 'Zagruzka...';
-      fetch('/CLIENT/' + APP_ID + '/text-file', { credentials: 'same-origin' })
+      fetch('/applications/' + APP_ID + '/text-file', { credentials: 'same-origin' })
         .then(function(r) { return r.text(); })
         .then(function(t) { pre.textContent = t; })
         .catch(function() { pre.textContent = 'Ne udalos zagruzit tekst zayavki'; });
@@ -1322,11 +1602,11 @@ def app_view(app_id: int):
   border: 2px solid #F6C000; box-shadow: 0 2px 8px rgba(246,192,0,.28);
 }
 .app-comment-flash .acf-label {
-  display: CLIENT-CLIENT; font-weight: 800; font-size: 13px; letter-spacing: .2px;
+  display: inline-block; font-weight: 800; font-size: 13px; letter-spacing: .2px;
   color: #8A5B00; text-transform: uppercase; margin-bottom: 6px;
 }
 .app-comment-flash .acf-text { font-size: 15px; line-height: 1.45; color: #4A3200; font-weight: 600; }
-.app-text-btn { text-decoration: none; display: CLIENT-flex; align-items: center; gap: 6px; }
+.app-text-btn { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
 
 .app-card-green {
   background: linear-gradient(180deg, #E8F6EE 0%, #F4FAF6 100%);
@@ -1344,9 +1624,9 @@ def app_view(app_id: int):
 .app-head-client { color: #4B5563; font-size: 14px; }
 .app-head-right { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
 .from-label { color: #6B7280; }
-.from-CLIENT { font-weight: 600; }
+.from-value { font-weight: 600; }
 .from-write-btn {
-  display: CLIENT-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 4px;
   background: #DCFCE7; color: #15803D; padding: 5px 10px;
   border-radius: 7px; font-weight: 600; font-size: 13px;
   text-decoration: none; border: 1px solid #86EFAC;
@@ -1354,7 +1634,7 @@ def app_view(app_id: int):
 .from-write-btn:hover { background: #BBF7D0; }
 
 .row.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; align-items: stretch; }
-.row.two-col .kv-cell{display:flex;flex-direction:column;justify-content:flex-CLIENT;min-height:132px}
+.row.two-col .kv-cell{display:flex;flex-direction:column;justify-content:flex-start;min-height:132px}
 .row.two-col .kv-cell select{width:100% !important}
 @media(max-width:640px){ .row.two-col { grid-template-columns: 1fr; } }
 .kv-cell {
@@ -1376,9 +1656,9 @@ def app_view(app_id: int):
 .doc-btn:hover { box-shadow: 0 3px 7px rgba(16,24,40,.18); background: #F9FAFB; }
 .doc-btn:active { transform: translateY(1px); box-shadow: inset 0 2px 4px rgba(16,24,40,.22); }
 .doc-btn.is-locked { opacity: .4; cursor: not-allowed; box-shadow: none; }
-.verdict-pair { display: CLIENT-flex; gap: 6px; align-items: center; margin-left: 2px; }
+.verdict-pair { display: inline-flex; gap: 6px; align-items: center; margin-left: 2px; }
 .verdict-btn { width: 34px; height: 30px; padding: 0; font-size: 15px; font-weight: 700;
-               border-radius: 8px; display: CLIENT-flex; align-items: center; justify-content: center; }
+               border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
 .verdict-yes.is-on { background:#15803D; color:#FFFFFF; border-color:#0E6A31;
                      box-shadow: inset 0 2px 5px rgba(0,0,0,.30); }
 .verdict-no.is-on  { background:#DC2626; color:#FFFFFF; border-color:#B91C1C;
@@ -1394,18 +1674,18 @@ def app_view(app_id: int):
   box-shadow: inset 0 2px 5px rgba(0,0,0,.22); transform: translateY(1px);
 }
 
-.send-CLIENT { font-size:13px; font-weight:600; padding:8px 12px; border-radius:8px; margin:4px 0 8px; }
-.send-CLIENT.ok { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
-.send-CLIENT.warn { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
+.send-state { font-size:13px; font-weight:600; padding:8px 12px; border-radius:8px; margin:4px 0 8px; }
+.send-state.ok { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
+.send-state.warn { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
 .send-final-btn[disabled] { opacity:.45; cursor:not-allowed; }
-.CLIENT-btn {
-  display: CLIENT-flex; align-items: center; gap: 6px;
+.drive-btn {
+  display: inline-flex; align-items: center; gap: 6px;
   background: #229ED9; color: #fff !important;
   padding: 8px 14px; border-radius: 8px;
   text-decoration: none; font-size: 13px; font-weight: 600;
   margin-top: 4px;
 }
-.CLIENT-btn:hover { background: #1B7DB0; }
+.drive-btn:hover { background: #1B7DB0; }
 
 .ui-card { background:#fff; border:1px solid #DCEEE2; border-radius:10px;
           overflow:hidden; margin-bottom: 12px; }
@@ -1428,16 +1708,16 @@ def app_view(app_id: int):
 .kv-table td.kv-key code { background:transparent; padding:0; color:inherit; font-size:12px; }
 .kv-table td.kv-val { font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
                       font-size:13.5px; color:#1F2A24; word-break:break-word; }
-.kv-CLIENT-row td.kv-key-CLIENT { background:#FEF3C7 !important; color:#78350F !important; font-weight:700; }
-.kv-CLIENT-row td.kv-val-CLIENT { background:#FFFBEB !important; color:#15803D !important; font-weight:700; font-size:14px; }
-.kv-CLIENT-code { color:#6B7C70; font-weight:400; font-size:12px; margin-left:4px; }
+.kv-product-row td.kv-key-product { background:#FEF3C7 !important; color:#78350F !important; font-weight:700; }
+.kv-product-row td.kv-val-product { background:#FFFBEB !important; color:#15803D !important; font-weight:700; font-size:14px; }
+.kv-product-code { color:#6B7C70; font-weight:400; font-size:12px; margin-left:4px; }
 .raw-payload-text { white-space:pre-wrap; word-break:break-word; font-size:13.5px;
                     font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;
                     background:#fff; border:1px solid #DCEEE2; border-radius:8px;
                     padding:10px; margin:0; line-height:1.5;
                     max-height:300px; overflow:auto; }
 
-.check-ok { display:CLIENT-flex; align-items:center; justify-content:center;
+.check-ok { display:inline-flex; align-items:center; justify-content:center;
             width:16px; height:16px; background:#22C55E; color:#fff; border-radius:50%;
             font-size:10px; font-weight:700; margin-right:4px;
             box-shadow:0 0 0 2px #E8F6EE; }
@@ -1461,14 +1741,14 @@ def app_view(app_id: int):
                   box-shadow:0 0 0 2px rgba(20,102,58,.25); }
 .doc-row:last-child { border-bottom:none; }
 .doc-name { font-size:13px; font-weight:600; color:#1F2A24; line-height:1.3; }
-.doc-no { display:CLIENT-CLIENT; font-size:11.5px; font-weight:800; color:#14532D; background:#E7F6EC; border:1px solid #BFE0CB; border-radius:6px; padding:1px 6px; margin-right:5px; }
+.doc-no { display:inline-block; font-size:11.5px; font-weight:800; color:#14532D; background:#E7F6EC; border:1px solid #BFE0CB; border-radius:6px; padding:1px 6px; margin-right:5px; }
 .doc-meta { font-size:11px; color:#6B7C70; margin-top:3px; font-weight:400; }
 .doc-actions { display:flex; gap:4px; flex-wrap:wrap; }
 .doc-btn {
   background:#F4FAF6; border:1px solid #DCEEE2;
   border-radius:6px; padding:5px 9px; font-size:12px; font-weight:600;
   cursor:pointer; color:#15803D; text-decoration:none;
-  display:CLIENT-flex; align-items:center; gap:3px;
+  display:inline-flex; align-items:center; gap:3px;
 }
 .doc-btn:hover { background:#E5F2EA; }
 .btn-ok-idle { background:#FEF3C7; color:#78350F; border-color:#D97706; }
@@ -1476,10 +1756,10 @@ def app_view(app_id: int):
 .btn-ok-active { background:#DCFCE7; color:#15803D; border-color:#16A34A; }
 
 .docs-viewer .html-stage{width:794.5px;margin:0 !important;padding:0 !important;border:0 !important;background:#fff !important;transform-origin:top left;box-shadow:0 1px 6px rgba(0,0,0,.12)}
-.docs-viewer .zp-preview{display:CLIENT;padding:0}
-.docs-viewer .zp-CLIENT{background:#fff;border:0;border-radius:8px;padding:6px 8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.docs-viewer .zp-preview{display:block;padding:0}
+.docs-viewer .zp-tools{background:#fff;border:0;border-radius:8px;padding:6px 8px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .docs-viewer { background:#E7EBEE; border:1px solid #DCEEE2; border-radius:10px;
-               display:flex; flex-direction:column; align-items:stretch; justify-content:flex-CLIENT;
+               display:flex; flex-direction:column; align-items:stretch; justify-content:flex-start;
                min-height: 60vh; overflow:visible; }
 .docs-viewer-empty { color:#6B7C70; text-align:center; font-size:13px; padding:24px;
                      display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; }
@@ -1496,20 +1776,20 @@ def app_view(app_id: int):
 .tb-note { font-size:12px; color:#6B7C70; }
 .tb-hint { font-size:11.5px; color:#6B7C70; border-top:1px dashed #DCEEE2; padding-top:8px; }
 /* === Пронумерованные этапы работы с заявкой (1…6) === */
-.stage-CLIENT { margin:16px 0 8px; padding:7px 12px; border-radius:9px; background:#EAF6EE;
+.stage-title { margin:16px 0 8px; padding:7px 12px; border-radius:9px; background:#EAF6EE;
                border:1px solid #C7E6CF; font-size:15px; font-weight:800; color:#14663A; }
-.stage-CLIENT { position:relative; }
-.stage-no { display:CLIENT-flex; align-items:center; justify-content:center; width:22px; height:22px;
+.stage-block { position:relative; }
+.stage-no { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px;
             border-radius:50%; background:#14663A; color:#fff; font-size:12.5px; font-weight:800;
             margin-right:7px; flex:0 0 auto; vertical-align:middle; }
-.send-CLIENT { display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 12px;
+.send-block { display:flex; align-items:center; gap:10px; margin-top:16px; padding:10px 12px;
               background:#F4FAF6; border:1px solid #DCEEE2; border-radius:10px; }
-.send-CLIENT .send-final-btn { flex:1; }
+.send-block .send-final-btn { flex:1; }
 /* блок 3: компактнее и сворачивается */
 #stage-3 .ui-card-head { display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; }
-#stage-3 .ui-card-head::-webkit-CLIENT-marker { display:none; }
-.stage-fold > CLIENT .chev { margin-left:6px; color:#9AA3B2; font-size:18px; transition:transform .18s; }
-.stage-fold[open] > CLIENT .chev { transform:rotate(90deg); }
+#stage-3 .ui-card-head::-webkit-details-marker { display:none; }
+.stage-fold > summary .chev { margin-left:6px; color:#9AA3B2; font-size:18px; transition:transform .18s; }
+.stage-fold[open] > summary .chev { transform:rotate(90deg); }
 .stage-fold-hint { font-size:11.5px; color:#6B7C70; margin-left:auto; }
 #stage-3 .ui-card-body { padding:6px 12px 10px; }
 #stage-3 .kv-table td { padding:4px 8px; font-size:12.5px; }
@@ -1518,7 +1798,7 @@ def app_view(app_id: int):
   #stage-3 .kv-table tr { display:grid; grid-template-columns:140px minmax(0,1fr); }
 }
 /* «бумажка» — PDF поверх экрана (статичная разметка, без данных пользователя) */
-.paper-overlay { display:none; position:fixed; inset:0; z-CLIENT:9999; background:rgba(18,24,20,.78); }
+.paper-overlay { display:none; position:fixed; inset:0; z-index:9999; background:rgba(18,24,20,.78); }
 .paper-overlay.is-on { display:flex; flex-direction:column; }
 .paper-bar { display:flex; align-items:center; gap:10px; padding:9px 14px; background:#14663A; color:#fff; }
 .paper-name { font-size:13px; font-weight:600; margin-right:auto; overflow:hidden;
@@ -1562,7 +1842,7 @@ def app_view(app_id: int):
 }
 .send-final-btn:hover { background:#15803D; }
 
-.badge { display:CLIENT-CLIENT; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
 .badge.ok { background:#DCFCE7; color:#15803D; }
 .badge.amber { background:#FEF3C7; color:#78350F; }
 .badge.blue { background:#DBEAFE; color:#1E40AF; }
@@ -1571,50 +1851,50 @@ def app_view(app_id: int):
 .badge.grey { background:#E5E7EB; color:#6B7280; }
 </style>
 
-<div id="CLIENT-modal" onclick="if(event.target===this)wolfDriveClose()">
-  <div CLIENT="dm-box">
+<div id="drive-modal" onclick="if(event.target===this)wolfDriveClose()">
+  <div class="dm-box">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <b>Что вытащено из Google CLIENT</b>
+      <b>Что вытащено из Google Drive</b>
       <button type="button" onclick="wolfDriveClose()" style="border:0;background:none;font-size:20px;cursor:pointer">×</button>
     </div>
-    <div id="CLIENT-modal-body"></div>
+    <div id="drive-modal-body"></div>
   </div>
 </div>
 
 <style>
-.CLIENT-actions{display:flex;flex-wrap:wrap;gap:6px}
-.CLIENT-btn{color:#14663A !important;background:#F3FAF5 !important;border:1px solid #BFE0CB !important;font-weight:600}
+.drive-actions{display:flex;flex-wrap:wrap;gap:6px}
+.drive-btn{color:#14663A !important;background:#F3FAF5 !important;border:1px solid #BFE0CB !important;font-weight:600}
 .rp-k{width:150px;color:#4B5B52;font-size:12.5px;padding:3px 8px 3px 0;vertical-align:top;white-space:nowrap}
 .rp-v{font-size:13px;padding:3px 0;word-break:break-word}
 .rp-note{font-size:12px;color:#6B7C70;padding:8px 0 2px;line-height:1.45}
 .kv-table{border-collapse:collapse;width:100%}
 .kv-table td{border-bottom:1px solid #F0F5F2}
-.CLIENT-CLIENT-line{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:24px}
-.CLIENT-CLIENT-line .CLIENT-mark{margin-top:0}
-.CLIENT-scan-btn,.CLIENT-see-btn{color:#14663A;background:#fff;font-weight:500}
-.CLIENT-btn,.CLIENT-scan-btn,.CLIENT-see-btn{display:CLIENT-flex;align-items:center;justify-content:center;flex:0 0 190px;width:190px;height:36px;margin-top:6px;margin-right:6px;padding:0 12px;border-radius:8px;font-size:12.5px;text-decoration:none;box-sizing:border-box;
+.drive-status-line{display:flex;align-items:center;gap:8px;margin-top:8px;min-height:24px}
+.drive-status-line .drive-mark{margin-top:0}
+.drive-scan-btn,.drive-see-btn{color:#14663A;background:#fff;font-weight:500}
+.drive-btn,.drive-scan-btn,.drive-see-btn{display:inline-flex;align-items:center;justify-content:center;flex:0 0 190px;width:190px;height:36px;margin-top:6px;margin-right:6px;padding:0 12px;border-radius:8px;font-size:12.5px;text-decoration:none;box-sizing:border-box;
   border:1px solid #BFE0CB;background:#fff;font-size:12px;cursor:pointer}
-.CLIENT-scan-btn:hover,.CLIENT-see-btn:hover,.CLIENT-btn:hover{background:#F0FAF3}
-.CLIENT-mark{display:CLIENT-CLIENT;margin-top:0;font-size:12px;padding:3px 8px;border-radius:6px;background:#F1F5F3;color:#3A4A40}
-.CLIENT-mark.ok{background:#E7F7EC;color:#14663A}
-.CLIENT-mark.fail{background:#FDECEC;color:#A02020}
-.CLIENT-mark.run{background:#FFF7E0;color:#8A5A00}
-#CLIENT-modal{display:none;position:fixed;inset:0;background:rgba(14,26,20,.55);z-CLIENT:60;align-items:center;justify-content:center}
-#CLIENT-modal .dm-box{background:#fff;border-radius:12px;max-width:min(920px,94vw);max-height:86vh;overflow:auto;padding:18px 20px}
+.drive-scan-btn:hover,.drive-see-btn:hover,.drive-btn:hover{background:#F0FAF3}
+.drive-mark{display:inline-block;margin-top:0;font-size:12px;padding:3px 8px;border-radius:6px;background:#F1F5F3;color:#3A4A40}
+.drive-mark.ok{background:#E7F7EC;color:#14663A}
+.drive-mark.fail{background:#FDECEC;color:#A02020}
+.drive-mark.run{background:#FFF7E0;color:#8A5A00}
+#drive-modal{display:none;position:fixed;inset:0;background:rgba(14,26,20,.55);z-index:60;align-items:center;justify-content:center}
+#drive-modal .dm-box{background:#fff;border-radius:12px;max-width:min(920px,94vw);max-height:86vh;overflow:auto;padding:18px 20px}
 .doc-eye.is-on{background:#16A34A;color:#fff;border-color:#16A34A}
 </style>
 
 <script>
 /* Визор заявки: PDF показывается страницами внутри листа (без браузерного просмотрщика). */
 function wolfDocView(pdfPath, btn){
-  var st=CLIENT.getElementById('app-preview-stage');
+  var st=document.getElementById('app-preview-stage');
   if(!st){ return; }
-  var holder=CLIENT.getElementById('app-preview-holder');
+  var holder=document.getElementById('app-preview-holder');
   if(holder){ holder.style.display='none'; }
   st.innerHTML='<div style="padding:24px;color:#6B7C70;font:13px sans-serif">Открываю документ…</div>';
-  CLIENT.querySelectorAll('.doc-eye').forEach(function(b){ b.CLIENTList.remove('is-on'); });
-  if(btn) btn.CLIENTList.add('is-on');
-  fetch('/CLIENT/pdfpages?path='+encodeURIComponent(pdfPath),{credentials:'same-origin'})
+  document.querySelectorAll('.doc-eye').forEach(function(b){ b.classList.remove('is-on'); });
+  if(btn) btn.classList.add('is-on');
+  fetch('/templates/pdfpages?path='+encodeURIComponent(pdfPath),{credentials:'same-origin'})
     .then(function(r){return r.text();})
     .then(function(h){ st.innerHTML=h; if(window.zpScan) setTimeout(window.zpScan,80); })
     .catch(function(){ st.innerHTML='<div style="padding:24px;color:#B91C1C">Не удалось открыть документ</div>'; });
@@ -1622,9 +1902,9 @@ function wolfDocView(pdfPath, btn){
 }
 function wolfDriveScan(appId, btn){
   if (btn) { btn.disabled = true; }
-  wolfNote('⏳ Запускаю разбор документов с Google CLIENT…', 'work');
-  fetch('/CLIENT/'+appId+'/CLIENT-scan',{method:'POST',credentials:'same-origin',
-       CLIENTs:{'X-Requested-With':'fetch'}})
+  wolfNote('⏳ Запускаю разбор документов с Google Drive…', 'work');
+  fetch('/applications/'+appId+'/drive-scan',{method:'POST',credentials:'same-origin',
+       headers:{'X-Requested-With':'fetch'}})
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.ok){ if(st) st.textContent='❗ '+(d.note||'не удалось'); return; }
@@ -1633,14 +1913,14 @@ function wolfDriveScan(appId, btn){
       var n=0;
       var t=setInterval(function(){
         n++;
-        fetch('/CLIENT/'+appId+'/CLIENT-CLIENT',{credentials:'same-origin'})
+        fetch('/applications/'+appId+'/drive-status',{credentials:'same-origin'})
           .then(function(r){return r.json();})
           .then(function(s2){
             if(st) st.textContent='⏳ '+(s2.done||0)+' из '+(s2.total||0)+' документов…';
-            if(s2.CLIENT!=='running'||n>240){
+            if(s2.status!=='running'||n>240){
               clearInterval(t);
-              if(st) st.textContent=(s2.CLIENT==='ok'?'✅ ':'❗ ')+(s2.note||'');
-              if(s2.CLIENT==='ok'){ setTimeout(function(){ location.reload(); }, 900); }
+              if(st) st.textContent=(s2.status==='ok'?'✅ ':'❗ ')+(s2.note||'');
+              if(s2.status==='ok'){ setTimeout(function(){ location.reload(); }, 900); }
             }
           });
       },5000);
@@ -1648,7 +1928,7 @@ function wolfDriveScan(appId, btn){
     .catch(function(){ if(st) st.textContent='❗ разбор не запустился'; });
 }
 function wolfNote(text, tone){
-  var el = CLIENT.getElementById('CLIENT-scan-note');
+  var el = document.getElementById('drive-scan-note');
   if (!el) return;
   var colors = {ok: '#14663A', warn: '#8A5A00', err: '#B91C1C', work: '#3A4A40'};
   el.style.color = colors[tone] || colors.work;
@@ -1658,14 +1938,14 @@ function wolfNote(text, tone){
 function wolfAutofillAll(appId, btn){
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Собираю документы…'; }
   wolfNote('⏳ Собираю документы заявки: значения по правилам, затем PDF…', 'work');
-  fetch('/CLIENT/' + appId + '/autofill-all', {method: 'POST',
-        CLIENTs: {'X-Requested-With': 'fetch'}})
+  fetch('/applications/' + appId + '/autofill-all', {method: 'POST',
+        headers: {'X-Requested-With': 'fetch'}})
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (!d.ok) { alert('Не получилось: ' + (d.error || 'ошибка')); 
                    if (btn) { btn.disabled = false; btn.textContent = '⚡ Заполнить автоматически'; }
                    return; }
-      var msg = 'Готово: документов ' + d.CLIENT + ', значений ' + d.CLIENT;
+      var msg = 'Готово: документов ' + d.documents + ', значений ' + d.values;
       if (d.failed && d.failed.length) msg += '\nНе удалось: ' + d.failed.map(function(f){ return f.code; }).join(', ');
       alert(msg);
       location.reload();
@@ -1677,15 +1957,15 @@ function wolfAutofillAll(appId, btn){
 }
 
 function wolfDriveShow(appId){
-  var m=CLIENT.getElementById('CLIENT-modal'), body=CLIENT.getElementById('CLIENT-modal-body');
+  var m=document.getElementById('drive-modal'), body=document.getElementById('drive-modal-body');
   if(!m) return;
   m.style.display='flex'; body.innerHTML='<div style="padding:16px;color:#6B7C70">Загружаю…</div>';
-  fetch('/CLIENT/'+appId+'/CLIENT-report',{credentials:'same-origin'})
+  fetch('/applications/'+appId+'/drive-report',{credentials:'same-origin'})
     .then(function(r){return r.text();})
     .then(function(h){ body.innerHTML=h; })
     .catch(function(){ body.innerHTML='<div style="padding:16px;color:#B91C1C">Не удалось загрузить отчёт</div>'; });
 }
-function wolfDriveClose(){ var m=CLIENT.getElementById('CLIENT-modal'); if(m) m.style.display='none'; }
+function wolfDriveClose(){ var m=document.getElementById('drive-modal'); if(m) m.style.display='none'; }
 </script>
 """
     return render("Заявка #" + str(app_id), "dashboard",
@@ -1695,9 +1975,9 @@ function wolfDriveClose(){ var m=CLIENT.getElementById('CLIENT-modal'); if(m) m.
     return render(f'Заявка #{app_id}', "dashboard", body)
 
 
-@bp.route("/CLIENT/<int:app_id>/CLIENT-scan", methods=["POST"])
-def app_CLIENT_scan(app_id: int):
-    """Запуск разбора Google CLIENT — решение и запуск в CLIENT/CLIENT.py.
+@bp.route("/applications/<int:app_id>/drive-scan", methods=["POST"])
+def app_drive_scan(app_id: int):
+    """Запуск разбора Google Drive — решение и запуск в services/drive.py.
 
     `?force=1` — принудительный повторный заход (кнопка этапа 1): сверяем папку
     клиента с тем, что уже лежит на сервере, догружаем отличия и пересчитываем
@@ -1706,34 +1986,34 @@ def app_CLIENT_scan(app_id: int):
     a = apps_repo.get(app_id)
     if not a:
         return jsonify({"ok": False, "note": "заявка не найдена"})
-    force = str(CLIENT.args.get("force") or "").strip() in ("1", "true", "yes")
+    force = str(request.args.get("force") or "").strip() in ("1", "true", "yes")
     if force:
         try:
             import subprocess as _sp
             _sp.Popen(["/usr/bin/nice", "-n", "15", "/usr/bin/python3",
                        "/opt/wolf_v2/scripts/app_prepare.py", str(app_id), "--force"],
-                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, CLIENT_new_session=True)
+                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, start_new_session=True)
             return jsonify({"ok": True, "note": "обновление с Google Диска запущено"})
         except Exception as e:  # noqa: BLE001
             return jsonify({"ok": False, "note": "не удалось запустить обновление: %s" % str(e)[:120]})
-    return jsonify(CLIENT.CLIENT_scan(app_id, a["client_id"]))
+    return jsonify(drive.start_scan(app_id, a["client_id"]))
 
 
-@bp.route("/CLIENT/<int:app_id>/CLIENT-CLIENT")
-def app_CLIENT_status(app_id: int):
+@bp.route("/applications/<int:app_id>/drive-status")
+def app_drive_status(app_id: int):
     """Статус разбора для индикатора в карточке заявки."""
-    return jsonify(CLIENT.CLIENT(app_id))
+    return jsonify(drive.status(app_id))
 
 
-@bp.route("/CLIENT/<int:app_id>/CLIENT-report")
-def app_CLIENT_report(app_id: int):
-    """Что именно вытащено из документов Google CLIENT."""
-    return CLIENT.report_html(app_id)
+@bp.route("/applications/<int:app_id>/drive-report")
+def app_drive_report(app_id: int):
+    """Что именно вытащено из документов Google Drive."""
+    return drive.report_html(app_id)
 
-@bp.route("/CLIENT/<int:app_id>/doc-variant", methods=["POST"])
+@bp.route("/applications/<int:app_id>/doc-variant", methods=["POST"])
 def app_doc_variant(app_id: int):
     """Переключение варианта документа внутри слота (банк, формат CV, офис иммиграции)."""
-    data = CLIENT.get_json(silent=True) or CLIENT.form
+    data = request.get_json(silent=True) or request.form
     slot = (data.get("slot") or "").strip()
     try:
         new_tpl = int(data.get("template_id") or 0)
@@ -1742,26 +2022,26 @@ def app_doc_variant(app_id: int):
     if not slot or not new_tpl:
         return jsonify({"ok": False, "error": "не переданы слот или шаблон"})
     c = db.connect()
-    a = c.execute("SELECT * FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    a = c.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
     if not a:
         c.close(); return jsonify({"ok": False, "error": "заявка не найдена"})
-    ids = [r[0] for r in c.execute("""SELECT t.id FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-                                       WHERE pd.CLIENT_id=? AND pd.slot_code=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged')""", (a["CLIENT_id"], slot))]
-    row = c.execute("""SELECT id, CLIENT_json FROM CLIENT_CLIENT
-                        WHERE CLIENT_id=? AND template_id IN (%s) ORDER BY id DESC LIMIT 1"""
+    ids = [r[0] for r in c.execute("""SELECT t.id FROM product_documents pd JOIN templates t ON t.id=pd.template_id
+                                       WHERE pd.product_id=? AND pd.slot_code=? AND COALESCE(t.status,'ok') NOT IN ('blocked','hidden','merged')""", (a["product_id"], slot))]
+    row = c.execute("""SELECT id, values_json FROM application_documents
+                        WHERE application_id=? AND template_id IN (%s) ORDER BY id DESC LIMIT 1"""
                     % ",".join("?" * len(ids)), (app_id, *ids)).fetchone() if ids else None
     if row:
-        c.execute("UPDATE CLIENT_CLIENT SET template_id=?, pdf_path=NULL, CLIENT='draft' WHERE id=?",
+        c.execute("UPDATE application_documents SET template_id=?, pdf_path=NULL, status='draft' WHERE id=?",
                   (new_tpl, row[0]))
     else:
-        c.execute("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, CLIENT_json)
-                     CLIENT (?,?,'draft','{}')""", (app_id, new_tpl))
+        c.execute("""INSERT INTO application_documents (application_id, template_id, status, values_json)
+                     VALUES (?,?,'draft','{}')""", (app_id, new_tpl))
     c.commit(); c.close()
     return jsonify({"ok": True, "slot": slot, "template_id": new_tpl})
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/thumb")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/thumb")
+@login_required
 def app_doc_thumb(app_id: int, template_id: int):
     """Миниатюра готового документа заявки — картинкой (WebP), а не живым HTML.
 
@@ -1771,46 +2051,46 @@ def app_doc_thumb(app_id: int, template_id: int):
     открывается сразу с готовыми миниатюрами.
     """
     from flask import Response, send_file
-    from CLIENT import previews
+    from services import previews
     out = previews.doc_thumb(app_id, template_id, 220)
     if not out:
-        return Response("", CLIENT=404)
+        return Response("", status=404)
     resp = send_file(str(out), mimetype="image/webp", conditional=True)
     # Документ пересобирается при правке значений — браузер не должен держать старую картинку.
-    resp.CLIENTs["Cache-Control"] = "private, no-cache, max-age=0"
+    resp.headers["Cache-Control"] = "private, no-cache, max-age=0"
     return resp
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/html")
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/html")
 def app_doc_html(app_id: int, template_id: int):
     """HTML-лист документа с подставленными данными заявки — для окна просмотра (как в конструкторе)."""
     from flask import Response
     c = db.connect()
-    a = c.execute("SELECT * FROM CLIENT WHERE id=?", (app_id,)).fetchone()
-    t = c.execute("SELECT * FROM CLIENT WHERE id=?", (template_id,)).fetchone()
-    ad = c.execute("""SELECT * FROM CLIENT_CLIENT
-                      WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
+    a = c.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
+    t = c.execute("SELECT * FROM templates WHERE id=?", (template_id,)).fetchone()
+    ad = c.execute("""SELECT * FROM application_documents
+                      WHERE application_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
                    (app_id, template_id)).fetchone()
-    client = c.execute("SELECT * FROM CLIENT WHERE id=?", (a["client_id"],)).fetchone() if a else None
+    client = c.execute("SELECT * FROM clients WHERE id=?", (a["client_id"],)).fetchone() if a else None
     c.close()
     if not t:
-        return Response("Шаблон не найден", CLIENT=404)
-    html_file = Path("/opt/wolf_v2/data/CLIENT") / t["code"] / "template.html"
+        return Response("Шаблон не найден", status=404)
+    html_file = Path("/opt/wolf_v2/data/templates") / t["code"] / "template.html"
     if not html_file.exists():
-        return Response("HTML шаблона нет", CLIENT=404)
+        return Response("HTML шаблона нет", status=404)
     try:
-        doc_CLIENT = json.loads(ad["CLIENT_json"] or "{}") if ad else {}
+        doc_values = json.loads(ad["values_json"] or "{}") if ad else {}
     except Exception:
-        doc_CLIENT = {}
+        doc_values = {}
     # Готовый HTML документа кэшируем на диске: сборка значений (генерация
     # справок, резюме) занимает секунды, а окно просмотра запрашивает документ
     # при каждом открытии заявки. Без кэша страница заявки «тупила».
     import hashlib as _hashlib
     # Каркасные шаблоны собираем каркасом ВСЕГДА: кэш хранил старый вид
     # (прежний template.html — без подложки и с наложениями), и просмотр отдавал его.
-    _fr0 = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "") / "frame"
-    _q0 = _fr0 / "CLIENT.json"
-    _tpl0 = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "")
+    _fr0 = Path("/opt/wolf_v2/data/templates") / str(t["code"] or "") / "frame"
+    _q0 = _fr0 / "quality.json"
+    _tpl0 = Path("/opt/wolf_v2/data/templates") / str(t["code"] or "")
     try:
         _has_frame = ((_tpl0 / "fields.json").exists() or (_fr0 / "fields.json").exists()
                       or (_fr0 / "manual_zones.json").exists()) and _q0.exists() \
@@ -1822,7 +2102,7 @@ def app_doc_html(app_id: int, template_id: int):
         _cache_dir.mkdir(parents=True, exist_ok=True)
         _sig = "|".join([str(template_id),
                          str((client or {})["id"] if client else ""),
-                         str(ad["CLIENT_json"] if ad else ""),
+                         str(ad["values_json"] if ad else ""),
                          str(html_file.stat().st_mtime)])
         _key = _hashlib.sha1(_sig.encode("utf-8")).hexdigest()[:16]
         _cache_file = _cache_dir / ("app%s_tpl%s_%s.html" % (app_id, template_id, _key))
@@ -1831,15 +2111,15 @@ def app_doc_html(app_id: int, template_id: int):
                             mimetype="text/html; charset=utf-8")
     except Exception:
         _cache_file = None
-    CLIENT = build_template_CLIENT(dict(client) if client else {}, t["code"], doc_CLIENT,
+    values = build_template_values(dict(client) if client else {}, t["code"], doc_values,
                                        app_id=app_id)
     # Приводим значения к виду документа прямо здесь: через эту точку идут и окно
     # просмотра, и слепок для проверки, и сборка. Раньше нормализация стояла только
     # на пути PDF, поэтому проверка читала HTML-кэш с русским значением и ставила
     # блокировку документу, в котором русских букв уже нет.
     try:
-        from CLIENT import render as _render_norm
-        CLIENT = _render_norm.normalize(CLIENT, t["code"] or "")
+        from services import render as _render_norm
+        values = _render_norm.normalize(values, t["code"] or "")
     except Exception as _exc:                                  # noqa: BLE001
         try:
             current_app.logger.warning("нормализация значений (%s) не прошла: %s", t["code"], _exc)
@@ -1849,18 +2129,18 @@ def app_doc_html(app_id: int, template_id: int):
     # Без этой ветки просмотр, слепок и готовый PDF собирались из прежнего template.html —
     # документ уходил на Диск БЕЗ фона и с наложениями текста.
     try:
-        _fr = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "") / "frame"
-        _q = _fr / "CLIENT.json"
-        _tpl_dir = Path("/opt/wolf_v2/data/CLIENT") / str(t["code"] or "")
+        _fr = Path("/opt/wolf_v2/data/templates") / str(t["code"] or "") / "frame"
+        _q = _fr / "quality.json"
+        _tpl_dir = Path("/opt/wolf_v2/data/templates") / str(t["code"] or "")
         _zones_any = (_tpl_dir / "fields.json").exists() or (_fr / "fields.json").exists() \
             or (_fr / "manual_zones.json").exists()
         if _has_frame:
             import importlib.util as _ilu
-            from CLIENT import html_frame
+            from services import html_frame
             _spec = _ilu.spec_from_file_location("_bfl_view", "/opt/wolf_v2/scripts/build_html_flow.py")
             _bfl = _ilu.module_from_spec(_spec)
             _spec.loader.exec_module(_bfl)
-            _vals = html_frame.CLIENT_with_frames(t["code"], CLIENT, app_id)
+            _vals = html_frame.values_with_frames(t["code"], values, app_id)
             _lay = _bfl.build_layout(t["code"], dict(_vals))
             return Response(_bfl.render_html(t["code"], _lay), mimetype="text/html; charset=utf-8")
     except Exception as _exc:                            # noqa: BLE001
@@ -1871,27 +2151,27 @@ def app_doc_html(app_id: int, template_id: int):
     def _sub(chunk: str, wrap: bool) -> str:
         def rep(m):
             name = m.group(1)
-            val = str(CLIENT.get(name, "") or "")
-            if not val and str(t["code"] or "").CLIENTswith("CLIENTment_letter") and False:
+            val = str(values.get(name, "") or "")
+            if not val and str(t["code"] or "").startswith("statement_letter") and False:
                 val = "-"
-            return (f'<span CLIENT="var-val" data-var="{name}">{val}</span>' if wrap else val)
+            return (f'<span class="var-val" data-var="{name}">{val}</span>' if wrap else val)
         return re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", rep, chunk)
 
     parts = re.split(r"(<[^>]*>)", html)
-    html = "".join(_sub(p, not p.CLIENTswith("<")) for p in parts)
+    html = "".join(_sub(p, not p.startswith("<")) for p in parts)
     # визор обязан показывать ровно то, что уйдёт в PDF: перенос длинных строк,
     # один кегль значений и никаких пустых разделов (для резюме)
     try:
-        from CLIENT.render import tidy_for_pdf, hide_empty_sections
+        from services.render import tidy_for_pdf, hide_empty_sections
         html = tidy_for_pdf(html, t["code"] or "")
         if "cv__" in (t["code"] or ""):
             html = hide_empty_sections(html)
     except Exception:
         pass
     # значения переменных — чтобы перевод не трогал подставленные данные клиента
-    payload = json.dumps({k: v for k, v in CLIENT.items() if v}, ensure_ascii=False)
-    html += ('<script id="app-CLIENT" type="CLIENT/json">'
-             + payload.reCLIENT('</', '<\\/') + '</script>')
+    payload = json.dumps({k: v for k, v in values.items() if v}, ensure_ascii=False)
+    html += ('<script id="app-values" type="application/json">'
+             + payload.replace('</', '<\\/') + '</script>')
     # готовый документ — в кэш: следующее открытие заявки покажет его мгновенно
     try:
         if _cache_file is not None:
@@ -1901,53 +2181,53 @@ def app_doc_html(app_id: int, template_id: int):
     return Response(html, mimetype="text/html; charset=utf-8")
 
 
-@bp.route("/CLIENT/<int:app_id>/client-photo")
+@bp.route("/applications/<int:app_id>/client-photo")
 def app_client_photo(app_id: int):
-    """Фотография клиента из папки Google CLIENT — для окна просмотра документа."""
+    """Фотография клиента из папки Google Drive — для окна просмотра документа."""
     from flask import send_file
     c = db.connect()
-    a = c.execute("SELECT client_id FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    a = c.execute("SELECT client_id FROM applications WHERE id=?", (app_id,)).fetchone()
     c.close()
     if not a:
-        return Response("Заявка не найдена", CLIENT=404)
+        return Response("Заявка не найдена", status=404)
     try:
-        from CLIENT.CLIENT import _client_photo_path
+        from services.values import _client_photo_path
         path = _client_photo_path(a["client_id"])
     except Exception:
         path = ""
     if not path or not Path(path).exists():
-        return Response("Фотографии клиента нет", CLIENT=404)
+        return Response("Фотографии клиента нет", status=404)
     return send_file(path)
 
 
-@bp.route("/CLIENT/<int:app_id>/original-pages/<int:template_id>")
+@bp.route("/applications/<int:app_id>/original-pages/<int:template_id>")
 def app_original_pages(app_id: int, template_id: int):
-    """Оригинал клиента (Google CLIENT) страницами PNG — для листа визора."""
+    """Оригинал клиента (Google Drive) страницами PNG — для листа визора."""
     a = apps_repo.get(app_id)
     t = tpl_repo.get(template_id)
     if not a or not t:
         return "<div style='padding:20px'>Нет данных</div>"
     # Сначала образец документа (заполненный подлинник — он же вкладка «Оригинальный
-    # пример» в конструкторе), и только если образца нет — файл клиента с Google CLIENT.
-    sample = Path("/opt/wolf_v2/data/CLIENT") / (t["code"] or "") / "example_filled.pdf"
+    # пример» в конструкторе), и только если образца нет — файл клиента с Google Drive.
+    sample = Path("/opt/wolf_v2/data/templates") / (t["code"] or "") / "example_filled.pdf"
     if sample.exists():
         try:
             rel = str(sample.relative_to("/opt/wolf_v2/data"))
-            return redirect("/CLIENT/pdfpages?path=" + quote(rel))
+            return redirect("/templates/pdfpages?path=" + quote(rel))
         except Exception:
             pass
     f = _find_original_file(a["client_id"], t["code"])
     if not f:
         return ("<div style='padding:20px;color:#6B7C70'>Для этого документа не загружен "
-                "оригинальный пример, и в папке клиента на Google CLIENT файла этого типа нет.</div>")
+                "оригинальный пример, и в папке клиента на Google Drive файла этого типа нет.</div>")
     try:
         rel = str(Path(f).relative_to("/opt/wolf_v2/data"))
     except Exception:
         return "<div style='padding:20px;color:#B91C1C'>Файл вне хранилища</div>"
-    return redirect("/CLIENT/pdfpages?path=" + quote(rel))
+    return redirect("/templates/pdfpages?path=" + quote(rel))
 
 
-def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
+def freeze_document(app_id: int, template_id: int, actor: str = "") -> str:
     """Зафиксировать подтверждённый документ.
 
     Зелёная галочка означает: значения переменных проверены и больше не
@@ -1957,8 +2237,8 @@ def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
     """
     import json as _json
     from pathlib import Path as _Path
-    from CLIENT import CLIENT as _dt
-    from CLIENTs.dashboard.page import app_doc_html as _html_route
+    from datetime import datetime as _dt
+    from blocks.dashboard.page import app_doc_html as _html_route
     frozen_dir = _Path("/opt/wolf_v2/data/frozen")
     frozen_dir.mkdir(parents=True, exist_ok=True)
     # Перед сборкой слепка выбрасываем кэш отрендеренного HTML: после правки
@@ -1968,19 +2248,19 @@ def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
             _c.unlink()
         except Exception:
             pass
-    ad = db.q1("""SELECT id, CLIENT_json FROM CLIENT_CLIENT
-                   WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
+    ad = db.q1("""SELECT id, values_json FROM application_documents
+                   WHERE application_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
                (app_id, template_id))
-    CLIENT = {}
+    values = {}
     try:
-        CLIENT = _json.loads((ad or {}).get("CLIENT_json") or "{}") or {}
+        values = _json.loads((ad or {}).get("values_json") or "{}") or {}
     except Exception:
-        CLIENT = {}
+        values = {}
     # HTML с подставленными значениями — тем же маршрутом, что и окно просмотра
     html = ""
     try:
         from flask import current_app
-        with current_app.test_CLIENT_context():
+        with current_app.test_request_context():
             resp = _html_route(app_id, template_id)
             html = resp.get_data(as_text=True)
     except Exception as exc:  # noqa: BLE001
@@ -1988,99 +2268,99 @@ def freeze_CLIENT(app_id: int, template_id: int, actor: str = "") -> str:
     target = frozen_dir / ("app%s_tpl%s.html" % (app_id, template_id))
     target.write_text(html, encoding="utf-8")
     if ad:
-        db.exec_sql("""UPDATE CLIENT_CLIENT
-                          SET CLIENT_json=?, rendered_at=CLIENT('now'), error=?
+        db.exec_sql("""UPDATE application_documents
+                          SET values_json=?, rendered_at=datetime('now'), error=?
                         WHERE id=?""",
-                    (_json.dumps(CLIENT, ensure_ascii=False), 
+                    (_json.dumps(values, ensure_ascii=False), 
                      "подтверждён %s %s" % (_dt.now().strftime("%d.%m.%Y %H:%M"), actor or ""),
                      ad["id"]))
     return str(target)
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/reject", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/reject", methods=["POST"])
+@login_required
 def app_doc_reject(app_id, template_id):
     """Переключатель «не нужен»: убрать документ из комплекта или вернуть его обратно."""
-    ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+    ad = db.q1("SELECT id, status FROM application_documents WHERE application_id=? AND template_id=?",
                (app_id, template_id))
     if not ad:
-        db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT)
-                       CLIENT (?,?, 'rejected')""", (app_id, template_id))
+        db.exec_sql("""INSERT INTO application_documents (application_id, template_id, status)
+                       VALUES (?,?, 'rejected')""", (app_id, template_id))
         _new_status = "rejected"
     else:
-        _new_status = "filled" if ad["CLIENT"] == "rejected" else "rejected"
-        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT=? WHERE id=?", (_new_status, ad["id"]))
-    db.log_event("CLIENT_CLIENT", (ad["id"] if ad else 0), _new_status,
-                 actor=current_user()["CLIENT"],
+        _new_status = "filled" if ad["status"] == "rejected" else "rejected"
+        db.exec_sql("UPDATE application_documents SET status=? WHERE id=?", (_new_status, ad["id"]))
+    db.log_event("application_document", (ad["id"] if ad else 0), _new_status,
+                 actor=current_user()["login"],
                  payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
-    if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+    if request.headers.get("X-Requested-With") == "fetch":
         return jsonify({"ok": True, "rejected": _new_status == "rejected",
                         "app_id": app_id, "template_id": template_id})
     flash("Документ исключён из комплекта" if _new_status == "rejected" else "Документ возвращён в комплект")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/verify", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/verify", methods=["POST"])
+@login_required
 def app_doc_verify(app_id, template_id):
     """Переключатель: отметить документ проверенным или снять проверку."""
     # Подтвердить можно только полностью заполненный документ. Если админ настаивает
     # (галочка нажата второй раз — «подтвердить всё равно»), фиксируем как есть.
-    _force = (CLIENT.args.get("force") or "").strip() in ("1", "true", "yes")
+    _force = (request.args.get("force") or "").strip() in ("1", "true", "yes")
     _miss_verify = doc_missing_fields(app_id, template_id)
     if _miss_verify and not _force:
         _msg = "Нельзя подтвердить документ: не заполнено — " + ", ".join(_miss_verify)
-        if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+        if request.headers.get("X-Requested-With") == "fetch":
             return jsonify({"ok": False, "error": _msg, "missing": _miss_verify, "can_force": True})
         flash(_msg, "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
-    ad = db.q1("SELECT id, CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+    ad = db.q1("SELECT id, status FROM application_documents WHERE application_id=? AND template_id=?",
                (app_id, template_id))
     # повторное нажатие снимает проверку
-    _unverify = bool(ad and ad["CLIENT"] in ("verified", "sent"))
+    _unverify = bool(ad and ad["status"] in ("verified", "sent"))
     if _unverify:
-        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='filled' WHERE id=?", (ad["id"],))
-        db.log_event("CLIENT_CLIENT", ad["id"], "unverified",
-                     actor=current_user()["CLIENT"],
+        db.exec_sql("UPDATE application_documents SET status='filled' WHERE id=?", (ad["id"],))
+        db.log_event("application_document", ad["id"], "unverified",
+                     actor=current_user()["login"],
                      payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
-        if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+        if request.headers.get("X-Requested-With") == "fetch":
             return jsonify({"ok": True, "verified": False, "app_id": app_id, "template_id": template_id})
         flash("Проверка снята")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
     if not ad:
-        db.exec_sql("""INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT)
-                       CLIENT (?,?, 'verified')""", (app_id, template_id))
+        db.exec_sql("""INSERT INTO application_documents (application_id, template_id, status)
+                       VALUES (?,?, 'verified')""", (app_id, template_id))
     else:
         # решения взаимоисключающие: «проверен» автоматически снимает «не нужен»
-        db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT='verified' WHERE id=?", (ad["id"],))
-    db.log_event("CLIENT_CLIENT", (ad["id"] if ad else 0), "verified",
-                 actor=current_user()["CLIENT"],
+        db.exec_sql("UPDATE application_documents SET status='verified' WHERE id=?", (ad["id"],))
+    db.log_event("application_document", (ad["id"] if ad else 0), "verified",
+                 actor=current_user()["login"],
                  payload=json.dumps({"app": app_id, "tpl": template_id}, ensure_ascii=False))
     # Фиксация подтверждённого документа: снимок значений и HTML-слепок.
     # Так зелёная галочка означает «проверено и сохранено для отправки».
     _frozen = ""
     try:
-        _frozen = freeze_CLIENT(app_id, template_id, actor=current_user()["CLIENT"])
+        _frozen = freeze_document(app_id, template_id, actor=current_user()["login"])
     except Exception as _exc:  # noqa: BLE001
         _frozen = ""
     # Если запрос через fetch — вернём JSON, иначе redirect (для обратной совместимости)
-    if CLIENT.CLIENTs.get("X-Requested-With") == "fetch":
+    if request.headers.get("X-Requested-With") == "fetch":
         return jsonify({"ok": True, "verified": True, "app_id": app_id,
                         "template_id": template_id, "frozen": _frozen})
     flash("Документ отмечен проверенным и зафиксирован для отправки")
     return redirect(url_for("dashboard.app_view", app_id=app_id))
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/autofill-CLIENT", methods=["GET"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/autofill-values", methods=["GET"])
+@login_required
 def app_doc_autofill(app_id: int, template_id: int):
     """Возвращает категоризированные значения переменных шаблона.
 
     Категории:
-      auto         — точно из CLIENT/<field> или CLIENT.CLIENT_json (подставлять сразу)
-      suggested    — из CLIENT_CLIENT_CLIENT (топ-1, приходит с плашкой «из опыта»)
+      auto         — точно из clients/<field> или application.values_json (подставлять сразу)
+      suggested    — из variable_value_history (топ-1, приходит с плашкой «из опыта»)
       generated    — значения не было нигде — сгенерировано по правилу переменной
-      manual_only  — пусто, ставим CLIENTholder
+      manual_only  — пусто, ставим placeholder
     """
     a = apps_repo.get(app_id)
     if not a:
@@ -2089,67 +2369,67 @@ def app_doc_autofill(app_id: int, template_id: int):
     if not tpl:
         return jsonify({"ok": False, "error": "Шаблон не найден"}), 404
 
-    CLIENT = db.q("SELECT name, label FROM template_CLIENT WHERE template_id=?",
+    variables = db.q("SELECT name, label FROM template_variables WHERE template_id=?",
                      (template_id,))
-    if not CLIENT:
+    if not variables:
         return jsonify({"ok": True, "auto": {}, "suggested": {},
                         "manual_only": [], "messages": []})
 
-    # 1) Из CLIENT
+    # 1) Из clients
     client = db.client_get(a["client_id"]) or {}
-    # 2) Из CLIENT.CLIENT_json (что менеджер прислал)
-    app_CLIENT = {}
+    # 2) Из application.values_json (что менеджер прислал)
+    app_values = {}
     try:
-        app_CLIENT = json.loads(a.get("CLIENT_json") or "{}")
+        app_values = json.loads(a.get("values_json") or "{}")
     except Exception:
         pass
-    # 3) Из последнего CLIENT_CLIENT (что в этом документе уже вводили)
-    prev_doc = db.q1("""SELECT CLIENT_json FROM CLIENT_CLIENT
-                        WHERE CLIENT_id=? AND template_id=?
+    # 3) Из последнего application_document (что в этом документе уже вводили)
+    prev_doc = db.q1("""SELECT values_json FROM application_documents
+                        WHERE application_id=? AND template_id=?
                         ORDER BY id DESC LIMIT 1""", (app_id, template_id))
-    doc_CLIENT = {}
-    if prev_doc and prev_doc.get("CLIENT_json"):
+    doc_values = {}
+    if prev_doc and prev_doc.get("values_json"):
         try:
-            doc_CLIENT = json.loads(prev_doc["CLIENT_json"])
+            doc_values = json.loads(prev_doc["values_json"])
         except Exception:
             pass
 
     # Сборка прямых маппингов client → переменная
     simple_map = {
-        "full_name": f'{client.get("CLIENT", "")} {client.get("name", "")}'.strip(),
-        "CLIENT": client.get("CLIENT"),
+        "full_name": f'{client.get("surname", "")} {client.get("name", "")}'.strip(),
+        "surname": client.get("surname"),
         "name": client.get("name"),
-        "CLIENT": client.get("CLIENT"),
-        "full_name_CLIENT": client.get("full_name_CLIENT"),
-        "full_name_CLIENT": client.get("full_name_CLIENT"),
-        "client_name": client.get("full_name_CLIENT") or client.get("name") or "",
-        "for_name": client.get("full_name_CLIENT") or client.get("name") or "",
-        "CLIENT_date": client.get("CLIENT_date"),
-        "date_of_CLIENT": client.get("CLIENT_date"),
-        "CLIENT_of_CLIENT": client.get("CLIENT_CLIENT"),
-        "CLIENT_CLIENT": client.get("CLIENT_CLIENT"),
-        "CLIENT": client.get("CLIENT"),
-        "CLIENT": client.get("CLIENT"),
-        "CLIENT": client.get("CLIENT"),
-        "passport_CLIENT": client.get("passport_CLIENT"),
-        "passport_CLIENT": client.get("passport_CLIENT"),
-        "passport_no": client.get("passport_CLIENT"),
-        "passport_CLIENT_by": client.get("passport_CLIENT_by"),
-        "passport_CLIENT_date": client.get("passport_CLIENT_date"),
-        "passport_CLIENT": client.get("passport_CLIENT"),
+        "patronymic": client.get("patronymic"),
+        "full_name_latin": client.get("full_name_latin"),
+        "full_name_title": client.get("full_name_title"),
+        "client_name": client.get("full_name_latin") or client.get("name") or "",
+        "for_name": client.get("full_name_latin") or client.get("name") or "",
+        "birth_date": client.get("birth_date"),
+        "date_of_birth": client.get("birth_date"),
+        "place_of_birth": client.get("birth_place"),
+        "birth_place": client.get("birth_place"),
+        "gender": client.get("gender"),
+        "citizenship": client.get("citizenship"),
+        "nationality": client.get("nationality"),
+        "passport_series": client.get("passport_series"),
+        "passport_number": client.get("passport_number"),
+        "passport_no": client.get("passport_number"),
+        "passport_issued_by": client.get("passport_issued_by"),
+        "passport_issue_date": client.get("passport_issue_date"),
+        "passport_expiry": client.get("passport_expiry"),
         "inn": client.get("inn"),
         "snils": client.get("snils"),
         "intl_passport": client.get("intl_passport"),
-        "CLIENT": client.get("CLIENT"),
-        "CLIENT": client.get("CLIENT"),
+        "phone": client.get("phone"),
+        "email": client.get("email"),
         "address_reg": client.get("address_reg"),
         "address_live": client.get("address_live"),
         "address_zip": client.get("address_zip"),
         "city": client.get("city"),
-        "CLIENT": client.get("CLIENT"),
+        "country": client.get("country"),
         "position": client.get("position"),
-        "salary_CLIENT": client.get("salary_CLIENT"),
-        "salary": client.get("salary_CLIENT"),
+        "salary_amount": client.get("salary_amount"),
+        "salary": client.get("salary_amount"),
         "company_name": client.get("company_name"),
         "company_llc": client.get("company_llc"),
         "company_address": client.get("company_address"),
@@ -2162,10 +2442,10 @@ def app_doc_autofill(app_id: int, template_id: int):
 
     # Переменные которые трогать НЕ нужно (специфичные для конкретной справки)
     SPECIFIC_FIELDS = {
-        "doc_no", "ref_no", "balance_rub", "balance_date", "CLIENT_from",
-        "CLIENT_to", "account_no", "contract_no", "contract_date",
-        "doc_date", "doc_CLIENT", "aggreement_date", "agreement_date",
-        "agreement_no", "CLIENT_CLIENT", "balance_CLIENT", "doc_CLIENT",
+        "doc_no", "ref_no", "balance_rub", "balance_date", "period_from",
+        "period_to", "account_no", "contract_no", "contract_date",
+        "doc_date", "doc_title", "aggreement_date", "agreement_date",
+        "agreement_no", "period_dates", "balance_value", "doc_purpose",
     }
 
     auto = {}
@@ -2175,7 +2455,7 @@ def app_doc_autofill(app_id: int, template_id: int):
     manual_only = []
     messages = []
 
-    for v in CLIENT:
+    for v in variables:
         name = v["name"]
         if name in SPECIFIC_FIELDS:
             # «Свои» поля документа (номер, дата, период, остаток) в карточке
@@ -2183,9 +2463,9 @@ def app_doc_autofill(app_id: int, template_id: int):
             # правило не сработало, оставляем администратору на ручной ввод.
             try:
                 if _gv_cache is None:
-                    _gv_cache = build_template_CLIENT(dict(client), tpl["code"], {})
+                    _gv_cache = build_template_values(dict(client), tpl["code"], {})
                 if _gv_cache.get(name) not in (None, ""):
-                    generated[name] = {"CLIENT": str(_gv_cache[name]),
+                    generated[name] = {"value": str(_gv_cache[name]),
                                        "source": "сгенерировано по правилу переменной"}
                     continue
             except Exception:
@@ -2193,53 +2473,53 @@ def app_doc_autofill(app_id: int, template_id: int):
             manual_only.append(name)
             continue
 
-        # Приоритет 1: что ввёл менеджер (app_CLIENT)
-        if name in app_CLIENT and app_CLIENT[name]:
-            auto[name] = {"CLIENT": str(app_CLIENT[name]),
-                          "source": "CLIENT.CLIENT_json"}
+        # Приоритет 1: что ввёл менеджер (app_values)
+        if name in app_values and app_values[name]:
+            auto[name] = {"value": str(app_values[name]),
+                          "source": "application.values_json"}
             continue
 
         # Приоритет 2: что уже введено в этом документе
-        if name in doc_CLIENT and doc_CLIENT[name]:
-            auto[name] = {"CLIENT": str(doc_CLIENT[name]),
+        if name in doc_values and doc_values[name]:
+            auto[name] = {"value": str(doc_values[name]),
                           "source": "previous input"}
             continue
 
-        # Приоритет 3: прямое соответствие колонкам CLIENT
+        # Приоритет 3: прямое соответствие колонкам clients
         if name in simple_map and simple_map[name]:
-            auto[name] = {"CLIENT": str(simple_map[name]),
-                          "source": f"CLIENT.{name.reCLIENT('full_name','full_name') if 'full_name' in name else name}"}
+            auto[name] = {"value": str(simple_map[name]),
+                          "source": f"clients.{name.replace('full_name','full_name') if 'full_name' in name else name}"}
             continue
 
-        # Приоритет 4: CLIENT_CLIENT_CLIENT (top-1 для этого клиента)
+        # Приоритет 4: variable_value_history (top-1 для этого клиента)
         # Берём значение, которое чаще всего использовалось для ЭТОГО клиента
         try:
             client_match = db.q1(
-                """SELECT CLIENT, used_count FROM CLIENT_CLIENT_CLIENT
-                   WHERE CLIENT_name=? AND CLIENT IN
-                       (SELECT DISTINCT CLIENT_json FROM CLIENT_CLIENT
-                        WHERE CLIENT_id IN
-                          (SELECT id FROM CLIENT WHERE client_id=?))
+                """SELECT value, used_count FROM variable_value_history
+                   WHERE variable_name=? AND value IN
+                       (SELECT DISTINCT values_json FROM application_documents
+                        WHERE application_id IN
+                          (SELECT id FROM applications WHERE client_id=?))
                    ORDER BY used_count DESC LIMIT 1""",
                 (name, a["client_id"]))
             if client_match:
                 suggested[name] = {
-                    "CLIENT": str(client_match["CLIENT"]),
+                    "value": str(client_match["value"]),
                     "source": f"опыт по клиенту (×{client_match['used_count']})"
                 }
                 continue
         except Exception:
             pass
 
-        # Приоритет 5: top-1 из общей CLIENT_CLIENT_CLIENT
+        # Приоритет 5: top-1 из общей variable_value_history
         try:
             top = db.q1(
-                """SELECT CLIENT, used_count FROM CLIENT_CLIENT_CLIENT
-                   WHERE CLIENT_name=? ORDER BY used_count DESC LIMIT 1""",
+                """SELECT value, used_count FROM variable_value_history
+                   WHERE variable_name=? ORDER BY used_count DESC LIMIT 1""",
                 (name,))
             if top:
                 suggested[name] = {
-                    "CLIENT": str(top["CLIENT"]),
+                    "value": str(top["value"]),
                     "source": f"из опыта {top['used_count']} клиентов"
                 }
                 continue
@@ -2251,13 +2531,13 @@ def app_doc_autofill(app_id: int, template_id: int):
         # документа, маска карты, остаток, период, ФИО латиницей и т.п.).
         try:
             if _gv_cache is None:
-                _gv_cache = build_template_CLIENT(dict(client), tpl["code"], {})
+                _gv_cache = build_template_values(dict(client), tpl["code"], {})
             if _gv_cache.get(name) not in (None, ""):
-                generated[name] = {"CLIENT": str(_gv_cache[name]),
+                generated[name] = {"value": str(_gv_cache[name]),
                                    "source": "сгенерировано по правилу переменной"}
                 continue
         except Exception as exc:  # noqa: BLE001
-            generated.setdefault("_err", {"CLIENT": str(exc)[:120], "source": "debug"})
+            generated.setdefault("_err", {"value": str(exc)[:120], "source": "debug"})
 
         manual_only.append(name)
 
@@ -2269,12 +2549,12 @@ def app_doc_autofill(app_id: int, template_id: int):
         "manual_only": manual_only,
         "messages": [f"{len(auto)} из данных, {len(generated)} сгенерировано, "
                      f"{len(suggested)} из опыта, {len(manual_only)} вручную"],
-        "client_name": client.get("full_name_CLIENT") or "",
+        "client_name": client.get("full_name_latin") or "",
     })
 
 
-@bp.route("/CLIENT/<int:app_id>/send-CLIENT")
-def app_send_CLIENT(app_id):
+@bp.route("/applications/<int:app_id>/send-state")
+def app_send_state(app_id):
     """Быстрый ответ о готовности комплекта: сколько документов согласовано.
 
     Нужен, чтобы счётчик блока 6 обновлялся сразу после отметки «✓ Проверен»,
@@ -2282,40 +2562,40 @@ def app_send_CLIENT(app_id):
     """
     import json as _json
     rows = db.q(
-        "SELECT CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=?",
+        "SELECT status FROM application_documents WHERE application_id=?",
         (app_id,),
     )
     total = len(rows)
     checked = 0
     for r in rows:
-        st = (r["CLIENT"] if not isinstance(r, (list, tuple)) else r[0]) or ""
+        st = (r["status"] if not isinstance(r, (list, tuple)) else r[0]) or ""
         if st in ("verified", "rejected"):
             checked += 1
     can_send = total > 0 and checked == total
     if can_send:
         hint = "Все документы согласованы — можно отправлять на Google Диск"
-        CLIENT = "ok"
+        state = "ok"
     else:
         hint = ("Отправить нельзя: согласовано " + str(checked) + " из "
                 + str(total) + " документов")
-        CLIENT = "warn"
+        state = "warn"
     return _json.dumps({
         "ok": True,
         "ready": checked,
         "total": total,
         "can_send": can_send,
         "hint": hint,
-        "CLIENT": CLIENT,
-    }, ensure_ascii=False), 200, {"Content-Type": "CLIENT/json; charset=utf-8"}
+        "state": state,
+    }, ensure_ascii=False), 200, {"Content-Type": "application/json; charset=utf-8"}
 
 
-@bp.route("/CLIENT/<int:app_id>/autofill-all", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/autofill-all", methods=["POST"])
+@login_required
 def app_autofill_all(app_id: int):
     """Яркая кнопка в карточке: собрать ВСЕ документы заявки на просмотр.
 
     Для каждого документа заявки значения берутся по правилам (данные клиента →
-    документы Google CLIENT → правила генерации), затем документ рендерится в PDF.
+    документы Google Drive → правила генерации), затем документ рендерится в PDF.
     Дальше администратор просто смотрит результат в окне готовых документов
     и правит карандашом только то, что сочёл неверным.
     """
@@ -2323,54 +2603,54 @@ def app_autofill_all(app_id: int):
     if not a:
         return jsonify({"ok": False, "error": "Заявка не найдена"}), 404
     client = db.client_get(a["client_id"]) or {}
-    docs = db.q("""SELECT ad.id AS ad_id, ad.template_id, ad.CLIENT_json, t.code, t.CLIENT, t.pages
-                   FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
-                   WHERE ad.CLIENT_id=? ORDER BY ad.id""", (app_id,))
+    docs = db.q("""SELECT ad.id AS ad_id, ad.template_id, ad.values_json, t.code, t.title, t.pages
+                   FROM application_documents ad JOIN templates t ON t.id=ad.template_id
+                   WHERE ad.application_id=? ORDER BY ad.id""", (app_id,))
     if not docs:
         return jsonify({"ok": False, "error": "У заявки нет документов"}), 400
 
-    done, failed, CLIENT_count = [], [], 0
+    done, failed, values_count = [], [], 0
     for d in docs:
         code = d["code"]
         try:
-            prev_CLIENT = json.loads(d["CLIENT_json"] or "{}")
+            prev_values = json.loads(d["values_json"] or "{}")
         except Exception:
-            prev_CLIENT = {}
+            prev_values = {}
         try:
-            vals = build_template_CLIENT(dict(client), code, prev_CLIENT) or {}
+            vals = build_template_values(dict(client), code, prev_values) or {}
         except Exception as exc:  # noqa: BLE001
             failed.append({"code": code, "error": str(exc)[:120]})
             continue
-        CLIENT_count += sum(1 for v in vals.CLIENT() if v)
+        values_count += sum(1 for v in vals.values() if v)
         try:
-            db.exec_sql("UPDATE CLIENT_CLIENT SET CLIENT_json=? WHERE id=?",
+            db.exec_sql("UPDATE application_documents SET values_json=? WHERE id=?",
                         (json.dumps(vals, ensure_ascii=False), d["ad_id"]))
         except Exception as exc:  # noqa: BLE001
             failed.append({"code": code, "error": str(exc)[:120]})
             continue
         # рендерим PDF, чтобы документ сразу был в окне просмотра
         try:
-            html_file = Path("/opt/wolf_v2/data/CLIENT") / code / "template.html"
+            html_file = Path("/opt/wolf_v2/data/templates") / code / "template.html"
             if html_file.exists():
                 out_pdf = _app_pdf_path({"code": code}, vals, app_id)
                 out_pdf.parent.mkdir(parents=True, exist_ok=True)
                 html = html_file.read_text(encoding="utf-8")
                 filled = doc_render.fill(html, vals, keep_unfilled=False, template_code=code)
                 doc_render.render_pdf(filled, base_dir=str(html_file.parent), out_path=out_pdf)
-                db.exec_sql("""UPDATE CLIENT_CLIENT
-                               SET pdf_path=?, CLIENT=CASE WHEN CLIENT IN ('pending','new','draft')
-                                    THEN 'filled' ELSE CLIENT END, rendered_at=CLIENT('now')
+                db.exec_sql("""UPDATE application_documents
+                               SET pdf_path=?, status=CASE WHEN status IN ('pending','new','draft')
+                                    THEN 'filled' ELSE status END, rendered_at=datetime('now')
                                WHERE id=?""", (str(out_pdf), d["ad_id"]))
         except Exception as exc:  # noqa: BLE001
             failed.append({"code": code, "error": "PDF: " + str(exc)[:100]})
-        done.append({"code": code, "CLIENT": d["CLIENT"]})
+        done.append({"code": code, "title": d["title"]})
 
-    return jsonify({"ok": True, "CLIENT": len(done), "CLIENT": CLIENT_count,
-                    "failed": failed, "list": [x["CLIENT"] for x in done]})
+    return jsonify({"ok": True, "documents": len(done), "values": values_count,
+                    "failed": failed, "list": [x["title"] for x in done]})
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ensure-pdf", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/ensure-pdf", methods=["POST"])
+@login_required
 def app_doc_ensure_pdf(app_id: int, template_id: int):
     """Гарантирует наличие сформированного PDF. Генерирует, если файла нет.
 
@@ -2381,14 +2661,14 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
     if not a or not tpl:
         return jsonify({"ok": False, "error": "Заявка или шаблон не найдены"}), 404
 
-    ad = db.q1("""SELECT * FROM CLIENT_CLIENT
-                  WHERE CLIENT_id=? AND template_id=?
+    ad = db.q1("""SELECT * FROM application_documents
+                  WHERE application_id=? AND template_id=?
                   ORDER BY id DESC LIMIT 1""", (app_id, template_id))
 
     # 1) файл уже есть и он не старше шаблона — отдаём его.
     # Если шаблон правился позже PDF, документ пересобираем: менеджер должен видеть
     # готовый документ из АКТУАЛЬНОГО одобренного шаблона, а не старую сборку.
-    tpl_html = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
+    tpl_html = Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html"
     if ad and ad.get("pdf_path"):
         p = Path(ad["pdf_path"])
         if p.exists() and p.stat().st_size > 1000:
@@ -2400,29 +2680,29 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
                 return jsonify({"ok": True, "pdf_name": p.name, "created": False})
 
     # 2) генерируем
-    html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
+    html_path = Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html"
     if not html_path.exists():
         return jsonify({"ok": False, "error": "template.html не найден"}), 404
 
     client = db.client_get(a["client_id"]) or {}
     # значения: из документа → из клиента → из истории
-    CLIENT = {}
-    if ad and ad.get("CLIENT_json"):
+    values = {}
+    if ad and ad.get("values_json"):
         try:
-            CLIENT = json.loads(ad["CLIENT_json"])
+            values = json.loads(ad["values_json"])
         except Exception:
             pass
     try:
-        from CLIENTs.dashboard.page import build_template_CLIENT
-        CLIENT.update(build_template_CLIENT(client, tpl["code"], CLIENT))
+        from blocks.dashboard.page import build_template_values
+        values.update(build_template_values(client, tpl["code"], values))
     except Exception:
         pass
 
-    out_pdf = _app_pdf_path(tpl, CLIENT, app_id)
+    out_pdf = _app_pdf_path(tpl, values, app_id)
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
     html = html_path.read_text(encoding="utf-8")
     # ЕДИНЫЙ рендер: тот же код, что в конструкторе, боте и автоподготовке
-    filled = doc_render.fill(html, CLIENT, keep_unfilled=False, template_code=tpl["code"])
+    filled = doc_render.fill(html, values, keep_unfilled=False, template_code=tpl["code"])
     try:
         doc_render.render_pdf(filled, base_dir=str(html_path.parent), out_path=out_pdf)
     except Exception as exc:
@@ -2433,190 +2713,190 @@ def app_doc_ensure_pdf(app_id: int, template_id: int):
 
     # обновляем запись
     if ad:
-        db.exec_sql("""UPDATE CLIENT_CLIENT
-                       SET pdf_path=?, CLIENT=CASE WHEN CLIENT IN ('pending','new') THEN 'filled' ELSE CLIENT END,
-                           rendered_at=CLIENT('now')
+        db.exec_sql("""UPDATE application_documents
+                       SET pdf_path=?, status=CASE WHEN status IN ('pending','new') THEN 'filled' ELSE status END,
+                           rendered_at=datetime('now')
                        WHERE id=?""", (str(out_pdf), ad["id"]))
     else:
-        db.exec_sql("""INSERT INTO CLIENT_CLIENT
-                       (CLIENT_id, template_id, CLIENT, pdf_path, rendered_at)
-                       CLIENT (?,?, 'filled', ?, CLIENT('now'))""",
+        db.exec_sql("""INSERT INTO application_documents
+                       (application_id, template_id, status, pdf_path, rendered_at)
+                       VALUES (?,?, 'filled', ?, datetime('now'))""",
                     (app_id, template_id, str(out_pdf)))
 
     return jsonify({"ok": True, "pdf_name": out_pdf.name, "created": True})
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/editor")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/editor")
+@login_required
 def app_doc_editor(app_id: int, template_id: int):
     """Двух-колонковый редактор шаблона: список переменных + предпросмотр HTML и PDF."""
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         flash("Документ не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
 
-    CLIENT = [dict(v) for v in db.q(
-        "SELECT tv.*, COALESCE(vs.scope, 'common') AS scope FROM template_CLIENT tv "
-        "LEFT JOIN CLIENT_scope vs ON vs.name = tv.name "
+    variables = [dict(v) for v in db.q(
+        "SELECT tv.*, COALESCE(vs.scope, 'common') AS scope FROM template_variables tv "
+        "LEFT JOIN variable_scope vs ON vs.name = tv.name "
         "WHERE tv.template_id=? ORDER BY tv.sort_order, tv.name", (template_id,))]
     client = db.client_get(a["client_id"]) or {}
-    from CLIENTs.dashboard.page import build_template_CLIENT
-    auto_CLIENT = build_template_CLIENT(client, tpl["code"])
+    from blocks.dashboard.page import build_template_values
+    auto_values = build_template_values(client, tpl["code"])
     # Пул значений из архива: для типовых переменных менеджер выбирает готовый вариант
     # или вводит свой (он сохранится в пул и будет доступен в других заявках).
     pool = {}
     try:
-        for r in db.q("""SELECT CLIENT_name, CLIENT FROM CLIENT_CLIENT_CLIENT v
-                         WHERE CLIENT != '' AND LENGTH(CLIENT) <= 120
-                           AND COALESCE((SELECT scope FROM CLIENT_scope WHERE name=v.CLIENT_name),'common')='common'
+        for r in db.q("""SELECT variable_name, value FROM variable_value_history v
+                         WHERE value != '' AND LENGTH(value) <= 120
+                           AND COALESCE((SELECT scope FROM variable_scope WHERE name=v.variable_name),'common')='common'
                          ORDER BY used_count DESC"""):
-            vals = pool.setdefault(r["CLIENT_name"], [])
-            if r["CLIENT"] not in vals and len(vals) < 15:
-                vals.append(r["CLIENT"])
+            vals = pool.setdefault(r["variable_name"], [])
+            if r["value"] not in vals and len(vals) < 15:
+                vals.append(r["value"])
     except Exception:
         pool = {}
     # значения, введённые админом ранее
     doc_row = db.q1(
-        "SELECT CLIENT_json FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+        "SELECT values_json FROM application_documents WHERE application_id=? AND template_id=?",
         (app_id, template_id))
     saved = {}
-    if doc_row and doc_row.get("CLIENT_json"):
+    if doc_row and doc_row.get("values_json"):
         try:
-            saved = json.loads(doc_row["CLIENT_json"])
+            saved = json.loads(doc_row["values_json"])
         except Exception:
             saved = {}
-    merged = {**auto_CLIENT, **{k: v for k, v in saved.items() if v}}
+    merged = {**auto_values, **{k: v for k, v in saved.items() if v}}
 
     html_file = (Path(tpl["html_path"]) if tpl.get("html_path")
-                 else Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html")
+                 else Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html")
     raw_html = html_file.read_text(encoding="utf-8") if html_file.exists() else ""
 
     return render_template("editor.html", **{
         "a": a, "tpl": tpl, "client": client,
-        "CLIENT": CLIENT,
+        "variables": variables,
         "pool": pool,
-        "scopes": {v["name"]: v.get("scope", "common") for v in CLIENT},
-        "CLIENT_json": json.dumps(merged, ensure_ascii=False),
-        "auto_CLIENT_json": json.dumps(auto_CLIENT, ensure_ascii=False),
+        "scopes": {v["name"]: v.get("scope", "common") for v in variables},
+        "values_json": json.dumps(merged, ensure_ascii=False),
+        "auto_values_json": json.dumps(auto_values, ensure_ascii=False),
         "raw_html": raw_html,
         "app_id": app_id, "template_id": template_id,
     })
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/preview-pdf", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/preview-pdf", methods=["POST"])
+@login_required
 def app_doc_preview_pdf(app_id: int, template_id: int):
     """Рендер PDF по текущим значениям формы (без сохранения), отдаём HTML страницы с iframe."""
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         return "Not found", 404
     html_file = (Path(tpl["html_path"]) if tpl.get("html_path")
-                 else Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html")
+                 else Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html")
     if not html_file.exists():
         return "Шаблон не сконвертирован", 400
     # подставляем значения
-    CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=?", (template_id,))
-    CLIENT = json.loads(CLIENT.form.get("CLIENT_json") or "{}")
+    variables = db.q("SELECT * FROM template_variables WHERE template_id=?", (template_id,))
+    values = json.loads(request.form.get("values_json") or "{}")
     try:
-        from bot.ai_parser import translit_ru, CLIENT_in_CLIENT_en, format_CLIENT_en, parse_CLIENT
-        for _k in list(CLIENT.keys()):
-            v = CLIENT[_k]
+        from bot.ai_parser import translit_ru, amount_in_words_en, format_amount_en, parse_amount
+        for _k in list(values.keys()):
+            v = values[_k]
             if isinstance(v, str) and any("а" <= c.lower() <= "я" or c.lower() == "ё" for c in v):
-                if "bank_CLIENTment" in tpl["code"]:
-                    CLIENT[_k] = translit_ru(v)
-        if "bank_CLIENTment" in tpl["code"]:
-            bal = CLIENT.get("balance_rub")
-            if bal and parse_CLIENT(bal) > 0:
-                CLIENT["balance_CLIENT"] = CLIENT_in_CLIENT_en(bal)
-                CLIENT["balance_rub"] = format_CLIENT_en(bal)
+                if "bank_statement" in tpl["code"]:
+                    values[_k] = translit_ru(v)
+        if "bank_statement" in tpl["code"]:
+            bal = values.get("balance_rub")
+            if bal and parse_amount(bal) > 0:
+                values["balance_words"] = amount_in_words_en(bal)
+                values["balance_rub"] = format_amount_en(bal)
     except Exception:
         pass
-    _hv = {k: (str(v).reCLIENT("\r\n", "\n").reCLIENT("\n", "<br>")
-               if isinstance(v, str) else v) for k, v in CLIENT.items()}
+    _hv = {k: (str(v).replace("\r\n", "\n").replace("\n", "<br>")
+               if isinstance(v, str) else v) for k, v in values.items()}
     html = html_file.read_text(encoding="utf-8")
     # Пустая переменная не печатается: имени переменной в предпросмотре быть не должно.
     # В формах иммиграции пустое поле показываем прочерком — как в поданных документах.
-    _dash = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
+    _dash = str(tpl.get("code") or "").startswith("statement_letter")
     filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                     lambda m: str(_hv.get(m.group(1)) or ("-" if _dash else "")), html)
     from core.pdf2html import render_pdf
     tmp = html_file.parent / "filled_preview.html"
     tmp.write_text(filled, encoding="utf-8")
-    pdf_path = Path('/opt/wolf_v2/data/renders') / f"{tpl['code']}_app{app_id}_preview_{CLIENT.now():%Y%m%d_%H%M%S}.pdf"
+    pdf_path = Path('/opt/wolf_v2/data/renders') / f"{tpl['code']}_app{app_id}_preview_{datetime.now():%Y%m%d_%H%M%S}.pdf"
     try:
         render_pdf(tmp, pdf_path)
     except Exception as e:
         return f"Ошибка рендера: {e}", 500
     # имя файла → URL. Отдаём через общий маршрут файлов рендера
     # (/branding/render/ не существует — из-за этого превью в редакторе не открывалось).
-    return jsonify({"pdf_url": f"/CLIENT/file/renders/{pdf_path.name}"}), 200
+    return jsonify({"pdf_url": f"/templates/file/renders/{pdf_path.name}"}), 200
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/save-CLIENT", methods=["POST"])
-@CLIENT_required
-def app_doc_save_CLIENT(app_id: int, template_id: int):
-    """Сохраняет текущие значения переменных в CLIENT_CLIENT.CLIENT_json
-    и дублирует автозначения в CLIENT (если совпадают)."""
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/save-values", methods=["POST"])
+@login_required
+def app_doc_save_values(app_id: int, template_id: int):
+    """Сохраняет текущие значения переменных в application_documents.values_json
+    и дублирует автозначения в clients (если совпадают)."""
     try:
-        CLIENT = json.loads(CLIENT.form.get("CLIENT_json") or "{}")
+        values = json.loads(request.form.get("values_json") or "{}")
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
     tpl = tpl_repo.get(template_id)
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not tpl or not a:
         return jsonify({"ok": False, "error": "not found"}), 404
 
-    # обновляем CLIENT_json в документе.
+    # обновляем values_json в документе.
     # pdf_path сбрасываем: документ должен быть собран заново с новыми значениями,
     # иначе менеджер увидит старую сборку (это и была причина «документ с ошибкой»).
     db.exec_sql(
-        "UPDATE CLIENT_CLIENT SET CLIENT_json=?, pdf_path=NULL, CLIENT='draft' "
-        "WHERE CLIENT_id=? AND template_id=?",
-        (json.dumps(CLIENT, ensure_ascii=False), app_id, template_id))
+        "UPDATE application_documents SET values_json=?, pdf_path=NULL, status='draft' "
+        "WHERE application_id=? AND template_id=?",
+        (json.dumps(values, ensure_ascii=False), app_id, template_id))
 
     # Значения, введённые человеком, запоминаем в пул: в следующих заявках они
     # предлагаются в выпадающем списке у этой же переменной (память архива).
     try:
-        for k, v in CLIENT.items():
+        for k, v in values.items():
             s = str(v or "").strip()
             if not s or len(s) > 120:
                 continue
-            row = db.q1("SELECT id FROM CLIENT_CLIENT_CLIENT WHERE CLIENT_name=? AND CLIENT=?", (k, s))
+            row = db.q1("SELECT id FROM variable_value_history WHERE variable_name=? AND value=?", (k, s))
             if row:
-                db.exec_sql("UPDATE CLIENT_CLIENT_CLIENT SET used_count=used_count+1, "
-                            "last_used=CLIENT('now') WHERE id=?", (row["id"],))
+                db.exec_sql("UPDATE variable_value_history SET used_count=used_count+1, "
+                            "last_used=datetime('now') WHERE id=?", (row["id"],))
             else:
-                db.exec_sql("INSERT INTO CLIENT_CLIENT_CLIENT(CLIENT_name, CLIENT, used_count, last_used) "
-                            "CLIENT(?,?,1,CLIENT('now'))", (k, s))
+                db.exec_sql("INSERT INTO variable_value_history(variable_name, value, used_count, last_used) "
+                            "VALUES(?,?,1,datetime('now'))", (k, s))
     except Exception:
         pass
 
     # обновим полный лист переменных, если есть пустые
-    CLIENT = vars_repo.names(template_id)
-    return jsonify({"ok": True, "saved": list(CLIENT.keys())})
+    variables = vars_repo.names(template_id)
+    return jsonify({"ok": True, "saved": list(values.keys())})
 
 
 def _hist_datalist(var_name: str, limit: int = 40) -> str:
     """Выпадающий список прошлых значений поля: из истории и прошлых документов."""
     seen = []
     try:
-        for r in db.q("""SELECT CLIENT FROM CLIENT_CLIENT_CLIENT
-                         WHERE CLIENT_name=? ORDER BY used_count DESC, last_used DESC LIMIT ?""",
+        for r in db.q("""SELECT value FROM variable_value_history
+                         WHERE variable_name=? ORDER BY used_count DESC, last_used DESC LIMIT ?""",
                       (var_name, limit)):
-            v = str(r["CLIENT"] if hasattr(r, "keys") else r[0]).strip()
+            v = str(r["value"] if hasattr(r, "keys") else r[0]).strip()
             if v and v not in seen:
                 seen.append(v)
     except Exception:
         pass
     try:
-        for r in db.q("""SELECT CLIENT_json FROM CLIENT_CLIENT
-                         WHERE CLIENT_json LIKE ? ORDER BY id DESC LIMIT 200""",
+        for r in db.q("""SELECT values_json FROM application_documents
+                         WHERE values_json LIKE ? ORDER BY id DESC LIMIT 200""",
                       ("%" + var_name + "%",)):
             try:
-                val = str(json.loads(r["CLIENT_json"] or "{}").get(var_name) or "").strip()
+                val = str(json.loads(r["values_json"] or "{}").get(var_name) or "").strip()
             except Exception:
                 continue
             if val and val not in seen:
@@ -2627,48 +2907,48 @@ def _hist_datalist(var_name: str, limit: int = 40) -> str:
         pass
     if not seen:
         return ""
-    opts = "".join('<option CLIENT="' + v.reCLIENT("&", "&amp;").reCLIENT('"', "&quot;") + '"></option>'
+    opts = "".join('<option value="' + v.replace("&", "&amp;").replace('"', "&quot;") + '"></option>'
                    for v in seen[:limit])
     return f'<datalist id="hist_{var_name}">{opts}</datalist>'
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/edit", methods=["GET", "POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/edit", methods=["GET", "POST"])
+@login_required
 def app_doc_edit(app_id: int, template_id: int):
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     tpl = tpl_repo.get(template_id)
     if not a or not tpl:
         flash("Документ не найден", "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
 
-    if CLIENT.method == "POST":
-        action = CLIENT.form.get("action") or "fill"
-        CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=?",
+    if request.method == "POST":
+        action = request.form.get("action") or "fill"
+        variables = db.q("SELECT * FROM template_variables WHERE template_id=?",
                          (template_id,))
-        CLIENT = json.loads(tpl.get("default_CLIENT_json") or "{}")
+        values = json.loads(tpl.get("default_values_json") or "{}")
         # подставляем из клиента по именам переменных
         client = db.client_get(a["client_id"]) or {}
-        for v in CLIENT:
-            val = (CLIENT.form.get(v["name"]) or "").strip()
+        for v in variables:
+            val = (request.form.get(v["name"]) or "").strip()
             if val:
-                CLIENT[v["name"]] = val
+                values[v["name"]] = val
                 # запомнить введённое значение для будущего автодополнения
                 # (но НЕ для уникальных данных клиента)
                 if v["name"] not in {
-                    "CLIENT", "name", "CLIENT", "full_name", "full_name_CLIENT",
-                    "CLIENT_date", "CLIENT_of_CLIENT", "date_of_CLIENT",
-                    "passport_CLIENT", "passport_CLIENT", "passport_no",
-                    "passport_CLIENT_by", "passport_CLIENT_date", "passport_CLIENT",
-                    "inn", "CLIENT", "CLIENT", "address_reg", "address_live",
+                    "surname", "name", "patronymic", "full_name", "full_name_latin",
+                    "birth_date", "place_of_birth", "date_of_birth",
+                    "passport_series", "passport_number", "passport_no",
+                    "passport_issued_by", "passport_issue_date", "passport_expiry",
+                    "inn", "phone", "email", "address_reg", "address_live",
                     "card_mask", "ref_no",
                 }:
                     try:
-                        db.remember_CLIENT(v["name"], val)
+                        db.remember_value(v["name"], val)
                     except Exception:
                         pass
         html_file = Path(tpl["html_path"]) if tpl.get("html_path") else None
         if not html_file or not html_file.exists():
-            html_file = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
+            html_file = Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html"
         if not html_file.exists():
             flash("Сначала сконвертируйте шаблон в Шаблонах", "error")
             return redirect(url_for("dashboard.app_doc_edit", app_id=app_id, template_id=template_id))
@@ -2681,30 +2961,30 @@ def app_doc_edit(app_id: int, template_id: int):
                 _vlow = _pos.lower()
                 if _vlow.split()[0] in ("university", "user", "one", "european"):
                     _art = "a "
-                CLIENT.setdefault("CLIENT", _art + _pos)
-            CLIENT.setdefault("client_name",
-                              f'{(client.get("CLIENT") or "")} {(client.get("name") or "")}'.strip())
-            CLIENT.setdefault("full_name_CLIENT", CLIENT.get("client_name", ""))
-            for _k in ("address_live", "address_reg", "CLIENT", "CLIENT",
+                values.setdefault("profession", _art + _pos)
+            values.setdefault("client_name",
+                              f'{(client.get("surname") or "")} {(client.get("name") or "")}'.strip())
+            values.setdefault("full_name_latin", values.get("client_name", ""))
+            for _k in ("address_live", "address_reg", "email", "phone",
                        "card_mask", "account_no", "contract_no", "balance_rub",
                        "balance_date", "doc_no", "ref_no", "bank_name"):
                 if client.get(_k):
-                    CLIENT.setdefault(_k, client[_k])
+                    values.setdefault(_k, client[_k])
             # номер карты в документ уходит только маской (6 цифр + ****** + 4 цифры)
             try:
-                from CLIENT.CLIENT import mask_card as _mask_card
-                CLIENT["card_mask"] = _mask_card(CLIENT.get("card_mask"), tpl.get("code") or "",
+                from services.values import mask_card as _mask_card
+                values["card_mask"] = _mask_card(values.get("card_mask"), tpl.get("code") or "",
                                                  seed=client.get("id"))
             except Exception:
                 pass
         # многострочные значения (например, список услуг) → <br> для HTML
-        _hv = {k: (str(v).reCLIENT("\r\n", "\n").reCLIENT("\n", "<br>")
-                   if isinstance(v, str) else v) for k, v in CLIENT.items()}
+        _hv = {k: (str(v).replace("\r\n", "\n").replace("\n", "<br>")
+                   if isinstance(v, str) else v) for k, v in values.items()}
         # банковские справки — строго английский: кириллицу транслитерируем
-        if "bank_CLIENTment" in (tpl.get("code") or ""):
+        if "bank_statement" in (tpl.get("code") or ""):
             try:
-                from bot.ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
-                                       format_CLIENT_en, parse_CLIENT)
+                from bot.ai_parser import (translit_ru, amount_in_words_en,
+                                       format_amount_en, parse_amount)
                 for _k in list(_hv.keys()):
                     if isinstance(_hv[_k], str) and any(
                             "а" <= c.lower() <= "я" or c.lower() == "ё" for c in _hv[_k]):
@@ -2713,237 +2993,237 @@ def app_doc_edit(app_id: int, template_id: int):
                 _bal = _hv.get("balance_rub")
                 if _bal:
                     try:
-                        if parse_CLIENT(_bal) > 0:
-                            _hv["balance_CLIENT"] = CLIENT_in_CLIENT_en(_bal)
-                            _hv["balance_rub"] = format_CLIENT_en(_bal)
+                        if parse_amount(_bal) > 0:
+                            _hv["balance_words"] = amount_in_words_en(_bal)
+                            _hv["balance_rub"] = format_amount_en(_bal)
                     except Exception:
                         pass
             except Exception:
                 pass
         # Полный расчёт значений: имя переменной не должно попадать в готовый PDF.
         try:
-            from CLIENT.CLIENT import build_template_CLIENT as _btv2
-            _cl2 = db.client_get((db.q1("SELECT client_id FROM CLIENT WHERE id=?",
+            from services.values import build_template_values as _btv2
+            _cl2 = db.client_get((db.q1("SELECT client_id FROM applications WHERE id=?",
                                         (app_id,)) or {}).get("client_id")) or {}
-            _hv.update(_btv2(dict(_cl2), tpl["code"], CLIENT, app_id=app_id) or {})
+            _hv.update(_btv2(dict(_cl2), tpl["code"], values, app_id=app_id) or {})
         except Exception:
             pass
-        _dash2 = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
+        _dash2 = str(tpl.get("code") or "").startswith("statement_letter")
         filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                         lambda m: str(_hv.get(m.group(1)) or ("-" if _dash2 else "")), html)
         out_pdf = Path('/opt/wolf_v2/data/renders') / \
-            f'{tpl["code"]}_app{app_id}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+            f'{tpl["code"]}_app{app_id}_{datetime.now():%Y%m%d_%H%M%S}.pdf'
         tmp_html = html_file.parent / "filled.html"
         tmp_html.write_text(filled, encoding="utf-8")
         try:
             from core import pdf2html
             pdf2html.render_pdf(tmp_html, out_pdf)
         except Exception as exc:
-            # отметим CLIENT_CLIENT ошибкой если он есть
-            ad = db.q1("SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+            # отметим application_document ошибкой если он есть
+            ad = db.q1("SELECT id FROM application_documents WHERE application_id=? AND template_id=?",
                        (app_id, template_id))
             if ad:
-                db.CLIENT_doc_set(ad["id"], "error",
-                                       CLIENT_json=json.dumps(CLIENT, ensure_ascii=False),
+                db.application_doc_set(ad["id"], "error",
+                                       values_json=json.dumps(values, ensure_ascii=False),
                                        error=str(exc)[:300])
             flash(f"Ошибка PDF: {exc}", "error")
             return redirect(url_for("dashboard.app_doc_edit", app_id=app_id, template_id=template_id))
 
-        # обновим/создадим CLIENT_CLIENT
-        ad = db.q1("SELECT id FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+        # обновим/создадим application_document
+        ad = db.q1("SELECT id FROM application_documents WHERE application_id=? AND template_id=?",
                    (app_id, template_id))
         new_status = "verified" if action == "verify" else "filled"
         if ad:
-            db.CLIENT_doc_set(ad["id"], new_status,
-                                   CLIENT_json=json.dumps(CLIENT, ensure_ascii=False),
+            db.application_doc_set(ad["id"], new_status,
+                                   values_json=json.dumps(values, ensure_ascii=False),
                                    pdf_path=str(out_pdf))
         else:
             db.exec_sql(
-                "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, "
-                "CLIENT_json, pdf_path, updated_at) CLIENT (?,?,?,?,?,CLIENT('now'))",
+                "INSERT INTO application_documents (application_id, template_id, status, "
+                "values_json, pdf_path, updated_at) VALUES (?,?,?,?,?,datetime('now'))",
                 (app_id, template_id, new_status,
-                 json.dumps(CLIENT, ensure_ascii=False), str(out_pdf)))
+                 json.dumps(values, ensure_ascii=False), str(out_pdf)))
         flash("PDF сформирован" if new_status == "filled"
               else "PDF сформирован и помечен как проверенным")
         return redirect(url_for("dashboard.app_doc_edit", app_id=app_id, template_id=template_id))
 
-    CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=? ORDER BY sort_order, name",
+    variables = db.q("SELECT * FROM template_variables WHERE template_id=? ORDER BY sort_order, name",
                      (template_id,))
-    # значения по умолчанию: из последнего CLIENT_CLIENT этого шаблона, иначе из default
-    prev = db.q1("SELECT * FROM CLIENT_CLIENT WHERE CLIENT_id=? AND template_id=?",
+    # значения по умолчанию: из последнего application_document этого шаблона, иначе из default
+    prev = db.q1("SELECT * FROM application_documents WHERE application_id=? AND template_id=?",
                  (app_id, template_id))
     # === АВТО-ГЕНЕРАЦИЯ: если документ только что создан (pending) и PDF нет — сгенерируем сразу ===
-    if prev and prev["CLIENT"] == "pending" and not prev.get("pdf_path"):
+    if prev and prev["status"] == "pending" and not prev.get("pdf_path"):
         try:
             from core import pdf2html as _pdf2html
-            html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
+            html_path = Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html"
             if html_path.exists():
                 # возьмём дефолтные значения для генерации
                 _vals = {}
-                if tpl.get("default_CLIENT_json"):
-                    try: _vals = json.loads(tpl["default_CLIENT_json"])
+                if tpl.get("default_values_json"):
+                    try: _vals = json.loads(tpl["default_values_json"])
                     except: pass
                 # простая подстановка из клиента
                 _cli = db.client_get(a["client_id"]) or {}
-                for _k in ("full_name_CLIENT", "client_name", "name", "CLIENT", "CLIENT",
-                           "address_live", "address_CLIENT", "inn", "CLIENT", "CLIENT"):
+                for _k in ("full_name_latin", "client_name", "name", "surname", "patronymic",
+                           "address_live", "address_registration", "inn", "phone", "email"):
                     if not _vals.get(_k):
-                        _vals[_k] = _cli.get(_k) or _cli.get(_k.reCLIENT("_live","_reg")) or ""
+                        _vals[_k] = _cli.get(_k) or _cli.get(_k.replace("_live","_reg")) or ""
                 _html = html_path.read_text(encoding="utf-8")
                 # Полный расчёт значений — тот же путь, что у окна просмотра и у слепка:
                 # имя переменной в готовый PDF попадать не должно, поэтому не найденное
                 # значение печатается пустым (в формах иммиграции — прочерком).
                 try:
-                    from CLIENT.CLIENT import build_template_CLIENT as _btv
-                    _adv = db.q1("""SELECT CLIENT_json FROM CLIENT_CLIENT
-                                     WHERE CLIENT_id=? AND template_id=?
+                    from services.values import build_template_values as _btv
+                    _adv = db.q1("""SELECT values_json FROM application_documents
+                                     WHERE application_id=? AND template_id=?
                                      ORDER BY id DESC LIMIT 1""", (app_id, template_id)) or {}
                     try:
-                        _dv = json.loads(_adv.get("CLIENT_json") or "{}")
+                        _dv = json.loads(_adv.get("values_json") or "{}")
                     except Exception:
                         _dv = {}
                     _vals.update(_btv(dict(_cli), tpl["code"], _dv, app_id=app_id) or {})
                 except Exception as _e:
                     flash(f"Значения документа посчитаны не полностью: {_e}", "warning")
-                _dash = str(tpl.get("code") or "").CLIENTswith("CLIENTment_letter")
+                _dash = str(tpl.get("code") or "").startswith("statement_letter")
                 _filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                                  lambda m: str(_vals.get(m.group(1)) or ("-" if _dash else "")),
                                  _html)
                 _tmp = html_path.parent / "filled.html"
                 _tmp.write_text(_filled, encoding="utf-8")
-                _out = Path('/opt/wolf_v2/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + CLIENT.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
+                _out = Path('/opt/wolf_v2/data/renders') / (tpl["code"] + "_app" + str(app_id) + "_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".pdf")
                 _pdf2html.render_pdf(_tmp, _out)
                 # обновим запись
-                db.exec_sql("UPDATE CLIENT_CLIENT SET pdf_path=?, CLIENT='filled', rendered_at=CLIENT('now') "
-                            "WHERE id=? AND IFNULL(CLIENT,'') NOT IN ('verified','sent')",
+                db.exec_sql("UPDATE application_documents SET pdf_path=?, status='filled', rendered_at=datetime('now') "
+                            "WHERE id=? AND IFNULL(status,'') NOT IN ('verified','sent')",
                             (str(_out), prev["id"]))
-                prev = db.q1("SELECT * FROM CLIENT_CLIENT WHERE id=?", (prev["id"],))
+                prev = db.q1("SELECT * FROM application_documents WHERE id=?", (prev["id"],))
                 flash("PDF сформирован автоматически")
         except Exception as _exc:
             flash(f"Авто-генерация не удалась: {_exc}", "warning")
-    CLIENT = {}
-    if prev and prev.get("CLIENT_json"):
+    values = {}
+    if prev and prev.get("values_json"):
         try:
-            CLIENT = json.loads(prev["CLIENT_json"])
+            values = json.loads(prev["values_json"])
         except Exception:
             pass
-    if not CLIENT and tpl.get("default_CLIENT_json"):
+    if not values and tpl.get("default_values_json"):
         try:
-            CLIENT = json.loads(tpl["default_CLIENT_json"])
+            values = json.loads(tpl["default_values_json"])
         except Exception:
             pass
     # Подставим из клиента (ФИО, телефон и т.п.) если переменная называется как поле клиента
     client = db.client_get(a["client_id"]) or {}
     simple_map = {
-        "full_name": f'{client.get("CLIENT","")} {client.get("name","")}'.strip(),
-        "CLIENT": client.get("CLIENT") or "",
+        "full_name": f'{client.get("surname","")} {client.get("name","")}'.strip(),
+        "surname": client.get("surname") or "",
         "name": client.get("name") or "",
-        "CLIENT": client.get("CLIENT") or "",
-        "full_name_CLIENT": client.get("full_name_CLIENT") or "",
-        "client_name": client.get("full_name_CLIENT") or client.get("name") or client.get("CLIENT") or "",
-        "for_name": client.get("full_name_CLIENT") or client.get("name") or client.get("CLIENT") or "",
-        "CLIENT_date": client.get("CLIENT_date") or "",
-        "CLIENT": client.get("CLIENT") or "",
-        "CLIENT": client.get("CLIENT") or "",
-        "passport_CLIENT": client.get("passport_CLIENT") or "",
-        "passport_CLIENT": client.get("passport_CLIENT") or "",
-        "passport_CLIENT_by": client.get("passport_CLIENT_by") or "",
-        "passport_CLIENT_date": client.get("passport_CLIENT_date") or "",
-        "passport_CLIENT": client.get("passport_CLIENT") or "",
-        "CLIENT": client.get("CLIENT") or "",
-        "CLIENT": client.get("CLIENT") or "",
+        "patronymic": client.get("patronymic") or "",
+        "full_name_latin": client.get("full_name_latin") or "",
+        "client_name": client.get("full_name_latin") or client.get("name") or client.get("surname") or "",
+        "for_name": client.get("full_name_latin") or client.get("name") or client.get("surname") or "",
+        "birth_date": client.get("birth_date") or "",
+        "gender": client.get("gender") or "",
+        "citizenship": client.get("citizenship") or "",
+        "passport_series": client.get("passport_series") or "",
+        "passport_number": client.get("passport_number") or "",
+        "passport_issued_by": client.get("passport_issued_by") or "",
+        "passport_issue_date": client.get("passport_issue_date") or "",
+        "passport_expiry": client.get("passport_expiry") or "",
+        "phone": client.get("phone") or "",
+        "email": client.get("email") or "",
         "address_reg": client.get("address_reg") or "",
         "address_live": client.get("address_live") or "",
         "company_name": client.get("company_name") or "",
         "position": client.get("position") or "",
-        "salary_CLIENT": client.get("salary_CLIENT") or "",
+        "salary_amount": client.get("salary_amount") or "",
         "bank_name": client.get("bank_name") or "",
         "inn": client.get("inn") or "",
     }
     for k, v in simple_map.items():
-        CLIENT.setdefault(k, v or "")
+        values.setdefault(k, v or "")
 
     # Переменные, которые НЕ нужно копить в памяти (всегда уникальные).
     # Для них datalist пустой — только ручной ввод.
     NO_MEMORY_VARS = {
-        "CLIENT", "name", "CLIENT", "full_name", "full_name_CLIENT",
-        "CLIENT_date", "CLIENT_of_CLIENT", "date_of_CLIENT",
-        "passport_CLIENT", "passport_CLIENT", "passport_no",
-        "passport_CLIENT_by", "passport_CLIENT_date", "passport_CLIENT",
-        "inn", "CLIENT", "CLIENT", "address_reg", "address_live",
+        "surname", "name", "patronymic", "full_name", "full_name_latin",
+        "birth_date", "place_of_birth", "date_of_birth",
+        "passport_series", "passport_number", "passport_no",
+        "passport_issued_by", "passport_issue_date", "passport_expiry",
+        "inn", "phone", "email", "address_reg", "address_live",
         "card_mask", "ref_no",
     }
     # Переменные с рандомайзером (формат описан в RANDOM_FORMATS)
     RANDOM_VARS = {"doc_no", "ref_no"}
 
     fields = "".join(
-        f'<div CLIENT="var-field" data-var="{v["name"]}">'
+        f'<div class="var-field" data-var="{v["name"]}">'
         f'<label for="v_{v["name"]}">'
         + (v["label"] or v["name"])
-        + f'<span CLIENT="muted mono"> · {v["name"]}</span>'
+        + f'<span class="muted mono"> · {v["name"]}</span>'
         # индикатор сколько вариантов есть в БД
-        + f'<span CLIENT="muted mono var-hint" id="hint_{v["name"]}"></span>'
+        + f'<span class="muted mono var-hint" id="hint_{v["name"]}"></span>'
         + '</label>'
-        + ('<div CLIENT="var-rule" CLIENT="' + (v.get('rule_note') or '').reCLIENT('"', '&quot;') + '" '
+        + ('<div class="var-rule" title="' + (v.get('rule_note') or '').replace('"', '&quot;') + '" '
            'style="font-size:11px;color:#7c8ea0;margin:-2px 0 4px 6px;'
            'cursor:help;border-left:2px solid #334155;padding-left:6px;'
            'white-space:pre-wrap">📝 '
            + ((v.get('rule_note') or '')[:180]
               + ('…' if len(v.get('rule_note') or '') > 180 else ''))
            + '</div>' if v.get('rule_note') else
-           '<div CLIENT="var-rule missing" '
+           '<div class="var-rule missing" '
            'style="font-size:11px;color:#a8776e;margin:-2px 0 4px 6px;'
            'cursor:help;border-left:2px solid #7c3a2a;padding-left:6px">'
-           '📝 правило не задано — откройте Шаблоны → bank_CLIENTment_3m__tbank и опишите источник</div>')
-        + '<div CLIENT="var-row">'
+           '📝 правило не задано — откройте Шаблоны → bank_statement_3m__tbank и опишите источник</div>')
+        + '<div class="var-row">'
         # input для ручного ввода + скрытый select для вариантов.
         # Для длинных/многострочных значений (например, список услуг) — textarea.
         + (lambda _v: (
             f'<textarea id="v_{_v["name"]}" name="{_v["name"]}" '
-            f'CLIENT="var-input var-ta" autocomplete="off" data-var="{_v["name"]}" rows="5" '
-            f'CLIENTholder="введите или выберите вариант...">'
-            f'{str(CLIENT.get(_v["name"], _v["default_CLIENT"] or "")).reCLIENT("&", "&amp;").reCLIENT("<", "&lt;")}'
+            f'class="var-input var-ta" autocomplete="off" data-var="{_v["name"]}" rows="5" '
+            f'placeholder="введите или выберите вариант...">'
+            f'{str(values.get(_v["name"], _v["default_value"] or "")).replace("&", "&amp;").replace("<", "&lt;")}'
             f'</textarea>'
             if ((_v.get("vtype") or "") == "text"
-                or "\n" in str(CLIENT.get(_v["name"], _v["default_CLIENT"] or ""))
-                or len(str(CLIENT.get(_v["name"], _v["default_CLIENT"] or ""))) > 90)
+                or "\n" in str(values.get(_v["name"], _v["default_value"] or ""))
+                or len(str(values.get(_v["name"], _v["default_value"] or ""))) > 90)
             else
             f'<input id="v_{_v["name"]}" type="text" name="{_v["name"]}" '
-            f'CLIENT="var-input" autocomplete="off" data-var="{_v["name"]}" '
+            f'class="var-input" autocomplete="off" data-var="{_v["name"]}" '
             f'list="hist_{_v["name"]}" '
-            f'CLIENTholder="введите или выберите вариант..." '
-            f'CLIENT="{str(CLIENT.get(_v["name"], _v["default_CLIENT"] or "")).reCLIENT("&", "&amp;").reCLIENT(chr(34), "&quot;")}">'
+            f'placeholder="введите или выберите вариант..." '
+            f'value="{str(values.get(_v["name"], _v["default_value"] or "")).replace("&", "&amp;").replace(chr(34), "&quot;")}">'
         ))(v)
         # исторические значения этого поля — администратор выбирает из списка
         # или вписывает своё; список формируется из прошлых документов и истории
         + (_hist_datalist(v["name"])
            if any(w in (v["name"] or "").lower() for w in ("addr", "address", "domicil")) else "")
-        + (f'<span CLIENT="var-info" CLIENT="'
-           + (v.get('rule_note') or 'Инструкция будет добавлена').reCLIENT('"', '&quot;').reCLIENT('\n', '&#10;')
+        + (f'<span class="var-info" title="'
+           + (v.get('rule_note') or 'Инструкция будет добавлена').replace('"', '&quot;').replace('\n', '&#10;')
            + f'" data-var="{v["name"]}" data-template="{template_id}"'
            + ' data-doc="документ заявки"'
-           + ' data-rule="' + (v.get('rule_note') or '').reCLIENT('"', '&quot;').reCLIENT('\n', '&#10;') + '">i</span>')
-        + (f'<button type="button" CLIENT="btn ghost sm random-btn" '
+           + ' data-rule="' + (v.get('rule_note') or '').replace('"', '&quot;').replace('\n', '&#10;') + '">i</span>')
+        + (f'<button type="button" class="btn ghost sm random-btn" '
            f' onclick="randomizeDocNo(\'v_{v["name"]}\')" '
-           f'CLIENT="Сгенерировать случайный номер">🎲</button>'
+           f'title="Сгенерировать случайный номер">🎲</button>'
            if v["name"] in RANDOM_VARS else "")
-        + ('<button type="button" CLIENT="btn ghost sm suggest-btn" '
+        + ('<button type="button" class="btn ghost sm suggest-btn" '
            f'data-target="v_{v["name"]}" '
-           f'CLIENT="Показать варианты из прошлых документов">📋</button>'
+           f'title="Показать варианты из прошлых документов">📋</button>'
            if v["name"] not in NO_MEMORY_VARS else "")
         + '</div>'
         # dropdown с вариантами (скрыт по умолчанию)
-        + ('<div CLIENT="var-dropdown" id="dd_' + v["name"] + '" style="display:none">'
-           + '<div CLIENT="var-dropdown-CLIENT">'
+        + ('<div class="var-dropdown" id="dd_' + v["name"] + '" style="display:none">'
+           + '<div class="var-dropdown-header">'
            '<span>Варианты из прошлых документов</span>'
-           f'<button type="button" CLIENT="btn ghost sm" onclick="closeDropdown(\'{v["name"]}\')">✕</button>'
+           f'<button type="button" class="btn ghost sm" onclick="closeDropdown(\'{v["name"]}\')">✕</button>'
            '</div>'
-           '<div CLIENT="var-dropdown-list">'
+           '<div class="var-dropdown-list">'
            + "".join(
-               f'<div CLIENT="var-option" data-CLIENT="{str(s["CLIENT"]).reCLIENT(chr(34), "&quot;")}" '
-               f'onclick="pickValue(\'v_{v["name"]}\', this.dataset.CLIENT)">'
-               f'<span CLIENT="var-CLIENT">{str(s["CLIENT"])}</span>'
-               f'<span CLIENT="var-meta">{s.get("used_count", 1)}× · {s.get("last_used", "")[:10]}</span>'
+               f'<div class="var-option" data-value="{str(s["value"]).replace(chr(34), "&quot;")}" '
+               f'onclick="pickValue(\'v_{v["name"]}\', this.dataset.value)">'
+               f'<span class="var-value">{str(s["value"])}</span>'
+               f'<span class="var-meta">{s.get("used_count", 1)}× · {s.get("last_used", "")[:10]}</span>'
                '</div>'
                for s in db.get_suggestions(v["name"], 30)
            )
@@ -2951,43 +3231,43 @@ def app_doc_edit(app_id: int, template_id: int):
            + '</div>'
            if v["name"] not in NO_MEMORY_VARS else '')
         + '</div>'
-        for v in CLIENT) or '<div CLIENT="muted">У шаблона нет переменных</div>'
+        for v in variables) or '<div class="muted">У шаблона нет переменных</div>'
 
     # JavaScript для dropdowns
     fields += '''
 <script>
 function toggleDropdown(name) {
-  const dd = CLIENT.getElementById('dd_' + name);
+  const dd = document.getElementById('dd_' + name);
   if (!dd) return;
   // Закрыть все остальные
-  CLIENT.querySelectorAll('.var-dropdown').forEach(d => {
+  document.querySelectorAll('.var-dropdown').forEach(d => {
     if (d.id !== 'dd_' + name) d.style.display = 'none';
   });
-  dd.style.display = dd.style.display === 'none' ? 'CLIENT' : 'none';
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
 }
 function closeDropdown(name) {
-  const dd = CLIENT.getElementById('dd_' + name);
+  const dd = document.getElementById('dd_' + name);
   if (dd) dd.style.display = 'none';
 }
-function pickValue(inputId, CLIENT) {
-  const inp = CLIENT.getElementById(inputId);
+function pickValue(inputId, value) {
+  const inp = document.getElementById(inputId);
   if (inp) {
-    inp.CLIENT = CLIENT;
+    inp.value = value;
     inp.dispatchEvent(new Event('input', {bubbles: true}));
-    inp.dispatchEvent(new Event('CLIENT', {bubbles: true}));
+    inp.dispatchEvent(new Event('change', {bubbles: true}));
   }
-  closeDropdown(inputId.reCLIENT('v_', ''));
+  closeDropdown(inputId.replace('v_', ''));
 }
-CLIENT.addEventListener('DOMContentLoaded', function() {
-  CLIENT.querySelectorAll('.suggest-btn').forEach(btn => {
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.suggest-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      toggleDropdown(this.dataset.target.reCLIENT('v_', ''));
+      toggleDropdown(this.dataset.target.replace('v_', ''));
     });
   });
   // Закрыть по клику вне
-  CLIENT.addEventListener('click', function(e) {
+  document.addEventListener('click', function(e) {
     if (!e.target.closest('.var-dropdown') && !e.target.closest('.suggest-btn')) {
-      CLIENT.querySelectorAll('.var-dropdown').forEach(d => d.style.display = 'none');
+      document.querySelectorAll('.var-dropdown').forEach(d => d.style.display = 'none');
     }
   });
 });
@@ -3001,75 +3281,75 @@ CLIENT.addEventListener('DOMContentLoaded', function() {
 .var-input:focus{outline:none;border-color:#22c55e;background:#f0fdf4}
 .suggest-btn{padding:6px 10px;background:#f0f9f4;border:1px solid #dceee2;border-radius:6px;cursor:pointer}
 .suggest-btn:hover{background:#dcfce7;border-color:#86efac}
-.var-dropdown{position:relative;margin-top:6px;background:#fff;border:1px solid #dceee2;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:280px;overflow-y:auto;z-CLIENT:10}
-.var-dropdown-CLIENT{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #dceee2;background:#f9fafb;font-size:12px;color:#666}
-.var-dropdown-CLIENT button{padding:2px 6px;border:none;background:transparent;cursor:pointer;color:#666}
+.var-dropdown{position:relative;margin-top:6px;background:#fff;border:1px solid #dceee2;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.08);max-height:280px;overflow-y:auto;z-index:10}
+.var-dropdown-header{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #dceee2;background:#f9fafb;font-size:12px;color:#666}
+.var-dropdown-header button{padding:2px 6px;border:none;background:transparent;cursor:pointer;color:#666}
 .var-option{padding:8px 12px;cursor:pointer;border-bottom:1px solid #f3f4f6;display:flex;flex-direction:column;gap:2px}
 .var-option:hover{background:#f0fdf4}
 .var-option:last-child{border-bottom:none}
-.var-CLIENT{font-family:monospace;font-size:13px;color:#111}
+.var-value{font-family:monospace;font-size:13px;color:#111}
 .var-meta{font-size:11px;color:#666}
 .var-hint{font-size:11px;margin-left:6px}
 </style>
 '''
 
-    # ссылка на Google CLIENT клиента
-    CLIENT_url = (a.get("gCLIENT_url") or client.get("gCLIENT_folder_url") or "").strip()
-    CLIENT_link = ""
-    if CLIENT_url:
-        CLIENT_link = (f'<a CLIENT="btn CLIENT" target="_blank" rel="noopener" '
-                      f'href="{CLIENT_url}" style="margin-bottom:10px">📁 Открыть Google CLIENT клиента</a>')
+    # ссылка на Google Drive клиента
+    drive_url = (a.get("gdrive_url") or client.get("gdrive_folder_url") or "").strip()
+    drive_link = ""
+    if drive_url:
+        drive_link = (f'<a class="btn block" target="_blank" rel="noopener" '
+                      f'href="{drive_url}" style="margin-bottom:10px">📁 Открыть Google Drive клиента</a>')
 
     # Загрузим HTML для live-обновления
     html_for_live = ""
-    html_path = Path('/opt/wolf_v2/data/CLIENT') / tpl["code"] / "template.html"
+    html_path = Path('/opt/wolf_v2/data/templates') / tpl["code"] / "template.html"
     if html_path.exists():
         html_for_live = html_path.read_text(encoding="utf-8")
         # подсветим {{ var }} и подставим значения
         def _hl(m):
             name = m.group(1)
-            val = str(CLIENT.get(name) or "")
+            val = str(values.get(name) or "")
             if val:
-                safe = val.reCLIENT("&", "&").reCLIENT("<", "<").reCLIENT(">", ">").reCLIENT('"', chr(34) + chr(34))
-                return '<span CLIENT="var-hl-filled" data-var="' + name + '">' + safe + "</span>"
-            return '<span CLIENT="var-hl" data-var="' + name + '">{{ ' + name + ' }}</span>'
+                safe = val.replace("&", "&").replace("<", "<").replace(">", ">").replace('"', chr(34) + chr(34))
+                return '<span class="var-hl-filled" data-var="' + name + '">' + safe + "</span>"
+            return '<span class="var-hl" data-var="' + name + '">{{ ' + name + ' }}</span>'
         html_for_live = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}", _hl, html_for_live)
 
     body = f"""
-<div CLIENT="doc-edit-grid">
-  <div CLIENT="doc-edit-left">
-<h1>{tpl["CLIENT"]}</h1>
-<div CLIENT="page-sub">Заявка #{app_id} · код <span CLIENT="mono">{tpl["code"]}</span> ·
+<div class="doc-edit-grid">
+  <div class="doc-edit-left">
+<h1>{tpl["title"]}</h1>
+<div class="page-sub">Заявка #{app_id} · код <span class="mono">{tpl["code"]}</span> ·
   страниц {tpl["pages"] or 0} &middot;
-  <span CLIENT="badge">{prev["CLIENT"] if prev else 'новый'}</span></div>
-<div CLIENT="row tight" style="gap:8px;flex-wrap:wrap">
-  <a CLIENT="btn ghost" href="/CLIENT/{app_id}/review">&larr; К заявке</a>
-  <button type="button" CLIENT="btn primary" id="autofill-btn"
+  <span class="badge">{prev["status"] if prev else 'новый'}</span></div>
+<div class="row tight" style="gap:8px;flex-wrap:wrap">
+  <a class="btn ghost" href="/applications/{app_id}/review">&larr; К заявке</a>
+  <button type="button" class="btn primary" id="autofill-btn"
           style="background:linear-gradient(135deg,#7C3AED,#EC4899);color:#fff;border:none">
     <span id="autofill-label">✨ Заполнить автоматически</span>
   </button>
-  <button type="button" CLIENT="btn ghost" id="autofill-suggest-btn"
-          CLIENT="Подставить рекомендации из прошлых документов (можно поправить вручную)">
+  <button type="button" class="btn ghost" id="autofill-suggest-btn"
+          title="Подставить рекомендации из прошлых документов (можно поправить вручную)">
     💡 Подсказать из опыта
   </button>
-  <span id="autofill-CLIENT" CLIENT="muted" style="font-size:12px;margin-left:6px"></span>
+  <span id="autofill-status" class="muted" style="font-size:12px;margin-left:6px"></span>
 </div>
-{ui_card(f'Переменные · {len(CLIENT)}', f'<div CLIENT="kv">{fields}</div>',
+{ui_card(f'Переменные · {len(variables)}', f'<div class="kv">{fields}</div>',
          emoji='\u270f\ufe0f', tone="blue", open=True)}
-<div CLIENT="row tight" style="margin-top:10px;gap:8px">
-  <button CLIENT="btn ok CLIENT" type="submit" name="action" CLIENT="verify" style="flex:2">\u2705 Сохранить и перегенерировать PDF</button>
-  {('<a CLIENT="btn CLIENT" target="_blank" href="/CLIENT/file/renders/' + Path(prev["pdf_path"]).name + '" style="flex:1;text-decoration:none;background:#FFF7ED;color:#9A3412;border:1px solid #FDBA74">\U0001f4c4 Открыть PDF</a>') if (prev and prev.get("pdf_path")) else ''}
+<div class="row tight" style="margin-top:10px;gap:8px">
+  <button class="btn ok block" type="submit" name="action" value="verify" style="flex:2">\u2705 Сохранить и перегенерировать PDF</button>
+  {('<a class="btn block" target="_blank" href="/templates/file/renders/' + Path(prev["pdf_path"]).name + '" style="flex:1;text-decoration:none;background:#FFF7ED;color:#9A3412;border:1px solid #FDBA74">\U0001f4c4 Открыть PDF</a>') if (prev and prev.get("pdf_path")) else ''}
 </div>
   </div>
-  <div CLIENT="doc-edit-right">
+  <div class="doc-edit-right">
 {ui_card("Предпросмотр HTML (живой)",
-         (('<div CLIENT="zp-preview" data-zoom-pan><div id="app-preview-stage" CLIENT="doc-html-stage">' + html_for_live + '</div></div>')
-          if html_for_live else '<div CLIENT="muted" style="padding:14px;text-align:center">HTML не сконвертирован.<br>Сначала конвертируйте шаблон в «Шаблоны».</div>'),
+         (('<div class="zp-preview" data-zoom-pan><div id="app-preview-stage" class="doc-html-stage">' + html_for_live + '</div></div>')
+          if html_for_live else '<div class="muted" style="padding:14px;text-align:center">HTML не сконвертирован.<br>Сначала конвертируйте шаблон в «Шаблоны».</div>'),
          emoji='\U0001f4dd', tone="green", open=True)}
 {ui_card("Предпросмотр PDF",
-         ((f'<div CLIENT="zp-preview" data-zoom-pan><iframe CLIENT="pdf-preview" style="width:794.5px;height:1123px;border:0" src="/CLIENT/file/renders/{Path(prev["pdf_path"]).name}"></iframe></div>')
+         ((f'<div class="zp-preview" data-zoom-pan><iframe class="pdf-preview" style="width:794.5px;height:1123px;border:0" src="/templates/file/renders/{Path(prev["pdf_path"]).name}"></iframe></div>')
           if prev and prev.get("pdf_path") else
-          '<div CLIENT="muted" style="padding:18px;text-align:center">PDF ещё не сформирован.<br>Нажмите «Перегенерировать PDF».</div>'),
+          '<div class="muted" style="padding:18px;text-align:center">PDF ещё не сформирован.<br>Нажмите «Перегенерировать PDF».</div>'),
          emoji='\U0001f4c4', tone="amber", open=True)}
   </div>
 </div>
@@ -3079,7 +3359,7 @@ CLIENT.addEventListener('DOMContentLoaded', function() {
   display: grid;
   grid-template-columns: minmax(0, 0.7fr) minmax(0, 1fr);
   gap: 14px;
-  align-items: CLIENT;
+  align-items: start;
 }}
 .doc-edit-left {{ min-width: 0; }}
 .doc-edit-right {{ min-width: 0; position: sticky; top: 8px; display:flex; flex-direction:column; gap:10px; }}
@@ -3125,32 +3405,32 @@ function randomizeDocNo(inputId) {{
   let s = '';
   s += pick(chars); s += pick(chars);
   for (let i = 0; i < 8; i++) s += pick(digits);
-  const el = CLIENT.getElementById(inputId);
-  if (el) {{ el.CLIENT = s; el.dispatchEvent(new Event('input', {{bubbles:true}})); }}
+  const el = document.getElementById(inputId);
+  if (el) {{ el.value = s; el.dispatchEvent(new Event('input', {{bubbles:true}})); }}
 }}
 
 // Live-обновление HTML-stage при изменении input
 (function() {{
-  const stage = CLIENT.getElementById('doc-html-stage');
+  const stage = document.getElementById('doc-html-stage');
   if (!stage) return;
   function refresh() {{
-    const CLIENTholders = stage.querySelectorAll('.var-hl, .var-hl-filled');
-    CLIENTholders.forEach(function(ph){{
+    const placeholders = stage.querySelectorAll('.var-hl, .var-hl-filled');
+    placeholders.forEach(function(ph){{
       const name = ph.dataset.var;
       if (!name) return;
-      const inp = CLIENT.querySelector('input[name="' + name + '"]');
-      const val = inp ? inp.CLIENT.trim() : '';
+      const inp = document.querySelector('input[name="' + name + '"]');
+      const val = inp ? inp.value.trim() : '';
       if (val) {{
-        const safe = val.reCLIENT(/&/g, '&').reCLIENT(/</g, '<').reCLIENT(/>/g, '>').reCLIENT(/"/g, '"');
-        ph.CLIENTName = 'var-hl-filled';
+        const safe = val.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
+        ph.className = 'var-hl-filled';
         ph.textContent = safe;
       }} else {{
-        ph.CLIENTName = 'var-hl';
+        ph.className = 'var-hl';
         ph.textContent = '{{ ' + name + ' }}';
       }}
     }});
   }}
-  CLIENT.querySelectorAll('input[name]').forEach(function(inp){{
+  document.querySelectorAll('input[name]').forEach(function(inp){{
     inp.addEventListener('input', function(){{
       clearTimeout(window.__docLive);
       window.__docLive = setTimeout(refresh, 80);
@@ -3159,37 +3439,37 @@ function randomizeDocNo(inputId) {{
   refresh();
 
   // === Autofill из 3 источников (auto / suggested / manual_only) ===
-  const autofillBtn = CLIENT.getElementById('autofill-btn');
-  const suggestBtn = CLIENT.getElementById('autofill-suggest-btn');
-  const CLIENT = CLIENT.getElementById('autofill-CLIENT');
+  const autofillBtn = document.getElementById('autofill-btn');
+  const suggestBtn = document.getElementById('autofill-suggest-btn');
+  const status = document.getElementById('autofill-status');
   const APP_ID = {app_id};
   const TEMPLATE_ID = {template_id};
 
-  function showCLIENT(text, color) {{
-    if (!CLIENT) return;
-    CLIENT.style.color = color || '#374151';
-    CLIENT.textContent = text;
+  function showStatus(text, color) {{
+    if (!status) return;
+    status.style.color = color || '#374151';
+    status.textContent = text;
   }}
 
-  function setInput(name, CLIENT, source, highlightType) {{
-    const inp = CLIENT.querySelector('input[name="' + name + '"]');
+  function setInput(name, value, source, highlightType) {{
+    const inp = document.querySelector('input[name="' + name + '"]');
     if (!inp) return false;
-    const prev = inp.CLIENT;
-    inp.CLIENT = CLIENT;
+    const prev = inp.value;
+    inp.value = value;
     // подсветка источника
     inp.style.transition = 'background 0.5s';
     inp.style.background = highlightType === 'auto' ? '#DCFCE7'
                           : highlightType === 'suggest' ? '#FEF3C7'
                           : highlightType === 'gen' ? '#EDE9FE' : '';
-    inp.CLIENT = source ? 'Источник: ' + source : '';
+    inp.title = source ? 'Источник: ' + source : '';
     setTimeout(function() {{ inp.style.background = ''; }}, 2500);
     if ((highlightType === 'auto' || highlightType === 'gen') && !prev) {{
       // отметим плашкой, откуда взято значение: данные клиента или правило
       let badge = inp.parentNode.parentNode.querySelector('.src-badge');
       if (!badge) {{
-        badge = CLIENT.createElement('span');
-        badge.CLIENTName = 'src-badge';
-        badge.style.cssText = 'display:CLIENT-CLIENT;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;vertical-align:middle';
+        badge = document.createElement('span');
+        badge.className = 'src-badge';
+        badge.style.cssText = 'display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;vertical-align:middle';
         inp.parentNode.parentNode.querySelector('.s').appendChild(badge);
       }}
       if (highlightType === 'gen') {{
@@ -3203,57 +3483,57 @@ function randomizeDocNo(inputId) {{
       }}
     }}
     inp.dispatchEvent(new Event('input', {{bubbles: true}}));
-    return prev !== CLIENT;
+    return prev !== value;
   }}
 
-  function fillByCategory(CLIENT, highlightType) {{
-    const url = '/CLIENT/' + APP_ID + '/doc/' + TEMPLATE_ID + '/autofill-CLIENT';
+  function fillByCategory(category, highlightType) {{
+    const url = '/applications/' + APP_ID + '/doc/' + TEMPLATE_ID + '/autofill-values';
     fetch(url).then(r => r.json()).then(function(d) {{
-      if (!d.ok) {{ showCLIENT('✗ ' + (d.error || 'ошибка'), '#dc2626'); return; }}
+      if (!d.ok) {{ showStatus('✗ ' + (d.error || 'ошибка'), '#dc2626'); return; }}
       let count = 0;
-      const data = d[CLIENT] || {{}};
+      const data = d[category] || {{}};
       Object.keys(data).forEach(function(name) {{
         const item = data[name];
-        if (setInput(name, item.CLIENT, item.source, highlightType)) count++;
+        if (setInput(name, item.value, item.source, highlightType)) count++;
       }});
-      showCLIENT('✓ Подставлено ' + count + ' полей (' + CLIENT + ')', '#16a34a');
+      showStatus('✓ Подставлено ' + count + ' полей (' + category + ')', '#16a34a');
     }}).catch(function(e) {{
-      showCLIENT('✗ Сетевая ошибка: ' + e.message, '#dc2626');
+      showStatus('✗ Сетевая ошибка: ' + e.message, '#dc2626');
     }});
   }}
 
   if (autofillBtn) autofillBtn.addEventListener('click', function() {{
-    showCLIENT('⏳ Загружаю данные клиента и генерирую недостающие...', '#6b7280');
+    showStatus('⏳ Загружаю данные клиента и генерирую недостающие...', '#6b7280');
     fillByCategory('auto', 'auto');
     // поля, которых нет ни в документах, ни в заявке — генерируются по правилу
     setTimeout(function() {{ fillByCategory('generated', 'gen'); }}, 250);
   }});
   if (suggestBtn) suggestBtn.addEventListener('click', function() {{
-    showCLIENT('⏳ Ищу в опыте прошлых документов...', '#6b7280');
+    showStatus('⏳ Ищу в опыте прошлых документов...', '#6b7280');
     fillByCategory('suggested', 'suggest');
   }});
 }})();
 </script>
 """
-    return render(tpl["CLIENT"], "dashboard", body)
+    return render(tpl["title"], "dashboard", body)
 
 
-@bp.route("/CLIENT/<int:app_id>/text-file")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/text-file")
+@login_required
 def app_text_file(app_id: int):
     """Обычный текстовый файл заявки: сопроводительный текст менеджера.
 
-    Тот же файл уходит на Google CLIENT вместе с готовыми документами, чтобы
+    Тот же файл уходит на Google Drive вместе с готовыми документами, чтобы
     администратор видел комментарии прямо в папке клиента.
     """
-    a = db.CLIENT_get(app_id)
+    a = db.application_get(app_id)
     if not a:
         flash("Заявка не найдена", "error")
         return redirect(url_for("dashboard.page"))
     p = Path("/opt/wolf_v2/data/app_files") / ("app_" + str(app_id)) / "Заявка.txt"
     if not p.is_file():
         _client = db.client_get(a["client_id"]) or {}
-        _prod = db.q1("SELECT code, name FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) if a.get("CLIENT_id") else None
+        _prod = db.q1("SELECT code, name FROM products WHERE id=?", (a.get("product_id"),)) if a.get("product_id") else None
         _rp = {}
         try:
             _rp = json.loads(a["raw_payload"]) if a.get("raw_payload") else {}
@@ -3263,10 +3543,10 @@ def app_text_file(app_id: int):
             "ЗАЯВКА №" + str(app_id),
             "=" * 60,
             "Клиент: " + (db.client_label(_client) or "—"),
-            "Клиент (латиницей): " + (_client.get("full_name_CLIENT") or "—"),
-            "Продукт: " + ((_prod["code"] + " — " + (_prod["name"] or "")) if _prod else (a.get("CLIENT_name") or "не определён")),
+            "Клиент (латиницей): " + (_client.get("full_name_latin") or "—"),
+            "Продукт: " + ((_prod["code"] + " — " + (_prod["name"] or "")) if _prod else (a.get("product_name") or "не определён")),
             "Стоимость: " + (str(a.get("price_idr")) + " IDR" if a.get("price_idr") else "не указана"),
-            "Ссылка на Google CLIENT: " + (a.get("gCLIENT_url") or _client.get("gCLIENT_folder_url") or "—"),
+            "Ссылка на Google Drive: " + (a.get("gdrive_url") or _client.get("gdrive_folder_url") or "—"),
             "",
             "КОММЕНТАРИЙ (свободный текст заявки):",
             "-" * 60,
@@ -3282,8 +3562,8 @@ def app_text_file(app_id: int):
     return send_file(str(p), as_attachment=False, mimetype="text/plain")
 
 
-@bp.route("/CLIENT/<int:app_id>/send", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/send", methods=["POST"])
+@login_required
 def app_send(app_id: int):
     """Отправка пакета: подтверждённые документы → папка клиента на Google Диске.
 
@@ -3291,25 +3571,25 @@ def app_send(app_id: int):
     (fetch) — JSON со ссылкой на папку. Документы НЕ помечаются отправленными,
     если Диск не принял файлы: иначе в истории появилась бы ложная отправка.
     """
-    want_json = CLIENT.CLIENTs.get("X-Requested-With") == "fetch"
+    want_json = request.headers.get("X-Requested-With") == "fetch"
     a = apps_repo.get(app_id) or {}
     client = db.client_get(a.get("client_id")) or {}
-    CLIENT = (a.get("gCLIENT_url") or client.get("gCLIENT_folder_url") or "").strip()
+    drive = (a.get("gdrive_url") or client.get("gdrive_folder_url") or "").strip()
 
     def _fail(msg: str):
         if want_json:
-            return jsonify({"ok": False, "error": msg, "link": CLIENT}), 200
+            return jsonify({"ok": False, "error": msg, "link": drive}), 200
         flash(msg, "error")
         return redirect(url_for("dashboard.app_view", app_id=app_id))
 
-    _rows = db.q("SELECT CLIENT FROM CLIENT_CLIENT WHERE CLIENT_id=?", (app_id,))
+    _rows = db.q("SELECT status FROM application_documents WHERE application_id=?", (app_id,))
     _decided = sum(1 for r in _rows
-                   if ((r["CLIENT"] if not isinstance(r, (list, tuple)) else r[0]) or "")
+                   if ((r["status"] if not isinstance(r, (list, tuple)) else r[0]) or "")
                    in ("verified", "rejected", "sent"))
     if not _rows or _decided < len(_rows):
         return _fail("Не все документы проверены: согласовано %s из %s" % (_decided, len(_rows)))
-    _miss_send = sorted({m for d in db.CLIENT_CLIENT(app_id)
-                         if (d.get("CLIENT") or "") not in ("verified", "sent", "rejected")
+    _miss_send = sorted({m for d in db.application_documents(app_id)
+                         if (d.get("status") or "") not in ("verified", "sent", "rejected")
                          for m in doc_missing_fields(app_id, d["template_id"])})
     if _miss_send:
         return _fail("Нельзя отправить: не заполнены поля — " + ", ".join(_miss_send[:6]))
@@ -3317,132 +3597,132 @@ def app_send(app_id: int):
     # Финишная проверка пакета: наши документы + то, что реально лежит в папке клиента на Диске.
     # Не прошла — файлы на Диск не уходят, в систему возвращается список нестыковок по документам.
     try:
-        from CLIENT.doc_check import check_package
-        _verdict, _finds = check_package(app_id, with_CLIENT=True)
+        from services.doc_check import check_package
+        _verdict, _finds = check_package(app_id, with_drive=True)
         if not _verdict["ok"]:
             # Автовозврат: документы с замечаниями пересобираются по правилам и уходят
             # на повторную проверку; если нестыковки остались — показываем их как есть.
             try:
-                from CLIENT.doc_check import autofix
+                from services.doc_check import autofix
                 _fixed = autofix(app_id, _finds)
                 if _fixed:
-                    _verdict, _finds = check_package(app_id, with_CLIENT=True)
+                    _verdict, _finds = check_package(app_id, with_drive=True)
             except Exception:
                 pass
         if not _verdict["ok"]:
-            _CLIENTs = [{"doc": f["doc"], "msg": f["msg"], "source": f["source"]}
-                       for f in _finds if f["level"] == "CLIENT"]
+            _blocks = [{"doc": f["doc"], "msg": f["msg"], "source": f["source"]}
+                       for f in _finds if f["level"] == "BLOCK"]
             _msg = ("Проверка не пройдена: %d нестыковок. Документы не отправлены и возвращены в редактор."
-                    % len(_CLIENTs))
+                    % len(_blocks))
             if want_json:
-                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _CLIENTs,
-                                "rework": _verdict["rework"], "link": CLIENT}), 200
-            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _CLIENTs[:3]))
+                return jsonify({"ok": False, "error": _msg, "check": True, "findings": _blocks,
+                                "rework": _verdict["rework"], "link": drive}), 200
+            return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _blocks[:3]))
     except Exception:
         pass  # сама проверка не должна ломать отправку
 
     # Технический контроль файлов: наложения, пропавший фон, незаполненные метки, чужие люди,
-    # устаревший слепок. Любой CLIENT = на Диск не уходит ничего, журнал проверки сохраняется.
+    # устаревший слепок. Любой BLOCK = на Диск не уходит ничего, журнал проверки сохраняется.
     try:
-        from CLIENT import pdf_CLIENT
-        _q = pdf_CLIENT.check_app(app_id)
+        from services import pdf_quality
+        _q = pdf_quality.check_app(app_id)
         if not _q["ok"]:
             _bad = [{"doc": r["code"], "msg": f["msg"]}
-                    for r in _q["docs"] if not r["ok"] for f in r["finds"] if f["level"] == "CLIENT"]
+                    for r in _q["docs"] if not r["ok"] for f in r["finds"] if f["level"] == "BLOCK"]
             _msg = ("Технический контроль не пройден: %d замечаний. Файлы на Диск не отправлены."
                     % len(_bad))
             if want_json:
                 return jsonify({"ok": False, "error": _msg, "check": True, "findings": _bad,
-                                "link": CLIENT}), 200
+                                "link": drive}), 200
             return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _bad[:3]))
     except Exception as _exc:                            # noqa: BLE001
-        current_app.logger.warning("pdf_CLIENT failed: %s", _exc)
+        current_app.logger.warning("pdf_quality failed: %s", _exc)
 
     # Логическая проверка данных: числа, даты и значения сверяются между документами и с
     # карточкой клиента (срок паспорта, оклад в границах, офис иммиграции, чужие имена).
-    # Любой CLIENT = на Диск не уходит ничего, журнал проверки сохраняется.
+    # Любой BLOCK = на Диск не уходит ничего, журнал проверки сохраняется.
     try:
-        from CLIENT import CLIENT_check
-        _l = CLIENT_check.check_app(app_id)
+        from services import logical_check
+        _l = logical_check.check_app(app_id)
         if not _l["ok"]:
             _lb = [{"doc": "%s %s" % (f.get("rule", ""), f.get("doc", "")), "msg": f["msg"]}
-                   for f in _l["finds"] if f["level"] == "CLIENT"]
+                   for f in _l["finds"] if f["level"] == "BLOCK"]
             _msg = ("Логическая проверка данных не пройдена: %d конфликтов. Файлы на Диск не отправлены."
                     % len(_lb))
             if want_json:
                 return jsonify({"ok": False, "error": _msg, "check": True, "findings": _lb,
-                                "link": CLIENT}), 200
+                                "link": drive}), 200
             return _fail(_msg + " " + "; ".join(b["doc"] + ": " + b["msg"] for b in _lb[:3]))
     except Exception as _lexc:                            # noqa: BLE001
-        current_app.logger.warning("CLIENT_check failed: %s", _lexc)
+        current_app.logger.warning("logical_check failed: %s", _lexc)
 
     pdfs = []
-    for d in db.CLIENT_CLIENT(app_id):
-        if (d.get("CLIENT") or "") in ("verified", "sent"):
+    for d in db.application_documents(app_id):
+        if (d.get("status") or "") in ("verified", "sent"):
             p = _ready_doc_pdf(app_id, d["template_id"])
             if p and Path(p).exists():
                 pdfs.append(Path(p))
     if not pdfs:
         return _fail("Нет подтверждённых документов с готовым PDF")
-    if not CLIENT:
+    if not drive:
         return _fail("В заявке нет ссылки на папку клиента на Google Диске")
 
     uploaded, errors = [], []
-    folder_link = CLIENT
+    folder_link = drive
     try:
-        from CLIENT import gCLIENT_write
+        from services import gdrive_write
         # Документы уходят не в корень папки клиента, а в отдельную папку заявки:
         # «номер заявки + тип продукта + имя клиента + дата создания».
         sub_name = _ready_folder_name(app_id, a, client)
-        sub = _find_app_folder(gCLIENT_write, CLIENT, sub_name, a, client, app_id) or \
-              gCLIENT_write.ensure_folder(CLIENT, sub_name)
-        sub_id = (sub or {}).get("id") or CLIENT
-        folder_link = "https://CLIENT.google.com/CLIENT/folders/" + str(sub_id)
+        sub = _find_app_folder(gdrive_write, drive, sub_name, a, client, app_id) or \
+              gdrive_write.ensure_folder(drive, sub_name)
+        sub_id = (sub or {}).get("id") or drive
+        folder_link = "https://drive.google.com/drive/folders/" + str(sub_id)
         # Чистим прежние версии этих же документов: имя файла содержит имя клиента и дату,
         # поэтому обновление не перезаписывало старый файл и в папке копились дубли.
         try:
             def _doc_key(name: str) -> str:
                 return re.split(r'\s*(?:KOBLIKOVA|MUR|[A-Z]{3,}(?:\s+[A-Z]{3,})*)\s', name)[0].strip().lower()
             keys = {_doc_key(x.name) for x in pdfs}
-            for item in gCLIENT_write.list_folder_contents(sub_id):
+            for item in gdrive_write.list_folder_contents(sub_id):
                 nm = item.get('name') or ''
                 if item.get('mimeType', '').endswith('folder') or nm.endswith('.txt'):
                     continue
                 if _doc_key(nm) in keys and nm not in {x.name for x in pdfs}:
-                    gCLIENT_write._get_CLIENT().files().delete(fileId=item['id']).execute()
+                    gdrive_write._get_service().files().delete(fileId=item['id']).execute()
         except Exception as _e_dedup:
             pass
         for p in pdfs:
             try:
-                gCLIENT_write.upload_file(sub_id, p, name=p.name, overwrite=True)
+                gdrive_write.upload_file(sub_id, p, name=p.name, overwrite=True)
                 uploaded.append(p.name)
             except Exception as exc:
                 errors.append(p.name + ": " + str(exc)[:120])
         # Вместе с документами уходит txt с точь-в-точь текстом заявки,
         # как её прислал менеджер в Telegram (для сверки и истории).
         try:
-            rmsg = db.q1("SELECT raw_message FROM CLIENT WHERE id=?", (app_id,)) or {}
+            rmsg = db.q1("SELECT raw_message FROM applications WHERE id=?", (app_id,)) or {}
             rmsg = str((rmsg or {}).get("raw_message") or "").strip()
             if rmsg:
-                head = ("CLIENT #%s\nCreated: %s\nClient: %s\n\n"
-                        "--- CLIENT text as sent in Telegram ---\n\n"
+                head = ("Application #%s\nCreated: %s\nClient: %s\n\n"
+                        "--- request text as sent in Telegram ---\n\n"
                         % (app_id, str(a.get("created_at") or "")[:19],
-                           (client.get("full_name_CLIENT") or client.get("full_name") or "").strip()))
-                txt_name = "CLIENT #%s - CLIENT text (Telegram).txt" % app_id
-                gCLIENT_write.upload_bytes(sub_id, (head + rmsg + "\n").encode("utf-8"),
+                           (client.get("full_name_latin") or client.get("full_name") or "").strip()))
+                txt_name = "Application #%s - request text (Telegram).txt" % app_id
+                gdrive_write.upload_bytes(sub_id, (head + rmsg + "\n").encode("utf-8"),
                                           txt_name, "text/plain", overwrite=True)
                 uploaded.append(txt_name)
         except Exception as exc:
-            errors.append("CLIENT text: " + str(exc)[:120])
+            errors.append("request text: " + str(exc)[:120])
     except Exception as exc:
         errors.append(str(exc)[:200])
     if errors or not uploaded:
-        return _fail("Google Диск не принял файлы: " + _CLIENT_hint("; ".join(errors[:3])))
+        return _fail("Google Диск не принял файлы: " + _drive_hint("; ".join(errors[:3])))
 
-    for d in db.CLIENT_CLIENT(app_id):
-        if d["CLIENT"] in ("filled", "verified"):
-            db.CLIENT_doc_set(d["id"], "sent")
-    db.CLIENT_set_status(app_id, "sent")
+    for d in db.application_documents(app_id):
+        if d["status"] in ("filled", "verified"):
+            db.application_doc_set(d["id"], "sent")
+    db.application_set_status(app_id, "sent")
     # Тому, кто прислал заявку: документы готовы и лежат на Google Диске (со ссылкой).
     try:
         from bot.notify import notify_manager_done
@@ -3457,31 +3737,31 @@ def app_send(app_id: int):
 
 
 # ── Готовые документы: контрольная проверка перед отправкой ─────────────────────
-def _CLIENT_hint(err: str) -> str:
+def _drive_hint(err: str) -> str:
     """Человеческая причина отказа Google Диска вместо технического текста."""
     e = err or ""
     low = e.lower()
     if "storage quota" in low or "storagequota" in low:
         return ("у робота Google нет своей квоты на запись. Нужно либо перенести папки "
-                "клиентов в общий диск (Shared CLIENT) и расшарить роботу, либо подключить "
+                "клиентов в общий диск (Shared Drive) и расшарить роботу, либо подключить "
                 "отправку от вашего аккаунта (OAuth-токен). Файлы при этом не потеряны — "
                 "они лежат в `data/ready`.")
     if "insufficient" in low or "permission" in low:
         return ("у робота нет прав на папку: проверьте, что папка клиента расшарена на "
-                "wolf-CLIENT@wolf-autodoc.iam.gCLIENTaccount.com с правом «Редактор»")
+                "wolf-drive@wolf-autodoc.iam.gserviceaccount.com с правом «Редактор»")
     if "not found" in low or "404" in e:
         return "папка клиента на Google Диске не найдена — проверьте ссылку в заявке"
     return e
 
 
-def _find_app_folder(gCLIENT_write, CLIENT: str, sub_name: str, a: dict, client: dict, app_id: int = 0):
+def _find_app_folder(gdrive_write, drive: str, sub_name: str, a: dict, client: dict, app_id: int = 0):
     """Существующая папка заявки/клиента: точное имя, иначе — та же пара клиент+продукт.
 
     Распоряжение заказчика: если папка уже есть — перезаливать документы в неё,
     даже когда заявка пришла заново с новым номером.
     """
     try:
-        found = gCLIENT_write.find_file_in_folder(CLIENT, sub_name)
+        found = gdrive_write.find_file_in_folder(drive, sub_name)
         if found and found.get("id"):
             return found
     except Exception:
@@ -3489,23 +3769,23 @@ def _find_app_folder(gCLIENT_write, CLIENT: str, sub_name: str, a: dict, client:
     try:
         # Папка этой же заявки, но со старым именем (в прежних сборках в имя
         # добавлялась дата) — иначе повторный прогон создаст вторую папку.
-        items0 = gCLIENT_write.list_folder_contents(CLIENT) or []
+        items0 = gdrive_write.list_folder_contents(drive) or []
         for it in items0:
-            if it.get("mimeType") != "CLIENT/vnd.google-apps.folder":
+            if it.get("mimeType") != "application/vnd.google-apps.folder":
                 continue
             if ("№%d " % app_id) in (it.get("name") or ""):
                 return it
-        name = (client.get("full_name_CLIENT") or "").strip() or " ".join(
-            x for x in [(client.get("CLIENT") or "").strip(), (client.get("name") or "").strip()] if x).strip()
+        name = (client.get("full_name_latin") or "").strip() or " ".join(
+            x for x in [(client.get("surname") or "").strip(), (client.get("name") or "").strip()] if x).strip()
         code = ""
         try:
-            pr = db.q1("SELECT code FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) or {}
+            pr = db.q1("SELECT code FROM products WHERE id=?", (a.get("product_id"),)) or {}
             code = str(pr.get("code") or "").strip()
         except Exception:
             code = ""
-        items = gCLIENT_write.list_folder_contents(CLIENT) or []
+        items = gdrive_write.list_folder_contents(drive) or []
         for it in items:
-            if it.get("mimeType") != "CLIENT/vnd.google-apps.folder":
+            if it.get("mimeType") != "application/vnd.google-apps.folder":
                 continue
             nm = it.get("name") or ""
             if name and name in nm and (not code or ("/ " + code) in nm or nm.endswith(code)):
@@ -3519,59 +3799,59 @@ def _ready_folder_name(app_id: int, a: dict, client: dict) -> str:
     """Имя папки отправки: номер заявки, тип продукта, имя клиента, дата создания."""
     code = ""
     try:
-        pr = db.q1("SELECT code, name FROM CLIENT WHERE id=?", (a.get("CLIENT_id"),)) or {}
+        pr = db.q1("SELECT code, name FROM products WHERE id=?", (a.get("product_id"),)) or {}
         code = str(pr.get("code") or "").strip()
     except Exception:
         code = ""
-    name = (client.get("full_name_CLIENT") or "").strip()
+    name = (client.get("full_name_latin") or "").strip()
     if not name:
-        name = " ".join(x for x in [(client.get("CLIENT") or "").strip(),
+        name = " ".join(x for x in [(client.get("surname") or "").strip(),
                                     (client.get("name") or "").strip()] if x).strip()
     if not name:
         name = str(client.get("full_name") or "").strip() or "CLIENT"
     made = str(a.get("created_at") or "")[:10]
     try:
-        made = CLIENT.strptime(made, "%Y-%m-%d").strftime("%d.%m.%Y")
+        made = datetime.strptime(made, "%Y-%m-%d").strftime("%d.%m.%Y")
     except Exception:
         pass
     # Формат Андрея: «Wolf AutoDoc №<заявка> <клиент> / <продукт>».
     # Дата в имени не ставится: повторный прогон должен перезаливать те же файлы
     # в ту же папку, а не плодить вторую.
-    return "Wolf AutoDoc \u2116%s %s / %s" % (app_id, name, code or "CLIENT")
+    return "Wolf AutoDoc \u2116%s %s / %s" % (app_id, name, code or "PRODUCT")
 
 
 def _ready_docs(app_id: int) -> list:
     """Подтверждённые документы заявки: английское имя файла, шаблон, дата."""
-    # Порядок и номера — как в базе: CLIENT.doc_CLIENT (номер документа в наборе),
+    # Порядок и номера — как в базе: templates.doc_index (номер документа в наборе),
     # а не порядковый номер в списке.
-    rows = db.q("""SELECT d.*, t.code AS tpl_code, t.CLIENT AS tpl_CLIENT,
-                          COALESCE(t.doc_CLIENT, t.id) AS tpl_CLIENT
-                   FROM CLIENT_CLIENT d JOIN CLIENT t ON t.id = d.template_id
-                   WHERE d.CLIENT_id=? AND IFNULL(d.CLIENT,'') IN ('verified','sent')
-                   ORDER BY COALESCE(t.doc_CLIENT, 999), t.id""", (app_id,))
+    rows = db.q("""SELECT d.*, t.code AS tpl_code, t.title AS tpl_title,
+                          COALESCE(t.doc_index, t.id) AS tpl_index
+                   FROM application_documents d JOIN templates t ON t.id = d.template_id
+                   WHERE d.application_id=? AND IFNULL(d.status,'') IN ('verified','sent')
+                   ORDER BY COALESCE(t.doc_index, 999), t.id""", (app_id,))
     a = apps_repo.get(app_id) or {}
     client = db.client_get(a.get("client_id")) or {}
-    today = CLIENT.now().strftime("%d.%m.%Y")
+    today = datetime.now().strftime("%d.%m.%Y")
     out = []
     for ad in rows:
         code = ad.get("tpl_code") or ""
-        CLIENT = {}
+        values = {}
         try:
-            CLIENT = json.loads(ad.get("CLIENT_json") or "{}")
+            values = json.loads(ad.get("values_json") or "{}")
         except Exception:
-            CLIENT = {}
+            values = {}
         try:
-            CLIENT.update(build_template_CLIENT(client, code, CLIENT))
+            values.update(build_template_values(client, code, values))
         except Exception:
             pass
-        CLIENT = doc_render.doc_CLIENT_en(code, ad.get("tpl_CLIENT") or "")
+        title = doc_render.doc_title_en(code, ad.get("tpl_title") or "")
         try:
-            name = doc_render.doc_filename(CLIENT, CLIENT, code=code)
+            name = doc_render.doc_filename(title, values, code=code)
         except Exception:
-            name = (CLIENT or code or "CLIENT") + " " + today + ".pdf"
-        out.append({"tpl": ad.get("template_id"), "CLIENT": CLIENT, "name": name,
-                    "date": today, "CLIENT": ad.get("CLIENT"),
-                    "num": ad.get("tpl_CLIENT") or ad.get("template_id")})
+            name = (title or code or "document") + " " + today + ".pdf"
+        out.append({"tpl": ad.get("template_id"), "title": title, "name": name,
+                    "date": today, "status": ad.get("status"),
+                    "num": ad.get("tpl_index") or ad.get("template_id")})
     return out
 
 
@@ -3584,7 +3864,7 @@ def _ready_doc_pdf(app_id: int, template_id: int):
     info = next((x for x in _ready_docs(app_id) if x["tpl"] == template_id), None)
     tpl = tpl_repo.get(template_id) or {}
     frozen = Path("/opt/wolf_v2/data/frozen") / ("app%s_tpl%s.html" % (app_id, template_id))
-    tpl_html = Path("/opt/wolf_v2/data/CLIENT") / str(tpl.get("code") or "") / "template.html"
+    tpl_html = Path("/opt/wolf_v2/data/templates") / str(tpl.get("code") or "") / "template.html"
     src = frozen if frozen.exists() else tpl_html
     if not src.exists():
         return None
@@ -3606,23 +3886,23 @@ def _ready_doc_pdf(app_id: int, template_id: int):
         if not frozen.exists():
             a = apps_repo.get(app_id) or {}
             client = db.client_get(a.get("client_id")) or {}
-            CLIENT = {}
-            ad = db.q1("""SELECT CLIENT_json FROM CLIENT_CLIENT
-                          WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
+            values = {}
+            ad = db.q1("""SELECT values_json FROM application_documents
+                          WHERE application_id=? AND template_id=? ORDER BY id DESC LIMIT 1""",
                        (app_id, template_id)) or {}
             try:
-                CLIENT = json.loads(ad.get("CLIENT_json") or "{}")
+                values = json.loads(ad.get("values_json") or "{}")
             except Exception:
-                CLIENT = {}
+                values = {}
             try:
-                CLIENT.update(build_template_CLIENT(client, str(tpl.get("code") or ""), CLIENT,
+                values.update(build_template_values(client, str(tpl.get("code") or ""), values,
                                                     app_id=app_id))
             except Exception:
                 pass
-            html = doc_render.fill(html, CLIENT, keep_unfilled=False, template_code=tpl.get("code"))
+            html = doc_render.fill(html, values, keep_unfilled=False, template_code=tpl.get("code"))
         # base_dir обязателен: подложки листов (bg-1.png…) подключены относительными
         # путями, без него фон в готовом PDF молча пропадал.
-        _frame = Path("/opt/wolf_v2/data/CLIENT") / str(tpl.get("code") or "") / "frame"
+        _frame = Path("/opt/wolf_v2/data/templates") / str(tpl.get("code") or "") / "frame"
         doc_render.render_pdf(html, out_path=out_pdf,
                               base_dir=(_frame if _frame.exists() else None))
     except Exception as exc:
@@ -3631,14 +3911,14 @@ def _ready_doc_pdf(app_id: int, template_id: int):
     return out_pdf if out_pdf.exists() else None
 
 
-@bp.route("/CLIENT/<int:app_id>/ready-docs")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/ready-docs")
+@login_required
 def app_ready_docs(app_id: int):
     """Список подтверждённых документов заявки для окна «Готовые доки»."""
     return jsonify({"ok": True, "docs": _ready_docs(app_id)}), 200
 
 
-def rebuild_CLIENT_CLIENT(app_id: int, actor: str = "") -> dict:
+def rebuild_application_documents(app_id: int, actor: str = "") -> dict:
     """Пересобрать все подтверждённые документы заявки — после правки её комментария.
 
     Возвращает названия пересобранных документов и ошибки сборки.
@@ -3647,43 +3927,43 @@ def rebuild_CLIENT_CLIENT(app_id: int, actor: str = "") -> dict:
     try:
         # Пересобираем все документы заявки, кроме отклонённых: и подтверждённые,
         # и ещё не проверенные (filled) — правка комментария меняет их все.
-        rows = db.q("""SELECT t.id, t.code, t.CLIENT
-                         FROM CLIENT_CLIENT ad
-                         JOIN CLIENT t ON t.id = ad.template_id
-                        WHERE ad.CLIENT_id=?
-                          AND COALESCE(ad.CLIENT,'') NOT IN ('rejected','hidden','merged')
+        rows = db.q("""SELECT t.id, t.code, t.title
+                         FROM application_documents ad
+                         JOIN templates t ON t.id = ad.template_id
+                        WHERE ad.application_id=?
+                          AND COALESCE(ad.status,'') NOT IN ('rejected','hidden','merged')
                         GROUP BY t.id""", (app_id,))
         if not rows:
-            rows = db.q("""SELECT t.id, t.code, t.CLIENT
-                             FROM CLIENT_CLIENT ad
-                             JOIN CLIENT t ON t.id = ad.template_id
-                            WHERE ad.CLIENT_id=? GROUP BY t.id""", (app_id,))
+            rows = db.q("""SELECT t.id, t.code, t.title
+                             FROM application_documents ad
+                             JOIN templates t ON t.id = ad.template_id
+                            WHERE ad.application_id=? GROUP BY t.id""", (app_id,))
     except Exception:
         rows = []
     for r in rows:
         try:
-            freeze_CLIENT(app_id, r["id"], actor=actor or "пересборка заявки")
-            rebuilt.append(r.get("CLIENT") or r.get("code"))
+            freeze_document(app_id, r["id"], actor=actor or "пересборка заявки")
+            rebuilt.append(r.get("title") or r.get("code"))
         except Exception as exc:  # noqa: BLE001
             failed.append("%s: %s" % (r.get("code"), str(exc)[:90]))
     return {"rebuilt": rebuilt, "failed": failed}
 
 
-@bp.route("/CLIENT/<int:app_id>/fix-docs", methods=["POST"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/fix-docs", methods=["POST"])
+@login_required
 def app_fix_docs(app_id: int):
     """«Исправить» из окна проверки: пересобрать документы и сбросить осевшие значения.
 
     Проверка перед отправкой возвращает документы в редактор — администратору нужна
     не только причина, но и кнопка, которая это лечит. Пересобираем документы с
     текущими правилами, предварительно сбросив сохранённые значения (в них оседают
-    старые подстановки вроде CLIENT = Manager, из-за которых проверка и падала).
+    старые подстановки вроде Occupation = Manager, из-за которых проверка и падала).
     """
-    from flask import jsonify as _jsonify, CLIENT as _rq
+    from flask import jsonify as _jsonify, request as _rq
     try:
-        rows = db.q("""SELECT t.id AS tid, t.code, t.doc_CLIENT FROM CLIENT_CLIENT ad
-                         JOIN CLIENT t ON t.id = ad.template_id
-                        WHERE ad.CLIENT_id=? AND COALESCE(ad.CLIENT,'') NOT IN ('rejected','hidden','merged')
+        rows = db.q("""SELECT t.id AS tid, t.code, t.doc_index FROM application_documents ad
+                         JOIN templates t ON t.id = ad.template_id
+                        WHERE ad.application_id=? AND COALESCE(ad.status,'') NOT IN ('rejected','hidden','merged')
                         GROUP BY t.id""", (app_id,))
     except Exception:
         rows = []
@@ -3694,17 +3974,17 @@ def app_fix_docs(app_id: int):
             continue
         try:
             # сбрасываем осевшие значения: иначе пересборка повторит старую подстановку
-            db.exec_sql("""UPDATE CLIENT_CLIENT SET CLIENT_json='{}'
-                            WHERE CLIENT_id=? AND template_id=?""", (app_id, r["tid"]))
-            freeze_CLIENT(app_id, r["tid"], actor="автоисправление из окна проверки")
-            fixed.append({"code": r.get("code"), "num": r.get("doc_CLIENT")})
+            db.exec_sql("""UPDATE application_documents SET values_json='{}'
+                            WHERE application_id=? AND template_id=?""", (app_id, r["tid"]))
+            freeze_document(app_id, r["tid"], actor="автоисправление из окна проверки")
+            fixed.append({"code": r.get("code"), "num": r.get("doc_index")})
         except Exception as exc:  # noqa: BLE001
             failed.append("%s: %s" % (r.get("code"), str(exc)[:90]))
     return _jsonify({"ok": True, "fixed": fixed, "failed": failed}), 200
 
 
-@bp.route("/CLIENT/<int:app_id>/brief", methods=["POST", "GET"])
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/brief", methods=["POST", "GET"])
+@login_required
 def app_brief(app_id: int):
     """Комментарий заявки (свободный текст) — правит сборку документов «на лету».
 
@@ -3712,13 +3992,13 @@ def app_brief(app_id: int):
     POST — сохранить комментарий и пересобрать все подтверждённые документы заявки:
            должность уходит в резюме и договор, по сфере подбирается организация.
     """
-    from flask import Response as _Resp, CLIENT as _rq
+    from flask import Response as _Resp, request as _rq
     if _rq.method == "GET":
-        row = db.q1("SELECT brief FROM CLIENT WHERE id=?", (app_id,)) or {}
+        row = db.q1("SELECT brief FROM applications WHERE id=?", (app_id,)) or {}
         brief = str(row.get("brief") or "")
         parsed = {}
         try:
-            from CLIENT import brief_CLIENT as _bv
+            from services import brief_values as _bv
             _ru, _en = _bv.parse_position(brief)
             parsed = {"position": _en or _ru, "sphere": _bv.parse_sphere(brief)}
         except Exception:
@@ -3728,42 +4008,42 @@ def app_brief(app_id: int):
     data = _rq.get_json(silent=True) or {}
     brief = str(data.get("brief") if data.get("brief") is not None else _rq.form.get("brief") or "")
     brief = brief.strip()[:2000]
-    db.exec_sql("UPDATE CLIENT SET brief=? WHERE id=?", (brief, app_id))
+    db.exec_sql("UPDATE applications SET brief=? WHERE id=?", (brief, app_id))
     rebuilt, failed = [], []
     try:
-        reb = rebuild_CLIENT_CLIENT(app_id, actor="комментарий заявки")
+        reb = rebuild_application_documents(app_id, actor="комментарий заявки")
         rebuilt, failed = reb.get("rebuilt") or [], reb.get("failed") or []
     except Exception as exc:  # noqa: BLE001
         failed.append(str(exc)[:120])
     try:
-        from CLIENT.doc_check import check_package
-        verdict, finds = check_package(app_id, with_CLIENT=False)
-        CLIENTs = [f for f in finds if f.get("level") == "CLIENT"]
+        from services.doc_check import check_package
+        verdict, finds = check_package(app_id, with_drive=False)
+        blocks = [f for f in finds if f.get("level") == "BLOCK"]
     except Exception:
-        verdict, CLIENTs = {"ok": None, "CLIENT": ""}, []
+        verdict, blocks = {"ok": None, "summary": ""}, []
     return jsonify({"ok": True, "brief": brief, "rebuilt": rebuilt, "failed": failed,
-                    "verdict": verdict, "findings": CLIENTs[:8]}), 200
+                    "verdict": verdict, "findings": blocks[:8]}), 200
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ready-pdf")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/ready-pdf")
+@login_required
 def app_doc_ready_pdf(app_id: int, template_id: int):
     """PDF подтверждённого документа — показывается в окне «Готовые доки».
 
     ?download=1 — отдать файлом (кнопка «скачать» у документа в списке), иначе
     показывается в браузере, как раньше.
     """
-    from flask import Response as _Resp, CLIENT as _rq
+    from flask import Response as _Resp, request as _rq
     p = _ready_doc_pdf(app_id, template_id)
     if not p or not Path(p).exists():
-        return _Resp("PDF не собран", CLIENT=404)
+        return _Resp("PDF не собран", status=404)
     as_file = str(_rq.args.get("download") or "") in ("1", "true", "yes")
-    return send_file(str(p), mimetype="CLIENT/pdf", as_attachment=as_file,
+    return send_file(str(p), mimetype="application/pdf", as_attachment=as_file,
                      download_name=Path(p).name)
 
 
-@bp.route("/CLIENT/<int:app_id>/doc/<int:template_id>/ready-img/<int:page_no>")
-@CLIENT_required
+@bp.route("/applications/<int:app_id>/doc/<int:template_id>/ready-img/<int:page_no>")
+@login_required
 def app_doc_ready_img(app_id: int, template_id: int, page_no: int):
     """Страница готового PDF картинкой.
 
@@ -3774,7 +4054,7 @@ def app_doc_ready_img(app_id: int, template_id: int, page_no: int):
     from flask import Response as _Resp
     p = _ready_doc_pdf(app_id, template_id)
     if not p or not Path(p).exists():
-        return _Resp("PDF не собран", CLIENT=404)
+        return _Resp("PDF не собран", status=404)
     cache_dir = Path("/opt/wolf_v2/data/ready/img")
     cache_dir.mkdir(parents=True, exist_ok=True)
     img = cache_dir / ("%s_p%d.png" % (Path(p).stem, page_no))
@@ -3788,14 +4068,14 @@ def app_doc_ready_img(app_id: int, template_id: int, page_no: int):
         doc = fitz.open(str(p))
         try:
             if page_no < 1 or page_no > doc.page_count:
-                return _Resp("нет такой страницы", CLIENT=404)
+                return _Resp("нет такой страницы", status=404)
             pix = doc.load_page(page_no - 1).get_pixmap(dpi=110)
             pix.save(str(img))
         finally:
             doc.close()
     except Exception as exc:
         print("ready-img error app=%s tpl=%s p=%s: %s" % (app_id, template_id, page_no, exc))
-        return _Resp("не удалось отрисовать страницу", CLIENT=500)
+        return _Resp("не удалось отрисовать страницу", status=500)
     if not img.exists():
-        return _Resp("не удалось отрисовать страницу", CLIENT=500)
+        return _Resp("не удалось отрисовать страницу", status=500)
     return send_file(str(img), mimetype="image/png")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Проверка вёрстки документа: текст не CLIENTит за поле, не наползает друг на друга
-и НЕ НАЕЗЖАЕТ НА СТАТИКУ БЛАНКА («hereby informs that card No …», «has been CLIENT for» и т.п.).
+"""Проверка вёрстки документа: текст не выходит за поле, не наползает друг на друга
+и НЕ НАЕЗЖАЕТ НА СТАТИКУ БЛАНКА («hereby informs that card No …», «has been issued for» и т.п.).
 
 Как работает: собирает документ по каркасу с реальными (или тестовыми) значениями,
 рендерит PDF и разбирает его по спанам. Отдельно берёт статику из blank.pdf (чистый бланк
@@ -24,19 +24,19 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 LEFT, RIGHT, TOP, BOTTOM = 40.0, 555.0, 28.0, 815.0
 TOL = 1.5
 
 LONG_VALUES = {
-    "client_name": "CLIENTOPOLSKAYA CLIENTA VALENTINOVNA",
-    "full_name": "CLIENTOPOLSKAYA CLIENTA VALENTINOVNA",
-    "full_name_CLIENT": "CLIENTOPOLSKAYA CLIENTA VALENTINOVNA",
-    "CLIENT_name": "CLIENTOPOLSKAYA CLIENTA VALENTINOVNA",
+    "client_name": "KONSTANTINOPOLSKAYA ALEKSANDRA VALENTINOVNA",
+    "full_name": "KONSTANTINOPOLSKAYA ALEKSANDRA VALENTINOVNA",
+    "full_name_latin": "KONSTANTINOPOLSKAYA ALEKSANDRA VALENTINOVNA",
+    "employee_name": "KONSTANTINOPOLSKAYA ALEKSANDRA VALENTINOVNA",
     "address_live": "628404, Khanty-Mansiyskiy Avtonomnyy Okrug, G Surgut, Ul Pervoprokhodtsev, D. 115/2, Korp. 3, Kv. 456",
-    "CLIENT_address": "628404, Khanty-Mansiyskiy Avtonomnyy Okrug, G Surgut, Ul Pervoprokhodtsev, D. 115/2, Korp. 3, Kv. 456",
+    "employee_address": "628404, Khanty-Mansiyskiy Avtonomnyy Okrug, G Surgut, Ul Pervoprokhodtsev, D. 115/2, Korp. 3, Kv. 456",
     "company_name": "OBSHCHESTVO S OGRANICHENNOY OTVETSTVENNOSTYU «PANTEON EXPORT TRADING GROUP»",
-    "CLIENT_name": "OBSHCHESTVO S OGRANICHENNOY OTVETSTVENNOSTYU «PANTEON EXPORT TRADING GROUP»",
+    "employer_name": "OBSHCHESTVO S OGRANICHENNOY OTVETSTVENNOSTYU «PANTEON EXPORT TRADING GROUP»",
 }
 
 
@@ -45,7 +45,7 @@ def spans_from_pdf(path: Path):
     doc = pymupdf.open(str(path))
     out = []
     for pno, page in enumerate(doc):
-        for blk in page.get_text("dict")["CLIENTs"]:
+        for blk in page.get_text("dict")["blocks"]:
             for line in blk.get("lines", []):
                 txt = " ".join(s["text"] for s in line["spans"]).strip()
                 if not txt:
@@ -61,11 +61,11 @@ def static_spans(code: str):
     Затёртые зоны (белые накладки поверх старых значений) из проверки исключаем:
     текст в слое PDF остаётся извлекаемым, но визуально его нет.
     """
-    doc = CLIENT / code / "blank.pdf"
+    doc = TEMPLATES / code / "blank.pdf"
     if not doc.exists():
         return []
     wipes = []
-    fields = CLIENT / code / "fields.json"
+    fields = TEMPLATES / code / "fields.json"
     if fields.exists():
         try:
             for z in json.loads(fields.read_text(encoding="utf-8")).get("zones", []):
@@ -92,14 +92,14 @@ def _overlap(a, b):
     return (ix * iy) / small if small > 0 else 0.0
 
 
-def check_spans(spans, static=None, CLIENT_used=None):
+def check_spans(spans, static=None, values_used=None):
     problems = []
     for s in spans:
         x0, y0, x1, y1 = s["bbox"]
         if x0 < LEFT - TOL or x1 > RIGHT + TOL:
-            problems.append("CLIENT за поле по горизонтали: «%s» (x %.0f–%.0f)" % (s["text"][:38], x0, x1))
+            problems.append("выход за поле по горизонтали: «%s» (x %.0f–%.0f)" % (s["text"][:38], x0, x1))
         if y0 < TOP - TOL or y1 > BOTTOM + TOL:
-            problems.append("CLIENT за поле по вертикали: «%s» (y %.0f–%.0f)" % (s["text"][:38], y0, y1))
+            problems.append("выход за поле по вертикали: «%s» (y %.0f–%.0f)" % (s["text"][:38], y0, y1))
     for i, a in enumerate(spans):
         for b in spans[i + 1:]:
             if a["page"] != b["page"]:
@@ -123,15 +123,15 @@ def check_spans(spans, static=None, CLIENT_used=None):
     return problems
 
 
-def build(code: str, app_id=None, long_CLIENT=False):
+def build(code: str, app_id=None, long_values=False):
     """Собрать документ по каркасу и вернуть путь к PDF."""
     sys.path.insert(0, str(BASE))
     from app import app as flask_app
-    out = Path("/tmp/doc_check_%s%s.pdf" % (code, "_long" if long_CLIENT else ""))
+    out = Path("/tmp/doc_check_%s%s.pdf" % (code, "_long" if long_values else ""))
     with flask_app.app_context():
-        from CLIENT import html_frame
-        vals = dict(LONG_VALUES) if long_CLIENT else {}
-        tv = CLIENT / code / "frame" / "test_CLIENT.json"
+        from services import html_frame
+        vals = dict(LONG_VALUES) if long_values else {}
+        tv = TEMPLATES / code / "frame" / "test_values.json"
         if tv.exists():
             vals.update(json.loads(tv.read_text(encoding="utf-8")))
         ok = html_frame.build_pdf(code, vals, out, app_id=app_id)
@@ -145,11 +145,11 @@ def main() -> int:
     ap.add_argument("--long", action="store_true")
     ap.add_argument("--all", action="store_true")
     a = ap.parse_args()
-    codes = [a.code] if a.code else sorted(p.name for p in CLIENT.iterdir()
-                                           if p.is_dir() and (p / "frame" / "CLIENT.json").exists())
+    codes = [a.code] if a.code else sorted(p.name for p in TEMPLATES.iterdir()
+                                           if p.is_dir() and (p / "frame" / "quality.json").exists())
     bad = 0
     for code in codes:
-        q = json.loads((CLIENT / code / "frame" / "CLIENT.json").read_text(encoding="utf-8"))
+        q = json.loads((TEMPLATES / code / "frame" / "quality.json").read_text(encoding="utf-8"))
         if not q.get("ok"):
             print("%-38s — каркас не готов (нет паспорта), проверка не проводилась" % code)
             continue

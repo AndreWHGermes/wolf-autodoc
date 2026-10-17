@@ -16,25 +16,25 @@ BASE = pathlib.Path("/opt/wolf_v2")
 OUT = pathlib.Path("/tmp/wordrun")
 
 COMMON_LONG = {
-    "CLIENT_full_name": "CLIENT SERGEEVICH CLIENT-ZHURAVLEV",
-    "CLIENT_CLIENT": "CLIENT CLIENT-ZHURAVLEV",
-    "full_name": "CLIENT SERGEEVICH CLIENT-ZHURAVLEV",
-    "client_name": "CLIENT SERGEEVICH CLIENT-ZHURAVLEV",
+    "employee_full_name": "KONSTANTIN SERGEEVICH BELIAEV-ZHURAVLEV",
+    "employee_short": "KONSTANTIN BELIAEV-ZHURAVLEV",
+    "full_name": "KONSTANTIN SERGEEVICH BELIAEV-ZHURAVLEV",
+    "client_name": "KONSTANTIN SERGEEVICH BELIAEV-ZHURAVLEV",
     "company_full_name": 'LIMITED LIABILITY COMPANY "INTERNATIONAL TRADING AND INVESTMENT GROUP PANTEON"',
-    "company_address_1": "Business Centre Menara Kuningan, 18th floor, CLIENT 1804-1806,",
-    "company_address_2": "Jl. H. R. Rasuna Said CLIENT X-5, Kav. 2-3, Karet Kuningan, Setiabudi, South Jakarta 12940, Indonesia",
-    "company_CLIENT_no": "No. 9140/AP/2026-0147-B",
+    "company_address_1": "Business Centre Menara Kuningan, 18th floor, office 1804-1806,",
+    "company_address_2": "Jl. H. R. Rasuna Said Block X-5, Kav. 2-3, Karet Kuningan, Setiabudi, South Jakarta 12940, Indonesia",
+    "company_entity_no": "No. 9140/AP/2026-0147-B",
     "address_in_indonesia": "Banjar Pande, Jl. Raya Munggu No. 10, Munggu, Kecamatan Mengwi, Kabupaten Badung, Bali 80351, Indonesia",
-    "CLIENT": "Senior Cinematographer, Film Editor and Post-Production Supervisor",
-    "CLIENT_of_CLIENT": "to carry out CLIENTal activities CLIENT to cinematography and post-CLIENTion CLIENT",
+    "occupation": "Senior Cinematographer, Film Editor and Post-Production Supervisor",
+    "purpose_of_application": "to carry out professional activities related to cinematography and post-production services",
     "position": "Senior Cinematographer, Film Editor and Post-Production Supervisor",
-    "CLIENT_full": "Senior Cinematographer, Film Editor and Post-Production Supervisor",
-    "term_CLIENT_date": "31 December 2024",
+    "occupation_full": "Senior Cinematographer, Film Editor and Post-Production Supervisor",
+    "term_start_date": "31 December 2024",
     "term_end_date": "31 December 2029",
-    "CLIENT_name": "MARCELLENA NIRMALA CHRISNA MOERI",
-    "CLIENT_CLIENT": "Director of the Company and Authorized Representative",
-    "CLIENT_law": "the laws of the Republic of Indonesia",
-    "CLIENT": "CLIENT.CLIENT.zhuravlev.CLIENTion@example.com",
+    "signer_name": "MARCELLENA NIRMALA CHRISNA MOERI",
+    "signer_title": "Director of the Company and Authorized Representative",
+    "governing_law": "the laws of the Republic of Indonesia",
+    "email": "konstantin.beliaev.zhuravlev.production@example.com",
 }
 
 
@@ -55,7 +55,7 @@ def main():
     sys.path.insert(0, str(BASE))
     import logging
     logging.basicConfig(level=logging.WARNING)
-    from CLIENT import html_frame
+    from services import html_frame
 
     over = {k: v for k, v in COMMON_LONG.items()}
     for item in a.set:
@@ -70,15 +70,15 @@ def main():
         # У шаблона нет каркаса (координатной разметки): в проде он собирается прежним
         # способом — готовый HTML с подставленными значениями, затем разводка текста в PDF.
         # Стресс обязан идти тем же путём, иначе тест проверяет не то, что видит клиент.
-        from CLIENT.render import tidy_for_pdf
+        from services.render import tidy_for_pdf
         from core import pdf2html
-        tpl_dir = BASE / "data" / "CLIENT" / a.code
+        tpl_dir = BASE / "data" / "templates" / a.code
         src = tpl_dir / "template.html"
         if not src.exists():
             print("нет ни каркаса, ни template.html: %s" % a.code)
             return 2
         html = src.read_text(encoding="utf-8")
-        _dash = str(a.code).CLIENTswith("CLIENTment_letter")
+        _dash = str(a.code).startswith("statement_letter")
         filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
                         lambda m: str(over.get(m.group(1)) or ("-" if _dash else "")), html)
         try:
@@ -94,9 +94,9 @@ def main():
     d = pymupdf.open(str(pdf))
     print("страниц:", len(d), "→", pdf)
     for pno, pg in enumerate(d, 1):
-        pg.get_pixmap(dpi=110).save(str(pdf).reCLIENT(".pdf", "_p%d.png" % pno))
+        pg.get_pixmap(dpi=110).save(str(pdf).replace(".pdf", "_p%d.png" % pno))
         bad = [(round(ln["bbox"][1], 1), round(ln["bbox"][2], 1), " ".join(s["text"] for s in ln["spans"])[:34])
-               for blk in pg.get_text("dict")["CLIENTs"] for ln in blk.get("lines", [])
+               for blk in pg.get_text("dict")["blocks"] for ln in blk.get("lines", [])
                if ln["bbox"][2] > pg.rect.width - 18]
         print("   стр %d: за правым полем — %s" % (pno, bad if bad else "нет"))
     return 0

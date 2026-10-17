@@ -1,14 +1,14 @@
 """Технический контроль готового PDF перед отправкой на Google Диск.
 
-Проверяет САМ файл, а не данные заявки: наложения текста, CLIENT за лист,
+Проверяет САМ файл, а не данные заявки: наложения текста, выход за лист,
 незаполненные метки, пропавший фон (подложку), мусор в тексте, чужих людей
-в документе. Любой CLIENT = документ не уходит на Диск.
+в документе. Любой BLOCK = документ не уходит на Диск.
 
-Ведёт журнал проверок: data/reports/CLIENT_CLIENT.jsonl + таблица CLIENT_CLIENT.
+Ведёт журнал проверок: data/reports/quality_checks.jsonl + таблица quality_checks.
 
 Запуск вручную:
-    cd /opt/wolf_v2 && /usr/bin/python3 CLIENT/pdf_CLIENT.py <app_id> [<app_id> ...]
-    cd /opt/wolf_v2 && /usr/bin/python3 CLIENT/pdf_CLIENT.py --all
+    cd /opt/wolf_v2 && /usr/bin/python3 services/pdf_quality.py <app_id> [<app_id> ...]
+    cd /opt/wolf_v2 && /usr/bin/python3 services/pdf_quality.py --all
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ import pymupdf
 
 ROOT = Path("/opt/wolf_v2")
 DB = ROOT / "data" / "wolf.db"
-LOG = ROOT / "data" / "reports" / "CLIENT_CLIENT.jsonl"
+LOG = ROOT / "data" / "reports" / "quality_checks.jsonl"
 
 LEFT, RIGHT, TOP, BOTTOM = 40.0, 555.0, 40.0, 800.0     # рабочее поле A4, pt
 
@@ -43,14 +43,14 @@ GARBAGE = [
 #
 # Перечень обязанностей печатается СПИСКОМ на строке ниже метки, поэтому одной
 # регуляркой «метка + перевод строки» обойтись нельзя: она срабатывала и на
-# правильно заполненном договоре (в образце метка «CLIENT:» всегда стоит в
+# правильно заполненном договоре (в образце метка «services:» всегда стоит в
 # конце строки, а пункты — ниже) — это блокировало верные документы. Теперь
 # метка проверяется вместе со следующей строкой: пусто только тогда, когда
 # после неё нет пункта списка.
 _BULLET = re.compile(r"^[\u2022\u25cf\u25aa\u25e6\-\u2013\u2014*]")
 _SLOT_NO = re.compile(r"\bNo\.\s*$")
 _SLOT_POS = re.compile(r"\bin the position of\s*,\s*and\b", re.I)
-_SLOT_LIST = re.compile(r"\b(?:duties|CLIENT)\s*:\s*$", re.I)
+_SLOT_LIST = re.compile(r"\b(?:duties|services)\s*:\s*$", re.I)
 _SLOT_PLACE = re.compile(r"^[A-Z][a-z]+,\s*$")
 
 
@@ -74,7 +74,7 @@ def _empty_slots(lines: list[str], pno: int, name: str) -> list[dict]:
             why = "не подставлено значение после места составления"
         if why and why not in seen:
             seen.add(why)
-            out.append({"level": "CLIENT", "msg": "стр.%d: %s — «%s»" % (pno, why, t[:40]),
+            out.append({"level": "BLOCK", "msg": "стр.%d: %s — «%s»" % (pno, why, t[:40]),
                         "doc": name})
     return out
 
@@ -89,7 +89,7 @@ def _is_dotted(t: str) -> bool:
 
 def _spans(page):
     out = []
-    for blk in page.get_text("dict")["CLIENTs"]:
+    for blk in page.get_text("dict")["blocks"]:
         for ln in blk.get("lines", []):
             for s in ln.get("spans", []):
                 t = (s.get("text") or "").strip()
@@ -99,7 +99,7 @@ def _spans(page):
 
 
 def check_pdf(path: Path, code: str = "", foreign_names=(), tpl_mtime: float | None = None) -> list[dict]:
-    """Замечания по одному готовому PDF. level: CLIENT — не отправлять."""
+    """Замечания по одному готовому PDF. level: BLOCK — не отправлять."""
     finds: list[dict] = []
     # Файл может быть ещё не дописан (сборка идёт параллельно) или повреждён.
     # Раньше исключение pymupdf вылетало из проверки наружу, сторож превращал его
@@ -109,10 +109,10 @@ def check_pdf(path: Path, code: str = "", foreign_names=(), tpl_mtime: float | N
         doc = pymupdf.open(str(path))
         pages = doc.page_count
     except Exception as e:                                            # noqa: BLE001
-        return [{"level": "CLIENT", "doc": path.name, "msg":
+        return [{"level": "BLOCK", "doc": path.name, "msg":
                  "файл не читается (%s) — нужен пересбор документа" % type(e).__name__}]
     if not doc or not pages:
-        return [{"level": "CLIENT", "msg": "файл не открывается", "doc": path.name}]
+        return [{"level": "BLOCK", "msg": "файл не открывается", "doc": path.name}]
 
     for pno, page in enumerate(doc, 1):
         W, H = page.rect.width, page.rect.height
@@ -126,11 +126,11 @@ def check_pdf(path: Path, code: str = "", foreign_names=(), tpl_mtime: float | N
             if why is None:                       # кириллица в документе на английском
                 # Правило заказчика: все документы печатаются только на английском,
                 # русского текста в них быть не должно — это блокирующая ошибка.
-                finds.append({"level": "CLIENT",
+                finds.append({"level": "BLOCK",
                               "msg": "стр.%d: русский текст в документе — «%s» (документы только на английском)"
                               % (pno, m.group(0)[:28]), "doc": path.name})
                 continue
-            finds.append({"level": "CLIENT" if "метк" in why or "служебн" in why else "WARN",
+            finds.append({"level": "BLOCK" if "метк" in why or "служебн" in why else "WARN",
                           "msg": "стр.%d: %s — «%s»" % (pno, why, m.group(0)[:28]), "doc": path.name})
 
         # Пустые подстановки проверяем у договоров: там обвязка шаблона остаётся без
@@ -147,38 +147,38 @@ def check_pdf(path: Path, code: str = "", foreign_names=(), tpl_mtime: float | N
             for j in range(i + 1, len(solid)):
                 b, tb = solid[j]
                 if min(a.x1, b.x1) - max(a.x0, b.x0) > 2.5 and min(a.y1, b.y1) - max(a.y0, b.y0) > 4.0:
-                    finds.append({"level": "CLIENT", "msg": "стр.%d: наложение текста «%s» и «%s»"
+                    finds.append({"level": "BLOCK", "msg": "стр.%d: наложение текста «%s» и «%s»"
                                   % (pno, ta[:24], tb[:24]), "doc": path.name})
                     break
             if len(finds) > 24:
                 break
 
-        # CLIENT за лист и за рабочее поле
+        # выход за лист и за рабочее поле
         for r, t in spans:
             if r.x0 < -1 or r.x1 > W + 1 or r.y0 < -1 or r.y1 > H + 1:
-                finds.append({"level": "CLIENT", "msg": "стр.%d: текст вне листа — «%s»" % (pno, t[:24]),
+                finds.append({"level": "BLOCK", "msg": "стр.%d: текст вне листа — «%s»" % (pno, t[:24]),
                               "doc": path.name})
             elif r.x0 < LEFT - 1 or r.x1 > RIGHT + 1 or r.y0 < TOP - 1 or r.y1 > BOTTOM + 1:
                 finds.append({"level": "WARN", "msg": "стр.%d: текст вышел из рабочего поля — «%s»"
                               % (pno, t[:24]), "doc": path.name})
 
         # фон: у каркасных шаблонов на каждой странице должна быть подложка
-        if code and (ROOT / "data" / "CLIENT" / code / "frame" / "CLIENT.json").exists():
+        if code and (ROOT / "data" / "templates" / code / "frame" / "quality.json").exists():
             if not page.get_images(full=True):
-                finds.append({"level": "CLIENT", "msg": "стр.%d: нет фона (подложка не подставилась)" % pno,
+                finds.append({"level": "BLOCK", "msg": "стр.%d: нет фона (подложка не подставилась)" % pno,
                               "doc": path.name})
 
         for nm in foreign_names:
             if nm and len(nm) > 5 and nm.lower() in text.lower():
-                finds.append({"level": "CLIENT", "msg": "стр.%d: в документе чужой человек — «%s»"
+                finds.append({"level": "BLOCK", "msg": "стр.%d: в документе чужой человек — «%s»"
                               % (pno, nm), "doc": path.name})
 
     if tpl_mtime and path.stat().st_mtime + 1 < tpl_mtime:
-        finds.append({"level": "CLIENT",
+        finds.append({"level": "BLOCK",
                       "msg": "файл собран раньше последней правки шаблона — нужен пересбор и переподтверждение",
                       "doc": path.name})
     if not doc[0].get_text().strip() and not doc[0].get_images(full=True):
-        finds.append({"level": "CLIENT", "msg": "пустой документ", "doc": path.name})
+        finds.append({"level": "BLOCK", "msg": "пустой документ", "doc": path.name})
     doc.close()
     return _dedup(finds)
 
@@ -187,10 +187,10 @@ def _tpl_mtime(code: str) -> float | None:
     """Когда шаблон менялся последний раз (разметка, подложка, паспорт качества)."""
     if not code:
         return None
-    tpl = ROOT / "data" / "CLIENT" / code
-    CLIENT = [tpl / "fields.json", tpl / "frame" / "CLIENT.json", tpl / "frame" / "bg.png"]
-    CLIENT += sorted((tpl / "frame").glob("bg-*.png"))
-    ts = [m.stat().st_mtime for m in CLIENT if m.exists()]
+    tpl = ROOT / "data" / "templates" / code
+    marks = [tpl / "fields.json", tpl / "frame" / "quality.json", tpl / "frame" / "bg.png"]
+    marks += sorted((tpl / "frame").glob("bg-*.png"))
+    ts = [m.stat().st_mtime for m in marks if m.exists()]
     return max(ts) if ts else None
 
 
@@ -209,11 +209,11 @@ def foreign_names_for(app_id: int) -> list[str]:
     try:
         c = sqlite3.connect(DB)
         c.row_factory = sqlite3.Row
-        cur = c.execute("SELECT client_id FROM CLIENT WHERE id=?", (app_id,))
+        cur = c.execute("SELECT client_id FROM applications WHERE id=?", (app_id,))
         row = cur.fetchone()
         mine = (row["client_id"] if row else None)
         names = set()
-        for r in c.execute("SELECT id, last_name_ru, last_name, full_name_CLIENT FROM CLIENT"):
+        for r in c.execute("SELECT id, last_name_ru, last_name, full_name_cyrillic FROM clients"):
             if r["id"] == mine:
                 continue
             for v in (r["last_name_ru"], r["last_name"]):
@@ -229,21 +229,21 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
     """Проверить все готовые PDF заявки. template_of(template_id) -> code шаблона."""
     try:
         sys.path.insert(0, str(ROOT))
-        from CLIENT import autofill                      # noqa: WPS433
+        from services import autofill                      # noqa: WPS433
         os_ready = autofill._ready_doc_pdf if hasattr(autofill, "_ready_doc_pdf") else None
     except Exception:
         os_ready = None
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
-    docs = c.execute("SELECT d.id, d.template_id, d.CLIENT, d.pdf_path, t.code "
-                     "FROM CLIENT_CLIENT d "
-                     "LEFT JOIN CLIENT t ON t.id=d.template_id WHERE d.CLIENT_id=?",
+    docs = c.execute("SELECT d.id, d.template_id, d.status, d.pdf_path, t.code "
+                     "FROM application_documents d "
+                     "LEFT JOIN templates t ON t.id=d.template_id WHERE d.application_id=?",
                      (app_id,)).fetchall()
     c.close()
     foreign = foreign_names_for(app_id)
     results = []
     for d in docs:
-        if (d["CLIENT"] or "") not in ("filled", "verified", "sent"):
+        if (d["status"] or "") not in ("filled", "verified", "sent"):
             continue
         # Готовый PDF ищем по заявке: в data/out/<заявка> лежат файлы именно
         # этого прогона. Общий каталог data/ready не годится — там остаются
@@ -254,7 +254,7 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
             out_dir = Path('/opt/wolf_v2/data/out') / str(app_id)
             if out_dir.exists():
                 cands = [x for x in sorted(out_dir.glob('*.pdf'))
-                         if x.stat().st_size > 1000 and (d['code'] or '')[:14].split('__')[0] in x.name.lower().reCLIENT(' ', '_')]
+                         if x.stat().st_size > 1000 and (d['code'] or '')[:14].split('__')[0] in x.name.lower().replace(' ', '_')]
                 if cands:
                     p = str(max(cands, key=lambda x: x.stat().st_mtime))
         except Exception:                                             # noqa: BLE001
@@ -262,7 +262,7 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
         if not p:
             try:
                 sys.path.insert(0, str(ROOT))
-                from CLIENTs.dashboard.page import _ready_doc_pdf     # noqa: WPS433
+                from blocks.dashboard.page import _ready_doc_pdf     # noqa: WPS433
                 cand = _ready_doc_pdf(app_id, d["template_id"])
                 # чужой документ по имени заявки не принимаем: сверяем, что файл
                 # принадлежит этому прогону, а не прежней заявке того же клиента
@@ -281,12 +281,12 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
             except Exception:
                 bp = None
             if bp:
-                bp = Path(str(bp)) if str(bp).CLIENTswith("/") else ROOT / str(bp)
+                bp = Path(str(bp)) if str(bp).startswith("/") else ROOT / str(bp)
                 if bp.exists():
                     p = str(bp)
         if not p or not Path(p).exists():
             results.append({"doc_id": d["id"], "code": d["code"], "file": None,
-                            "ok": False, "finds": [{"level": "CLIENT", "msg": "нет готового PDF",
+                            "ok": False, "finds": [{"level": "BLOCK", "msg": "нет готового PDF",
                                                     "doc": d["code"] or "?"}]})
             continue
         if p and time.time() - Path(p).stat().st_mtime < 10:
@@ -299,7 +299,7 @@ def check_app(app_id: int, template_of=None, save: bool = True) -> dict:
         f = check_pdf(Path(p), code=d["code"] or "", foreign_names=foreign,
                       tpl_mtime=_tpl_mtime(d["code"] or ""))
         results.append({"doc_id": d["id"], "code": d["code"], "file": Path(p).name,
-                        "ok": not any(x["level"] == "CLIENT" for x in f), "finds": f})
+                        "ok": not any(x["level"] == "BLOCK" for x in f), "finds": f})
     verdict = {"app_id": app_id, "ok": all(r["ok"] for r in results) and bool(results),
                "docs": results, "checked": time.strftime("%Y-%m-%dT%H:%M:%S")}
     if save:
@@ -316,16 +316,16 @@ def write_log(verdict: dict) -> None:
                                  "finds": r["finds"]}, ensure_ascii=False) + "\n")
     try:
         c = sqlite3.connect(DB)
-        c.execute("CREATE TABLE IF NOT EXISTS CLIENT_CLIENT (id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                  " ts TEXT, app_id INTEGER, code TEXT, file TEXT, ok INTEGER, CLIENTs INTEGER, warns INTEGER,"
+        c.execute("CREATE TABLE IF NOT EXISTS quality_checks (id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                  " ts TEXT, app_id INTEGER, code TEXT, file TEXT, ok INTEGER, blocks INTEGER, warns INTEGER,"
                   " reasons TEXT)")
         for r in verdict["docs"]:
-            CLIENTs = [x["msg"] for x in r["finds"] if x["level"] == "CLIENT"]
+            blocks = [x["msg"] for x in r["finds"] if x["level"] == "BLOCK"]
             warns = [x["msg"] for x in r["finds"] if x["level"] == "WARN"]
-            c.execute("INSERT INTO CLIENT_CLIENT (ts, app_id, code, file, ok, CLIENTs, warns, reasons)"
-                      " CLIENT (?,?,?,?,?,?,?,?)",
+            c.execute("INSERT INTO quality_checks (ts, app_id, code, file, ok, blocks, warns, reasons)"
+                      " VALUES (?,?,?,?,?,?,?,?)",
                       (verdict["checked"], verdict["app_id"], r["code"], r["file"], int(r["ok"]),
-                       len(CLIENTs), len(warns), "; ".join(CLIENTs[:6])))
+                       len(blocks), len(warns), "; ".join(blocks[:6])))
         c.commit()
         c.close()
     except Exception:
@@ -341,7 +341,7 @@ def main():
     if "--all" in args:
         c = sqlite3.connect(DB)
         c.row_factory = sqlite3.Row
-        app_ids = [r["id"] for r in c.execute("SELECT id FROM CLIENT ORDER BY id DESC LIMIT 40")]
+        app_ids = [r["id"] for r in c.execute("SELECT id FROM applications ORDER BY id DESC LIMIT 40")]
         c.close()
     else:
         app_ids = [int(a) for a in args if a.isdigit()]
@@ -356,8 +356,8 @@ def main():
         print("заявка %-4s %-9s документов %d, проблемных %d" % (app_id, mark, len(v["docs"]), len(bad)))
         for r in bad:
             for f in r["finds"]:
-                if f["level"] == "CLIENT":
-                    print("    [CLIENT] %-44s %s" % (r["code"], f["msg"][:96]))
+                if f["level"] == "BLOCK":
+                    print("    [BLOCK] %-44s %s" % (r["code"], f["msg"][:96]))
     print("\nвсего проблемных документов:", bad_total)
 
 

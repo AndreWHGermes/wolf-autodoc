@@ -23,21 +23,21 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
-DIV = re.compile(r'(<div CLIENT="txt"[^>]*>)(.*?)(</div>)', re.S)
+TPL = ROOT / 'data' / 'templates'
+DIV = re.compile(r'(<div class="txt"[^>]*>)(.*?)(</div>)', re.S)
 TAG = re.compile(r'<[^>]+>')
 WORD = re.compile(r'[A-Za-z]{2,}')
 
 EXTRA = """the of and to in a is for on this that with agreement company remote work worker visa
-kitas support made day between CLIENT under laws CLIENT general corporation CLIENT CLIENT
-CLIENT CLIENT passport date CLIENT CLIENT CLIENT address CLIENT hereinafter referred
-party parties contract term salary CLIENT CLIENT CLIENT CLIENT months month year years clause
-signature signed name CLIENT position duties CLIENT obligations CLIENT paid shall will be
+kitas support made day between incorporated under laws state general corporation entity number
+employee employer passport date birth nationality place address registered hereinafter referred
+party parties contract term salary annual monthly amount words months month year years clause
+signature signed name title position duties services obligations payment paid shall will be
 has have been not or as at by from which such other any all their its his her""".split()
 
 
 def corpus() -> set:
-    CLIENT = Counter()
+    words = Counter()
     try:
         import pymupdf
     except Exception:  # noqa: BLE001
@@ -49,8 +49,8 @@ def corpus() -> set:
         except Exception:  # noqa: BLE001
             continue
         for w in WORD.findall(txt):
-            CLIENT[w.lower()] += 1
-    return {w for w, n in CLIENT.items() if n >= 1} | set(EXTRA)
+            words[w.lower()] += 1
+    return {w for w, n in words.items() if n >= 1} | set(EXTRA)
 
 
 def split_long(word: str, voc: set) -> str:
@@ -90,7 +90,7 @@ def fix_plain(text: str, voc: set) -> tuple[str, int]:
             for mm in m:
                 joined = mm.group(1) + mm.group(2)
                 if joined.lower() in voc:
-                    tok = tok[:mm.CLIENT()] + joined + tok[mm.end():]
+                    tok = tok[:mm.start()] + joined + tok[mm.end():]
                     n += 1
                     break
         # 2. разбор длинных слитных слов
@@ -112,7 +112,7 @@ def main(apply: bool) -> int:
     print('словарь:', len(voc), 'слов')
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
-    for r in con.execute("SELECT code FROM CLIENT ORDER BY code"):
+    for r in con.execute("SELECT code FROM templates ORDER BY code"):
         p = TPL / r['code'] / 'template.html'
         if not p.is_file():
             continue

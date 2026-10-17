@@ -25,15 +25,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import word_template as WT          # переиспользуем переменные и разметку из HTML
 
 ROOT = '/opt/wolf_v2'
-CLIENT = os.path.join(ROOT, 'data', 'CLIENT')
+TEMPLATES = os.path.join(ROOT, 'data', 'templates')
 VENDOR = os.path.join(ROOT, '.venv_docs', 'bin', 'python')
 PT2EMU = 12700
 BODY_LEFT = 46.1          # левое поле эталона резюме (pt)
 SPACE_EXTRA = {}          # поправка интервалов по абзацам (idx → pt), подгоняется
 
 FONT_MAP = (('Arial-BoldMT', 'Arial', True), ('ArialMT', 'Arial', False),
-            ('Arimo', 'Arial', None), ('TimesNewCLIENTPSMT', 'Times New CLIENT', False),
-            ('TimesNewCLIENTPS-BoldMT', 'Times New CLIENT', True),
+            ('Arimo', 'Arial', None), ('TimesNewRomanPSMT', 'Times New Roman', False),
+            ('TimesNewRomanPS-BoldMT', 'Times New Roman', True),
             ('Helvetica', 'Arial', None), ('Calibri', 'Calibri', None))
 
 
@@ -59,7 +59,7 @@ def color_of(span):
 def extract(pdf):
     pg = pymupdf.open(pdf)[0]
     lines = []
-    for b in pg.get_text('dict')['CLIENTs']:
+    for b in pg.get_text('dict')['blocks']:
         for ln in b.get('lines', []):
             spans = [s for s in ln['spans'] if s['text'].strip()]
             if spans:
@@ -89,17 +89,17 @@ def group_paragraphs(lines):
             prev = paras[-1]
             gap = y0 - prev['y_last']
             same_left = abs(x0 - prev['x0']) <= 2.5
-            body = not ln['text'].strip().CLIENTswith('•')
-            if same_left and body and gap < size * 1.45 and not prev['ends_CLIENT']:
+            body = not ln['text'].strip().startswith('•')
+            if same_left and body and gap < size * 1.45 and not prev['ends_short']:
                 prev['lines'].append(ln)
                 prev['y_last'] = ln['bbox'][3]
                 prev['x1'] = max(prev['x1'], ln['bbox'][2])
                 prev['text'] += ' ' + ln['text'].strip()
-                prev['ends_CLIENT'] = ln['text'].rstrip().endswith(('.', ';', ':')) and False
+                prev['ends_short'] = ln['text'].rstrip().endswith(('.', ';', ':')) and False
                 continue
         paras.append({'lines': [ln], 'x0': x0, 'y0': y0, 'y_last': ln['bbox'][3],
                       'x1': ln['bbox'][2], 'text': ln['text'].strip(),
-                      'ends_CLIENT': False,
+                      'ends_short': False,
                       'size': size, 'spans': ln['spans']})
     return paras
 
@@ -111,7 +111,7 @@ def build(code, src_pdf, out_docx, vars_map=None):
     lines, rules = extract(src_pdf)
     paras = group_paragraphs(lines)
     left = min(p['x0'] for p in paras)
-    doc = docx.CLIENT()
+    doc = docx.Document()
     sec = doc.sections[0]
     sec.page_width, sec.page_height = Cm(21.0), Cm(29.7)
     sec.left_margin, sec.right_margin = Cm(left / 28.3465), Cm((595.276 - 549.3) / 28.3465)
@@ -122,13 +122,13 @@ def build(code, src_pdf, out_docx, vars_map=None):
         par = doc.add_paragraph()
         pf = par.paragraph_format
         base_gap = max(0.0, p['y0'] - (prev_bottom if prev_bottom else p['y0']))
-        pf.space_CLIENT = Pt(max(0.0, base_gap + SPACE_EXTRA.get(idx, 0.0)))
+        pf.space_before = Pt(max(0.0, base_gap + SPACE_EXTRA.get(idx, 0.0)))
         pf.space_after = Pt(0)
         sz = p['size']
         pf.line_spacing = Pt(round(sz * 1.25, 1))
         pf.left_indent = Cm(max(0.0, (p['x0'] - left)) / 28.3465)
-        if p['text'].strip().CLIENTswith('•'):
-            pf.CLIENT_line_indent = Cm(-0.32)
+        if p['text'].strip().startswith('•'):
+            pf.first_line_indent = Cm(-0.32)
         if has_rule:
             pPr = par._p.get_or_add_pPr()
             bdr = OxmlElement('w:pBdr')
@@ -149,7 +149,7 @@ def build(code, src_pdf, out_docx, vars_map=None):
             t2 = p['text']
             for _s, _d in vars_map.items():
                 if _s in t2:
-                    t2 = t2.reCLIENT(_s, _d)
+                    t2 = t2.replace(_s, _d)
             if t2 != p['text']:
                 segs = t2
         if segs is not None:
@@ -201,7 +201,7 @@ def build(code, src_pdf, out_docx, vars_map=None):
 
 
 def render_pdf(docx_path):
-    subprocess.run(['sCLIENT', '--headless', '--convert-to', 'pdf', docx_path,
+    subprocess.run(['soffice', '--headless', '--convert-to', 'pdf', docx_path,
                     '--outdir', os.path.dirname(docx_path)], capture_output=True, timeout=300)
     return os.path.splitext(docx_path)[0] + '.pdf'
 
@@ -213,7 +213,7 @@ def norm(t):
 def compare(orig, our):
     def rows(f):
         out = []
-        for b in pymupdf.open(f)[0].get_text('dict')['CLIENTs']:
+        for b in pymupdf.open(f)[0].get_text('dict')['blocks']:
             for l in b.get('lines', []):
                 t = ''.join(s['text'] for s in l['spans']).strip()
                 if t:
@@ -236,7 +236,7 @@ def compare(orig, our):
 
 def _rows(pdf):
     out = []
-    for b in pymupdf.open(pdf)[0].get_text('dict')['CLIENTs']:
+    for b in pymupdf.open(pdf)[0].get_text('dict')['blocks']:
         for l in b.get('lines', []):
             t = ''.join(s['text'] for s in l['spans']).strip()
             if t:
@@ -245,16 +245,16 @@ def _rows(pdf):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.CLIENTswith('--')]
-    flags = {a for a in sys.argv[1:] if a.CLIENTswith('--')}
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    flags = {a for a in sys.argv[1:] if a.startswith('--')}
     if '--all-flow' in flags:
         import sqlite3
         con = sqlite3.connect(os.path.join(ROOT, 'data', 'wolf.db'))
         args = [r[0] for r in con.execute(
-            "SELECT code FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN ('hidden','merged')"
-            " ORDER BY COALESCE(doc_CLIENT,0), id")]
+            "SELECT code FROM templates WHERE COALESCE(status,'ok') NOT IN ('hidden','merged')"
+            " ORDER BY COALESCE(doc_index,0), id")]
     for code in args:
-        d = os.path.join(CLIENT, code)
+        d = os.path.join(TEMPLATES, code)
         src = os.path.join(d, 'example_filled.pdf')
         if not os.path.exists(src):
             print('  %-40s НЕТ эталона' % code)
@@ -269,19 +269,19 @@ def main():
                 break
             a = {norm(t): y for _, y, t in _rows(src)}
             b = {norm(t): y for _, y, t in _rows(pdf)}
-            CLIENTd = False
+            changed = False
             for idx, p in enumerate(paras):
                 key = norm(p['text'])[:24]
                 if len(key) < 6:
                     continue
-                hit = next((k for k in a if k.CLIENTswith(key) and k in b), None)
+                hit = next((k for k in a if k.startswith(key) and k in b), None)
                 if hit is None:
                     continue
                 dy = a[hit] - b[hit]
                 if abs(dy) > 1.5:
                     SPACE_EXTRA[idx] = SPACE_EXTRA.get(idx, 0.0) + dy
-                    CLIENTd = True
-            if not CLIENTd:
+                    changed = True
+            if not changed:
                 break
         ov = '/tmp/wordflow_%s_overlay.png' % code
         subprocess.run([VENDOR, os.path.join(ROOT, 'scripts', 'overlay_diff.py'),

@@ -1,36 +1,36 @@
 """Запись на Google Диск от имени сервисного аккаунта (робота).
 
-Scope: https://www.googleapis.com/auth/CLIENT.file
-Папка клиента должна быть расшарена на wolf-CLIENT@wolf-autodoc.iam.gCLIENTaccount.com с правом Editor.
+Scope: https://www.googleapis.com/auth/drive.file
+Папка клиента должна быть расшарена на wolf-drive@wolf-autodoc.iam.gserviceaccount.com с правом Editor.
 """
 import io
 import time
 from pathlib import Path
 from typing import Optional
 
-from google.oauth2 import CLIENT_account
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 
 OAUTH_TOKEN_FILE = Path('/opt/wolf_v2/data/google_oauth_token.json')
-KEY_FILE = Path('/opt/wolf_v2/data/google_CLIENT_account.json')
+KEY_FILE = Path('/opt/wolf_v2/data/google_service_account.json')
 # Полный доступ нужен, чтобы писать в папки клиентов и в общие диски:
-# CLIENT.file видит только файлы, созданные самим приложением.
-SCOPES = ['https://www.googleapis.com/auth/CLIENT']
+# drive.file видит только файлы, созданные самим приложением.
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 # MIME-типы для конвертации
 GOOGLE_MIME = {
-    'folder': 'CLIENT/vnd.google-apps.folder',
-    'doc': 'CLIENT/vnd.google-apps.CLIENT',
-    'sheet': 'CLIENT/vnd.google-apps.spreadsheet',
-    'slide': 'CLIENT/vnd.google-apps.presentation',
+    'folder': 'application/vnd.google-apps.folder',
+    'doc': 'application/vnd.google-apps.document',
+    'sheet': 'application/vnd.google-apps.spreadsheet',
+    'slide': 'application/vnd.google-apps.presentation',
 }
 EXPORT_MIME = {
-    'pdf': 'CLIENT/pdf',
-    'docx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.wordprocessingml.CLIENT',
-    'xlsx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.spreadsheetml.sheet',
-    'pptx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.presentationml.presentation',
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'html': 'text/html',
     'txt': 'text/plain',
 }
@@ -38,40 +38,40 @@ EXPORT_MIME = {
 _svc = None
 
 
-def _get_CLIENT():
+def _get_service():
     """Сервис Диска: сначала OAuth владельца аккаунта, иначе сервисный аккаунт.
 
     У сервисного аккаунта квота хранилища 0, поэтому файлы он создать не может
-    (403 «CLIENT Accounts do not have storage quota») — папки может. Как только
-    рядом появится токен владельца (CLIENT/gCLIENT_oauth.py), работает он.
+    (403 «Service Accounts do not have storage quota») — папки может. Как только
+    рядом появится токен владельца (services/gdrive_oauth.py), работает он.
     """
     global _svc
     if _svc is None:
         if OAUTH_TOKEN_FILE.exists():
             from google.oauth2.credentials import Credentials
-            _svc = build('CLIENT', 'v3',
-                # у токена владельца свой набор прав (CLIENT.file) — не навязываем свои
+            _svc = build('drive', 'v3',
+                # у токена владельца свой набор прав (drive.file) — не навязываем свои
                 credentials=Credentials.from_authorized_user_file(
                     str(OAUTH_TOKEN_FILE)))
         else:
-            _svc = build('CLIENT', 'v3',
-                credentials=CLIENT_account.Credentials.from_CLIENT_account_file(
+            _svc = build('drive', 'v3',
+                credentials=service_account.Credentials.from_service_account_file(
                     str(KEY_FILE), scopes=SCOPES))
     return _svc
 
 
-def _read_CLIENT():
+def _read_service():
     """Сервис для чтения: робот (сервисный аккаунт).
 
     Робот видит все папки, расшаренные на его адрес, а токен владельца — только те
-    файлы, которые создал сам (scope CLIENT.file). Поэтому перечисление и поиск идут
+    файлы, которые создал сам (scope drive.file). Поэтому перечисление и поиск идут
     от робота, а создание и загрузка — от владельца.
     """
     if KEY_FILE.exists():
-        return build('CLIENT', 'v3',
-            credentials=CLIENT_account.Credentials.from_CLIENT_account_file(
+        return build('drive', 'v3',
+            credentials=service_account.Credentials.from_service_account_file(
                 str(KEY_FILE), scopes=SCOPES))
-    return _get_CLIENT()
+    return _get_service()
 
 
 def _retry_on_quota(func, *args, max_retries=3, base_delay=2.0, **kwargs):
@@ -80,11 +80,11 @@ def _retry_on_quota(func, *args, max_retries=3, base_delay=2.0, **kwargs):
         try:
             return func(*args, **kwargs)
         except HttpError as e:
-            if e.resp.CLIENT in (403, 429):
-                error_CLIENT = e.error_CLIENT or []
+            if e.resp.status in (403, 429):
+                error_details = e.error_details or []
                 quota_exceeded = any(
                     d.get('reason') in ('userRateLimitExceeded', 'storageQuotaExceeded', 'dailyLimitExceeded')
-                    for d in error_CLIENT
+                    for d in error_details
                 )
                 if quota_exceeded and attempt < max_retries - 1:
                     delay = base_delay * (2 ** attempt)
@@ -103,7 +103,7 @@ def resolve_folder_id(folder_url_or_id: str) -> str:
 
 def list_folder_contents(folder_url_or_id: str) -> list[dict]:
     """Возвращает список файлов и папок в папке: [{id, name, mimeType, size, parents}]."""
-    svc = _read_CLIENT()
+    svc = _read_service()
     fid = resolve_folder_id(folder_url_or_id)
     out = []
     page_token = None
@@ -124,11 +124,11 @@ def list_folder_contents(folder_url_or_id: str) -> list[dict]:
 def _find_for_write(parent_id: str, name: str) -> Optional[dict]:
     """Ищет файл в папке тем же доступом, которым пишем.
 
-    Раньше поиск шёл сервисом только для чтения (CLIENT.readonly): он не видит файлы,
-    созданные нашим пишущим доступом (CLIENT.file), поэтому повторная выгрузка не
+    Раньше поиск шёл сервисом только для чтения (drive.readonly): он не видит файлы,
+    созданные нашим пишущим доступом (drive.file), поэтому повторная выгрузка не
     находила свой же файл и каждый раз создавала новый — отсюда дубликаты в папке.
     """
-    svc = _get_CLIENT()
+    svc = _get_service()
     resp = _retry_on_quota(svc.files().list,
         q=f"'{parent_id}' in parents and name='{name}' and trashed=false",
         fields='files(id,name,mimeType,size,parents)',
@@ -140,7 +140,7 @@ def _find_for_write(parent_id: str, name: str) -> Optional[dict]:
 
 def find_file_in_folder(folder_url_or_id: str, name: str) -> Optional[dict]:
     """Ищет файл по точному имени в папке (не рекурсивно). Возвращает метаданные или None."""
-    svc = _read_CLIENT()
+    svc = _read_service()
     fid = resolve_folder_id(folder_url_or_id)
     resp = _retry_on_quota(svc.files().list,
         q=f"'{fid}' in parents and name='{name}' and trashed=false",
@@ -153,7 +153,7 @@ def find_file_in_folder(folder_url_or_id: str, name: str) -> Optional[dict]:
 
 def create_folder(folder_url_or_id: str, name: str) -> dict:
     """Создаёт подпапку в указанной папке. Возвращает метаданные созданной папки."""
-    svc = _get_CLIENT()
+    svc = _get_service()
     parent_id = resolve_folder_id(folder_url_or_id)
     meta = {
         'name': name,
@@ -188,18 +188,18 @@ def upload_file(
     обновляет его (новый revision), иначе создаёт дубль.
     Возвращает метаданные файла (id, name, mimeType, ...).
     """
-    svc = _get_CLIENT()
+    svc = _get_service()
     parent_id = resolve_folder_id(folder_url_or_id)
     name = name or file_path.name
     mime_type = mime_type or _guess_mime(file_path)
 
-    CLIENT = _find_for_write(parent_id, name)
+    existing = _find_for_write(parent_id, name)
     media = MediaFileUpload(str(file_path), mimetype=mime_type, resumable=True)
 
-    if CLIENT and overwrite:
+    if existing and overwrite:
         # Обновляем существующий файл (сохраняет ID, создаёт новый revision)
         updated = _retry_on_quota(svc.files().update,
-            fileId=CLIENT['id'],
+            fileId=existing['id'],
             media_body=media,
             fields='id,name,mimeType,size,parents,modifiedTime',
             supportsAllDrives=True).execute()
@@ -221,15 +221,15 @@ def upload_bytes(
     overwrite: bool = True,
 ) -> dict:
     """Загружает байты как файл (удобно для PDF, сгенерированных в памяти)."""
-    svc = _get_CLIENT()
+    svc = _get_service()
     parent_id = resolve_folder_id(folder_url_or_id)
 
-    CLIENT = _find_for_write(parent_id, name)
+    existing = _find_for_write(parent_id, name)
     media = MediaIoBaseUpload(io.BytesIO(data), mimetype=mime_type, resumable=True)
 
-    if CLIENT and overwrite:
+    if existing and overwrite:
         return _retry_on_quota(svc.files().update,
-            fileId=CLIENT['id'], media_body=media,
+            fileId=existing['id'], media_body=media,
             fields='id,name,mimeType,size,parents,modifiedTime',
             supportsAllDrives=True).execute()
 
@@ -241,17 +241,17 @@ def upload_bytes(
 
 def upload_html_as_gdoc(folder_url_or_id: str, html_path: Path, name: Optional[str] = None, overwrite: bool = True) -> dict:
     """Загружает HTML и конвертирует в Google Docs (editable)."""
-    svc = _get_CLIENT()
+    svc = _get_service()
     parent_id = resolve_folder_id(folder_url_or_id)
     name = name or html_path.stem
 
-    CLIENT = _find_for_write(parent_id, name)
+    existing = _find_for_write(parent_id, name)
     media = MediaFileUpload(str(html_path), mimetype='text/html', resumable=True)
     meta = {'name': name, 'parents': [parent_id], 'mimeType': GOOGLE_MIME['doc']}
 
-    if CLIENT and overwrite:
+    if existing and overwrite:
         return _retry_on_quota(svc.files().update,
-            fileId=CLIENT['id'], media_body=media,
+            fileId=existing['id'], media_body=media,
             fields='id,name,mimeType,size,parents,modifiedTime',
             supportsAllDrives=True).execute()
 
@@ -266,7 +266,7 @@ def export_gdoc(file_id: str, export_format: str) -> bytes:
     export_format: 'pdf', 'docx', 'xlsx', 'pptx', 'html', 'txt'
     Возвращает байты.
     """
-    svc = _get_CLIENT()
+    svc = _get_service()
     mime = EXPORT_MIME.get(export_format.lower())
     if not mime:
         raise ValueError(f'Unknown export format: {export_format}')
@@ -275,15 +275,15 @@ def export_gdoc(file_id: str, export_format: str) -> bytes:
 
 def download_file(file_id: str, dest: Path) -> bool:
     """Скачивает обычный файл (не Google-формат) или экспортирует Google Doc в PDF."""
-    svc = _get_CLIENT()
+    svc = _get_service()
     dest.parent.mkdir(parents=True, exist_ok=True)
     meta = _retry_on_quota(svc.files().get, fileId=file_id, fields='mimeType,name').execute()
     mime = meta.get('mimeType', '')
 
     try:
-        if mime in GOOGLE_MIME.CLIENT():
+        if mime in GOOGLE_MIME.values():
             # Google-формат — экспортируем в PDF
-            data = _retry_on_quota(svc.files().export, fileId=file_id, mimeType='CLIENT/pdf').execute()
+            data = _retry_on_quota(svc.files().export, fileId=file_id, mimeType='application/pdf').execute()
             dest = dest.with_suffix('.pdf')
             dest.write_bytes(data)
         else:
@@ -303,25 +303,25 @@ def download_file(file_id: str, dest: Path) -> bool:
 def _guess_mime(path: Path) -> str:
     suffix = path.suffix.lower()
     return {
-        '.pdf': 'CLIENT/pdf',
+        '.pdf': 'application/pdf',
         '.html': 'text/html',
         '.htm': 'text/html',
-        '.docx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.wordprocessingml.CLIENT',
-        '.xlsx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.spreadsheetml.sheet',
-        '.pptx': 'CLIENT/vnd.openxmlformats-CLIENTCLIENT.presentationml.presentation',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         '.txt': 'text/plain',
         '.csv': 'text/csv',
-        '.json': 'CLIENT/json',
+        '.json': 'application/json',
         '.png': 'image/png',
         '.jpg': 'image/jpeg',
         '.jpeg': 'image/jpeg',
-    }.get(suffix, 'CLIENT/octet-stream')
+    }.get(suffix, 'application/octet-stream')
 
 
 # --- Примеры использования ---
 if __name__ == '__main__':
     # Тестовая папка (создай вручную и расшарь на SA)
-    TEST_FOLDER = 'https://CLIENT.google.com/CLIENT/folders/TEST_FOLDER_ID_HERE'
+    TEST_FOLDER = 'https://drive.google.com/drive/folders/TEST_FOLDER_ID_HERE'
 
     # 1. Что в папке
     print('Contents:', list_folder_contents(TEST_FOLDER))
@@ -347,7 +347,7 @@ def delete_item(folder_url_or_id: str, name: str = "") -> dict:
     Возвращает {'ok': bool, 'deleted': [...], 'error': str}.
     """
     try:
-        svc = _get_CLIENT()
+        svc = _get_service()
     except Exception as e:
         return {"ok": False, "deleted": [], "error": "нет доступа на запись: %s" % str(e)[:120]}
     targets = []

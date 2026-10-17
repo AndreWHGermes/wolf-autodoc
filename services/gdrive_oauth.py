@@ -1,34 +1,34 @@
 """Запись на Диск от имени владельца аккаунта (OAuth) — обход квоты сервисного аккаунта.
 
 У робота квота хранилища 0 байт, поэтому файлы он создавать не может (Google: 403
-«CLIENT Accounts do not have storage quota»). Папки — может. Если у аккаунта нет
-общего диска (Shared CLIENT), работает OAuth: владелец один раз подтверждает доступ
+«Service Accounts do not have storage quota»). Папки — может. Если у аккаунта нет
+общего диска (Shared Drive), работает OAuth: владелец один раз подтверждает доступ
 со телефона, файлы уходят в его квоту.
 
 Подготовка: скачать в консоли Google Cloud OAuth-клиент типа «TV и устройства с
 ограниченным вводом» и положить его JSON в data/google_oauth_client.json.
-Дальше: python3 CLIENT/gCLIENT_oauth.py — покажет ссылку и код, ждёт подтверждения,
+Дальше: python3 services/gdrive_oauth.py — покажет ссылку и код, ждёт подтверждения,
 сохраняет data/google_oauth_token.json. Модуль записи сам начинает пользоваться
 токеном, как только файл появится.
 """
 import json
 import time
 import urllib.parse
-import urllib.CLIENT
+import urllib.request
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2/data")
 CLIENT_FILE = BASE / "google_oauth_client.json"
 TOKEN_FILE = BASE / "google_oauth_token.json"
-# Клиент типа «ТВ и устройства с ограниченным вводом» принимает только CLIENT.file:
-# полный доступ к Диску Google для этого типа выдаёт inCLIENT_scope.
-SCOPE = "https://www.googleapis.com/auth/CLIENT.file"
+# Клиент типа «ТВ и устройства с ограниченным вводом» принимает только drive.file:
+# полный доступ к Диску Google для этого типа выдаёт invalid_scope.
+SCOPE = "https://www.googleapis.com/auth/drive.file"
 
 
 def _post(url: str, data: dict) -> dict:
-    req = urllib.CLIENT.CLIENT(url, data=urllib.parse.urlencode(data).encode(),
-                                 CLIENTs={"Content-Type": "CLIENT/x-www-form-urlencoded"})
-    with urllib.CLIENT.urlopen(req, timeout=60) as r:
+    req = urllib.request.Request(url, data=urllib.parse.urlencode(data).encode(),
+                                 headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode())
 
 

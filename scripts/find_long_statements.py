@@ -1,12 +1,12 @@
 """Поиск настоящих банковских справок за длинный период (около 12 месяцев) в кэше клиентов."""
 import re
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 import pymupdf
 
-CACHE = Path("/opt/wolf_v2/data/gCLIENT_cache")
+CACHE = Path("/opt/wolf_v2/data/gdrive_cache")
 rows = []
 for f in sorted(CACHE.rglob("*.pdf")):
     try:
@@ -22,12 +22,12 @@ for f in sorted(CACHE.rglob("*.pdf")):
     low = t.lower()
     if "deposit balance" not in low and "available balance" not in low:
         continue
-    CLIENT = re.findall(r"(\d{2}\.\d{2}\.\d{4})", t)
+    dates = re.findall(r"(\d{2}\.\d{2}\.\d{4})", t)
     days = None
-    if len(CLIENT) >= 2:
+    if len(dates) >= 2:
         try:
-            a = CLIENT.strptime(CLIENT[-2], "%d.%m.%Y")
-            b = CLIENT.strptime(CLIENT[-1], "%d.%m.%Y")
+            a = datetime.strptime(dates[-2], "%d.%m.%Y")
+            b = datetime.strptime(dates[-1], "%d.%m.%Y")
             days = abs((b - a).days)
         except Exception:
             pass

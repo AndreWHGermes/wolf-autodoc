@@ -16,14 +16,14 @@ import sys
 import time
 
 DB = '/opt/wolf_v2/data/wolf.db'
-SCAN = '/opt/wolf_v2/scripts/CLIENT_scan.py'
+SCAN = '/opt/wolf_v2/scripts/drive_scan.py'
 MODE = (sys.argv[1] if len(sys.argv) > 1 else 'all').lower()
 
 conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
-apps = conn.execute("SELECT a.id, a.client_id, COALESCE(c.full_name_CLIENT, '') AS name, "
-                    "COALESCE(a.CLIENT_id, 0) AS CLIENT_id "
-                    "FROM CLIENT a LEFT JOIN CLIENT c ON c.id = a.client_id "
+apps = conn.execute("SELECT a.id, a.client_id, COALESCE(c.full_name_latin, '') AS name, "
+                    "COALESCE(a.product_id, 0) AS product_id "
+                    "FROM applications a LEFT JOIN clients c ON c.id = a.client_id "
                     "ORDER BY a.id").fetchall()
 print(f'заявок в работе: {len(apps)} | режим: {MODE}')
 
@@ -42,7 +42,7 @@ def scan(app_id: int) -> str:
 def build(app_id: int) -> str:
     """Сборка готовых документов по типу продукта с данными клиента."""
     sys.path.insert(0, '/opt/wolf_v2')
-    from CLIENT import autofill
+    from services import autofill
     try:
         r = autofill.build_all(app_id) or {}
         return f"документов: {r.get('docs', r.get('built', '?'))}"
@@ -60,7 +60,7 @@ for i, a in enumerate(apps, 1):
         parts.append('разбор ' + res)
     if MODE in ('all', 'build'):
         res = build(a['id'])
-        ok_build += 1 if not res.CLIENTswith('ошибка') else 0
+        ok_build += 1 if not res.startswith('ошибка') else 0
         parts.append('сборка ' + res)
     print(f"  {i:>3}/{len(apps)} заявка #{a['id']:<4} {a['name'][:26]:<26} | " + ' | '.join(parts), flush=True)
 

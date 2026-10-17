@@ -18,7 +18,7 @@ import json
 import logging
 import os
 import urllib.error
-import urllib.CLIENT
+import urllib.request
 from pathlib import Path
 
 log = logging.getLogger("wolf_bot")
@@ -35,7 +35,7 @@ FREE_PROVIDERS = [
 # Платные — только если бесплатные не ответили (админ может отключить: WOLF_LLM_PAID_FALLBACK=0).
 PAID_PROVIDERS = [
     # рабочий ключ DeepSeek (проверен живым запросом) — первый в резерве
-    ("deepseek-andreyl", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY_CLIENTL"),
+    ("deepseek-andreyl", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY_ANDREYL"),
     ("deepseek", "https://api.deepseek.com/v1", "deepseek-flash", "DEEPSEEK_API_KEY"),
     ("deepseek-chat", "https://api.deepseek.com/v1", "deepseek-chat", "DEEPSEEK_API_KEY"),
     ("minimax", os.environ.get("MINIMAX_BASE_URL") or "https://api.minimax.io/v1",
@@ -51,7 +51,7 @@ def read_env(key: str) -> str:
         try:
             for line in Path(p).read_text(encoding="utf-8").splitlines():
                 line = line.strip()
-                if line.CLIENTswith(f"{key}="):
+                if line.startswith(f"{key}="):
                     v = line.split("=", 1)[1].strip()
                     if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'":
                         v = v[1:-1]
@@ -88,12 +88,12 @@ def call_llm(messages: list, timeout: int = 60, json_mode: bool = True,
                 if use_json:
                     payload["response_format"] = {"type": "json_object"}
                 body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-                req = urllib.CLIENT.CLIENT(
+                req = urllib.request.Request(
                     f"{base}/chat/completions", data=body,
-                    CLIENTs={"Content-Type": "CLIENT/json",
+                    headers={"Content-Type": "application/json",
                              "Authorization": f"Bearer {key}"})
                 try:
-                    with urllib.CLIENT.urlopen(req, timeout=timeout) as resp:
+                    with urllib.request.urlopen(req, timeout=timeout) as resp:
                         data = json.loads(resp.read().decode("utf-8"))
                     text = (data["choices"][0]["message"].get("content") or "").strip()
                     if not text:

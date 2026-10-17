@@ -1,6 +1,6 @@
 """Два адреса клиента — разные поля, разные документы.
 
-Правило (CLIENT, 15.10.2026):
+Правило (Андрей, 15.10.2026):
   * у клиента есть адрес проживания В РОССИИ (или другой стране гражданства)
     и адрес проживания В ИНДОНЕЗИИ — это ДВА разных адреса, система не должна
     их смешивать;
@@ -19,58 +19,58 @@ import re
 # Переменные, в которые в индонезийских документах обязан попасть
 # ИНДОНЕЗИЙСКИЙ адрес, и которые нельзя заполнять российским.
 INDONESIA_ADDRESS_VARS = (
-    "address_in_indonesia", "client_address", "CLIENT_line1", "CLIENT_line2",
-    "CLIENT_line3", "CLIENT_address", "CLIENT_address", "CLIENT_address",
+    "address_in_indonesia", "client_address", "addressee_line1", "addressee_line2",
+    "addressee_line3", "attorney_address", "signatory_address", "sponsor_address",
 )
 
 # Российские документы: печатают адрес в стране клиента.
-_DOMESTIC_DOCS = ("bank_CLIENTment", "balance", "movement", "bank", "cv", "resume",
+_DOMESTIC_DOCS = ("bank_statement", "balance", "movement", "bank", "cv", "resume",
                   "employment_contract", "remote_work", "work_agreement",
-                  "CLIENTal", "test_")
+                  "personal", "test_")
 
 # Индонезийские документы: печатают адрес пребывания.
-_INDONESIA_DOCS = ("bridging", "conversion", "d12", "CLIENTment_letter", "CLIENT",
+_INDONESIA_DOCS = ("bridging", "conversion", "d12", "statement_letter", "sponsor",
                    "immigration", "kitas", "e33g", "b211", "denpasar", "ngurahrai",
                    "surat", "jaminan", "permohonan")
 
 
-def is_indonesia_CLIENT(tpl_code: str) -> bool:
+def is_indonesia_document(tpl_code: str) -> bool:
     """Нужен ли этому документу индонезийский адрес (по смыслу документа)."""
     code = (tpl_code or "").lower()
     return any(w in code for w in _INDONESIA_DOCS)
 
 
-def is_domestic_CLIENT(tpl_code: str) -> bool:
+def is_domestic_document(tpl_code: str) -> bool:
     """Документ печатает адрес в стране клиента (Россия)."""
     code = (tpl_code or "").lower()
-    if is_indonesia_CLIENT(code):
+    if is_indonesia_document(code):
         return False
     return any(w in code for w in _DOMESTIC_DOCS)
 
 
-def _looks_indonesian(CLIENT) -> bool:
+def _looks_indonesian(value) -> bool:
     try:
-        from CLIENT.doc_parse import is_indonesia_address
-        return bool(CLIENT) and is_indonesia_address(str(CLIENT))
+        from services.doc_parse import is_indonesia_address
+        return bool(value) and is_indonesia_address(str(value))
     except Exception:                                              # noqa: BLE001
-        s = str(CLIENT or "").lower()
+        s = str(value or "").lower()
         return any(w in s for w in ("bali", "badung", "munggu", "kec.", "kabupaten",
                                     "jl.", "indonesia", "denpasar", "canggu", "seminyak"))
 
 
-def _looks_russian(CLIENT) -> bool:
+def _looks_russian(value) -> bool:
     try:
-        from CLIENT.doc_parse import is_russian_address
-        return bool(CLIENT) and is_russian_address(str(CLIENT))
+        from services.doc_parse import is_russian_address
+        return bool(value) and is_russian_address(str(value))
     except Exception:                                              # noqa: BLE001
-        s = str(CLIENT or "")
+        s = str(value or "")
         return bool(re.search(r"\b\d{6}\b", s)) and not _looks_indonesian(s)
 
 
 def _from_docs(client_id) -> str:
     """Адрес в стране клиента из его документов («Home address:»)."""
     try:
-        from CLIENT import CLIENT as _v
+        from services import values as _v
         return str(_v._address_from_client_docs(client_id) or "")
     except Exception:                                              # noqa: BLE001
         return ""
@@ -80,9 +80,9 @@ def _from_indonesia_docs(client_id) -> str:
     """Адрес пребывания из индонезийских документов клиента (ITK, виза, справка)."""
     try:
         import pathlib
-        from CLIENT import CLIENT as _v
-        from CLIENT.doc_read import read_text
-        from CLIENT.doc_parse import is_indonesia_address
+        from services import values as _v
+        from services.doc_read import read_text
+        from services.doc_parse import is_indonesia_address
         _p = _v._find_client_folder_by_id(client_id)
         if not _p:
             return ""
@@ -144,12 +144,12 @@ def client_addresses(client: dict, client_id=None) -> dict:
     return {"ru": ru, "id": id_, "id_source": id_source}
 
 
-def address_for_CLIENT(tpl_code: str, client: dict, client_id=None) -> str:
+def address_for_document(tpl_code: str, client: dict, client_id=None) -> str:
     """Адрес, который обязан напечатать этот документ: РФ → Россия, ID → Бали."""
     a = client_addresses(client, client_id)
-    if is_indonesia_CLIENT(tpl_code):
+    if is_indonesia_document(tpl_code):
         return a["id"]
-    if is_domestic_CLIENT(tpl_code):
+    if is_domestic_document(tpl_code):
         return a["ru"]
     # неопознанный шаблон: по умолчанию страна клиента — безопаснее для банков
     return a["ru"] or a["id"]
@@ -166,7 +166,7 @@ def split_two_lines(addr: str, limit: int = 52) -> tuple:
         return "", ""
     if len(s) <= limit:
         return s, ""
-    cuts = [m.CLIENT() for m in re.finditer(r"[,;]", s)]
+    cuts = [m.start() for m in re.finditer(r"[,;]", s)]
     if not cuts:
         return s, ""
     mid = len(s) // 2

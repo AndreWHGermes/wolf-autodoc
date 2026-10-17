@@ -20,11 +20,11 @@ DB = ROOT / 'data' / 'wolf.db'
 BACKUP = ROOT / 'data' / 'backup'
 
 GROUPS = [
-    ('bridging_letter', 'bridging_CLIENT_letter__default',
-     ['bridging_CLIENT_letter__ngurahrai', 'bridging_CLIENT_letter__denpasar',
-      'bridging_CLIENT_letter__tabanan']),
-    ('conversion_letter', 'conversion_CLIENT_letter__default',
-     ['conversion_CLIENT_letter__ngurahrai', 'conversion_CLIENT_letter__denpasar']),
+    ('bridging_letter', 'bridging_request_letter__default',
+     ['bridging_request_letter__ngurahrai', 'bridging_request_letter__denpasar',
+      'bridging_request_letter__tabanan']),
+    ('conversion_letter', 'conversion_request_letter__default',
+     ['conversion_request_letter__ngurahrai', 'conversion_request_letter__denpasar']),
 ]
 REASON = ('письмо сведено в один шаблон: офис иммиграции подставляется по адресу клиента '
           '(было три копии по офисам)')
@@ -36,15 +36,15 @@ def main(apply: bool) -> int:
     BACKUP.mkdir(parents=True, exist_ok=True)
     snap = BACKUP / ('letter_docs_%s.json' % time.strftime('%Y%m%d_%H%M%S'))
     rows = [dict(r) for r in con.execute(
-        "SELECT ad.id, ad.CLIENT_id, ad.template_id, ad.CLIENT, t.code FROM CLIENT_CLIENT ad "
-        "JOIN CLIENT t ON t.id=ad.template_id WHERE t.code LIKE '%CLIENT_letter%'")]
+        "SELECT ad.id, ad.application_id, ad.template_id, ad.status, t.code FROM application_documents ad "
+        "JOIN templates t ON t.id=ad.template_id WHERE t.code LIKE '%request_letter%'")]
     snap.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding='utf-8')
     print('слепок документов:', snap, '| строк:', len(rows))
 
-    tpl = {r['code']: r['id'] for r in con.execute("SELECT id, code FROM CLIENT")}
+    tpl = {r['code']: r['id'] for r in con.execute("SELECT id, code FROM templates")}
     by_app: dict[int, list] = {}
     for r in rows:
-        by_app.setdefault(r['CLIENT_id'], []).append(r)
+        by_app.setdefault(r['application_id'], []).append(r)
 
     moved = marked = kept = 0
     for app_id, docs in sorted(by_app.items()):
@@ -62,28 +62,28 @@ def main(apply: bool) -> int:
             else:
                 # берём самое «готовое» письмо и переносим на объединённый шаблон
                 rank = {'verified': 0, 'sent': 1, 'filled': 2, 'draft': 3, 'pending': 4}
-                target = sorted(others, key=lambda d: rank.get(d['CLIENT'] or '', 9))[0]
+                target = sorted(others, key=lambda d: rank.get(d['status'] or '', 9))[0]
                 others = [d for d in others if d['id'] != target['id']]
                 if apply:
-                    con.execute("UPDATE CLIENT_CLIENT SET template_id=?, CLIENT='draft' WHERE id=?",
+                    con.execute("UPDATE application_documents SET template_id=?, status='draft' WHERE id=?",
                                 (tpl[new_code], target['id']))
                 moved += 1
                 print('   заявка %-4s: письмо %s → %s (статус draft, пересобрать)' %
                       (app_id, target['code'].split('__')[-1], new_code))
             for d in others:
-                if (d['CLIENT'] or '') != 'rejected':
+                if (d['status'] or '') != 'rejected':
                     if apply:
-                        con.execute("UPDATE CLIENT_CLIENT SET CLIENT='rejected', error=? WHERE id=?",
+                        con.execute("UPDATE application_documents SET status='rejected', error=? WHERE id=?",
                                     (REASON, d['id']))
                     marked += 1
             if apply:
-                con.execute("UPDATE CLIENT_CLIENT SET error=? WHERE id=? AND CLIENT='rejected'",
+                con.execute("UPDATE application_documents SET error=? WHERE id=? AND status='rejected'",
                             (REASON, target['id']))
     if apply:
         con.commit()
-        left = con.execute("""SELECT COUNT(*) FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
-                              WHERE t.code LIKE '%CLIENT_letter%' AND t.CLIENT='merged'
-                                AND ad.CLIENT NOT IN ('rejected')""").fetchone()[0]
+        left = con.execute("""SELECT COUNT(*) FROM application_documents ad JOIN templates t ON t.id=ad.template_id
+                              WHERE t.code LIKE '%request_letter%' AND t.status='merged'
+                                AND ad.status NOT IN ('rejected')""").fetchone()[0]
         print('\nперенесено на объединённый шаблон: %d | помечено rejected: %d | осталось активных на архивных шаблонах: %d'
               % (moved, marked, left))
     else:

@@ -1,7 +1,7 @@
 """Очистка исходников клиентов: значения остаются, файлы с Диска не копим.
 
 Логика системы: у себя мы держим то, чем работаем —
-  • значения переменных (в базе, CLIENT_json заявок и история значений);
+  • значения переменных (в базе, values_json заявок и история значений);
   • наши готовые бланки (PDF);
   • карточки клиентов и миниатюры.
 Исходные документы клиента (паспорта, справки) нужны только на время разбора:
@@ -19,7 +19,7 @@ import sys
 import time
 from pathlib import Path
 
-CACHE = Path('/opt/wolf_v2/data/gCLIENT_cache')
+CACHE = Path('/opt/wolf_v2/data/gdrive_cache')
 DB = '/opt/wolf_v2/data/wolf.db'
 
 days = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 30
@@ -28,9 +28,9 @@ dry = 'dry' in [a.lower() for a in sys.argv[2:]]
 conn = sqlite3.connect(DB)
 # заявки, по которым значения уже вытащены: их исходники точно не нужны
 ready = {r[0] for r in conn.execute(
-    "SELECT DISTINCT CLIENT_id FROM CLIENT_CLIENT "
-    "WHERE COALESCE(CLIENT_json, '') <> '' AND CLIENT_json <> '{}'")}
-client_of = dict(conn.execute("SELECT id, client_id FROM CLIENT"))
+    "SELECT DISTINCT application_id FROM application_documents "
+    "WHERE COALESCE(values_json, '') <> '' AND values_json <> '{}'")}
+client_of = dict(conn.execute("SELECT id, client_id FROM applications"))
 
 cutoff = time.time() - days * 86400
 removed = skipped = 0

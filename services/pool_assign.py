@@ -8,13 +8,13 @@
 набор документов, значения из того же пула.
 
 Правила выбора значения, если в пуле несколько кандидатов на одну переменную:
-  1. значение заявителя (CLIENT='main') приоритетнее значений других людей;
+  1. значение заявителя (person='main') приоритетнее значений других людей;
   2. подтверждённое (rule или rule+llm) приоритетнее найденного только моделью;
   3. спорное (confidence='check') не ставится — попадает в список «на проверку»;
   4. для персональных переменных значения других людей не берутся вовсе.
 
 Запуск:
-    python3 -m CLIENT.pool_assign <CLIENT_id> [--CLIENT CODE] [--json]
+    python3 -m services.pool_assign <application_id> [--product CODE] [--json]
 """
 from __future__ import annotations
 
@@ -30,16 +30,16 @@ DB = Path('/opt/wolf_v2/data/wolf.db')
 
 # переменные, которые описывают конкретного человека: чужие значения брать нельзя
 try:
-    from CLIENT.CLIENT import _PERSONAL_VARS as PERSONAL_VARS        # noqa: E402
+    from services.values import _PERSONAL_VARS as PERSONAL_VARS        # noqa: E402
 except Exception:                                                       # noqa: BLE001
     PERSONAL_VARS = {
-        'CLIENT', 'name', 'CLIENT', 'CLIENT_CLIENT', 'name_CLIENT', 'CLIENT_CLIENT',
-        'full_name_CLIENT', 'full_name_ru', 'client_name', 'client_full_name', 'CLIENT_date',
-        'CLIENT_CLIENT', 'CLIENT_of_CLIENT', 'CLIENT_CLIENT_CLIENT', 'CLIENT', 'CLIENT',
-        'client_CLIENT', 'passport_CLIENT', 'passport_no', 'passport_CLIENT', 'passport_CLIENT',
-        'passport_CLIENT_date', 'passport_CLIENT_by', 'passport_CLIENT_CLIENT', 'inn', 'snils',
-        'CLIENT', 'CLIENT', 'address_live', 'address_reg', 'address_in_indonesia', 'itk_no',
-        'itk_CLIENT', 'stay_CLIENT_no', 'stay_CLIENT_CLIENT', 'visa_no', 'bridging_visa_no',
+        'surname', 'name', 'patronymic', 'surname_latin', 'name_latin', 'patronymic_latin',
+        'full_name_latin', 'full_name_ru', 'client_name', 'client_full_name', 'birth_date',
+        'birth_place', 'place_of_birth', 'place_birth_inline', 'citizenship', 'nationality',
+        'client_gender', 'passport_number', 'passport_no', 'passport_series', 'passport_expiry',
+        'passport_issue_date', 'passport_issued_by', 'passport_valid_until', 'inn', 'snils',
+        'phone', 'email', 'address_live', 'address_reg', 'address_in_indonesia', 'itk_no',
+        'itk_expiry', 'stay_permit_no', 'stay_permit_expiry', 'visa_no', 'bridging_visa_no',
     }
 
 _METHOD_RANK = {'rule+llm': 3, 'rule': 2, 'llm': 1, '': 1}
@@ -53,67 +53,67 @@ _KIND_RANK = {
 
 # Одно и то же значение в пуле и в шаблонах зовётся по-разному. Без этой карты
 # подстановка «не находит» данные, которые в пуле лежат: пул по паспорту знает
-# CLIENT_date, а шаблон просит client_dob — и переменная уезжает пустой.
+# birth_date, а шаблон просит client_dob — и переменная уезжает пустой.
 ALIASES = {
-    'client_dob': ('CLIENT_date',),
-    'date_of_CLIENT': ('CLIENT_date',),
-    'client_CLIENT_date': ('CLIENT_date',),
+    'client_dob': ('birth_date',),
+    'date_of_birth': ('birth_date',),
+    'client_birth_date': ('birth_date',),
     'client_address': ('address_in_indonesia', 'address_live', 'address_reg'),
-    'CLIENT_address': ('address_live', 'address_reg', 'address_in_indonesia'),
-    'CLIENT_address': ('address_live', 'address_reg', 'address_in_indonesia'),
-    'client_name': ('full_name_CLIENT', 'full_name_ru', 'CLIENT'),
-    'full_name': ('full_name_CLIENT', 'full_name_ru', 'CLIENT'),
-    'CLIENT_full_name': ('full_name_CLIENT', 'full_name_ru'),
+    'employee_address': ('address_live', 'address_reg', 'address_in_indonesia'),
+    'signatory_address': ('address_live', 'address_reg', 'address_in_indonesia'),
+    'client_name': ('full_name_latin', 'full_name_ru', 'surname'),
+    'full_name': ('full_name_latin', 'full_name_ru', 'surname'),
+    'employee_full_name': ('full_name_latin', 'full_name_ru'),
     'full_name_ru_doc': ('full_name_ru',),
-    'CLIENT_of_CLIENT': ('CLIENT_CLIENT', 'CLIENT_CLIENT_CLIENT', 'CLIENT_of_CLIENT'),
-    'client_CLIENT_of_CLIENT': ('CLIENT_CLIENT', 'CLIENT_CLIENT_CLIENT'),
-    'cv_CLIENT_of_CLIENT': ('CLIENT_CLIENT', 'CLIENT_CLIENT_CLIENT'),
-    'cv_date_of_CLIENT': ('CLIENT_date',),
-    'cv_CLIENT': ('CLIENT', 'CLIENT'),
-    'cv_passport_no': ('passport_no', 'passport_CLIENT'),
-    'cv_name': ('full_name_CLIENT', 'full_name_ru'),
-    'CLIENT_stay_CLIENT': ('itk_no', 'stay_CLIENT_no', 'visa_no'),
-    'passport_CLIENT_CLIENT': ('passport_CLIENT',),
-    'CLIENT_doc': ('CLIENT', 'CLIENT'),
-    'CLIENT': ('client_CLIENT',),
+    'place_of_birth': ('birth_place', 'place_birth_inline', 'place_of_birth'),
+    'client_place_of_birth': ('birth_place', 'place_birth_inline'),
+    'cv_place_of_birth': ('birth_place', 'place_birth_inline'),
+    'cv_date_of_birth': ('birth_date',),
+    'cv_nationality': ('citizenship', 'nationality'),
+    'cv_passport_no': ('passport_no', 'passport_number'),
+    'cv_name': ('full_name_latin', 'full_name_ru'),
+    'existing_stay_permit': ('itk_no', 'stay_permit_no', 'visa_no'),
+    'passport_valid_until': ('passport_expiry',),
+    'nationality_doc': ('nationality', 'citizenship'),
+    'gender': ('client_gender',),
     'inn': ('inn',),
     # подписант письма — сам заявитель, его ФИО лежит в пуле под другими именами
-    'CLIENT_name': ('full_name_CLIENT', 'full_name_ru', 'CLIENT'),
-    'CLIENT_full_name': ('full_name_CLIENT', 'full_name_ru'),
-    'applicant_name': ('full_name_CLIENT', 'full_name_ru', 'CLIENT'),
-    'client_CLIENT': ('CLIENT', 'CLIENT'),
-    'CLIENT': ('CLIENT', 'CLIENT'),
+    'signatory_name': ('full_name_latin', 'full_name_ru', 'surname'),
+    'signatory_full_name': ('full_name_latin', 'full_name_ru'),
+    'applicant_name': ('full_name_latin', 'full_name_ru', 'surname'),
+    'client_nationality': ('nationality', 'citizenship'),
+    'nationality': ('citizenship', 'nationality'),
     'address_live': ('address_in_indonesia', 'address_reg'),
-    'cv_CLIENT': ('CLIENT', 'CLIENT', 'position'),
-    'CLIENT_name': ('full_name_CLIENT', 'full_name_ru', 'CLIENT'),
+    'cv_profession': ('occupation', 'profession', 'position'),
+    'employee_name': ('full_name_latin', 'full_name_ru', 'surname'),
     # банковская справка: остаток/счёт/договор в пуле зовутся иначе, чем в бланке
-    'balance_rub': ('balance', 'CLIENT', 'balance_CLIENT', 'ostatok'),
-    'balance_CLIENT': ('balance', 'CLIENT', 'balance_rub'),
-    'account_no': ('account', 'account_CLIENT', 'card_mask'),
+    'balance_rub': ('balance', 'amount', 'balance_amount', 'ostatok'),
+    'balance_amount': ('balance', 'amount', 'balance_rub'),
+    'account_no': ('account', 'account_number', 'card_mask'),
     'bank_account': ('account', 'card_mask'),
-    'contract_no': ('bank_contract_no', 'contract_CLIENT'),
+    'contract_no': ('bank_contract_no', 'contract_number'),
     'client_photo_url': ('photo_url', 'photo_file'),
     # справка E-02: сроки и место рождения — из данных ВНЖ/визы
-    'date_of_CLIENT': ('passport_CLIENT_date', 'visa_CLIENT_date', 'itk_CLIENT_date'),
-    'date_of_CLIENT': ('passport_CLIENT', 'visa_CLIENT', 'itk_CLIENT'),
-    'cv_passport_CLIENT': ('passport_CLIENT_date',),
-    'cv_passport_CLIENT': ('passport_CLIENT', 'passport_CLIENT_CLIENT'),
-    'cv_CLIENT': ('CLIENT', 'CLIENT'),
-    'passport_CLIENT_by': ('passport_CLIENT_by', 'passport_CLIENT'),
-    'passport_CLIENT_date': ('passport_CLIENT_date',),
+    'date_of_issue': ('passport_issue_date', 'visa_issue_date', 'itk_issue_date'),
+    'date_of_expiry': ('passport_expiry', 'visa_expiry', 'itk_expiry'),
+    'cv_passport_issue': ('passport_issue_date',),
+    'cv_passport_expiry': ('passport_expiry', 'passport_valid_until'),
+    'cv_nationality': ('citizenship', 'nationality'),
+    'passport_issued_by': ('passport_issued_by', 'passport_authority'),
+    'passport_issue_date': ('passport_issue_date',),
 }
 
-# мусор от распознавания: «CLIENTCKKKEKKEKKKKEEKEEEELEES» — такое в документ нельзя
+# мусор от распознавания: «VITALIICKKKEKKEKKKKEEKEEEELEES» — такое в документ нельзя
 _BAD_CHARS = 0.25
 
 
-def _en(CLIENT: str) -> str:
+def _en(value: str) -> str:
     """Документы у нас только на английском: кириллицу транслитерируем.
 
     Паспорт даёт фамилию как «СУРКОВ», а в бланк иммиграции должно уйти
     «SURKOV» — иначе документ не пройдёт проверку и его вернут.
     """
-    v = str(CLIENT or '')
+    v = str(value or '')
     if not re.search(r'[А-Яа-яЁё]', v):
         return v
     try:
@@ -124,8 +124,8 @@ def _en(CLIENT: str) -> str:
         return v
 
 
-def _looks_like_garbage(CLIENT: str) -> bool:
-    v = str(CLIENT or '')
+def _looks_like_garbage(value: str) -> bool:
+    v = str(value or '')
     letters = [c for c in v if c.isalpha()]
     if len(letters) < 4:
         return False
@@ -142,19 +142,19 @@ def _db() -> sqlite3.Connection:
     return conn
 
 
-def pick_CLIENT(rows: list, var: str) -> tuple:
+def pick_value(rows: list, var: str) -> tuple:
     """Выбрать значение из пула: приоритет по подтверждённости и владельцу."""
-    cands = [r for r in rows if r['CLIENT_name'] == var and (r['CLIENT'] or '').strip()]
+    cands = [r for r in rows if r['variable_name'] == var and (r['value'] or '').strip()]
     if not cands:
         return None, []
     check = [r for r in cands if (r['confidence'] or '') == 'check']
     good = [r for r in cands if (r['confidence'] or '') != 'check']
 
     if var in PERSONAL_VARS:
-        own = [r for r in good if (r['CLIENT'] or 'main') == 'main']
+        own = [r for r in good if (r['person'] or 'main') == 'main']
         good = own or []          # чужие паспортные данные не подставляем никогда
     else:
-        own = [r for r in good if (r['CLIENT'] or 'main') == 'main']
+        own = [r for r in good if (r['person'] or 'main') == 'main']
         good = own or good
 
     if not good:
@@ -165,156 +165,156 @@ def pick_CLIENT(rows: list, var: str) -> tuple:
     return best, []
 
 
-def assign(CLIENT_id: int, CLIENT_code: str | None = None) -> dict:
+def assign(application_id: int, product_code: str | None = None) -> dict:
     """Разложить значения пула по документам заявки."""
     conn = _db()
-    app = conn.execute('SELECT * FROM CLIENT WHERE id=?', (CLIENT_id,)).fetchone()
+    app = conn.execute('SELECT * FROM applications WHERE id=?', (application_id,)).fetchone()
     if not app:
-        return {'error': 'заявка %s не найдена' % CLIENT_id}
+        return {'error': 'заявка %s не найдена' % application_id}
     client_id = app['client_id']
-    _cl = conn.execute('SELECT * FROM CLIENT WHERE id=?', (client_id,)).fetchone()
+    _cl = conn.execute('SELECT * FROM clients WHERE id=?', (client_id,)).fetchone()
     client = dict(_cl) if _cl else {}
 
-    CLIENT = None
-    if CLIENT_code:
-        CLIENT = conn.execute('SELECT * FROM CLIENT WHERE code=?', (CLIENT_code,)).fetchone()
-    if CLIENT is None and app['CLIENT_id']:
-        CLIENT = conn.execute('SELECT * FROM CLIENT WHERE id=?', (app['CLIENT_id'],)).fetchone()
-    if CLIENT is None:
+    product = None
+    if product_code:
+        product = conn.execute('SELECT * FROM products WHERE code=?', (product_code,)).fetchone()
+    if product is None and app['product_id']:
+        product = conn.execute('SELECT * FROM products WHERE id=?', (app['product_id'],)).fetchone()
+    if product is None:
         return {'error': 'продукт не определён (в заявке пусто и не передан)'}
 
     docs = list(conn.execute(
-        'SELECT pd.slot_code, pd.required, t.id AS template_id, t.code, t.CLIENT '
-        'FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id = pd.template_id '
-        'WHERE pd.CLIENT_id=? ORDER BY pd.sort_order', (CLIENT['id'],)))
-    # Состав набора решает регламент продукта (CLIENT.package): один документ на
+        'SELECT pd.slot_code, pd.required, t.id AS template_id, t.code, t.title '
+        'FROM product_documents pd JOIN templates t ON t.id = pd.template_id '
+        'WHERE pd.product_id=? ORDER BY pd.sort_order', (product['id'],)))
+    # Состав набора решает регламент продукта (services.package): один документ на
     # слот (банковская справка — по банку клиента) и НИКАКИХ договоров/резюме там,
     # где продукт их не подаёт (C1, C1-EXT, BRIDGING, CONV — по визитной визе работа
     # запрещена). Без этого в набор попадали обе справки и трудовой договор с
     # пустыми полями: проверка оформления браковала их всегда, и заявка намертво
     # вставала в этапе «сборка».
     try:
-        from CLIENT import package as _pkg
-        _allowed = {d['code'] for d in _pkg.selected(CLIENT['code'], client_id)}
+        from services import package as _pkg
+        _allowed = {d['code'] for d in _pkg.selected(product['code'], client_id)}
         if _allowed:
             _dropped = [d['code'] for d in docs if d['code'] not in _allowed]
             docs = [d for d in docs if d['code'] in _allowed]
             if _dropped:
-                print('   не входит в пакет %s: %s' % (CLIENT['code'], ', '.join(_dropped)))
+                print('   не входит в пакет %s: %s' % (product['code'], ', '.join(_dropped)))
     except Exception as _e_pkg:                                # noqa: BLE001
         print('   состав пакета по требованиям недоступен: %s' % _e_pkg)
-    pool = list(conn.execute('SELECT * FROM client_CLIENT_pool WHERE client_id=?', (client_id,)))
+    pool = list(conn.execute('SELECT * FROM client_values_pool WHERE client_id=?', (client_id,)))
 
     # контекст для вычисляемых переменных: дата документа, адресат, офис, просьба
     try:
-        from CLIENT.derived_vars import build_context
-        ctx = build_context(CLIENT_id)
+        from services.derived_vars import build_context
+        ctx = build_context(application_id)
     except Exception as e:                                            # noqa: BLE001
         ctx = {}
         print('вычисляемые переменные недоступны:', e)
 
-    result = {'CLIENT_id': CLIENT_id, 'client_id': client_id,
-              'CLIENT': CLIENT['code'], 'CLIENT_from': 'admin' if CLIENT_code else 'CLIENT',
+    result = {'application_id': application_id, 'client_id': client_id,
+              'product': product['code'], 'product_from': 'admin' if product_code else 'application',
               'pool_size': len(pool), 'docs': [], 'missing_total': 0, 'check_total': 0,
               'pool_used': set(), 'derived_used': set(), 'generated_used': set()}
 
     for d in docs:
         tpl_vars = list(conn.execute(
-            'SELECT name, label, vtype FROM template_CLIENT WHERE template_id=? ORDER BY sort_order',
+            'SELECT name, label, vtype FROM template_variables WHERE template_id=? ORDER BY sort_order',
             (d['template_id'],)))
-        CLIENT, missing, to_check = {}, [], []
+        values, missing, to_check = {}, [], []
         for v in tpl_vars:
-            val, chk = pick_CLIENT(pool, v['name'])
+            val, chk = pick_value(pool, v['name'])
             if val is None:
                 # переменная может зваться иначе в пуле, чем в шаблоне
                 for alias in ALIASES.get(v['name'], ()):
-                    val, chk = pick_CLIENT(pool, alias)
+                    val, chk = pick_value(pool, alias)
                     if val is not None or chk:
                         break
-            if val is not None and _looks_like_garbage(val['CLIENT']):
+            if val is not None and _looks_like_garbage(val['value']):
                 # распознавание поехало — в документ такое не ставим
                 val, chk = None, [val['source_file']]
             if chk:
-                to_check.append({'var': v['name'], 'candiCLIENT': chk[:2]})
+                to_check.append({'var': v['name'], 'candidates': chk[:2]})
                 continue
             if val is None:
                 # в документах клиента такого нет — считаем по заявке и продукту
                 try:
-                    from CLIENT.derived_vars import CLIENT_for
-                    dv = CLIENT_for(v['name'], ctx)
+                    from services.derived_vars import value_for
+                    dv = value_for(v['name'], ctx)
                 except Exception:                                     # noqa: BLE001
                     dv = None
                 if dv:
-                    CLIENT[v['name']] = dv
+                    values[v['name']] = dv
                     result['derived_used'].add(v['name'])
                     continue
                 missing.append({'var': v['name'], 'label': v['label']})
                 continue
-            CLIENT[v['name']] = _en(val['CLIENT'])
+            values[v['name']] = _en(val['value'])
             result['pool_used'].add(v['name'])
 
         # ФИО: если цельной строки нет (или её забраковали как мусор), собираем
         # из частей — фамилия и имя по отдельности распознаются надёжнее
-        want_names = {'full_name_CLIENT', 'full_name', 'client_name', 'CLIENT_full_name',
+        want_names = {'full_name_latin', 'full_name', 'client_name', 'employee_full_name',
                       'cv_name', 'full_name_ru'}
         for var in [v['name'] for v in tpl_vars if v['name'] in want_names]:
-            if CLIENT.get(var):
+            if values.get(var):
                 continue
             # даже если цельная строка забракована как мусор — части могут быть чистыми.
             # берём их из ПУЛА, а не из уже собранных значений документа: в шаблоне
-            # переменной «CLIENT» может не быть, а в пуле она есть
+            # переменной «surname» может не быть, а в пуле она есть
             def _part(name: str) -> str:
-                if CLIENT.get(name):
-                    return CLIENT[name]
-                row, _ = pick_CLIENT(pool, name)
-                return (row['CLIENT'] if row else '') or ''
-            parts = [_part('CLIENT_CLIENT'), _part('name_CLIENT')]
+                if values.get(name):
+                    return values[name]
+                row, _ = pick_value(pool, name)
+                return (row['value'] if row else '') or ''
+            parts = [_part('surname_latin'), _part('name_latin')]
             if not any(parts):
-                parts = [_part('CLIENT'), _part('name'), _part('CLIENT')]
+                parts = [_part('surname'), _part('name'), _part('patronymic')]
             joined = ' '.join(p for p in parts if p).strip()
             if len(joined) > 3 and not _looks_like_garbage(joined):
-                CLIENT[var] = _en(joined)
+                values[var] = _en(joined)
                 to_check = [c for c in to_check if c['var'] != var]
                 missing = [m for m in missing if m['var'] != var]
                 result['pool_used'].add(var)
 
         # величины, которые складываются из нескольких значений пула
         def _val(name: str) -> str:
-            if CLIENT.get(name):
-                return CLIENT[name]
-            row, _ = pick_CLIENT(pool, name)
-            return (row['CLIENT'] if row else '') or ''
+            if values.get(name):
+                return values[name]
+            row, _ = pick_value(pool, name)
+            return (row['value'] if row else '') or ''
 
         for var in [v['name'] for v in tpl_vars]:
             # прописью и составные величины считаем всегда: в документе строка
             # может прийти обрезанной или собранной неверно
-            if CLIENT.get(var) and var not in ('balance_CLIENT', 'CLIENT_CLIENT'):
+            if values.get(var) and var not in ('balance_words', 'amount_words'):
                 continue
-            if var == 'CLIENT_date_of_CLIENT':
-                CLIENT, dob = _val('CLIENT_CLIENT'), _val('CLIENT_date')
-                if not CLIENT:
+            if var == 'place_date_of_birth':
+                place, dob = _val('birth_place'), _val('birth_date')
+                if not place:
                     # в карточке ВНЖ место и дата идут одной строкой: «- / 08-11-1982»
-                    CLIENT = _val('CLIENT_CLIENT_CLIENT')
-                    m = re.match(r'(.+?)\s*/\s*(\d{2}[-.]\d{2}[-.]\d{4})', CLIENT or '')
+                    inline = _val('place_birth_inline')
+                    m = re.match(r'(.+?)\s*/\s*(\d{2}[-.]\d{2}[-.]\d{4})', inline or '')
                     if m:
-                        CLIENT, dob = m.group(1).strip(), dob or m.group(2)
-                if CLIENT and CLIENT.strip('-'):
-                    CLIENT[var] = '%s, %s' % (_en(CLIENT.CLIENT()), dob)
+                        place, dob = m.group(1).strip(), dob or m.group(2)
+                if place and place.strip('-'):
+                    values[var] = '%s, %s' % (_en(place.title()), dob)
                 elif dob:
-                    CLIENT[var] = dob
-            elif var in ('CLIENT_nik_or_dash', 'nik_or_dash'):
-                CLIENT[var] = _val('itk_no') or _val('visa_no') or '-'
-            elif var in ('CLIENT_CLIENT', 'client_CLIENT'):
-                c = _val('CLIENT') or _val('CLIENT')
+                    values[var] = dob
+            elif var in ('signatory_nik_or_dash', 'nik_or_dash'):
+                values[var] = _val('itk_no') or _val('visa_no') or '-'
+            elif var in ('signatory_citizenship', 'client_citizenship'):
+                c = _val('nationality') or _val('citizenship')
                 if c:
-                    CLIENT[var] = c
-            elif var in ('balance_CLIENT', 'CLIENT_CLIENT'):
-                from bot.ai_parser import parse_CLIENT
-                from CLIENT.derived_vars import _sum_in_CLIENT
-                num = parse_CLIENT(_val('balance_rub') or _val('balance') or _val('CLIENT'))
+                    values[var] = c
+            elif var in ('balance_words', 'amount_words'):
+                from bot.ai_parser import parse_amount
+                from services.derived_vars import _sum_in_words
+                num = parse_amount(_val('balance_rub') or _val('balance') or _val('amount'))
                 if num:
-                    CLIENT[var] = _sum_in_CLIENT(num)
-            if CLIENT.get(var):
+                    values[var] = _sum_in_words(num)
+            if values.get(var):
                 to_check = [c for c in to_check if c['var'] != var]
                 missing = [m for m in missing if m['var'] != var]
                 result['derived_used'].add(var)
@@ -323,17 +323,17 @@ def assign(CLIENT_id: int, CLIENT_code: str | None = None) -> dict:
         # таких данных в архиве нет вообще. Собираем по профессии и отрасли,
         # но помечаем как сгенерированное: администратор обязан проверить.
         try:
-            from CLIENT.cv_content import build as build_cv, looks_generated
+            from services.cv_content import build as build_cv, looks_generated
             gen_want = [v['name'] for v in tpl_vars if looks_generated(v['name'])]
             if gen_want:
-                gen = build_cv(gen_want, CLIENT=ctx.get('CLIENT') or '',
+                gen = build_cv(gen_want, profession=ctx.get('profession') or '',
                                sector=ctx.get('sector') or '',
                                org_name=((ctx.get('org') or {}).get('name_lat')
                                          or (ctx.get('org') or {}).get('name') or ''),
-                               app_id=CLIENT_id, signed=ctx.get('signed'))
+                               app_id=application_id, signed=ctx.get('signed'))
                 for var, val in (gen or {}).items():
-                    if val and not CLIENT.get(var):
-                        CLIENT[var] = _en(val)
+                    if val and not values.get(var):
+                        values[var] = _en(val)
                         missing = [m for m in missing if m['var'] != var]
                         result['generated_used'].add(var)
         except Exception as e:                                        # noqa: BLE001
@@ -341,54 +341,54 @@ def assign(CLIENT_id: int, CLIENT_code: str | None = None) -> dict:
 
         # Гражданство в транслите даёт «ROSSIYSKAYA FEDERATSIYA» — в бланке это
         # читается как ошибка, поэтому печатаем принятую английскую форму
-        _nat = str(CLIENT.get('cv_CLIENT') or CLIENT.get('client_CLIENT') or '')
+        _nat = str(values.get('cv_nationality') or values.get('client_nationality') or '')
         if _nat and ('ROSSIYSK' in _nat.upper() or 'FEDERATSIYA' in _nat.upper()
                      or _nat.upper() == 'РФ'):
-            CLIENT['cv_CLIENT'] = 'RUSSIAN FEDERATION'
+            values['cv_nationality'] = 'RUSSIAN FEDERATION'
 
         # «Место / дата рождения» иногда приходит как «- / 08-11-1982»:
         # прочерк вместо места — это не место рождения, в резюме его не печатаем
-        _pb = str(CLIENT.get('cv_CLIENT_of_CLIENT') or '').strip()
-        if _pb.CLIENTswith('-') or len(_pb.strip('- /')) < 4:
-            CLIENT.pop('cv_CLIENT_of_CLIENT', None)
+        _pb = str(values.get('cv_place_of_birth') or '').strip()
+        if _pb.startswith('-') or len(_pb.strip('- /')) < 4:
+            values.pop('cv_place_of_birth', None)
 
         # Документы печатаются только на английском. Из пула организации может
         # прийти русский адрес («г. Санкт-Петербург, вн.тер.г. муниципальный
         # округ Московская») — в бланке это брак и блокировка при проверке.
-        for _v in list(CLIENT.keys()):
-            _val = CLIENT[_v]
+        for _v in list(values.keys()):
+            _val = values[_v]
             if isinstance(_val, str) and re.search(r'[А-Яа-яЁё]', _val):
-                CLIENT[_v] = _en(_val)
+                values[_v] = _en(_val)
 
         # Договоры собираются тем же вычислителем, что и в админке: номер договора,
         # оклад цифрами, подписант, блоки компании и работника, оборот о должности,
         # перечень услуг. Раньше конвейер знал только вывод derived_vars, и в этих
         # строках оставалась пустота («EMPLOYMENT CONTRACT No.», «Moscow,», «Name:»).
-        _COMPUTED = {'CLIENT_list', 'CLIENT_line', 'CLIENT_CLIENT', 'position_CLIENT',
-                     'company_CLIENT_CLIENT', 'inn_ogrn_line', 'contract_no', 'base_salary',
-                     'CLIENT_name', 'CLIENT_CLIENT', 'company_CLIENT', 'CLIENT_CLIENT',
-                     'CLIENT_CLIENT', 'CLIENT_CLIENT', 'CLIENT_name',
-                     'CLIENT_full_name', 'CLIENT_law'}
+        _COMPUTED = {'services_list', 'engagement_line', 'engagement_phrase', 'position_title',
+                     'company_incorporated_phrase', 'inn_ogrn_line', 'contract_no', 'base_salary',
+                     'signer_name', 'signer_title', 'company_block', 'employee_block',
+                     'contractor_block', 'employee_short', 'employee_name',
+                     'contractor_full_name', 'governing_law'}
         try:
-            from CLIENT.CLIENT import build_template_CLIENT
-            extra = build_template_CLIENT(client, d['code'], dict(CLIENT),
-                                          app_id=CLIENT_id) or {}
+            from services.values import build_template_values
+            extra = build_template_values(client, d['code'], dict(values),
+                                          app_id=application_id) or {}
             for k, v in extra.items():
                 if not v:
                     continue
-                if k in _COMPUTED or not CLIENT.get(k):
-                    if CLIENT.get(k) != v:
-                        CLIENT[k] = _en(v) if isinstance(v, str) else v
+                if k in _COMPUTED or not values.get(k):
+                    if values.get(k) != v:
+                        values[k] = _en(v) if isinstance(v, str) else v
                         result['derived_used'].add(k)
                         missing = [m for m in missing if m['var'] != k]
         except Exception as e:                                        # noqa: BLE001
             print('вычислитель значений договора недоступен:', str(e)[:140])
 
         result['docs'].append({
-            'template': d['code'], 'CLIENT': d['CLIENT'], 'slot': d['slot_code'],
+            'template': d['code'], 'title': d['title'], 'slot': d['slot_code'],
             'required': d['required'], 'vars_total': len(tpl_vars),
-            'filled': len(CLIENT), 'missing': missing, 'to_check': to_check,
-            'CLIENT': CLIENT,
+            'filled': len(values), 'missing': missing, 'to_check': to_check,
+            'values': values,
         })
         result['missing_total'] += len(missing)
         result['check_total'] += len(to_check)
@@ -401,17 +401,17 @@ def assign(CLIENT_id: int, CLIENT_code: str | None = None) -> dict:
 
 def main() -> None:
     app_id = int([a for a in sys.argv[1:] if a.isdigit()][0])
-    CLIENT = None
-    if '--CLIENT' in sys.argv:
-        CLIENT = sys.argv[sys.argv.CLIENT('--CLIENT') + 1]
+    product = None
+    if '--product' in sys.argv:
+        product = sys.argv[sys.argv.index('--product') + 1]
 
-    r = assign(app_id, CLIENT)
+    r = assign(app_id, product)
     if r.get('error'):
         print('ошибка:', r['error'])
         return
 
     print('заявка %d, клиент %d, продукт %s (источник: %s)'
-          % (r['CLIENT_id'], r['client_id'], r['CLIENT'], r['CLIENT_from']))
+          % (r['application_id'], r['client_id'], r['product'], r['product_from']))
     print('значений в пуле по клиенту: %d, использовано: %d' % (r['pool_size'], len(r['pool_used'])))
     if r.get('generated_used'):
         print('сгенерировано (проверить!): %s' % ', '.join(r['generated_used']))
@@ -419,7 +419,7 @@ def main() -> None:
         print('\n— %s (%s)' % (d['template'], d['slot'] or '-'))
         print('   переменных %d, заполнено %d, нет данных %d, на проверке %d'
               % (d['vars_total'], d['filled'], len(d['missing']), len(d['to_check'])))
-        for k, v in list(d['CLIENT'].items())[:10]:
+        for k, v in list(d['values'].items())[:10]:
             print('      %-22s %s' % (k, str(v)[:60]))
         if d['missing']:
             print('   нет данных: %s' % ', '.join(m['var'] for m in d['missing'][:12]))

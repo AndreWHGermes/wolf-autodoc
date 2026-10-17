@@ -88,7 +88,7 @@ def save_crop_settings(client_id, crop_y: float, zoom: float, ratio=None) -> dic
         con = _db()
         con.execute(
             "INSERT INTO client_photo_crop (client_id, ratio_w, ratio_h, crop_y, zoom, updated_at)"
-            " CLIENT (?,?,?,?,?,?)"
+            " VALUES (?,?,?,?,?,?)"
             " ON CONFLICT(client_id) DO UPDATE SET crop_y=?, zoom=?, ratio_w=?, ratio_h=?, updated_at=?",
             (client_id, rw, rh, cy, zm, time.strftime("%Y-%m-%d %H:%M:%S"),
              cy, zm, rw, rh, time.strftime("%Y-%m-%d %H:%M:%S")))
@@ -174,7 +174,7 @@ def prepare_photo(src, client_id=None, ratio=None, width: int = DEFAULT_WIDTH,
         # печатный размер: ширина задана, высота по пропорции
         out_h = int(round(width * rh / float(rw)))
         im = im.resize((int(width), out_h), Image.LANCZOS)
-        im.save(str(out), "JPEG", CLIENT=90, optimize=True)
+        im.save(str(out), "JPEG", quality=90, optimize=True)
         return str(out)
     except Exception:
         return str(src)
@@ -194,7 +194,7 @@ def preview_data_url(src, client_id=None, ratio=None, max_width: int = 320) -> s
         nh = int(round(max_width * h / float(w)))
         im = im.resize((max_width, nh), Image.LANCZOS)
         buf = io.BytesIO()
-        im.save(buf, "JPEG", CLIENT=80)
-        return "data:image/jpeg;base64," + base64.b64encode(buf.getCLIENT()).decode()
+        im.save(buf, "JPEG", quality=80)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
     except Exception:
         return ""

@@ -1191,7 +1191,23 @@ _LANG_JS = """<script>
       if(nStage) stage.innerHTML=nStage.innerHTML;
       var __vb2=document.querySelector('.doc-verdict-float'); if(__vb2) __vb2.hidden=false;   /* открыли наш документ */
       if(nVars) varsPanel.innerHTML=nVars.innerHTML;
-      if(nTabs&&tabs) tabs.innerHTML=nTabs.innerHTML;
+      if(nTabs&&tabs){
+        /* Кнопки «Просмотр PDF», «Сравнение» и бар масштаба несут обработчики, навешенные при загрузке.
+           Их нельзя пересоздавать: сохраняем живые узлы и переносим им атрибуты нового документа
+           (шаблон, адрес сравнения, код оригинала). Остальные вкладки (Оригинал / HTML / Word) — заново. */
+        var liveBar=tabs.querySelector('.zp-bar'), livePdf=tabs.querySelector('#tpl-pdf-open'), liveCmp=tabs.querySelector('#cmp-open');
+        tabs.innerHTML=nTabs.innerHTML;
+        var keepLive=function(live, fresh){
+          if(!live||!fresh||!fresh.parentNode) return;
+          [].slice.call(live.attributes).forEach(function(a){ live.removeAttribute(a.name); });
+          [].slice.call(fresh.attributes).forEach(function(a){ live.setAttribute(a.name, a.value); });
+          live.innerHTML=fresh.innerHTML;
+          fresh.parentNode.replaceChild(live, fresh);
+        };
+        keepLive(livePdf, tabs.querySelector('#tpl-pdf-open'));
+        keepLive(liveCmp, tabs.querySelector('#cmp-open'));
+        if(liveBar){ tabs.insertBefore(liveBar, tabs.querySelector('#tpl-pdf-open')); }
+      }
       var nT=doc.querySelector('.tpl-title'), oT=document.querySelector('.tpl-title');
       if(nT&&oT) oT.textContent=nT.textContent;
       var nMeta=doc.querySelector('.tpl-meta'), oMeta=document.querySelector('.tpl-meta');
@@ -1627,9 +1643,12 @@ def page():
                       f'<button type="button" class="prod-doc-del" data-remove-doc="{d["template_id"]}" '
                       f'data-product="{p["id"]}" title="Убрать документ из этого продукта">✕ Убрать</button>')
         free = [t for t in rows if t["id"] not in have]
+        _unat_html = ""
         add_html = ""
         if free:
-            opts = "".join(f'<option value="{t["id"]}">{t["title"]}</option>' for t in free)
+            # в выпадающем списке — номер документа рядом с названием (№ как в столбике)
+            opts = "".join(f'<option value="{t["id"]}">№{t.get("doc_index") or t["id"]} · {t["title"]}</option>'
+                           for t in sorted(free, key=lambda t: (t.get("doc_index") or 999, t["title"])))
             add_html = (
                 f'<form class="prod-add" method="post" action="/templates/product/{p["id"]}/add-doc">'
                 f'<select name="template_id" aria-label="Выбрать документ">{opts}</select>'
@@ -1678,6 +1697,19 @@ def page():
     product_modals = "".join(_prod_modal(p) for p in products)
     if not products:
         product_blocks = '<div class="muted" style="padding:6px 2px">Продуктов пока нет.</div>'
+
+    # Блок «Не используемые»: документы, которые выключены (hidden/merged) — без номера в работе.
+    _unused_rows = db.q("SELECT id, title, code, pages, status, reviewed FROM templates "
+                        "WHERE COALESCE(status,'ok') IN ('merged','hidden') ORDER BY title")
+    if _unused_rows:
+        body_unused = "".join(
+            item("📄", t["title"],
+                 sub=f'{t["pages"] or 0} стр. · {t["code"]}',
+                 tone="grey", href=f'/templates/{t["id"]}',
+                 extra=f'<span class="badge">{"скрыт" if t["status"] == "hidden" else "объединён"}</span>')
+            for t in _unused_rows)
+        product_blocks += ui_card("Не используемые", body_unused,
+                                   emoji="🗂", tone="grey", note=str(len(_unused_rows)))
 
     orphan_rows = [t for t in rows if t["id"] not in attached]
     if orphan_rows:
@@ -1994,8 +2026,8 @@ def add_product_doc(product_id: int):
         return redirect(url_for("templates.page"))
     # слот = префикс кода до «__» (варианты одного документа попадают в один слот)
     slot = t["code"].split("__")[0] or t["code"]
-    so = (db.q1("SELECT COALESCE(MAX(sort_order),0)+10 AS so FROM product_documents WHERE product_id=?",
-                (product_id,)) or {}).get("so", 10)
+    so = (db.q1("SELECT COALESCE(t.doc_index, 999) AS so FROM templates t WHERE t.id=?",
+                (tpl_id,)) or {}).get("so", 999)   # порядок в продукте = номер документа
     same_slot = db.q1("""SELECT COUNT(*) AS n FROM product_documents pd JOIN templates x ON x.id=pd.template_id
                          WHERE pd.product_id=? AND pd.slot_code=?""", (product_id, slot)) or {}
     db.exec_sql("""INSERT INTO product_documents
@@ -2332,6 +2364,12 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     client = (db.client_get(app_row["client_id"]) if app_row else {}) or {}
     variables = db.q("SELECT * FROM template_variables WHERE template_id=? ORDER BY sort_order, name",
                      (template_id,))
+    # Word-шаблон: показываем только переменные, которые реально стоят в DOCX
+    # (лишние из базы, например client_name, путают и не влияют на документ)
+    if str(t.get("engine") or "").lower() == "word":
+        from services import doc_engine as _de
+        _in_docx = set(_de.docx_variables(t["code"]))
+        variables = [v for v in variables if v["name"] in _in_docx]
     qa = json.loads(t["qa_json"]) if t["qa_json"] else {}
 
     products_for_template = db.q("""SELECT p.id, p.code, p.name FROM products p
@@ -2453,8 +2491,25 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     else:
         original_block = '<div class="muted">Эталон не загружен</div>'
 
-    # Блок 2 — HTML: основная зона редактирования, большой блок
-    if html_exists:
+    # Блок 2 — Word-шаблон: вкладка «Word» = DOCX с живыми значениями правой панели
+    _is_word_tpl = str(t.get("engine") or "").lower() == "word"
+    if _is_word_tpl:
+        html_block = (
+            '<div class="zp-preview" data-zoom-pan style="padding:0">'
+            '<iframe id="word-preview-frame" src="/templates/%d/word_preview" '
+            'style="width:100%%;height:78vh;border:0;background:#E7EBEE;display:block"></iframe></div>'
+            '<script>(function(){'
+            'var fr=document.getElementById("word-preview-frame");if(!fr)return;var tm=null;'
+            'function url(){var q=[];document.querySelectorAll("input[data-var]").forEach(function(i){'
+            'q.push(encodeURIComponent(i.dataset.var)+"="+encodeURIComponent(i.value||""));});'
+            'return "/templates/%d/word_preview?"+q.join("&");}'
+            'function reload(){fr.src=url();}'
+            'document.addEventListener("input",function(e){'
+            'if(!e.target||!e.target.dataset||!e.target.dataset.var)return;'
+            'clearTimeout(tm);tm=setTimeout(reload,350);});'
+            '})();</script>'
+        ) % (template_id, template_id)
+    elif html_exists:
         html_block = (
             f'<div class="zp-preview" data-zoom-pan><div id="html-preview-stage" class="html-stage">{html_preview}</div></div>'
             f'<div class="row tight" style="margin-top:6px">'
@@ -3304,7 +3359,9 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     if True:
         _cmp_url = (f'/templates/compare/{template_id}?embed=1&product={_product_id or ""}'
                     + (f'&app={app_id}' if app_id else ''))
+        _cmp_title_attr = _cmp_title.replace('"', "&quot;")
         _cmp_btn = (f'<button type="button" class="doc-tab" id="cmp-open" data-cmp="{_cmp_url}" '
+                    f'data-cmp-title="{_cmp_title_attr}" '
                     f'data-cmp-note="{_cmp_ctx_esc}" '
                     f'title="Открыть поверх окна: слева оригинал клиента, справа сборка системы">'
                     f'Сравнение</button>')
@@ -3325,7 +3382,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
             '<div class="cmp-modal" id="cmp-modal" hidden>'
             '<div class="cmp-modal-back" data-cmp-close></div>'
             '<div class="cmp-modal-box">'
-            '<div class="cmp-modal-head"><b>' + _cmp_title + '</b>'
+            '<div class="cmp-modal-head"><b id="cmp-modal-title">' + _cmp_title + '</b>'
             '<span class="muted" id="cmp-modal-note"></span>'
             '<span class="sp"><button class="btn sm ghost" type="button" data-cmp-close>✕ Закрыть</button></span>'
             '</div>'
@@ -3337,6 +3394,8 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
             'if(!btn||!modal)return;'
             'var frame=document.getElementById("cmp-modal-frame");'
             'function open(){modal.hidden=false;'
+            'var ti=document.getElementById("cmp-modal-title");'
+            'if(ti&&btn.getAttribute("data-cmp-title"))ti.textContent=btn.getAttribute("data-cmp-title");'
             'var n=document.getElementById("cmp-modal-note");'
             'if(n)n.textContent=btn.getAttribute("data-cmp-note")||"";'
             'if(frame)frame.src=btn.getAttribute("data-cmp");}'
@@ -3353,6 +3412,13 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
                  'title="Наш документ: смотри, как он выйдет с подставленными значениями">'
                  + _engine_label + '</button>'
                  + _pdf_btn + '</div>')
+
+    # Вкладка «Word»: DOCX-страница + span-ы переменных (тот же механизм, что у банковских справок)
+    if str((t or {}).get("engine") or "").lower() == "word":
+        _word_view = ('<div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage" style="background:#E7EBEE">'
+                      + _word_layer_html(template_id, t["code"], variables) + '</div></div>')
+    else:
+        _word_view = ('<div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage">' + html_render + '</div></div>')
 
     # В полноэкранном просмотре PDF — те же две кнопки, слева от «Скачать»:
     # зелёная галочка «Сохранить» и красный крестик «Не нужен» (заявка #76).
@@ -3711,7 +3777,7 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
         <!-- В окне визора кнопок подтверждения нет: документ подтверждают и снимают
              только на миниатюре (столбик документов) или в просмотре PDF. -->
           <div class="doc-spinner" aria-hidden="true"><i></i></div>
-          <div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage">{html_render}</div></div>
+          {_word_view}
       </div>
         <script>
 (function(){{
@@ -3784,12 +3850,23 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     var host=pl.querySelector('.zp-host')||pl.querySelector('[data-zoom-pan]');
     var stage=pl.querySelector('#html-stage'); if(!host||!stage) return;
     var canvas=pl.querySelector('.zp-canvas');
-    var first=stage.querySelector('.sheet')||stage;
+    var pages=stage.querySelectorAll('.wl-page');
+    if(!pages.length) pages=stage.querySelectorAll('.sheet');
+    var nPages=pages.length||1;
+    var first=pages.length?pages[0]:(stage.querySelector('.sheet')||stage);
+    /* Один лист — серый отступ по кругу одинаковый: снимаем нижний margin листа. */
+    if(pages.length<=1){{
+      var only=pages[0]||stage.querySelector('.wl-page');
+      if(only) only.style.setProperty('margin-bottom','0','important');
+    }}
     var rh=first.getBoundingClientRect().height;
+    /* Картинка листа ещё не загрузилась — высота неизвестна; считаем по формату A4,
+       иначе окно выходит короче листа и низ обрезан. */
+    if(rh<200) rh=Math.round((first.offsetWidth||794.5)*(1123/794.5));
     var cw=canvas?canvas.getBoundingClientRect().width:rh*(794.5/1123);
     /* низ документа: холст не сжимается вместе с масштабом — подгоняем его
        под реальный низ последнего листа, иначе снизу остаётся широкая подложка */
-    var list=stage.querySelectorAll('.sheet');
+    var list=pages;
     var last=list.length?list[list.length-1]:stage;
     var cTop=canvas?canvas.getBoundingClientRect().top:host.getBoundingClientRect().top+14;
     var inner=Math.max(1, Math.round(last.getBoundingClientRect().bottom-cTop));
@@ -3807,7 +3884,13 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     var box=Math.max(340, Math.round(rh+28))+'px';
     host.style.setProperty('height', box, 'important');
     host.style.setProperty('max-height', box, 'important');
-    host.style.setProperty('overflow-y','auto','important');
+    /* Один лист — окно ровно по листу + серая обводка 14 px по кругу, прокрутки внутри НЕТ
+       (лист не убегает внутри окна). Несколько листов — окно высотой в один лист,
+       остальные листы прокручиваются внутри (Андрей, 16.10.2026). */
+    var one=(nPages<=1);
+    host.dataset.onePage=one?'1':'0';
+    host.style.setProperty('overflow-y', one?'hidden':'auto','important');
+    if(one){{ host.scrollTop=0; host.scrollLeft=0; }}
     /* Подписи листов в серых разрывах: в стадию, не внутрь листов */
     var list2=stage.querySelectorAll('.sheet');
     var marks=stage.querySelectorAll(':scope>.sheet-num');
@@ -3821,6 +3904,17 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     }}
     /* Низ панели переменных — по той же границе, что и окно просмотра */
     fitVars();
+    /* Все три блока заканчиваются на одной линии — по нижней кромке окна визора:
+       её длина = высота листа + серый отступ сверху и снизу (Андрей, 16.10.2026). */
+    var hb=host.getBoundingClientRect();
+    var aligns=[pl.querySelector('.tpl-rail')||document.getElementById('tpl-rail'),
+                document.querySelector('.tpl-row-main .tpl-panel.is-vars')];
+    for(var ai=0;ai<aligns.length;ai++){{
+      var el=aligns[ai]; if(!el) continue;
+      var d=Math.round(hb.top-el.getBoundingClientRect().top);
+      if(d<-200||d>600) continue;                 /* не наша колонка — не трогаем */
+      el.style.setProperty('height', Math.max(140, d+Math.round(hb.height))+'px','important');
+    }}
   }}
   /* Панель переменных той же высоты, что колонка окна просмотра; список внутри прокручивается */
   function fitVars(){{
@@ -3849,6 +3943,14 @@ def card(template_id: int, _app_id: int | None = None, _embed: bool = False,
     setTimeout(sheets, 260);
   }}
   setTimeout(sheets, 400); setTimeout(sheets, 1200); setTimeout(sheets, 2400);
+  /* листы подгружаются картинками: после загрузки меряем заново, иначе окно короче листа */
+  (function(){{
+    var st=document.getElementById('html-stage'); if(!st) return;
+    st.querySelectorAll('img').forEach(function(im){{
+      if(im.complete) return;
+      im.addEventListener('load', function(){{ setTimeout(sheets, 150); }});
+    }});
+  }})();
   window.addEventListener('resize', function(){{ refit(); setTimeout(refit, 700); }});
   (function(){{
     var _pl=document.querySelector('.pl-html'); if(!_pl) return;
@@ -5352,6 +5454,115 @@ def tpl_cv_remember(template_id: int):
     return jsonify({"ok": True, "en": en, "ru": ru, "value": en})
 
 
+def _word_layer_html(template_id: int, code: str, variables) -> str:
+    """Вкладка «Word» — тот же механизм связки, что у банковских справок.
+
+    Фон — страница DOCX без маркеров (из PDF). Поверх — span.var-hl[data-var] на координатах
+    каждой переменной. Панель справа вызывает sync(): текст span меняется на значение,
+    клик по span подсвечивает строку панели и обратно (общий JS страницы).
+    Маркеры короткие (@@V<n>@@), чтобы не рваться переносами строк.
+    """
+    import base64 as _b64, html as _hx
+    import pymupdf
+    from services import doc_engine
+    docx = doc_engine.word_template(code)
+    if not docx.exists():
+        return '<div class="muted">Word-шаблон не найден</div>'
+    names = doc_engine.docx_variables(code)
+    key = hashlib.sha1(("v2|" + code + "|" + str(docx.stat().st_mtime_ns) + "|" + ",".join(names)).encode()).hexdigest()[:16]
+    cdir = Path("/opt/wolf_v2/data/cache/word_layer") / (code + "_" + key)
+    meta_p = cdir / "meta.json"
+    if not meta_p.exists():
+        cdir.mkdir(parents=True, exist_ok=True)
+        tok = {n: "@@V%d@@" % i for i, n in enumerate(names)}
+        res = doc_engine.build_document(code, tok, str(cdir / "tok"), engine="word", name="tok")
+        pdf = res.get("pdf")
+        if not pdf or not os.path.exists(pdf):
+            return ('<div style="padding:20px;color:#B91C1C">Не удалось собрать Word-документ: '
+                    + _hx.escape(str(res.get("error") or "")[:300]) + '</div>')
+        d = pymupdf.open(pdf)
+        pages, found = [], set()
+        for pi, pg in enumerate(d):
+            rects = []
+            for n in names:
+                for r in pg.search_for(tok[n]):
+                    rects.append({"name": n, "x0": r.x0, "y0": r.y0, "x1": r.x1, "y1": r.y1})
+                    pg.add_redact_annot(r, fill=(1, 1, 1))
+                    found.add(n)
+            pg.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE)
+            fn = "bg-%d.png" % pi
+            pg.get_pixmap(dpi=150, alpha=False).save(str(cdir / fn))
+            pages.append({"bg": fn, "W": pg.rect.width, "H": pg.rect.height, "rects": rects})
+        missing = [n for n in names if n not in found]
+        meta_p.write_text(json.dumps({"pages": pages, "missing": missing}, ensure_ascii=False))
+    meta = json.loads(meta_p.read_text())
+    out = []
+    for pg in meta["pages"]:
+        W, H = pg["W"], pg["H"]
+        b64 = _b64.b64encode((cdir / pg["bg"]).read_bytes()).decode("ascii")
+        spans = []
+        for r in pg["rects"]:
+            n = r["name"]
+            ph = "пример значения «%s»" % n
+            left = r["x0"] / W * 100; top = r["y0"] / H * 100
+            fs = max(r["y1"] - r["y0"], 1) / 1.2 / W * 100
+            spans.append(
+                '<span class="var-hl var-empty" data-var="%s" data-ph="%s" style="position:absolute;'
+                'left:%.3f%%;top:%.3f%%;font-size:%.3fcqw;line-height:1;white-space:nowrap;'
+                'font-family:Arial,sans-serif">%s</span>'
+                % (_hx.escape(n), _hx.escape(ph, quote=True), left, top, fs, _hx.escape(ph)))
+        out.append('<div class="wl-page" style="position:relative;container-type:inline-size;width:820px;'
+                   'max-width:100%%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18);margin:0 auto 14px">'
+                   '<img src="data:image/png;base64,%s" style="width:100%%;display:block" alt="">%s</div>'
+                   % (b64, "".join(spans)))
+    return "".join(out)
+
+
+@bp.route("/templates/<int:template_id>/word_preview")
+@login_required
+def word_preview(template_id: int):
+    """Вкладка «Word»: DOCX-шаблон собирается с текущими значениями полей правой панели.
+
+    Значения приходят в query-строке (имя переменной = значение). Переменные, которых
+    нет в запросе, берутся из примера. Страницы PDF отдаются картинками (data URI).
+    """
+    import base64, html as _hp
+    from services import doc_engine
+    t = _template(template_id)
+    if not t:
+        abort(404)
+    code = t["code"]
+    names = doc_engine.docx_variables(code)
+    try:
+        from services.previews import _example_values
+        ex = _example_values(template_id) or {}
+    except Exception:  # noqa: BLE001
+        ex = {}
+    vals = {}
+    for k in names:
+        vals[k] = request.args.get(k) if k in request.args else str(ex.get(k, "") or "")
+    key = hashlib.sha256(json.dumps(vals, sort_keys=True, ensure_ascii=False).encode("utf8")).hexdigest()[:20]
+    out = Path(f"/opt/wolf_v2/data/cache/word_preview/{code}/{key}")
+    out.mkdir(parents=True, exist_ok=True)
+    res = doc_engine.build_document(code, vals, str(out), engine="word", name="page")
+    pdf = res.get("pdf")
+    if not pdf or not os.path.exists(pdf):
+        return ("<div style='padding:20px;color:#B91C1C'>Не удалось собрать Word-документ: "
+                + _hp.escape(str(res.get("error") or res.get("missing") or "")[:300]) + "</div>"), 500
+    pages = sorted(out.glob("page-*.png"))
+    if not pages:
+        subprocess.run(["pdftoppm", "-r", "110", "-png", pdf, str(out / "page")], check=False)
+        pages = sorted(out.glob("page-*.png"))
+    imgs = "".join(
+        '<div class="pg"><img src="data:image/png;base64,%s" alt=""></div>'
+        % base64.b64encode(pg.read_bytes()).decode("ascii") for pg in pages)
+    return ("<!DOCTYPE html><html lang=\"ru\"><head><meta charset=\"utf-8\"><style>"
+            "html,body{margin:0;background:#E7EBEE}"
+            ".pg{display:flex;justify-content:center;padding:10px 0}"
+            ".pg img{width:100%;max-width:820px;height:auto;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}"
+            "</style></head><body>" + imgs + "</body></html>")
+
+
 @bp.route("/templates/<int:template_id>/preview_pdf", methods=["POST"])
 @login_required
 def preview_pdf(template_id: int):
@@ -5885,10 +6096,12 @@ def pdfview(template_id):
                 'w.addEventListener("scroll",function(){'
                 '  if(Date.now()<guard)return;'
                 '  var m=w.scrollHeight-w.clientHeight;'
-                '  try{parent.postMessage({t:"cmp-scroll",p:(m>0?w.scrollTop/m:0)}, "*");}catch(e){}'
+                '  try{parent.postMessage({t:"cmp-scroll",p:(m>0?w.scrollTop/m:0),px:w.scrollTop,ph:w.scrollHeight}, "*");}catch(e){}'
                 '},{passive:true});'
                 'window.addEventListener("message",function(e){var d=e.data||{};if(d.t!=="cmp-scroll")return;'
-                '  var m=w.scrollHeight-w.clientHeight;guard=Date.now()+150;w.scrollTop=(d.p||0)*m;});'
+                '  var m=w.scrollHeight-w.clientHeight;guard=Date.now()+150;'
+                '  var t=(d.ph&&d.ph>0)?(d.px*(w.scrollHeight/d.ph)):((d.p||0)*m);'
+                '  w.scrollTop=Math.max(0,Math.min(m,t));});'
                 '})();'
                 '</script>')
     return f'<div style="padding:10px 0">{imgs}</div>'

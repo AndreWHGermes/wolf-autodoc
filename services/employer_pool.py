@@ -1,6 +1,6 @@
 """Пул организаций клиента для договоров (Remote Work Agreement, док. №11).
 
-Источник — архивные подлинники договоров клиентов (data/gCLIENT_examples) и
+Источник — архивные подлинники договоров клиентов (data/gdrive_examples) и
 собранные рендеры: у каждого клиента своя организация-работодатель.
 
 Правила заказчика:
@@ -12,8 +12,8 @@
 4. Приоритет выбора — город проживания клиента; если совпадений нет, берётся
    любая организация из списка (выбор детерминирован по заявке/клиенту).
 
-Файл пула: data/CLIENT_pool.json
-Запись: {name, CLIENT_name, address, inn, kpp, ogrn, source}
+Файл пула: data/employer_pool.json
+Запись: {name, legal_name, address, inn, kpp, ogrn, source}
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ import json
 import pathlib
 import re
 
-POOL_PATH = pathlib.Path('/opt/wolf_v2/data/CLIENT_pool.json')
+POOL_PATH = pathlib.Path('/opt/wolf_v2/data/employer_pool.json')
 
 # Признаки индонезийской организации: такие в договор не попадают никогда.
 ID_MARKERS = (
@@ -40,20 +40,20 @@ CITY_ALIASES = {
     'st petersburg': 'Санкт-Петербург', 'petersburg': 'Санкт-Петербург',
     'санкт-петербург': 'Санкт-Петербург', 'спб': 'Санкт-Петербург',
     'petrozavodsk': 'Петрозаводск', 'петрозаводск': 'Петрозаводск',
-    'kovrov': 'Ковров', 'ковров': 'Ковров', 'CLIENT': 'Ковров', 'владимир': 'Ковров',
+    'kovrov': 'Ковров', 'ковров': 'Ковров', 'vladimir': 'Ковров', 'владимир': 'Ковров',
     'blagoveshchensk': 'Благовещенск', 'благовещенск': 'Благовещенск',
     'kazan': 'Казань', 'казань': 'Казань', 'tatarstan': 'Казань',
     'almaty': 'Алматы', 'алматы': 'Алматы', 'kazakhstan': 'Алматы',
 }
 
 
-def _norm(CLIENT) -> str:
-    return (CLIENT or '').strip()
+def _norm(value) -> str:
+    return (value or '').strip()
 
 
 def is_foreign(rec: dict) -> bool:
     """Организация вне Индонезии — обязательное условие для договора."""
-    text = ' '.join(_norm(rec.get(k)).lower() for k in ('name', 'CLIENT_name', 'address'))
+    text = ' '.join(_norm(rec.get(k)).lower() for k in ('name', 'legal_name', 'address'))
     return not any(m in text for m in ID_MARKERS)
 
 
@@ -95,12 +95,12 @@ def ready() -> list:
     чтобы в документ чаще попадали организации без пропусков в подвале.
     """
     def score(r):
-        return sum(1 for k in ('name', 'CLIENT_name', 'address', 'inn', 'kpp', 'ogrn')
+        return sum(1 for k in ('name', 'legal_name', 'address', 'inn', 'kpp', 'ogrn')
                    if _norm(r.get(k)))
 
     out = []
     for r in load():
-        name = _norm(r.get('CLIENT_name') or r.get('name'))
+        name = _norm(r.get('legal_name') or r.get('name'))
         if name and _norm(r.get('inn')) and _norm(r.get('address')) and is_foreign(r):
             out.append(r)
     out.sort(key=score, reverse=True)
@@ -143,36 +143,36 @@ def pick(app_id=None, client_id=None, city=None, cities=None) -> dict:
     return _pick_from(rows, key)
 
 
-def normalize_CLIENT(CLIENT) -> str:
+def normalize_title(title) -> str:
     """Название организации для сравнения: без кавычек, регистра и лишних пробелов."""
-    low = _norm(CLIENT).lower().reCLIENT('«', '"').reCLIENT('»', '"')
+    low = _norm(title).lower().replace('«', '"').replace('»', '"')
     low = re.sub(r'[\s"\'`]+', ' ', low).strip()
     return low
 
 
-def by_CLIENT(CLIENT) -> dict:
+def by_title(title) -> dict:
     """Запись пула по названию ('' / мусор → {}). Сравнение терпимо к кавычкам."""
-    want = normalize_CLIENT(CLIENT)
+    want = normalize_title(title)
     if not want:
         return {}
     for r in ready():
-        if want in (normalize_CLIENT(r.get('name')), normalize_CLIENT(r.get('CLIENT_name'))):
+        if want in (normalize_title(r.get('name')), normalize_title(r.get('legal_name'))):
             return r
     return {}
 
 
-def by_any(CLIENT) -> dict:
+def by_any(value) -> dict:
     """Найти организацию по любому её реквизиту.
 
     Переменные организации созависимы: администратор может поправить не только
     название, но и ИНН (или КПП, ОГРН, адрес) — по введённому значению находим
     организацию в пуле и подставляем всю её группу целиком.
     """
-    raw = _norm(CLIENT)
+    raw = _norm(value)
     if not raw:
         return {}
     digits = re.sub(r'\D', '', raw)
-    org = by_CLIENT(raw)
+    org = by_title(raw)
     if org:
         return org
     for r in ready():
@@ -180,38 +180,38 @@ def by_any(CLIENT) -> dict:
                                  re.sub(r'\D', '', _norm(r.get('kpp'))),
                                  re.sub(r'\D', '', _norm(r.get('ogrn')))):
             return r
-        if len(raw) > 12 and normalize_CLIENT(raw)[:24] == normalize_CLIENT(r.get('address'))[:24]:
+        if len(raw) > 12 and normalize_title(raw)[:24] == normalize_title(r.get('address'))[:24]:
             return r
     return {}
 
 
-def CLIENT_of(org: dict) -> dict:
+def values_of(org: dict) -> dict:
     """Переменные документа из конкретной записи пула (шапка и подвал согласованы)."""
     if not org:
         return {}
-    CLIENT = _norm(org.get('CLIENT_name') or org.get('name'))
-    name = _norm(org.get('name') or CLIENT)
+    legal = _norm(org.get('legal_name') or org.get('name'))
+    name = _norm(org.get('name') or legal)
     return {
-        'CLIENT_name': CLIENT,              # название в тексте договора
-        'company_name_in_CLIENT': name,      # название в шапке документа
-        'company_CLIENT_address': _norm(org.get('address')),
+        'employer_name': legal,              # название в тексте договора
+        'company_name_in_quotes': name,      # название в шапке документа
+        'company_registered_address': _norm(org.get('address')),
         'company_inn': _norm(org.get('inn')),
         'company_kpp': _norm(org.get('kpp')),
         'company_ogrn': _norm(org.get('ogrn')),
     }
 
 
-def CLIENT_for(app_id=None, client_id=None, city=None, cities=None) -> dict:
+def values_for(app_id=None, client_id=None, city=None, cities=None) -> dict:
     """Переменные документа из выбранной организации (шапка и подвал согласованы)."""
-    return CLIENT_of(pick(app_id=app_id, client_id=client_id, city=city, cities=cities))
+    return values_of(pick(app_id=app_id, client_id=client_id, city=city, cities=cities))
 
 
-def CLIENTs() -> list:
+def titles() -> list:
     """Список организаций для интерфейса: только вне Индонезии, с городом."""
     out = []
     for i, r in enumerate(ready()):
-        CLIENT = _norm(r.get('name') or r.get('CLIENT_name'))
-        if CLIENT:
-            out.append({'CLIENT': i, 'CLIENT': CLIENT, 'inn': _norm(r.get('inn')),
+        title = _norm(r.get('name') or r.get('legal_name'))
+        if title:
+            out.append({'index': i, 'title': title, 'inn': _norm(r.get('inn')),
                         'city': city_of(r)})
     return out

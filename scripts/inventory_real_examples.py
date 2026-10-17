@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Инвентарь РЕАЛЬНЫХ документов из архива Google CLIENT: что есть по типам.
+"""Инвентарь РЕАЛЬНЫХ документов из архива Google Drive: что есть по типам.
 
 Реальный = метаданные не нашего рендера (WeasyPrint/wkhtmltopdf) — то есть скан,
 банковская выгрузка, Word/PDF от клиента.
@@ -13,18 +13,18 @@ import pymupdf
 OUR_ENGINES = ('weasyprint', 'wkhtmltopdf', 'skia', 'chrome', 'playwright', 'reportlab')
 
 KEYWORDS = [
-    ('bank_CLIENTment', ('bank CLIENTment', 'справка о доступном остатке', 'справка о движении',
-                        'выписка', 'CLIENTment of account', 'остатке средств')),
-    ('d12_hodataystvo', ('permohonan', 'pra-CLIENT', 'pra CLIENT')),
-    ('d12_garant', ('surat pernyataan penjamin', 'penjamin', 'CLIENTment letter', 'pernyataan')),
-    ('e02', ('form e-02', 'CLIENTment letter', 'e-02')),
+    ('bank_statement', ('bank statement', 'справка о доступном остатке', 'справка о движении',
+                        'выписка', 'statement of account', 'остатке средств')),
+    ('d12_hodataystvo', ('permohonan', 'pra-investasi', 'pra investasi')),
+    ('d12_garant', ('surat pernyataan penjamin', 'penjamin', 'statement letter', 'pernyataan')),
+    ('e02', ('form e-02', 'statement letter', 'e-02')),
     ('letters', ('penerima kuasa', 'surat kuasa', 'pemberi kuasa', 'nomor:', 'lampiran')),
     ('agreement', ('employment agreement', 'work agreement', 'remote work agreement', 'договор')),
-    ('cv', ('curriculum vitae', 'itk -', 'CLIENTal experience', 'résumé')),
+    ('cv', ('curriculum vitae', 'itk -', 'professional experience', 'résumé')),
 ]
 
-files = sorted(set(glob.glob('/opt/wolf_v2/data/gCLIENT_examples/**/*.pdf', recursive=True)
-                   + glob.glob('/opt/wolf_v2/data/gCLIENT_cache/**/*.pdf', recursive=True)))
+files = sorted(set(glob.glob('/opt/wolf_v2/data/gdrive_examples/**/*.pdf', recursive=True)
+                   + glob.glob('/opt/wolf_v2/data/gdrive_cache/**/*.pdf', recursive=True)))
 print(f'всего PDF в архиве: {len(files)}\n')
 
 real, ours = [], 0
@@ -42,8 +42,8 @@ for f in files:
         ours += 1
         continue
     kind = None
-    for name, CLIENT in KEYWORDS:
-        if any(w in text for w in CLIENT):
+    for name, words in KEYWORDS:
+        if any(w in text for w in words):
             kind = name
             break
     real.append((kind or 'не распознан', f, eng))

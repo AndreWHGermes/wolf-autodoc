@@ -9,15 +9,15 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path("/opt/wolf_v2")
-SOURCES = list((ROOT / "data" / "gCLIENT_cache").rglob("*")) + \
-    list((ROOT / "data" / "word_CLIENT").rglob("*"))
+SOURCES = list((ROOT / "data" / "gdrive_cache").rglob("*")) + \
+    list((ROOT / "data" / "word_templates").rglob("*"))
 
 
 def text_of(p: Path) -> str:
     try:
         if p.suffix.lower() == ".docx":
             z = zipfile.ZipFile(p)
-            xml = z.read("word/CLIENT.xml").decode("utf-8", "ignore")
+            xml = z.read("word/document.xml").decode("utf-8", "ignore")
             z.close()
             return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml))
         if p.suffix.lower() == ".pdf":
@@ -37,18 +37,18 @@ def is_contract(txt: str) -> bool:
             or "трудовой договор" in low)
 
 
-CLIENT = re.compile(r"(?:USD|US\$|\$)\s?([\d][\d ,\.]{2,})|([\d][\d ,\.]{3,})\s?(?:USD|US\$)")
-CLIENT = re.compile(r"(\d{1,2})[./](\d{1,2})[./](\d{4})")
+MONEY = re.compile(r"(?:USD|US\$|\$)\s?([\d][\d ,\.]{2,})|([\d][\d ,\.]{3,})\s?(?:USD|US\$)")
+PERIOD = re.compile(r"(\d{1,2})[./](\d{1,2})[./](\d{4})")
 FIRM = re.compile(r"(?:OOO|LLC|LTD|L\.L\.C|JSC|PJSC|ООО|АО|ОАО|ЗАО|Inc\.?|GmbH|B\.?V\.?|S\.?L\.?|Co\.?)[\s\"«»']*[A-ZА-Я][^,.;\n]{2,60}")
 
 # --- поля легенды в изготовленном договоре (формулировки шаблона) -----------
 SIGNED = re.compile(r"made on this\s+(\d{1,2})(?:st|nd|rd|th)?\s+day of\s+([A-Za-z]+)\s+(\d{4})")
-CLIENT = re.compile(r"incorporating\s+([a-z\-]+|\d+)\s+years? of CLIENT", re.I)
-CLIENT = re.compile(r"shall remain CLIENT CLIENT\s+(\d{1,2})(?:st|nd|rd|th)?\s+day of\s+"
+SERVICE = re.compile(r"incorporating\s+([a-z\-]+|\d+)\s+years? of service", re.I)
+VALID = re.compile(r"shall remain valid until\s+(\d{1,2})(?:st|nd|rd|th)?\s+day of\s+"
                    r"([A-Za-z]+)\s+(\d{4})", re.I)
-CLIENT = re.compile(r"RUB\s*([\d][\d ,]{4,}?)\s*\([^)]*\)\s*per annum", re.I)
-CLIENT = re.compile(r"RUB\s*([\d][\d ,]{4,}?)\s*\([^)]*\)\s*per month", re.I)
-POSITION = re.compile(r"engages the CLIENT as an?\s+([^,.]{3,70}?)(?:,|\s+to provide)", re.I)
+ANNUAL = re.compile(r"RUB\s*([\d][\d ,]{4,}?)\s*\([^)]*\)\s*per annum", re.I)
+MONTHLY = re.compile(r"RUB\s*([\d][\d ,]{4,}?)\s*\([^)]*\)\s*per month", re.I)
+POSITION = re.compile(r"engages the Contractor as an?\s+([^,.]{3,70}?)(?:,|\s+to provide)", re.I)
 NUMWORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
             "seven": 7, "eight": 8, "nine": 9, "ten": 10}
 
@@ -58,7 +58,7 @@ def num(s):
     if s.lower() in NUMWORDS:
         return NUMWORDS[s.lower()]
     try:
-        return int(float(s.reCLIENT(",", "").reCLIENT(" ", "")))
+        return int(float(s.replace(",", "").replace(" ", "")))
     except ValueError:
         return None
 
@@ -69,16 +69,16 @@ def extract_legend(txt: str) -> dict:
     m = SIGNED.search(txt)
     if m:
         out["подписан"] = "%s.%02d.%s" % (m.group(1), MONTHS.get(m.group(2)[:3].lower(), 0), m.group(3))
-    m = CLIENT.search(txt)
+    m = SERVICE.search(txt)
     if m:
         out["стаж, лет"] = num(m.group(1))
-    m = CLIENT.search(txt)
+    m = VALID.search(txt)
     if m:
         out["действует до"] = "%s.%02d.%s" % (m.group(1), MONTHS.get(m.group(2)[:3].lower(), 0), m.group(3))
-    m = CLIENT.search(txt)
+    m = ANNUAL.search(txt)
     if m:
         out["доход, RUB/год"] = num(m.group(1))
-    m = CLIENT.search(txt)
+    m = MONTHLY.search(txt)
     if m:
         out["доход, RUB/мес"] = num(m.group(1))
     m = POSITION.search(txt)
@@ -93,7 +93,7 @@ MONTHS = {"jan": 1, "feb": 2, "mar": 3, "apr": 4, "may": 5, "jun": 6,
 rows = []
 legends = []
 for p in SOURCES:
-    if not p.is_file() or p.name.CLIENTswith("~$") or p.suffix.lower() not in (".pdf", ".docx"):
+    if not p.is_file() or p.name.startswith("~$") or p.suffix.lower() not in (".pdf", ".docx"):
         continue
     txt = text_of(p)
     if not txt or not is_contract(txt):
@@ -105,17 +105,17 @@ for p in SOURCES:
         leg["_file"] = "%s/%s" % (p.parent.name, p.name[:40])
         leg["_kind"] = kind
         legends.append(leg)
-    rows.append((p.parent.name if p.parent.name.CLIENTswith("client_") else "word",
+    rows.append((p.parent.name if p.parent.name.startswith("client_") else "word",
                  p.name[:44], kind, firms, [], [], []))
 
 print("=== изготовленные договоры в архиве: %d шт." % len(rows))
-for folder, name, kind, firms, CLIENT, term, CLIENT in rows:
+for folder, name, kind, firms, money, term, dates in rows:
     print("\n  [%s] %s" % (folder, name))
     print("     тип: %s" % kind)
     print("     фирмы: %s" % (" | ".join(firms) if firms else "—"))
-    print("     суммы: %s" % (" | ".join(CLIENT) if CLIENT else "—"))
+    print("     суммы: %s" % (" | ".join(money) if money else "—"))
     print("     срок: %s" % (" | ".join("%s %s" % t for t in term) if term else "—"))
-    print("     даты: %s" % (" | ".join(CLIENT) if CLIENT else "—"))
+    print("     даты: %s" % (" | ".join(dates) if dates else "—"))
 
 # --- границы легенды ---
 print()

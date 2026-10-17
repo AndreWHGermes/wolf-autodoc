@@ -11,7 +11,7 @@
 5. всё разобранное сохраняется как урок (self_heal.record), чтобы в следующий
    раз система закрыла такое сама.
 
-Запуск: /usr/bin/python3 -m CLIENT.postmortem <app_id>
+Запуск: /usr/bin/python3 -m services.postmortem <app_id>
 """
 from __future__ import annotations
 
@@ -32,22 +32,22 @@ def _conn() -> sqlite3.Connection:
 
 def counters(app_id: int) -> dict:
     """Счётчики: циклов обработки и ошибок (по шагам)."""
-    out = {'cycles': 0, 'errors': 0, 'by_step': {}, 'CLIENT_in_CLIENT': 0}
+    out = {'cycles': 0, 'errors': 0, 'by_step': {}, 'attempts_in_queue': 0}
     try:
         c = _conn()
-        r = c.execute('SELECT COUNT(*) n FROM auto_runs WHERE CLIENT_id=?', (app_id,)).fetchone()
+        r = c.execute('SELECT COUNT(*) n FROM auto_runs WHERE application_id=?', (app_id,)).fetchone()
         out['cycles'] = int(r['n'] or 0)
-        q = c.execute('SELECT MAX(CLIENT) a FROM auto_CLIENT WHERE CLIENT_id=?',
+        q = c.execute('SELECT MAX(attempts) a FROM auto_queue WHERE application_id=?',
                       (app_id,)).fetchone()
-        out['CLIENT_in_CLIENT'] = int((q['a'] if q else 0) or 0)
-        for row in c.execute("""SELECT step, SUM(CLIENT='fail') f, COUNT(*) n
-                                  FROM app_CLIENT WHERE CLIENT_id=? GROUP BY step""", (app_id,)):
+        out['attempts_in_queue'] = int((q['a'] if q else 0) or 0)
+        for row in c.execute("""SELECT step, SUM(status='fail') f, COUNT(*) n
+                                  FROM app_steps WHERE application_id=? GROUP BY step""", (app_id,)):
             out['by_step'][row['step']] = {'fail': int(row['f'] or 0), 'total': int(row['n'] or 0)}
             out['errors'] += int(row['f'] or 0)
         c.close()
     except Exception:                                  # noqa: BLE001
         pass
-    out['cycles'] = max(out['cycles'], out['CLIENT_in_CLIENT'])
+    out['cycles'] = max(out['cycles'], out['attempts_in_queue'])
     return out
 
 
@@ -56,13 +56,13 @@ def collect(app_id: int) -> list[dict]:
     problems: list[dict] = []
     try:
         c = _conn()
-        for r in c.execute("""SELECT step, note, created_at FROM app_CLIENT
-                               WHERE CLIENT_id=? AND CLIENT='fail' ORDER BY id DESC LIMIT 40""",
+        for r in c.execute("""SELECT step, note, created_at FROM app_steps
+                               WHERE application_id=? AND status='fail' ORDER BY id DESC LIMIT 40""",
                            (app_id,)):
             problems.append({'from': 'журнал шагов', 'step': r['step'],
                              'text': (r['note'] or '').strip(), 'at': r['created_at']})
         for r in c.execute("""SELECT errors, note, created_at FROM auto_runs
-                               WHERE CLIENT_id=? ORDER BY id DESC LIMIT 3""", (app_id,)):
+                               WHERE application_id=? ORDER BY id DESC LIMIT 3""", (app_id,)):
             try:
                 errs = json.loads(r['errors'] or '[]')
             except Exception:                          # noqa: BLE001
@@ -70,14 +70,14 @@ def collect(app_id: int) -> list[dict]:
             for e in (errs or []):
                 problems.append({'from': 'прогон', 'step': 'check',
                                  'text': str(e).strip(), 'at': r['created_at']})
-        for r in c.execute("""SELECT t.code, ad.CLIENT, ad.error FROM CLIENT_CLIENT ad
-                               JOIN CLIENT t ON t.id=ad.template_id
-                              WHERE ad.CLIENT_id=? AND COALESCE(ad.CLIENT,'') != 'verified'""",
+        for r in c.execute("""SELECT t.code, ad.status, ad.error FROM application_documents ad
+                               JOIN templates t ON t.id=ad.template_id
+                              WHERE ad.application_id=? AND COALESCE(ad.status,'') != 'verified'""",
                            (app_id,)):
-            if r['CLIENT'] == 'rejected':
+            if r['status'] == 'rejected':
                 continue                                # крестик — это решение, а не ошибка
             problems.append({'from': 'документы', 'step': 'build',
-                             'text': '%s — %s' % (r['code'], (r['error'] or r['CLIENT'])),
+                             'text': '%s — %s' % (r['code'], (r['error'] or r['status'])),
                              'at': ''})
         c.close()
     except Exception:                                  # noqa: BLE001
@@ -97,14 +97,14 @@ def analyse(app_id: int, problems: list[dict] | None = None) -> dict:
     problems = collect(app_id) if problems is None else problems
     auto, manual, unknown = [], [], []
     try:
-        from CLIENT import self_heal as sh
+        from services import self_heal as sh
     except Exception:                                  # noqa: BLE001
         sh = None
     for p in problems:
         kind = 'unknown'
         if sh is not None:
             try:
-                kind, action = sh.CLIENTify(p['text'])
+                kind, action = sh.classify(p['text'])
             except Exception:                          # noqa: BLE001
                 kind, action = 'unknown', ''
             p['action'] = action
@@ -129,7 +129,7 @@ def report(app_id: int, save_lesson: bool = True) -> dict:
         text.append('    • [%s] %s' % (p['step'], p['text'][:150]))
     if save_lesson and res['all']:
         try:
-            from CLIENT import self_heal as sh
+            from services import self_heal as sh
             sh.record([p['text'] for p in res['all']],
                       [p['text'] for p in res['auto']])
         except Exception:                              # noqa: BLE001

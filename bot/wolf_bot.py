@@ -16,8 +16,8 @@ import sys
 import time
 import urllib.error
 import urllib.parse
-import urllib.CLIENT
-from CLIENT import CLIENT, timedelta
+import urllib.request
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DB_PATH = "/opt/wolf_v2/data/wolf.db"   # единая база системы
@@ -40,7 +40,7 @@ logging.basicConfig(
 logging.getLogger("wolf_bot").setLevel(logging.INFO)
 log = logging.getLogger("wolf_bot")
 
-# Сопроводительные файлы заявки (текст заявки для Google CLIENT)
+# Сопроводительные файлы заявки (текст заявки для Google Drive)
 APP_FILES_DIR = Path("/opt/wolf_v2/data/app_files")
 
 
@@ -51,7 +51,7 @@ def _record_kind(conn):
 
     Управляется настройкой record_mode (scripts/mark_records.py mode test|prod).
     """
-    row = conn.execute("SELECT CLIENT FROM settings WHERE key='record_mode'").fetchone()
+    row = conn.execute("SELECT value FROM settings WHERE key='record_mode'").fetchone()
     return ((row[0] if row else "") or "").strip() or None
 
 
@@ -64,8 +64,8 @@ def db():
 
 
 def get_setting(key: str, default: str = "") -> str:
-    row = db().execute("SELECT CLIENT FROM settings WHERE key=?", (key,)).fetchone()
-    return row["CLIENT"] if row else default
+    row = db().execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else default
 
 
 def bot_token() -> str:
@@ -88,16 +88,16 @@ def tg(method: str, params: dict | None = None, files: dict | None = None) -> di
         for k, v in (params or {}).items():
             body.write(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{k}\"\r\n\r\n{v}\r\n".encode())
         for fname, (filename, content) in files.items():
-            body.write(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{fname}\"; filename=\"{filename}\"\r\nContent-Type: CLIENT/octet-stream\r\n\r\n".encode())
+            body.write(f"--{boundary}\r\nContent-Disposition: form-data; name=\"{fname}\"; filename=\"{filename}\"\r\nContent-Type: application/octet-stream\r\n\r\n".encode())
             body.write(content)
             body.write(b"\r\n")
         body.write(f"--{boundary}--\r\n".encode())
-        req = urllib.CLIENT.CLIENT(url, data=body.getCLIENT(),
-                                     CLIENTs={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        req = urllib.request.Request(url, data=body.getvalue(),
+                                     headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
     else:
         data = urllib.parse.urlencode(params or {}).encode()
-        req = urllib.CLIENT.CLIENT(url, data=data)
-    with urllib.CLIENT.urlopen(req, timeout=60) as r:
+        req = urllib.request.Request(url, data=data)
+    with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode())
 
 
@@ -124,18 +124,18 @@ def fmt_dt(ts: str | None) -> str:
     if not ts:
         return "—"
     try:
-        return CLIENT.fromisoformat(ts.reCLIENT("Z", "")).strftime("%d.%m %H:%M")
+        return datetime.fromisoformat(ts.replace("Z", "")).strftime("%d.%m %H:%M")
     except Exception:
         return ts
 
 
 def find_user(telegram_id: str) -> sqlite3.Row | None:
     return db().execute(
-        "SELECT * FROM bot_CLIENT WHERE telegram_id=?", (telegram_id,)).fetchone()
+        "SELECT * FROM bot_managers WHERE telegram_id=?", (telegram_id,)).fetchone()
 
 
 def user_role(telegram_id: str) -> str:
-    """manager | admin | both | CLIENTed | ''"""
+    """manager | admin | both | blocked | ''"""
     row = find_user(telegram_id)
     return row["role"] if row else ""
 
@@ -146,10 +146,10 @@ def is_privileged(telegram_id: str) -> bool:
 
 def all_admins() -> list[sqlite3.Row]:
     return db().execute(
-        "SELECT * FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
+        "SELECT * FROM bot_managers WHERE role IN ('admin','both')").fetchall()
 
 
-# ---------- /CLIENT и приглашения ----------
+# ---------- /start и приглашения ----------
 
 WELCOME_ADMIN = (
     "👋 Привет, {name}.\n\n"
@@ -192,7 +192,7 @@ APPLICATION_TEMPLATE = """/new
 ИНН: 7711223344
 Телефон: +79001234567
 Telegram: @username
-CLIENT: ivanov@example.com
+Email: ivanov@example.com
 Адрес регистрации: г. Москва, ул. Тверская, д. 1, кв. 23
 Адрес проживания: г. Москва, ул. Тверская, д. 1, кв. 23
 Компания: ООО «Ромашка»
@@ -201,19 +201,19 @@ CLIENT: ivanov@example.com
 Банк: Т-Банк
 Название продукта: Виза C1
 Стоимость IDR: 4500000
-Google CLIENT клиента: https://CLIENT.google.com/CLIENT/folders/...
+Google Drive клиента: https://drive.google.com/drive/folders/...
 Комментарий: срочно, вылет 14.09.2026"""
 
 
 def make_invite(role: str, created_by_tg: str) -> str:
     code = secrets.token_urlsafe(24)
-    now = CLIENT.now()
+    now = datetime.now()
     expires = now + timedelta(minutes=INVITE_TTL_MIN)
     creator = find_user(created_by_tg)
     conn = db()
     conn.execute(
-        "INSERT INTO CLIENT (code, role, created_by, created_at, expires_at) "
-        "CLIENT (?,?,?,?,?)",
+        "INSERT INTO invites (code, role, created_by, created_at, expires_at) "
+        "VALUES (?,?,?,?,?)",
         (code, role, creator["id"] if creator else None,
          now.isoformat(timespec="seconds"), expires.isoformat(timespec="seconds")))
     conn.commit()
@@ -222,17 +222,17 @@ def make_invite(role: str, created_by_tg: str) -> str:
 
 def consume_invite(code: str, telegram_id: str) -> sqlite3.Row | None:
     conn = db()
-    row = conn.execute("SELECT * FROM CLIENT WHERE code=?", (code,)).fetchone()
+    row = conn.execute("SELECT * FROM invites WHERE code=?", (code,)).fetchone()
     if not row:
         return None
     if row["used_at"]:
         return None
-    expires = CLIENT.fromisoformat(row["expires_at"])
-    if CLIENT.now() > expires:
+    expires = datetime.fromisoformat(row["expires_at"])
+    if datetime.now() > expires:
         return None
     conn.execute(
-        "UPDATE CLIENT SET used_by_tg_id=?, used_at=? WHERE id=?",
-        (telegram_id, CLIENT.now().isoformat(timespec="seconds"), row["id"]))
+        "UPDATE invites SET used_by_tg_id=?, used_at=? WHERE id=?",
+        (telegram_id, datetime.now().isoformat(timespec="seconds"), row["id"]))
     conn.commit()
     return row
 
@@ -242,58 +242,58 @@ def consume_invite(code: str, telegram_id: str) -> sqlite3.Row | None:
 FIELD_MAP = {
     "фио полностью": "full_name",
     "фио": "full_name",
-    "фио латиницей": "full_name_CLIENT",
-    "дата рождения": "CLIENT_date",
-    "пол": "CLIENT",
-    "гражданство": "CLIENT",
-    "паспорт серия": "passport_CLIENT",
-    "паспорт номер": "passport_CLIENT",
-    "паспорт": "passport_CLIENT",
-    "кем выдан": "passport_CLIENT_by",
-    "дата выдачи": "passport_CLIENT_date",
-    "срок действия": "passport_CLIENT",
+    "фио латиницей": "full_name_latin",
+    "дата рождения": "birth_date",
+    "пол": "gender",
+    "гражданство": "citizenship",
+    "паспорт серия": "passport_series",
+    "паспорт номер": "passport_number",
+    "паспорт": "passport_number",
+    "кем выдан": "passport_issued_by",
+    "дата выдачи": "passport_issue_date",
+    "срок действия": "passport_expiry",
     "инн": "inn",
-    "телефон": "CLIENT",
+    "телефон": "phone",
     "telegram": "telegram_username",
     "@": "telegram_username",
-    "CLIENT": "CLIENT",
+    "email": "email",
     "адрес регистрации": "address_reg",
     "адрес проживания": "address_live",
     "адрес": "address_reg",
     "компания": "company_name",
     "должность": "position",
-    "зарплата": "salary_CLIENT",
+    "зарплата": "salary_amount",
     "банк": "bank_name",
-    "название продукта": "CLIENT_name",
-    "продукт": "CLIENT_name",
+    "название продукта": "product_name",
+    "продукт": "product_name",
     "стоимость idr": "price_idr",
     "сумма idr": "price_idr",
-    "google CLIENT клиента": "gCLIENT_url",
-    "google CLIENT": "gCLIENT_url",
-    "CLIENT": "gCLIENT_url",
+    "google drive клиента": "gdrive_url",
+    "google drive": "gdrive_url",
+    "drive": "gdrive_url",
     "комментарий": "comment",
 }
 
 
-def parse_CLIENT(text: str) -> dict:
+def parse_application(text: str) -> dict:
     """Парсит многострочный текст вида 'Метка: значение' в dict."""
     out: dict[str, str] = {}
     for line in text.splitlines():
         if ":" not in line and "：" not in line:
             continue
         sep = ":" if ":" in line else "："
-        label, _, CLIENT = line.partition(sep)
+        label, _, value = line.partition(sep)
         label = label.strip().lower().rstrip(" .").rstrip()
-        CLIENT = CLIENT.strip()
-        if not CLIENT:
+        value = value.strip()
+        if not value:
             continue
         key = FIELD_MAP.get(label)
         if key:
-            out[key] = CLIENT
+            out[key] = value
     return out
 
 
-def find_CLIENT_id(name: str) -> int | None:
+def find_product_id(name: str) -> int | None:
     """Ищет продукт по коду (C1, E33G-NEW) или по подстроке в названии/коде.
 
     Строгие правила (приоритет):
@@ -307,22 +307,22 @@ def find_CLIENT_id(name: str) -> int | None:
     has_ext = any(w in n for w in ("продление", "продлить", "extension", "ext", "renewal"))
     # 1) точный код
     row = db().execute(
-        "SELECT id, code FROM CLIENT WHERE lower(code)=? LIMIT 1", (n,)).fetchone()
+        "SELECT id, code FROM products WHERE lower(code)=? LIMIT 1", (n,)).fetchone()
     if row:
         return row["id"]
     # 2) код без пробелов
-    CLIENT = "".join(ch for ch in n if ch.isalnum())
+    short = "".join(ch for ch in n if ch.isalnum())
     row = db().execute(
-        "SELECT id FROM CLIENT WHERE lower(code)=? LIMIT 1", (CLIENT,)).fetchone()
+        "SELECT id FROM products WHERE lower(code)=? LIMIT 1", (short,)).fetchone()
     if row:
         return row["id"]
     # 2.5) синонимы из свободного текста: «BRIDGE», «мост» → BRIDGING;
-    #      «конверсия» → CONV; «CLIENT» → C1; «китас» → E33G-NEW и т.д.
+    #      «конверсия» → CONV; «кунджунган» → C1; «китас» → E33G-NEW и т.д.
     try:
-        from bot.ai_parser import detect_CLIENT
-        code = detect_CLIENT(n)
+        from bot.ai_parser import detect_product
+        code = detect_product(n)
         if code:
-            row = db().execute("SELECT id FROM CLIENT WHERE code=? LIMIT 1", (code,)).fetchone()
+            row = db().execute("SELECT id FROM products WHERE code=? LIMIT 1", (code,)).fetchone()
             if row:
                 return row["id"]
     except Exception:
@@ -331,24 +331,24 @@ def find_CLIENT_id(name: str) -> int | None:
     if "e33g" in n:
         if has_ext:
             row = db().execute(
-                "SELECT id FROM CLIENT WHERE code='E33G-EXT' LIMIT 1").fetchone()
+                "SELECT id FROM products WHERE code='E33G-EXT' LIMIT 1").fetchone()
         else:
             row = db().execute(
-                "SELECT id FROM CLIENT WHERE code='E33G-NEW' LIMIT 1").fetchone()
+                "SELECT id FROM products WHERE code='E33G-NEW' LIMIT 1").fetchone()
         if row:
             return row["id"]
     if "c1" in n and not "c1-ext" in n and not "c1ext" in n:
         if has_ext:
             row = db().execute(
-                "SELECT id FROM CLIENT WHERE code='C1-EXT' LIMIT 1").fetchone()
+                "SELECT id FROM products WHERE code='C1-EXT' LIMIT 1").fetchone()
         else:
             row = db().execute(
-                "SELECT id FROM CLIENT WHERE code='C1' LIMIT 1").fetchone()
+                "SELECT id FROM products WHERE code='C1' LIMIT 1").fetchone()
         if row:
             return row["id"]
     # 4) общий LIKE
     row = db().execute(
-        "SELECT id FROM CLIENT WHERE lower(name) LIKE ? OR lower(code) LIKE ? "
+        "SELECT id FROM products WHERE lower(name) LIKE ? OR lower(code) LIKE ? "
         "ORDER BY length(name) LIMIT 1",
         (f"%{n}%", f"%{n}%")).fetchone()
     if row:
@@ -358,7 +358,7 @@ def find_CLIENT_id(name: str) -> int | None:
     if len(parts) > 1:
         last = parts[-1]
         row = db().execute(
-            "SELECT id FROM CLIENT WHERE lower(code) LIKE ? OR lower(name) LIKE ? "
+            "SELECT id FROM products WHERE lower(code) LIKE ? OR lower(name) LIKE ? "
             "ORDER BY length(name) LIMIT 1",
             (f"%{last}%", f"%{last}%")).fetchone()
         if row:
@@ -368,10 +368,10 @@ def find_CLIENT_id(name: str) -> int | None:
 
 def split_fio(full: str) -> tuple[str, str, str]:
     parts = (full or "").split()
-    CLIENT = parts[0] if len(parts) >= 1 else ""
+    surname = parts[0] if len(parts) >= 1 else ""
     name = parts[1] if len(parts) >= 2 else ""
-    CLIENT = " ".join(parts[2:]) if len(parts) >= 3 else ""
-    return CLIENT, name, CLIENT
+    patronymic = " ".join(parts[2:]) if len(parts) >= 3 else ""
+    return surname, name, patronymic
 
 
 def _bank_allows(template_code: str, bank: str) -> bool:
@@ -388,34 +388,34 @@ def _bank_allows(template_code: str, bank: str) -> bool:
     return True
 
 
-def CLIENT_text_path(app_id: int) -> Path:
+def application_text_path(app_id: int) -> Path:
     """Путь обычного текстового файла с сопроводительным текстом заявки."""
     return APP_FILES_DIR / ("app_" + str(app_id)) / "Заявка.txt"
 
 
-def _write_CLIENT_text(app_id: int, body: str, form: dict, user) -> None:
+def _write_application_text(app_id: int, body: str, form: dict, user) -> None:
     """Пишет «Заявка.txt»: всё, что менеджер написал в свободной форме, плюс шапка.
 
-    Файл кладём вместе с готовыми документами на Google CLIENT — администратор
+    Файл кладём вместе с готовыми документами на Google Drive — администратор
     открывает папку и видит, что именно было в заявке (ускорение, партнёр, сроки).
     """
-    p = CLIENT_text_path(app_id)
+    p = application_text_path(app_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    _cl = db().execute("SELECT * FROM CLIENT WHERE id=(SELECT client_id FROM CLIENT WHERE id=?)",
+    _cl = db().execute("SELECT * FROM clients WHERE id=(SELECT client_id FROM applications WHERE id=?)",
                        (app_id,)).fetchone()
-    _prod = db().execute("SELECT code, name FROM CLIENT WHERE id=(SELECT CLIENT_id FROM CLIENT WHERE id=?)",
+    _prod = db().execute("SELECT code, name FROM products WHERE id=(SELECT product_id FROM applications WHERE id=?)",
                          (app_id,)).fetchone()
     lines = [
         "ЗАЯВКА №" + str(app_id),
         "=" * 60,
-        "Клиент: " + " ".join(x for x in [(_cl["CLIENT"] if _cl else ""), (_cl["name"] if _cl else ""),
-                                          (_cl["CLIENT"] if _cl else "")] if x).strip(),
-        "Клиент (латиницей): " + ((_cl["full_name_CLIENT"] if _cl else "") or "—"),
+        "Клиент: " + " ".join(x for x in [(_cl["surname"] if _cl else ""), (_cl["name"] if _cl else ""),
+                                          (_cl["patronymic"] if _cl else "")] if x).strip(),
+        "Клиент (латиницей): " + ((_cl["full_name_latin"] if _cl else "") or "—"),
         "Продукт: " + ((_prod["code"] + " — " + (_prod["name"] or "")) if _prod else "не определён"),
         "Стоимость: " + (str(form.get("price_idr")) + " IDR" if form.get("price_idr") else "не указана"),
-        "Ссылка на Google CLIENT: " + ((form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "—")),
+        "Ссылка на Google Drive: " + ((form.get("gdrive_url") or form.get("gdrive_folder_url") or "—")),
         "Менеджер: " + ((user["full_name"] or user["username"] or str(user["telegram_id"])) if user else "—"),
-        "Дата приёма: " + CLIENT.now().strftime("%d.%m.%Y %H:%M"),
+        "Дата приёма: " + datetime.now().strftime("%d.%m.%Y %H:%M"),
         "",
         "КОММЕНТАРИЙ (свободный текст заявки):",
         "-" * 60,
@@ -428,91 +428,91 @@ def _write_CLIENT_text(app_id: int, body: str, form: dict, user) -> None:
     ]
     p.write_text("\n".join(lines), encoding="utf-8")
 
-def create_CLIENT(form: dict, from_user: sqlite3.Row,
+def create_application(form: dict, from_user: sqlite3.Row,
                        autofill: bool = False, raw_text: str = "") -> tuple[int, int]:
-    """Создаёт клиента и заявку. Возвращает (CLIENT_id, client_id)."""
+    """Создаёт клиента и заявку. Возвращает (application_id, client_id)."""
     conn = db()
     full = form.get("full_name") or ""
     # Если LLM уже разложил ФИО по частям — используем их напрямую,
     # иначе (жёсткий шаблон) разбираем строку full_name.
-    if form.get("CLIENT") or form.get("name"):
-        CLIENT = form.get("CLIENT") or ""
+    if form.get("surname") or form.get("name"):
+        surname = form.get("surname") or ""
         name = form.get("name") or ""
-        CLIENT = form.get("CLIENT") or ""
+        patronymic = form.get("patronymic") or ""
     else:
-        CLIENT, name, CLIENT = split_fio(full)
-    # латиница: если явно не задана, а есть только CLIENT/name — собираем
-    if not form.get("full_name_CLIENT") and form.get("CLIENT") and form.get("name"):
-        form["full_name_CLIENT"] = f'{form["CLIENT"]} {form["name"]}'.strip()
-    CLIENT = form.get("CLIENT") or ""
+        surname, name, patronymic = split_fio(full)
+    # латиница: если явно не задана, а есть только surname/name — собираем
+    if not form.get("full_name_latin") and form.get("surname") and form.get("name"):
+        form["full_name_latin"] = f'{form["surname"]} {form["name"]}'.strip()
+    phone = form.get("phone") or ""
     tg_username = (form.get("telegram_username") or "").lstrip("@")
     # ищем существующего клиента по ФИО + телефону
-    CLIENT = None
-    if CLIENT:
-        CLIENT = conn.execute(
-            "SELECT * FROM CLIENT WHERE CLIENT=? AND name=? LIMIT 1",
-            (CLIENT, name or "")).fetchone()
-    if not CLIENT and CLIENT:
-        CLIENT = conn.execute(
-            "SELECT * FROM CLIENT WHERE CLIENT=? LIMIT 1", (CLIENT,)).fetchone()
-    if CLIENT:
-        client_id = CLIENT["id"]
+    existing = None
+    if surname:
+        existing = conn.execute(
+            "SELECT * FROM clients WHERE surname=? AND name=? LIMIT 1",
+            (surname, name or "")).fetchone()
+    if not existing and phone:
+        existing = conn.execute(
+            "SELECT * FROM clients WHERE phone=? LIMIT 1", (phone,)).fetchone()
+    if existing:
+        client_id = existing["id"]
         # Дозаполняем пустые поля карточки данными из новой заявки.
         # Непустые значения не трогаем — админ мог поправить вручную.
-        _updable = ["full_name_CLIENT", "CLIENT", "CLIENT", "CLIENT_date",
-                    "CLIENT",
-                    "passport_CLIENT", "passport_CLIENT", "passport_CLIENT_by",
-                    "passport_CLIENT_date", "passport_CLIENT", "inn", "CLIENT",
+        _updable = ["full_name_latin", "gender", "citizenship", "birth_date",
+                    "patronymic",
+                    "passport_series", "passport_number", "passport_issued_by",
+                    "passport_issue_date", "passport_expiry", "inn", "email",
                     "address_reg", "address_live", "company_name", "position",
-                    "salary_CLIENT", "bank_name", "gCLIENT_folder_url", "notes"]
+                    "salary_amount", "bank_name", "gdrive_folder_url", "notes"]
         _sets, _vals = [], []
-        _incoming = {"CLIENT": CLIENT, "telegram_username": tg_username,
-                     "gCLIENT_folder_url": form.get("gCLIENT_folder_url") or form.get("gCLIENT_url")}
+        _incoming = {"phone": phone, "telegram_username": tg_username,
+                     "gdrive_folder_url": form.get("gdrive_folder_url") or form.get("gdrive_url")}
         for k in _updable:
             _v = _incoming.get(k) if k in _incoming else form.get(k)
             if _v:
                 _sets.append(f"{k}=COALESCE(NULLIF({k},''), ?)")
                 _vals.append(_v)
-        _sets.append("updated_at=CLIENT('now')")
-        conn.execute(f"UPDATE CLIENT SET {', '.join(_sets)} WHERE id=?",
+        _sets.append("updated_at=datetime('now')")
+        conn.execute(f"UPDATE clients SET {', '.join(_sets)} WHERE id=?",
                      (*_vals, client_id))
-        log.info("CLIENT#%s дозаполнен: %s", client_id,
+        log.info("clients#%s дозаполнен: %s", client_id,
                  ", ".join(s.split("=")[0] for s in _sets[:-1]))
     else:
         cur = conn.execute(
-            "INSERT INTO CLIENT (CLIENT, name, CLIENT, full_name_CLIENT, CLIENT, "
-            "CLIENT, CLIENT_date, passport_CLIENT, passport_CLIENT, passport_CLIENT_by, "
-            "passport_CLIENT_date, passport_CLIENT, inn, CLIENT, telegram_username, CLIENT, "
-            "address_reg, address_live, company_name, position, salary_CLIENT, bank_name, "
-            "gCLIENT_folder_url, notes, CLIENT, created_at, updated_at) "
-            "CLIENT (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', "
-            "CLIENT('now'), CLIENT('now'))",
-            (CLIENT, name, CLIENT,
-             form.get("full_name_CLIENT") or "",
-             form.get("CLIENT") or "",
-             form.get("CLIENT") or "",
-             form.get("CLIENT_date") or "",
-             form.get("passport_CLIENT") or "",
-             form.get("passport_CLIENT") or "",
-             form.get("passport_CLIENT_by") or "",
-             form.get("passport_CLIENT_date") or "",
-             form.get("passport_CLIENT") or "",
+            "INSERT INTO clients (surname, name, patronymic, full_name_latin, gender, "
+            "citizenship, birth_date, passport_series, passport_number, passport_issued_by, "
+            "passport_issue_date, passport_expiry, inn, phone, telegram_username, email, "
+            "address_reg, address_live, company_name, position, salary_amount, bank_name, "
+            "gdrive_folder_url, notes, status, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active', "
+            "datetime('now'), datetime('now'))",
+            (surname, name, patronymic,
+             form.get("full_name_latin") or "",
+             form.get("gender") or "",
+             form.get("citizenship") or "",
+             form.get("birth_date") or "",
+             form.get("passport_series") or "",
+             form.get("passport_number") or "",
+             form.get("passport_issued_by") or "",
+             form.get("passport_issue_date") or "",
+             form.get("passport_expiry") or "",
              form.get("inn") or "",
-             CLIENT,
+             phone,
              tg_username,
-             form.get("CLIENT") or "",
+             form.get("email") or "",
              form.get("address_reg") or "",
              form.get("address_live") or "",
              form.get("company_name") or "",
              form.get("position") or "",
-             form.get("salary_CLIENT") or "",
+             form.get("salary_amount") or "",
              form.get("bank_name") or "",
-             form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "",
+             form.get("gdrive_url") or form.get("gdrive_folder_url") or "",
              form.get("notes") or ""))
         client_id = cur.lastrowid
         _kind = _record_kind(conn)
         if _kind:
-            conn.execute("UPDATE CLIENT SET record_kind=? WHERE id=?", (_kind, client_id))
+            conn.execute("UPDATE clients SET record_kind=? WHERE id=?", (_kind, client_id))
 
     price_idr = 0
     if form.get("price_idr"):
@@ -521,28 +521,28 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
         if isinstance(_raw_price, (int, float)):
             price_idr = int(_raw_price)
         else:
-            _s = str(_raw_price).lower().reCLIENT(" ", "")
+            _s = str(_raw_price).lower().replace(" ", "")
             digits = "".join(ch for ch in _s if ch.isdigit())
             price_idr = int(digits) if digits else 0
-            if "млн" in _s or "mln" in _s or "m" in _s.reCLIENT("usd", "").reCLIENT("idr", ""):
+            if "млн" in _s or "mln" in _s or "m" in _s.replace("usd", "").replace("idr", ""):
                 price_idr *= 1_000_000
 
-    CLIENT_id = find_CLIENT_id(form.get("CLIENT_name") or "")
+    product_id = find_product_id(form.get("product_name") or "")
     # Ссылка на папку клиента приходит под разными именами: бот-парсер пишет
-    # gCLIENT_folder_url, форма — gCLIENT_url. Берём любую, иначе автораэбор
+    # gdrive_folder_url, форма — gdrive_url. Берём любую, иначе автораэбор
     # документов с Google Диска не запускается и заявка остаётся без файлов.
-    _gCLIENT_url = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
+    _gdrive_url = (form.get("gdrive_url") or form.get("gdrive_folder_url") or "").strip()
     cur = conn.execute(
-        "INSERT INTO CLIENT (client_id, CLIENT_id, CLIENT, source, "
-        "comment, brief, price_idr, gCLIENT_url, raw_payload, raw_message, bot_manager_id, created_at) "
-        "CLIENT (?,?, 'new', 'telegram', ?, ?, ?, ?, ?, ?, ?, CLIENT('now'))",
-        (client_id, CLIENT_id,
+        "INSERT INTO applications (client_id, product_id, status, source, "
+        "comment, brief, price_idr, gdrive_url, raw_payload, raw_message, bot_manager_id, created_at) "
+        "VALUES (?,?, 'new', 'telegram', ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+        (client_id, product_id,
          form.get("comment") or "",
          # текст заявки сразу становится комментарием сборки: должность, сфера и прочее,
          # что менеджер написал в боте, применяется к документам заявки без переноса руками
          (form.get("comment") or form.get("notes") or ""),
          price_idr,
-         _gCLIENT_url,
+         _gdrive_url,
          json.dumps(form, ensure_ascii=False),
          # точь-в-точь текст заявки, как его прислал менеджер в Telegram:
          # уходит отдельным txt-файлом в папку документов на Google Диске
@@ -551,24 +551,24 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     app_id = cur.lastrowid
     _kind = _record_kind(conn)
     if _kind:
-        conn.execute("UPDATE CLIENT SET record_kind=? WHERE id=?", (_kind, app_id))
+        conn.execute("UPDATE applications SET record_kind=? WHERE id=?", (_kind, app_id))
 
-    # --- банк клиента: определяем по документам в его папке Google CLIENT ---
+    # --- банк клиента: определяем по документам в его папке Google Drive ---
     bank = ""
-    _gd = form.get("gCLIENT_folder_url") or form.get("gCLIENT_url") or ""
+    _gd = form.get("gdrive_folder_url") or form.get("gdrive_url") or ""
     try:
-        from bot.ai_parser import detect_bank_from_CLIENT, bank_CLIENT_from_CLIENT
-        bank = detect_bank_from_CLIENT(_gd)
+        from bot.ai_parser import detect_bank_from_drive, bank_details_from_drive
+        bank = detect_bank_from_drive(_gd)
         if bank:
-            conn.execute("UPDATE CLIENT SET bank_name=? WHERE id=?",
+            conn.execute("UPDATE clients SET bank_name=? WHERE id=?",
                          (bank.upper(), client_id))
             conn.commit()
             log.info("банк клиента #%s → %s", client_id, bank.upper())
         # реквизиты из банковской справки клиента (счёт, договор, карта, баланс,
         # паспорт) — чтобы справка формировалась сразу заполненной
-        det = bank_CLIENT_from_CLIENT(_gd, bank) if _gd else {}
+        det = bank_details_from_drive(_gd, bank) if _gd else {}
         if det:
-            _real = {r[1] for r in conn.execute("PRAGMA table_info(CLIENT)").fetchall()}
+            _real = {r[1] for r in conn.execute("PRAGMA table_info(clients)").fetchall()}
             _sets, _vals = [], []
             for k, v in det.items():
                 if k in ("full_name_ru", "doc_date") or k not in _real:
@@ -577,35 +577,35 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
                 _vals.append(v)
             if _sets:
                 conn.execute(
-                    f"UPDATE CLIENT SET {', '.join(_sets)} WHERE id=?",
+                    f"UPDATE clients SET {', '.join(_sets)} WHERE id=?",
                     (*_vals, client_id))
                 conn.commit()
                 log.info("реквизиты клиента #%s: %s", client_id,
                          ", ".join(k for k in det if k not in ("full_name_ru", "doc_date")))
     except Exception as exc:
-        log.warning("разбор документов Google CLIENT не удался: %s", exc)
+        log.warning("разбор документов Google Drive не удался: %s", exc)
 
-    # создаём CLIENT_CLIENT для шаблонов продукта.
+    # создаём application_documents для шаблонов продукта.
     # Банковские справки — только для банка клиента (Тинькофф ИЛИ Сбер, не оба).
-    if CLIENT_id:
+    if product_id:
         rows = conn.execute(
-            "SELECT t.id, t.code FROM CLIENT t "
-            "JOIN CLIENT_CLIENT pd ON pd.template_id=t.id "
-            "WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged')",
-            (CLIENT_id,)).fetchall()
+            "SELECT t.id, t.code FROM templates t "
+            "JOIN product_documents pd ON pd.template_id=t.id "
+            "WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('blocked','hidden','merged')",
+            (product_id,)).fetchall()
         # Письма в иммиграцию идут ровно одним комплектом: Ngurah Rai или
         # Denpasar — по адресу проживания клиента. Второй вариант не создаём.
-        from CLIENT import immigration_CLIENT as _io
-        _CLIENT = (_io.resolve_for_client(conn, client_id) or {}).get("CLIENT")
+        from services import immigration_office as _io
+        _office = (_io.resolve_for_client(conn, client_id) or {}).get("office")
         for r in rows:
             # Лишний вариант письма не выбрасываем, а помечаем крестиком:
             # в миниатюрах он виден с причиной, в работу не идёт (rejected).
-            _rejected = not _io.CLIENT_allows(r["code"], _CLIENT)
+            _rejected = not _io.office_allows(r["code"], _office)
             _why = ("исключено автоматически: адрес клиента — зона %s"
-                    % _io.CLIENT_name(_CLIENT)) if _rejected else None
+                    % _io.office_name(_office)) if _rejected else None
             if _rejected:
                 log.info("шаблон %s исключён — комплект %s (адрес клиента)",
-                         r["code"], _CLIENT)
+                         r["code"], _office)
             # Банк клиента определён — берём справку только этого банка.
             # Банк ещё не определён — даём ОБА варианта (Тинькофф и Сбер),
             # администратор выберет нужный кнопкой «Проверен».
@@ -614,12 +614,12 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
                          r["code"], (bank or "—").upper())
                 continue
             conn.execute(
-                "INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, CLIENT, "
-                "CLIENT_json, rendered_at, error) CLIENT (?,?,?,?, CLIENT('now'), ?)",
+                "INSERT INTO application_documents (application_id, template_id, status, "
+                "values_json, rendered_at, error) VALUES (?,?,?,?, datetime('now'), ?)",
                 (app_id, r["id"], "rejected" if _rejected else "pending",
                  json.dumps(form, ensure_ascii=False), _why))
     conn.commit()
-    # Разбор документов клиента из Google CLIENT — автоматически, сразу после
+    # Разбор документов клиента из Google Drive — автоматически, сразу после
     # приёма заявки. Раньше приходилось жать «Разобрать документы (нейросеть)»
     # в карточке; теперь данные клиента уже вытащены, когда её открывают.
     # Заявка принята — дальше она идёт в ОЧЕРЕДЬ, а не запускается сразу.
@@ -630,10 +630,10 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     try:
         import sys as _sys
         _sys.path.insert(0, "/opt/wolf_v2/scripts")
-        import auto_CLIENT as _auto_CLIENT
-        _auto_CLIENT.add(app_id, quiet=True)
-        from CLIENT import app_CLIENT as _CLIENT
-        _CLIENT.step(app_id, 'accept', 'ok', 'заявка принята ботом, поставлена в очередь')
+        import auto_queue as _auto_queue
+        _auto_queue.add(app_id, quiet=True)
+        from services import app_steps as _steps
+        _steps.step(app_id, 'received', 'ok', 'заявка принята из бота, поставлена в очередь', actor='бот')
         log.info("заявка #%s поставлена в очередь автоподготовки", app_id)
     except Exception as _exc:  # noqa: BLE001
         log.warning("не удалось поставить заявку #%s в очередь: %s", app_id, _exc)
@@ -642,78 +642,78 @@ def create_CLIENT(form: dict, from_user: sqlite3.Row,
     # Если генерировать здесь, бот молчит всё это время и менеджер думает,
     # что заявка не принята. Поэтому ответ уходит раньше — см. handle_update.
     if autofill:
-        _autofill_pdfs(app_id, client_id, CLIENT_id)
+        _autofill_pdfs(app_id, client_id, product_id)
     return app_id, client_id
 
 
-def _apply_CLIENT(app_id: int, CLIENT_id: int) -> None:
+def _apply_product(app_id: int, product_id: int) -> None:
     """Проставляет продукт заявке и создаёт документы под него.
-    Аналог app_CLIENT_CLIENT из админки — для вызова из бота."""
+    Аналог app_change_product из админки — для вызова из бота."""
     import re as _re
     conn = db()
-    prod = conn.execute("SELECT id, code, CLIENT FROM CLIENT WHERE id=?",
-                        (CLIENT_id,)).fetchone()
+    prod = conn.execute("SELECT id, code, description FROM products WHERE id=?",
+                        (product_id,)).fetchone()
     if not prod:
         return
     price = 0
-    desc = prod["CLIENT"] or ""
+    desc = prod["description"] or ""
     m = _re.search(r"price_idr\s*=\s*(\d+)", desc)
     if m:
         price = int(m.group(1))
     # реквизиты для шаблонов (bank name и пр.) — из карточки клиента
     row = conn.execute(
-        "SELECT client_id FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+        "SELECT client_id FROM applications WHERE id=?", (app_id,)).fetchone()
     if not row:
         return
     client_id = row["client_id"]
     # Тот же продукт — значит ничего не меняем: документы и галочки остаются на месте.
-    _cur = conn.execute("SELECT CLIENT_id FROM CLIENT WHERE id=? ", (app_id,)).fetchone()
-    if _cur and _cur["CLIENT_id"] == prod["id"]:
+    _cur = conn.execute("SELECT product_id FROM applications WHERE id=? ", (app_id,)).fetchone()
+    if _cur and _cur["product_id"] == prod["id"]:
         return
-    conn.execute("UPDATE CLIENT SET CLIENT_id=?, price_idr=? WHERE id=?",
+    conn.execute("UPDATE applications SET product_id=?, price_idr=? WHERE id=?",
                  (prod["id"], price, app_id))
     # Галочки и отправленные документы бот не стирает: см. админку.
-    conn.execute("DELETE FROM CLIENT_CLIENT WHERE CLIENT_id=? "
-                 "AND IFNULL(CLIENT,'') NOT IN ('verified','sent')", (app_id,))
-    client_row = conn.execute("SELECT bank_name FROM CLIENT WHERE id=?",
+    conn.execute("DELETE FROM application_documents WHERE application_id=? "
+                 "AND IFNULL(status,'') NOT IN ('verified','sent')", (app_id,))
+    client_row = conn.execute("SELECT bank_name FROM clients WHERE id=?",
                               (client_id,)).fetchone()
     bank = (client_row["bank_name"] or "").lower() if client_row else ""
     if not bank:
-        cl = conn.execute("SELECT gCLIENT_folder_url FROM CLIENT WHERE id=?",
+        cl = conn.execute("SELECT gdrive_folder_url FROM clients WHERE id=?",
                           (client_id,)).fetchone()
         try:
-            from bot.ai_parser import detect_bank_from_CLIENT
-            bank = detect_bank_from_CLIENT(cl["gCLIENT_folder_url"] if cl else "")
+            from bot.ai_parser import detect_bank_from_drive
+            bank = detect_bank_from_drive(cl["gdrive_folder_url"] if cl else "")
         except Exception:
             bank = ""
-    CLIENT = conn.execute(
-        """SELECT t.id, t.code FROM CLIENT_CLIENT pd
-             JOIN CLIENT t ON t.id=pd.template_id
-            WHERE pd.CLIENT_id=? AND COALESCE(t.CLIENT,'ok') NOT IN ('CLIENTed','hidden','merged') ORDER BY t.id""", (CLIENT_id,)).fetchall()
-    now = CLIENT.now().isoformat(timespec="seconds")
+    templates = conn.execute(
+        """SELECT t.id, t.code FROM product_documents pd
+             JOIN templates t ON t.id=pd.template_id
+            WHERE pd.product_id=? AND COALESCE(t.status,'ok') NOT IN ('blocked','hidden','merged') ORDER BY t.id""", (product_id,)).fetchall()
+    now = datetime.now().isoformat(timespec="seconds")
     # Комплект писем в иммиграцию — по адресу клиента: Ngurah Rai либо Denpasar.
-    from CLIENT import immigration_CLIENT as _io
-    _CLIENT = (_io.resolve_for_client(conn, client_id) or {}).get("CLIENT")
-    for t in CLIENT:
-        _rejected = not _io.CLIENT_allows(t["code"], _CLIENT)
+    from services import immigration_office as _io
+    _office = (_io.resolve_for_client(conn, client_id) or {}).get("office")
+    for t in templates:
+        _rejected = not _io.office_allows(t["code"], _office)
         if _rejected:
-            log.info("_apply_CLIENT: шаблон %s исключён (комплект %s)",
-                     t["code"], _CLIENT)
+            log.info("_apply_product: шаблон %s исключён (комплект %s)",
+                     t["code"], _office)
         if not _bank_allows(t["code"], bank):
-            log.info("_apply_CLIENT: шаблон %s пропущен (банк %s)",
+            log.info("_apply_product: шаблон %s пропущен (банк %s)",
                      t["code"], (bank or "—").upper())
             continue
         conn.execute(
-            """INSERT INTO CLIENT_CLIENT
-                 (CLIENT_id, template_id, CLIENT, rendered_at, error)
-               CLIENT (?,?,?,?,?)""",
+            """INSERT INTO application_documents
+                 (application_id, template_id, status, rendered_at, error)
+               VALUES (?,?,?,?,?)""",
             (app_id, t["id"], "rejected" if _rejected else "pending", now,
              ("исключено автоматически: адрес клиента — зона %s"
-              % _io.CLIENT_name(_CLIENT)) if _rejected else None))
+              % _io.office_name(_office)) if _rejected else None))
     conn.commit()
-    log.info("_apply_CLIENT: заявка #%s → продукт %s, документов=%d",
-             app_id, prod["code"], len(CLIENT))
-    _autofill_pdfs(app_id, client_id, CLIENT_id)
+    log.info("_apply_product: заявка #%s → продукт %s, документов=%d",
+             app_id, prod["code"], len(templates))
+    _autofill_pdfs(app_id, client_id, product_id)
 
 
 def _with_article(role: str) -> str:
@@ -722,7 +722,7 @@ def _with_article(role: str) -> str:
     if not r:
         return ""
     low = r.lower()
-    if low.CLIENTswith(("a ", "an ", "the ")):
+    if low.startswith(("a ", "an ", "the ")):
         return r
     # слова, где первая гласная читается как согласная
     if low.split()[0] in ("university", "user", "one", "european"):
@@ -730,53 +730,53 @@ def _with_article(role: str) -> str:
     return ("an " if low[0] in "aeiou" else "a ") + r
 
 
-def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
+def _autofill_pdfs(app_id: int, client_id: int, product_id: int) -> None:
     """Генерирует PDF для всех pending-документов заявки с данными клиента.
-    Ошибки не критичны — остаются в CLIENT_CLIENT.error.
+    Ошибки не критичны — остаются в application_documents.error.
     """
     import re
-    from CLIENT import CLIENT as _dt
+    from datetime import datetime as _dt
     from pathlib import Path
     conn = db()
     docs = conn.execute(
-        """SELECT ad.id, ad.template_id, t.code, t.html_path, ad.CLIENT_json
-             FROM CLIENT_CLIENT ad
-             JOIN CLIENT t ON t.id=ad.template_id
-            WHERE ad.CLIENT_id=? AND ad.CLIENT='pending'""",
+        """SELECT ad.id, ad.template_id, t.code, t.html_path, ad.values_json
+             FROM application_documents ad
+             JOIN templates t ON t.id=ad.template_id
+            WHERE ad.application_id=? AND ad.status='pending'""",
         (app_id,)).fetchall()
-    client = conn.execute("SELECT * FROM CLIENT WHERE id=?", (client_id,)).fetchone()
+    client = conn.execute("SELECT * FROM clients WHERE id=?", (client_id,)).fetchone()
     if not client:
         return
     simple_map = {
-        "full_name": f'{(client["CLIENT"] or "")} {(client["name"] or "")}'.strip(),
-        "CLIENT": client["CLIENT"] or "",
+        "full_name": f'{(client["surname"] or "")} {(client["name"] or "")}'.strip(),
+        "surname": client["surname"] or "",
         "name": client["name"] or "",
-        "CLIENT": client["CLIENT"] or "",
-        "CLIENT_date": client["CLIENT_date"] or "",
-        "CLIENT": client["CLIENT"] or "",
-        "CLIENT": client["CLIENT"] or "",
-        "passport_CLIENT": client["passport_CLIENT"] or "",
-        "passport_CLIENT": client["passport_CLIENT"] or "",
-        "passport_CLIENT_by": client["passport_CLIENT_by"] or "",
-        "passport_CLIENT_date": client["passport_CLIENT_date"] or "",
-        "passport_CLIENT": client["passport_CLIENT"] or "",
-        "CLIENT": client["CLIENT"] or "",
-        "CLIENT": client["CLIENT"] or "",
+        "patronymic": client["patronymic"] or "",
+        "birth_date": client["birth_date"] or "",
+        "gender": client["gender"] or "",
+        "citizenship": client["citizenship"] or "",
+        "passport_series": client["passport_series"] or "",
+        "passport_number": client["passport_number"] or "",
+        "passport_issued_by": client["passport_issued_by"] or "",
+        "passport_issue_date": client["passport_issue_date"] or "",
+        "passport_expiry": client["passport_expiry"] or "",
+        "phone": client["phone"] or "",
+        "email": client["email"] or "",
         "address_reg": client["address_reg"] or "",
         "address_live": client["address_live"] or "",
         "company_name": client["company_name"] or "",
         "position": client["position"] or "",
-        "salary_CLIENT": client["salary_CLIENT"] or "",
+        "salary_amount": client["salary_amount"] or "",
         "bank_name": client["bank_name"] or "",
         "inn": client["inn"] or "",
         # --- банковские реквизиты (из карточки клиента, заполняются агентом
-        #     при разборе справки на Google CLIENT) ---
-        "client_name": ' '.join(x for x in [client["CLIENT"] or "",
+        #     при разборе справки на Google Drive) ---
+        "client_name": ' '.join(x for x in [client["surname"] or "",
                                              client["name"] or "",
-                                             client["CLIENT"] or ""] if x),
-        "for_name": ' '.join(x for x in [client["CLIENT"] or "",
+                                             client["patronymic"] or ""] if x),
+        "for_name": ' '.join(x for x in [client["surname"] or "",
                                           client["name"] or "",
-                                          client["CLIENT"] or ""] if x),
+                                          client["patronymic"] or ""] if x),
         "doc_no": (client["doc_no"] if "doc_no" in client.keys() else "") or "",
         "ref_no": (client["ref_no"] if "ref_no" in client.keys() else "") or "",
         "card_mask": (client["card_mask"] if "card_mask" in client.keys() else "") or "",
@@ -785,7 +785,7 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
         "balance_rub": (client["balance_rub"] if "balance_rub" in client.keys() else "") or "",
         "balance_date": (client["balance_date"] if "balance_date" in client.keys() else "") or "",
         # должность контрактора (раздел 1 Work Agreement) — с артиклем a/an
-        "CLIENT": _with_article((client["position"] if "position" in client.keys() else "") or ""),
+        "profession": _with_article((client["position"] if "position" in client.keys() else "") or ""),
         "position": (client["position"] if "position" in client.keys() else "") or "",
     }
     _bal_date = (client["balance_date"] if "balance_date" in client.keys() else "") or ""
@@ -814,74 +814,74 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
         html_path = d["html_path"]
         html_file = Path(html_path) if html_path else None
         if not html_file or not html_file.exists():
-            html_file = Path('/opt/wolf_v2/data/CLIENT') / code / "template.html"
+            html_file = Path('/opt/wolf_v2/data/templates') / code / "template.html"
         if not html_file.exists():
             conn.execute(
-                "UPDATE CLIENT_CLIENT SET error=? WHERE id=?",
+                "UPDATE application_documents SET error=? WHERE id=?",
                 ("HTML-шаблон не найден: " + code, d["id"]))
             continue
-        CLIENT = dict(simple_map)
+        values = dict(simple_map)
         # период банковской справки: 3 или 12 месяцев назад от даты баланса
-        if "bank_CLIENTment" in code and _bal_date:
+        if "bank_statement" in code and _bal_date:
             _months = 12 if "_12m" in code else 3
-            CLIENT["CLIENT_to"] = _bal_date
-            CLIENT["CLIENT_from"] = _minus_months(_bal_date, _months)
+            values["period_to"] = _bal_date
+            values["period_from"] = _minus_months(_bal_date, _months)
         try:
             html = html_file.read_text(encoding="utf-8")
             # описание занятий контрактора (раздел 1 Remote Work Agreement):
             # формируется по должности из карточки клиента
-            if "CLIENT_list" in html and not CLIENT.get("CLIENT_list"):
+            if "services_list" in html and not values.get("services_list"):
                 # 1) приоритет — сохранённая версия (админ мог отредактировать в карточке)
                 _saved = {}
                 try:
-                    if d["CLIENT_json"]:
-                        _saved = json.loads(d["CLIENT_json"]) or {}
+                    if d["values_json"]:
+                        _saved = json.loads(d["values_json"]) or {}
                 except Exception:
                     _saved = {}
-                if _saved.get("CLIENT_list"):
-                    CLIENT["CLIENT_list"] = _saved["CLIENT_list"]
-                    log.info("CLIENT_list: использована сохранённая версия (правка админа)")
+                if _saved.get("services_list"):
+                    values["services_list"] = _saved["services_list"]
+                    log.info("services_list: использована сохранённая версия (правка админа)")
                 else:
                     # 2) иначе — генерируем по должности из карточки клиента
                     try:
                         from bot.ai_parser import generate_duties, duties_to_plain
                         _pos = (client["position"] if "position" in client.keys() else "") or ""
                         _co = (client["company_name"] if "company_name" in client.keys() else "") or ""
-                        CLIENT["CLIENT_list"] = duties_to_plain(
+                        values["services_list"] = duties_to_plain(
                             generate_duties(_pos, _co, 4))
-                        log.info("CLIENT_list: «%s» → %d пунктов", _pos[:40],
-                                 CLIENT["CLIENT_list"].count("•"))
+                        log.info("services_list: «%s» → %d пунктов", _pos[:40],
+                                 values["services_list"].count("•"))
                     except Exception as _e:
-                        log.warning("CLIENT_list не сформирован: %s", _e)
+                        log.warning("services_list не сформирован: %s", _e)
             # пункты храним обычным текстом (чтобы админ правил в форме),
             # а в HTML превращаем переводы строк в <br>
-            _html_CLIENT = dict(CLIENT)
-            if _html_CLIENT.get("CLIENT_list"):
-                _html_CLIENT["CLIENT_list"] = (str(_html_CLIENT["CLIENT_list"])
-                                                 .reCLIENT("\r\n", "\n").reCLIENT("\n", "<br>"))
+            _html_values = dict(values)
+            if _html_values.get("services_list"):
+                _html_values["services_list"] = (str(_html_values["services_list"])
+                                                 .replace("\r\n", "\n").replace("\n", "<br>"))
             # банковские справки — строго на английском: кириллицу транслитерируем
-            if "bank_CLIENTment" in code or "1year" in code.lower():
+            if "bank_statement" in code or "1year" in code.lower():
                 try:
-                    from bot.ai_parser import (translit_ru, CLIENT_in_CLIENT_en,
-                                           format_CLIENT_en, parse_CLIENT)
-                    for _k in list(_html_CLIENT.keys()):
-                        _v = _html_CLIENT[_k]
+                    from bot.ai_parser import (translit_ru, amount_in_words_en,
+                                           format_amount_en, parse_amount)
+                    for _k in list(_html_values.keys()):
+                        _v = _html_values[_k]
                         if isinstance(_v, str) and any(
                                 "а" <= c.lower() <= "я" or c.lower() == "ё" for c in _v):
-                            _html_CLIENT[_k] = translit_ru(_v)
+                            _html_values[_k] = translit_ru(_v)
                     # сумма: формат «1 770 300,00» + прописью
-                    _bal = _html_CLIENT.get("balance_rub")
+                    _bal = _html_values.get("balance_rub")
                     if _bal:
                         try:
-                            if parse_CLIENT(_bal) > 0:
-                                _html_CLIENT["balance_CLIENT"] = CLIENT_in_CLIENT_en(_bal)
-                                _html_CLIENT["balance_rub"] = format_CLIENT_en(_bal)
+                            if parse_amount(_bal) > 0:
+                                _html_values["balance_words"] = amount_in_words_en(_bal)
+                                _html_values["balance_rub"] = format_amount_en(_bal)
                         except Exception:
                             pass
                 except Exception as _e:
                     log.warning("транслитерация не удалась: %s", _e)
             filled = re.sub(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-                            lambda m: str(_html_CLIENT.get(m.group(1)) or m.group(0)), html)
+                            lambda m: str(_html_values.get(m.group(1)) or m.group(0)), html)
             out_pdf = Path('/opt/wolf_v2/data/renders') / \
                 f'{code}_app{app_id}_{_dt.now():%Y%m%d_%H%M%S}.pdf'
             tmp_html = html_file.parent / "filled.html"
@@ -889,12 +889,12 @@ def _autofill_pdfs(app_id: int, client_id: int, CLIENT_id: int) -> None:
             from core import pdf2html
             pdf2html.render_pdf(tmp_html, out_pdf)
             conn.execute(
-                "UPDATE CLIENT_CLIENT SET CLIENT='filled', pdf_path=?, "
-                "CLIENT_json=?, error=NULL, rendered_at=CLIENT('now') WHERE id=?",
-                (str(out_pdf), json.dumps(CLIENT, ensure_ascii=False), d["id"]))
+                "UPDATE application_documents SET status='filled', pdf_path=?, "
+                "values_json=?, error=NULL, rendered_at=datetime('now') WHERE id=?",
+                (str(out_pdf), json.dumps(values, ensure_ascii=False), d["id"]))
         except Exception as exc:
             conn.execute(
-                "UPDATE CLIENT_CLIENT SET CLIENT='error', error=? WHERE id=?",
+                "UPDATE application_documents SET status='error', error=? WHERE id=?",
                 (str(exc)[:300], d["id"]))
     conn.commit()
 
@@ -906,7 +906,7 @@ HELP_TEXT = (
     "Если вы уже в системе — просто пишите заявки в формате:\n"
     "/new\nФИО полностью: ...\n...\n\n"
     "Команды:\n"
-    "/CLIENT — войти/обновить приветствие\n"
+    "/start — войти/обновить приветствие\n"
     "/whoami — кто я\n"
     "/list — все менеджеры и админы\n"
     "/invitemanager — выписать ссылку-приглашение менеджера (30 мин)\n"
@@ -916,42 +916,42 @@ HELP_TEXT = (
 )
 
 
-def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
-    # /CLIENT CLIENT — пришли с сайта по кнопке «Войти через Telegram»
-    if args.strip().lower() in ("CLIENT", "вход", "site", "site_CLIENT"):
-        cmd_CLIENT(chat_id, from_id)
+def cmd_start(chat_id: int, from_id: str, args: str, from_user) -> None:
+    # /start login — пришли с сайта по кнопке «Войти через Telegram»
+    if args.strip().lower() in ("login", "вход", "site", "site_login"):
+        cmd_login(chat_id, from_id)
         return
     if args:
-        # /CLIENT <код>
+        # /start <код>
         row = consume_invite(args.strip(), from_id)
         if not row:
             send(chat_id, "❌ Ссылка-приглашение не найдена или истёк срок. "
                           "Попросите администратора выписать новую.")
             return
-        # создаём запись в bot_CLIENT
+        # создаём запись в bot_managers
         u = from_user
         conn = db()
-        CLIENT = conn.execute(
-            "SELECT id, role FROM bot_CLIENT WHERE telegram_id=?", (from_id,)).fetchone()
-        if CLIENT:
-            new_role = CLIENT["role"]
+        existing = conn.execute(
+            "SELECT id, role FROM bot_managers WHERE telegram_id=?", (from_id,)).fetchone()
+        if existing:
+            new_role = existing["role"]
             if row["role"] in ("admin", "manager"):
-                if CLIENT["role"] == row["role"]:
-                    new_role = CLIENT["role"]
+                if existing["role"] == row["role"]:
+                    new_role = existing["role"]
                 else:
                     new_role = "both"
             conn.execute(
-                "UPDATE bot_CLIENT SET username=?, full_name=?, role=?, "
-                "source='invite', invited_by=?, updated_at=CLIENT('now') "
+                "UPDATE bot_managers SET username=?, full_name=?, role=?, "
+                "source='invite', invited_by=?, updated_at=datetime('now') "
                 "WHERE id=?",
-                (u.get("username") or "", u.get("CLIENT_name") or "",
-                 new_role, row["created_by"], CLIENT["id"]))
+                (u.get("username") or "", u.get("first_name") or "",
+                 new_role, row["created_by"], existing["id"]))
         else:
             conn.execute(
-                "INSERT INTO bot_CLIENT (telegram_id, username, full_name, role, "
+                "INSERT INTO bot_managers (telegram_id, username, full_name, role, "
                 "source, invited_by, created_at, updated_at) "
-                "CLIENT (?,?,?,?,'invite',?,CLIENT('now'),CLIENT('now'))",
-                (from_id, u.get("username") or "", u.get("CLIENT_name") or "",
+                "VALUES (?,?,?,?,'invite',?,datetime('now'),datetime('now'))",
+                (from_id, u.get("username") or "", u.get("first_name") or "",
                  row["role"], row["created_by"]))
         conn.commit()
         role = row["role"]
@@ -959,21 +959,21 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
             send(chat_id, "✅ Вы добавлены как администратор. "
                           f"Сайт: {BASE_URL}/")
         elif role == "manager":
-            tmpl = APPLICATION_TEMPLATE.reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
+            tmpl = APPLICATION_TEMPLATE.replace("<", "&lt;").replace(">", "&gt;")
             send(chat_id,
                  "✅ Вы добавлены как менеджер.\n\n"
                  "Шаблон заявки (скопируйте и заполните):\n\n" + tmpl)
         # уведомляем создателя приглашения
         creator = conn.execute(
-            "SELECT * FROM bot_CLIENT WHERE id=?", (row["created_by"],)).fetchone()
+            "SELECT * FROM bot_managers WHERE id=?", (row["created_by"],)).fetchone()
         if creator:
             send(creator["telegram_id"],
-                 f"✅ Приглашение использовано.\nДобавлен: {u.get('CLIENT_name') or ''} "
+                 f"✅ Приглашение использовано.\nДобавлен: {u.get('first_name') or ''} "
                  f"(@{u.get('username') or '—'}, id {from_id}) как {role}.")
         return
     # без кода
     user = find_user(from_id)
-    if not user or user["role"] == "CLIENTed":
+    if not user or user["role"] == "blocked":
         send(chat_id, "❌ Вы не зарегистрированы. Попросите администратора "
                       "выписать приглашение командой /invitemanager или /inviteadmin.")
         return
@@ -984,14 +984,14 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
                     "Сюда приходят уведомления о новых заявках от менеджеров.\n\n"
                     "• /help — пример заявки\n"
                     "• /whoami — моя роль в системе\n"
-                    "• /CLIENT — войти на сайт")
+                    "• /login — войти на сайт")
         msg = send(chat_id, pin_text)
         try:
             if msg.get("ok") and msg.get("result", {}).get("message_id"):
                 tg("pinChatMessage",
                    {"chat_id": chat_id,
                     "message_id": msg["result"]["message_id"],
-                    "disable_CLIENT": True})
+                    "disable_notification": True})
         except Exception as exc:
             log.warning("pin admin failed: %s", exc)
         send(chat_id, "👋 Привет, " + (user["full_name"] or user["username"] or "коллега") +
@@ -1001,7 +1001,7 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
                     "Ваша роль: 👤 менеджер.\n\n"
                     "Пришлите заявку клиента — можно свободным текстом, например:\n"
                     "«Иван Петров, виза C1, 4 500 000 IDR,\n"
-                    "папка https://CLIENT.google.com/CLIENT/folders/...»\n\n"
+                    "папка https://drive.google.com/drive/folders/...»\n\n"
                     "Бот ответит «Заявка #N принята», а когда документы будут готовы — "
                     "пришлёт вам сообщение.\n\n"
                     "• /help — пример заявки\n"
@@ -1012,7 +1012,7 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
                 tg("pinChatMessage",
                    {"chat_id": chat_id,
                     "message_id": msg["result"]["message_id"],
-                    "disable_CLIENT": True})
+                    "disable_notification": True})
         except Exception as exc:
             log.warning("pin manager failed: %s", exc)
         send(chat_id, "👋 Привет, " + (user["full_name"] or user["username"] or "коллега") +
@@ -1023,17 +1023,17 @@ def cmd_CLIENT(chat_id: int, from_id: str, args: str, from_user) -> None:
 def set_bot_menu():
     """Устанавливает команды бота (видны при нажатии 'Menu' в чате) + кнопку меню."""
     commands = [
-        {"command": "CLIENT",  "CLIENT": "Открыть приветствие"},
-        {"command": "help",   "CLIENT": "Пример заявки"},
-        {"command": "whoami", "CLIENT": "Моя роль в системе"},
+        {"command": "start",  "description": "Открыть приветствие"},
+        {"command": "help",   "description": "Пример заявки"},
+        {"command": "whoami", "description": "Моя роль в системе"},
     ]
-    admin_commands = commands + [{"command": "CLIENT", "CLIENT": "Вход на сайт"}]
+    admin_commands = commands + [{"command": "login", "description": "Вход на сайт"}]
     try:
         # базовое меню — всем (менеджер входа на сайт не видит)
         tg("setMyCommands", {"commands": json.dumps(commands, ensure_ascii=False)})
         # менеджерам — явно базовый набор (без «Вход на сайт»)
         rows_m = db().execute(
-            "SELECT telegram_id FROM bot_CLIENT WHERE role='manager'").fetchall()
+            "SELECT telegram_id FROM bot_managers WHERE role='manager'").fetchall()
         for r_ in rows_m:
             try:
                 tg("setMyCommands", {
@@ -1044,7 +1044,7 @@ def set_bot_menu():
                 log.warning("меню менеджера %s: %s", r_["telegram_id"], exc)
         # администраторам дополнительно «Вход на сайт»
         rows = db().execute(
-            "SELECT telegram_id FROM bot_CLIENT WHERE role IN ('admin','both')").fetchall()
+            "SELECT telegram_id FROM bot_managers WHERE role IN ('admin','both')").fetchall()
         for r_ in rows:
             try:
                 tg("setMyCommands", {
@@ -1058,7 +1058,7 @@ def set_bot_menu():
         log.warning("set_bot_menu failed: %s", exc)
 
 
-def cmd_CLIENT(chat_id: int, from_id: str) -> None:
+def cmd_login(chat_id: int, from_id: str) -> None:
     """Выдаёт 6-значный код для входа на сайт. Доступно только admin/both."""
     u = find_user(from_id)
     if not u:
@@ -1069,16 +1069,16 @@ def cmd_CLIENT(chat_id: int, from_id: str) -> None:
         return
     try:
         # создаём код через ту же логику что и Wolf
-        from core.auth import create_CLIENT_code
-        code = create_CLIENT_code(from_id, ttl_seconds=180)
+        from core.auth import create_login_code
+        code = create_login_code(from_id, ttl_seconds=180)
         send(chat_id,
              f"🔑 Вход на сайт Wolf AutoDoc\n\n"
              f"Нажмите кнопку ниже — и вы сразу окажетесь в системе.\n"
              f"Ссылка действует 3 минуты.",
-             reply_markup={"CLIENT_keyboard": [[
+             reply_markup={"inline_keyboard": [[
                  {"text": "🌐 Войти на сайт", "url": f"{BASE_URL}/auth/tg/{code}"}]]})
     except Exception as exc:
-        log.error("cmd_CLIENT failed: %s", exc)
+        log.error("cmd_login failed: %s", exc)
         send(chat_id, "❌ Ошибка генерации кода. Попробуйте ещё раз.")
 
 
@@ -1086,7 +1086,7 @@ ROLE_VERBOSE = {
     "manager": "👤 менеджер (шлёте заявки боту)",
     "admin":   "🛡 администратор (получаете уведомления, заходите на сайт)",
     "both":    "👤 менеджер + 🛡 администратор",
-    "CLIENTed": "🚫 заблокирован",
+    "blocked": "🚫 заблокирован",
 }
 
 
@@ -1117,28 +1117,28 @@ def cmd_invite_manager(chat_id: int, from_id: str) -> None:
         send(chat_id, "❌ Только администратор может приглашать менеджеров.")
         return
     code = make_invite("manager", from_id)
-    link = f"https://t.me/Wolf_AutoDoc_bot?CLIENT={code}"
+    link = f"https://t.me/Wolf_AutoDoc_bot?start={code}"
     send(chat_id,
          f"🔗 Ссылка для приглашения менеджера (живёт {INVITE_TTL_MIN} минут):\n\n"
          f"{link}\n\n"
-         f"Откройте её на телефоне или в Telegram, нажмите «CLIENT» — "
+         f"Откройте её на телефоне или в Telegram, нажмите «Start» — "
          f"человек автоматически станет менеджером.")
 
 
 def cmd_help(chat_id: int, from_id: str) -> None:
     """Пример заявки: как прислать данные клиента (форма свободная)."""
     user = find_user(from_id)
-    if not user or user["role"] == "CLIENTed":
+    if not user or user["role"] == "blocked":
         send(chat_id, "Вы не зарегистрированы в Wolf AutoDoc. "
                       "Попросите администратора пригласить вас.")
         return
     send(chat_id,
          "📝 Пример заявки (форма свободная — можно своими словами)\n\n"
          "Иван Петров, виза C1, 4 500 000 IDR,\n"
-         "папка https://CLIENT.google.com/CLIENT/folders/...\n"
+         "папка https://drive.google.com/drive/folders/...\n"
          "телефон +7 903 123-45-67, компания ООО «Ромашка», срочно\n\n"
          "Обязательно:\n"
-         "• ФИО клиента ИЛИ ссылка на папку Google CLIENT\n"
+         "• ФИО клиента ИЛИ ссылка на папку Google Drive\n"
          "• продукт (C1, C1-EXT)\n"
          "• стоимость в IDR (по желанию)\n\n"
          "Остальное — по желанию. Если чего-то не хватит, бот подскажет, что дослать.")
@@ -1155,7 +1155,7 @@ def _cmd_help_roles(chat_id: int, from_id: str) -> None:
              "• Сюда приходят уведомления о новых заявках от менеджеров.\n"
              "• Вы можете зайти на сайт: " + BASE_URL + "\n"
              "• Команда /invitemanager — выписать ссылку-приглашение менеджера.\n"
-             "• Команда /CLIENT — обновить закреп с ссылкой на сайт.")
+             "• Команда /start — обновить закреп с ссылкой на сайт.")
     elif role == "manager":
         send(chat_id,
              "👤 Вы менеджер Wolf AutoDoc.\n\n"
@@ -1163,7 +1163,7 @@ def _cmd_help_roles(chat_id: int, from_id: str) -> None:
              "• Сюда присылайте новые заявки клиентов — по шаблону, который закреплён сверху.\n"
              "• Бот ответит «Заявка #N принята» и пришлёт ссылку на карточку клиента.\n"
              "• Когда администратор возьмёт заявку в работу — получите уведомление.\n"
-             "• Команда /CLIENT — обновить закреп с шаблоном заявки.")
+             "• Команда /start — обновить закреп с шаблоном заявки.")
     else:
         send(chat_id, "Вы не зарегистрированы в Wolf AutoDoc. "
                       "Попросите администратора пригласить вас.")
@@ -1186,10 +1186,10 @@ def handle_update(upd: dict) -> None:
         return
 
     log.info("update: chat=%s from=%s text=%r", chat_id, from_id, text[:1000])
-    # /CLIENT с кодом или без
-    if text.CLIENTswith("/CLIENT"):
-        args = text[len("/CLIENT"):].strip()
-        cmd_CLIENT(chat_id, from_id, args, from_user)
+    # /start с кодом или без
+    if text.startswith("/start"):
+        args = text[len("/start"):].strip()
+        cmd_start(chat_id, from_id, args, from_user)
         return
 
     # команды
@@ -1197,45 +1197,45 @@ def handle_update(upd: dict) -> None:
         cmd_help(chat_id, from_id); return
     if text in ("/whoami", "/id"):
         cmd_whoami(chat_id, from_id); return
-    if text in ("/CLIENT", "/CLIENT@Wolf_AutoDoc_bot"):
-        cmd_CLIENT(chat_id, from_id); return
-    if text.CLIENTswith("/invitemanager"):
+    if text in ("/login", "/login@Wolf_AutoDoc_bot"):
+        cmd_login(chat_id, from_id); return
+    if text.startswith("/invitemanager"):
         cmd_invite_manager(chat_id, from_id); return
 
     # заявка
     # Заявку принимаем и БЕЗ служебного /new: если менеджер просто прислал ссылку
-    # на папку Google CLIENT (или продукт отдельной строкой) — это уже заявка.
-    _CLIENT_like = "CLIENT.google.com" in text
-    _CLIENT_like = bool(find_CLIENT_id(text)) if len(text) < 400 else False
-    if (text.CLIENTswith("/new") or "ФИО полностью:" in text or "ФИО:" in text
-            or _CLIENT_like or _CLIENT_like):
+    # на папку Google Drive (или продукт отдельной строкой) — это уже заявка.
+    _drive_like = "drive.google.com" in text
+    _product_like = bool(find_product_id(text)) if len(text) < 400 else False
+    if (text.startswith("/new") or "ФИО полностью:" in text or "ФИО:" in text
+            or _drive_like or _product_like):
         user = find_user(from_id)
-        if not user or user["role"] == "CLIENTed":
+        if not user or user["role"] == "blocked":
             send(chat_id, "❌ Вы не в системе.")
             return
         if user["role"] not in ("manager", "admin", "both"):
             send(chat_id, "❌ Нет прав.")
             return
-        body = text[len("/new"):].lstrip() if text.CLIENTswith("/new") else text
-        form = parse_CLIENT(body)
+        body = text[len("/new"):].lstrip() if text.startswith("/new") else text
+        form = parse_application(body)
 
         # --- Досылка продукта: менеджер присылает только «Название продукта: X»,
         #     а ФИО в сообщении нет → это уточнение к последней заявке без продукта.
-        if not form.get("full_name") and not form.get("CLIENT"):
-            _pid_pre = find_CLIENT_id(body)
+        if not form.get("full_name") and not form.get("surname"):
+            _pid_pre = find_product_id(body)
             if _pid_pre:
                 _row = db().execute(
-                    """SELECT a.id, cl.CLIENT, cl.name
-                         FROM CLIENT a JOIN CLIENT cl ON cl.id=a.client_id
-                        WHERE a.CLIENT_id IS NULL AND a.CLIENT IN ('new','in_progress')
+                    """SELECT a.id, cl.surname, cl.name
+                         FROM applications a JOIN clients cl ON cl.id=a.client_id
+                        WHERE a.product_id IS NULL AND a.status IN ('new','in_progress')
                         ORDER BY a.id DESC LIMIT 1""").fetchone()
                 if _row:
-                    _pcode = db().execute("SELECT code FROM CLIENT WHERE id=?",
+                    _pcode = db().execute("SELECT code FROM products WHERE id=?",
                                           (_pid_pre,)).fetchone()["code"]
-                    _apply_CLIENT(_row["id"], _pid_pre)
+                    _apply_product(_row["id"], _pid_pre)
                     send(chat_id,
                          f"✅ Продукт для заявки #{_row['id']} "
-                         f"({_row['CLIENT'] or ''} {_row['name'] or ''}) — "
+                         f"({_row['surname'] or ''} {_row['name'] or ''}) — "
                          f"«{_pcode}».\nДокументы сформированы, "
                          f"администратор получит уведомление.")
                     for adm in all_admins():
@@ -1243,9 +1243,9 @@ def handle_update(upd: dict) -> None:
                             continue
                         send(adm["telegram_id"],
                              f"📥 Заявка #{_row['id']} дополнена\n"
-                             f"Клиент: {_row['CLIENT'] or ''} {_row['name'] or ''}\n"
+                             f"Клиент: {_row['surname'] or ''} {_row['name'] or ''}\n"
                              f"Продукт: {_pcode}\n"
-                             f"Открыть: {BASE_URL}/CLIENT/{_row['id']}/review")
+                             f"Открыть: {BASE_URL}/applications/{_row['id']}/review")
                     return
 
         # Свободная форма записи: если жёсткий шаблон распознал мало полей
@@ -1258,7 +1258,7 @@ def handle_update(upd: dict) -> None:
                 except ImportError:
                     from bot.ai_parser import parse_free_form
                 _codes = [r["code"] for r in db().execute(
-                    "SELECT code FROM CLIENT ORDER BY id").fetchall()]
+                    "SELECT code FROM products ORDER BY id").fetchall()]
                 ai = parse_free_form(body, _codes)
                 # Заполняем только ПУСТЫЕ поля: setdefault не работал, потому что
                 # жёсткий шаблон уже создаёт все ключи пустыми — из-за этого разбор
@@ -1266,15 +1266,15 @@ def handle_update(upd: dict) -> None:
                 for k, v in (ai.get("client") or {}).items():
                     if v not in (None, "", "-") and not str(form.get(k) or "").strip():
                         form[k] = v
-                _app = ai.get("CLIENT") or {}
-                if _app.get("CLIENT") and not form.get("CLIENT_name"):
-                    form["CLIENT_name"] = _app["CLIENT"]
+                _app = ai.get("application") or {}
+                if _app.get("product") and not form.get("product_name"):
+                    form["product_name"] = _app["product"]
                 if _app.get("price_idr") and not form.get("price_idr"):
                     form["price_idr"] = _app["price_idr"]
                 if _app.get("comment") and not form.get("comment"):
                     form["comment"] = _app["comment"]
                 log.info("llm_parse: полей клиента=%d, продукт=%s, не распознано=%d",
-                         len(ai.get("client") or {}), form.get("CLIENT_name"),
+                         len(ai.get("client") or {}), form.get("product_name"),
                          len(ai.get("unrecognized") or []))
                 log.info("llm_parse: поля=%s", ", ".join(sorted((ai.get("client") or {}).keys())))
                 if ai.get("unrecognized"):
@@ -1284,59 +1284,59 @@ def handle_update(upd: dict) -> None:
 
         # Продукт может быть упомянут в свободном тексте (не отдельной строкой) —
         # пробуем распознать по всему сообщению, иначе документы не создадутся.
-        if not form.get("CLIENT_name"):
-            _pid = find_CLIENT_id(body)
+        if not form.get("product_name"):
+            _pid = find_product_id(body)
             if _pid:
-                _row = db().execute("SELECT code FROM CLIENT WHERE id=?", (_pid,)).fetchone()
+                _row = db().execute("SELECT code FROM products WHERE id=?", (_pid,)).fetchone()
                 if _row:
-                    form["CLIENT_name"] = _row["code"]
+                    form["product_name"] = _row["code"]
 
-        # Обязательны ровно две вещи: валидная ссылка на папку Google CLIENT и тип продукта.
+        # Обязательны ровно две вещи: валидная ссылка на папку Google Drive и тип продукта.
         # Без папки неоткуда взять данные клиента, без продукта непонятно, какие документы делать.
-        _CLIENT_in = (form.get("gCLIENT_url") or form.get("gCLIENT_folder_url") or "").strip()
+        _drive_in = (form.get("gdrive_url") or form.get("gdrive_folder_url") or "").strip()
         # Ссылку на папку менеджер часто присылает отдельной строкой — парсер её не видит,
         # вытаскиваем прямо из текста.
-        if not _CLIENT_in or "CLIENT.google.com" not in _CLIENT_in:
-            _dm = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", body)
+        if not _drive_in or "drive.google.com" not in _drive_in:
+            _dm = re.search(r"https?://drive\.google\.com/[^\s\"'<>]+", body)
             if _dm:
-                _CLIENT_in = _dm.group(0).rstrip(".,;)]}")
-                form["gCLIENT_url"] = _CLIENT_in
-        _CLIENT_ok = bool(_CLIENT_in) and ("CLIENT.google.com" in _CLIENT_in)
-        _prod_code = (form.get("CLIENT_name") or "").strip()
+                _drive_in = _dm.group(0).rstrip(".,;)]}")
+                form["gdrive_url"] = _drive_in
+        _drive_ok = bool(_drive_in) and ("drive.google.com" in _drive_in)
+        _prod_code = (form.get("product_name") or "").strip()
         _problems = []
-        if not _CLIENT_ok:
-            _problems.append("ссылка на папку Google CLIENT клиента"
-                             + (" (ссылка не похожа на Google CLIENT)" if _CLIENT_in else ""))
+        if not _drive_ok:
+            _problems.append("ссылка на папку Google Drive клиента"
+                             + (" (ссылка не похожа на Google Drive)" if _drive_in else ""))
         if not _prod_code:
             _problems.append("тип продукта (например C1, C1-EXT, D12, E33G-NEW)")
         if _problems:
             send(chat_id,
                  "❌ Заявку принять нельзя — не хватает:\n"
                  + "".join("   • " + p + "\n" for p in _problems)
-                 + "\nБез папки Google CLIENT неоткуда взять данные клиента,\n"
+                 + "\nБез папки Google Drive неоткуда взять данные клиента,\n"
                    "без типа продукта непонятно, какие документы готовить.\n"
                    "Цена и остальные поля — необязательны.\n\n"
                    "Пришлите так:\n"
-                   "«Иван Петров, виза C1, папка https://CLIENT.google.com/CLIENT/folders/...»\n"
+                   "«Иван Петров, виза C1, папка https://drive.google.com/drive/folders/...»\n"
                    "или просто ссылку и продукт — данные система возьмёт из папки сама.")
             return
         try:
-            app_id, client_id = create_CLIENT(form, user, raw_text=body)
+            app_id, client_id = create_application(form, user, raw_text=body)
             # администраторам сообщаем сразу: новая заявка, кто менеджер и папка клиента на Диске
             try:
                 from bot.notify import notify_admins_new_app
                 notify_admins_new_app(app_id, user["full_name"] or user["username"])
             except Exception as _exc:  # noqa: BLE001
                 log.warning("уведомление админам о заявке #%s: %s", app_id, _exc)
-            # сразу сообщаем менеджеру, если из папки Google CLIENT нечего взять
+            # сразу сообщаем менеджеру, если из папки Google Drive нечего взять
             try:
-                from CLIENT import CLIENT as _ds
+                from services import drive as _ds
                 _chk_msg = _ds.check_folder(app_id, client_id)
                 if not _chk_msg.get("ok"):
                     # Папку проверяем мягко: файлы в неё часто загружают уже ПОСЛЕ приёма
                     # заявки, поэтому «нет файлов» сразу после приёма — преждевременный вывод.
                     # Система перепроверит папку при обработке и скажет уже по факту.
-                    send(chat_id, ("\u2139\ufe0f Заявка №" + str(app_id) + " принята. В папке Google CLIENT пока "
+                    send(chat_id, ("\u2139\ufe0f Заявка №" + str(app_id) + " принята. В папке Google Drive пока "
                                    + ("не видно паспорта клиента" if _chk_msg.get("files")
                                       else "не видно файлов")
                                    + ".\nЕсли файлы ещё загружаются — ничего делать не нужно: система "
@@ -1344,16 +1344,16 @@ def handle_update(upd: dict) -> None:
             except Exception as _exc:  # noqa: BLE001
                 log.warning("проверка папки после приёма заявки #%s: %s", app_id, _exc)
             try:
-                # исходный текст заявки сохраняем — он же попадёт в «Заявка.txt» на Google CLIENT
+                # исходный текст заявки сохраняем — он же попадёт в «Заявка.txt» на Google Drive
                 form["_raw_text"] = body
-                db().execute("UPDATE CLIENT SET raw_payload=? WHERE id=?",
+                db().execute("UPDATE applications SET raw_payload=? WHERE id=?",
                              (json.dumps({**form}, ensure_ascii=False, default=str), app_id))
                 db().commit()
-                _write_CLIENT_text(app_id, body, form, user)
+                _write_application_text(app_id, body, form, user)
             except Exception as _exc:  # файл не критичен для создания заявки
                 log.warning("текстовый файл заявки #%s не создан: %s", app_id, _exc)
         except Exception as exc:
-            log.exception("create_CLIENT failed: %s", exc)
+            log.exception("create_application failed: %s", exc)
             send(chat_id, "❌ Не удалось создать заявку — техническая ошибка.\n"
                           "Администратор уведомлён, ваши данные не потеряны.")
             for adm in all_admins():
@@ -1366,27 +1366,27 @@ def handle_update(upd: dict) -> None:
                      f"Исходный текст:\n{body[:900]}")
             return
         client_row = db().execute(
-            "SELECT CLIENT, name, CLIENT FROM CLIENT WHERE id=?",
+            "SELECT surname, name, patronymic FROM clients WHERE id=?",
             (client_id,)).fetchone()
-        client_label = " ".join(filter(None, [client_row["CLIENT"] if client_row else "",
+        client_label = " ".join(filter(None, [client_row["surname"] if client_row else "",
                                                client_row["name"] if client_row else ""]))
-        link = f"{BASE_URL}/CLIENT/{app_id}/review"
+        link = f"{BASE_URL}/applications/{app_id}/review"
         is_manager_only = user["role"] == "manager"
 
         # Проверяем, распознан ли продукт: без него документы НЕ создаются
-        app_row = db().execute("SELECT CLIENT_id FROM CLIENT WHERE id=?",
+        app_row = db().execute("SELECT product_id FROM applications WHERE id=?",
                                (app_id,)).fetchone()
-        CLIENT_ok = bool(app_row and app_row["CLIENT_id"])
-        prod_label = (form.get("CLIENT_name") or "").strip()
+        product_ok = bool(app_row and app_row["product_id"])
+        prod_label = (form.get("product_name") or "").strip()
         codes = [r["code"] for r in db().execute(
-            "SELECT code FROM CLIENT ORDER BY id").fetchall()]
+            "SELECT code FROM products ORDER BY id").fetchall()]
         _missing = []
-        if not CLIENT_ok:
+        if not product_ok:
             prod_label = "⚠️ НЕ РАСПОЗНАН"
             _missing.append(f"продукт (доступные: {', '.join(codes) or '—'})")
         # стоимость — необязательное поле: пишем её, если менеджер указал
-        if not _CLIENT_in:
-            _missing.append("ссылка на папку Google CLIENT "
+        if not _drive_in:
+            _missing.append("ссылка на папку Google Drive "
                             "(из неё подтянутся ФИО, паспорт, банк)")
         if _missing:
             warn = ("\n⚠️ Не хватает: " + "; ".join(_missing) + "\n"
@@ -1424,10 +1424,10 @@ def handle_update(upd: dict) -> None:
                  f"Открыть: {link}")
         # Менеджер и админы уже получили ответ. Теперь можно не спеша
         # сгенерировать PDF (5+ сек) — бот при этом остаётся отзывчивым.
-        if CLIENT_ok:
+        if product_ok:
             log.info("генерирую PDF для заявки #%s…", app_id)
             try:
-                _autofill_pdfs(app_id, client_id, app_row["CLIENT_id"])
+                _autofill_pdfs(app_id, client_id, app_row["product_id"])
                 log.info("PDF для заявки #%s готовы", app_id)
             except Exception as exc:
                 log.exception("генерация PDF для #%s упала: %s", app_id, exc)
@@ -1440,13 +1440,13 @@ def handle_update(upd: dict) -> None:
 
 
 def main():
-    log.info("wolf_bot CLIENTing…")
+    log.info("wolf_bot starting…")
     set_bot_menu()
     offset = 0
     while True:
         try:
-            r = tg("getUpCLIENT", {"timeout": POLL_TIMEOUT, "offset": offset,
-                                  "allowed_upCLIENT": "[\"message\"]"})
+            r = tg("getUpdates", {"timeout": POLL_TIMEOUT, "offset": offset,
+                                  "allowed_updates": "[\"message\"]"})
             results = r.get("result", [])
             if results:
                 log.info("got %d update(s)", len(results))

@@ -1,6 +1,6 @@
 """Отправка готового пакета заявки на Google Диск — как шаг конвейера, а не как кнопка.
 
-Зачем модуль. Отправка жила только в админке (`CLIENTs/dashboard/page.py::app_send`), то есть
+Зачем модуль. Отправка жила только в админке (`blocks/dashboard/page.py::app_send`), то есть
 требовала человека у экрана, а цикл заканчивался проверками. Из-за этого по заявкам не было
 ни одного файла на Диске, а отчёт при этом уходил «вердикт: ГОТОВ».
 
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
@@ -38,18 +38,18 @@ def _folder_name(app_id: int, a: dict, client: dict) -> str:
     code = ''
     try:
         con = _conn()
-        row = con.execute("SELECT code FROM CLIENT WHERE id=?", (a.get('CLIENT_id'),)).fetchone()
+        row = con.execute("SELECT code FROM products WHERE id=?", (a.get('product_id'),)).fetchone()
         con.close()
         code = str((row['code'] if row else '') or '').strip()
     except Exception:      # noqa: BLE001
         code = ''
-    name = str(client.get('full_name_CLIENT') or '').strip()
+    name = str(client.get('full_name_latin') or '').strip()
     if not name:
-        name = ' '.join(x for x in (str(client.get('CLIENT') or '').strip(),
+        name = ' '.join(x for x in (str(client.get('surname') or '').strip(),
                                     str(client.get('name') or '').strip()) if x).strip()
     if not name:
         name = str(client.get('full_name') or '').strip() or 'CLIENT'
-    return 'Wolf AutoDoc \u2116%s %s / %s' % (app_id, name, code or 'CLIENT')
+    return 'Wolf AutoDoc \u2116%s %s / %s' % (app_id, name, code or 'PRODUCT')
 
 
 def _doc_pdf_path(row: dict) -> Path | None:
@@ -58,14 +58,14 @@ def _doc_pdf_path(row: dict) -> Path | None:
     if p and Path(p).exists():
         return Path(p)
     try:
-        from CLIENT.reader_CLIENT import _find_pdf
+        from services.reader_agent import _find_pdf
         con = _conn()
-        r = con.execute("""SELECT c.full_name_CLIENT AS lat, c.CLIENT, c.name FROM CLIENT a
-                             JOIN CLIENT c ON c.id=a.client_id WHERE a.id=?""", (row['CLIENT_id'],)).fetchone()
+        r = con.execute("""SELECT c.full_name_latin AS lat, c.surname, c.name FROM applications a
+                             JOIN clients c ON c.id=a.client_id WHERE a.id=?""", (row['application_id'],)).fetchone()
         con.close()
         fio = ''
         if r is not None:
-            fio = str(r['lat'] or ('%s %s' % (r['CLIENT'] or '', r['name'] or ''))).strip()
+            fio = str(r['lat'] or ('%s %s' % (r['surname'] or '', r['name'] or ''))).strip()
         found = _find_pdf(row['code'], fio)
         return Path(found) if found else None
     except Exception:      # noqa: BLE001
@@ -75,21 +75,21 @@ def _doc_pdf_path(row: dict) -> Path | None:
 def _report_text(app_id: int, docs: list[dict], stops: list[str]) -> str:
     """Отчёт о сборке: состав пакета, проверки, чего не хватает."""
     lines = ['Отчёт по заявке #%s' % app_id,
-             'Составлен: %s' % CLIENT.now().strftime('%d.%m.%Y %H:%M'), '']
+             'Составлен: %s' % datetime.now().strftime('%d.%m.%Y %H:%M'), '']
     lines.append('Документы пакета:')
     for d in docs:
-        lines.append('  - %-38s %-9s %s' % (d.get('code'), d.get('CLIENT'),
+        lines.append('  - %-38s %-9s %s' % (d.get('code'), d.get('status'),
                                             ('файл: ' + Path(d['file']).name) if d.get('file') else 'файла нет'))
     try:
         con = _conn()
         rows = [dict(r) for r in con.execute(
-            "SELECT step, CLIENT, note, created_at FROM app_CLIENT WHERE CLIENT_id=? ORDER BY id DESC LIMIT 25",
+            "SELECT step, status, note, created_at FROM app_steps WHERE application_id=? ORDER BY id DESC LIMIT 25",
             (app_id,))]
         con.close()
         if rows:
             lines += ['', 'Ход работы (последние шаги):']
             for r in rows:
-                lines.append('  %s %-10s %-6s %s' % (str(r['created_at'])[11:16], r['step'], r['CLIENT'],
+                lines.append('  %s %-10s %-6s %s' % (str(r['created_at'])[11:16], r['step'], r['status'],
                                                      str(r['note'] or '')[:110]))
     except Exception:      # noqa: BLE001
         pass
@@ -104,7 +104,7 @@ def _report_text(app_id: int, docs: list[dict], stops: list[str]) -> str:
             if tail:
                 lines += ['', 'Замечания смысловой проверки (последние):']
                 for t in tail:
-                    if int(t.get('CLIENT_id') or 0) in (0, app_id):
+                    if int(t.get('application_id') or 0) in (0, app_id):
                         lines.append('  - %s' % str(t.get('problems') or t)[:150])
     except Exception:      # noqa: BLE001
         pass
@@ -116,26 +116,26 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
     res = {'ok': False, 'sent': False, 'files': 0, 'folder': '', 'link': '',
            'error': '', 'stops': []}
     con = _conn()
-    a = con.execute("SELECT * FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    a = con.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
     if not a:
         con.close()
         res['error'] = 'заявка не найдена'
         return res
     a = dict(a)
-    client = dict(con.execute("SELECT * FROM CLIENT WHERE id=?", (a.get('client_id'),)).fetchone() or {})
+    client = dict(con.execute("SELECT * FROM clients WHERE id=?", (a.get('client_id'),)).fetchone() or {})
     rows = [dict(r) for r in con.execute(
-        """SELECT ad.id, ad.CLIENT, ad.pdf_path, t.code, ad.CLIENT_id
-             FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
-            WHERE ad.CLIENT_id=? ORDER BY t.doc_CLIENT""", (app_id,))]
+        """SELECT ad.id, ad.status, ad.pdf_path, t.code, ad.application_id
+             FROM application_documents ad JOIN templates t ON t.id=ad.template_id
+            WHERE ad.application_id=? ORDER BY t.doc_index""", (app_id,))]
     con.close()
 
     # Решёнными считаются и снятые документы: выбор банка помечает ненужную справку статусом
     # `excluded`, и требовать по ней решения заново нельзя — иначе отправка не проходит никогда.
-    decided = [r for r in rows if (r['CLIENT'] or '') in ('verified', 'rejected', 'sent', 'excluded')]
+    decided = [r for r in rows if (r['status'] or '') in ('verified', 'rejected', 'sent', 'excluded')]
     if not rows or len(decided) < len(rows):
         res['error'] = 'не все документы проверены: согласовано %d из %d' % (len(decided), len(rows))
         return res
-    sendable = [r for r in rows if (r['CLIENT'] or '') in ('verified', 'sent')]
+    sendable = [r for r in rows if (r['status'] or '') in ('verified', 'sent')]
     if not sendable:
         res['error'] = 'нет подтверждённых документов'
         return res
@@ -157,22 +157,22 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
 
     stops: list[str] = []
     try:
-        from CLIENT.doc_check import check_package
-        verdict, _finds = check_package(app_id, with_CLIENT=not dry)
+        from services.doc_check import check_package
+        verdict, _finds = check_package(app_id, with_drive=not dry)
         if verdict and not verdict.get('ok'):
             stops.append('проверка пакета: не пройдена (%d замечаний)' % len(_finds or []))
     except Exception as e:      # noqa: BLE001
         stops.append('проверка пакета не выполнена: %s' % str(e)[:80])
     try:
-        from CLIENT import pdf_CLIENT
-        q = pdf_CLIENT.check_app(app_id)
+        from services import pdf_quality
+        q = pdf_quality.check_app(app_id)
         if q and not q.get('ok'):
             stops.append('технический контроль: не пройден')
     except Exception as e:      # noqa: BLE001
         stops.append('технический контроль не выполнен: %s' % str(e)[:80])
     try:
-        from CLIENT import CLIENT_check
-        lc = CLIENT_check.check_app(app_id)
+        from services import logical_check
+        lc = logical_check.check_app(app_id)
         if lc and not lc.get('ok'):
             stops.append('логическая проверка: не пройдена')
     except Exception as e:      # noqa: BLE001
@@ -182,32 +182,32 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
         res['error'] = 'отправка остановлена: ' + '; '.join(stops[:3])
         return res
 
-    CLIENT = str(a.get('gCLIENT_url') or client.get('gCLIENT_folder_url') or '').strip()
-    if not CLIENT:
+    drive = str(a.get('gdrive_url') or client.get('gdrive_folder_url') or '').strip()
+    if not drive:
         res['error'] = 'в заявке нет ссылки на папку клиента на Google Диске'
         return res
 
     if dry:
         res.update({'ok': True, 'files': len(files), 'folder': _folder_name(app_id, a, client),
-                    'link': CLIENT, 'error': ''})
+                    'link': drive, 'error': ''})
         return res
 
-    from CLIENT import gCLIENT_write
+    from services import gdrive_write
 
     uploaded, errors = [], []
     try:
         sub_name = _folder_name(app_id, a, client)
-        sub = gCLIENT_write.find_file_in_folder(CLIENT, sub_name) or gCLIENT_write.ensure_folder(CLIENT, sub_name)
-        sub_id = (sub or {}).get('id') or CLIENT
+        sub = gdrive_write.find_file_in_folder(drive, sub_name) or gdrive_write.ensure_folder(drive, sub_name)
+        sub_id = (sub or {}).get('id') or drive
         res['folder'] = sub_name
-        res['link'] = 'https://CLIENT.google.com/CLIENT/folders/' + str(sub_id)
+        res['link'] = 'https://drive.google.com/drive/folders/' + str(sub_id)
     except Exception as e:      # noqa: BLE001
         res['error'] = 'не удалось открыть папку заявки: %s' % str(e)[:160]
         return res
 
     for p, name in files:
         try:
-            gCLIENT_write.upload_file(sub_id, p, name=name, overwrite=True)
+            gdrive_write.upload_file(sub_id, p, name=name, overwrite=True)
             uploaded.append(name)
         except Exception as e:      # noqa: BLE001
             errors.append('%s: %s' % (name, str(e)[:100]))
@@ -216,38 +216,38 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
     try:
         rmsg = str(a.get('raw_message') or '').strip()
         if rmsg:
-            head = ('CLIENT #%s\nCreated: %s\nClient: %s\n\n'
+            head = ('Application #%s\nCreated: %s\nClient: %s\n\n'
                     '--- текст заявки, как он пришёл в Telegram ---\n\n'
                     % (app_id, str(a.get('created_at') or '')[:19],
-                       (client.get('full_name_CLIENT') or client.get('full_name') or '').strip()))
+                       (client.get('full_name_latin') or client.get('full_name') or '').strip()))
             # Текст заявки — технический файл: держим локально, на Диск не выкладываем
             # (на Диске должен лежать только клиентский пакет и легенда).
             import pathlib as _pl2
             _rd2 = _pl2.Path('/opt/wolf_v2/data/reports')
             _rd2.mkdir(parents=True, exist_ok=True)
-            (_rd2 / ('CLIENT_%s.txt' % app_id)).write_text(head + rmsg + '\n', encoding='utf-8')
+            (_rd2 / ('application_%s.txt' % app_id)).write_text(head + rmsg + '\n', encoding='utf-8')
     except Exception as e:      # noqa: BLE001
         errors.append('текст заявки: %s' % str(e)[:100])
     try:
         lp = ROOT / 'data' / 'legends' / ('client_%s.json' % (a.get('client_id') or 0))
         if lp.exists():
             try:
-                from CLIENT import legend as _lg
+                from services import legend as _lg
                 body = _lg.render(json.loads(lp.read_text(encoding='utf-8')))
             except Exception:      # noqa: BLE001
                 body = lp.read_text(encoding='utf-8')
-            _fio_l = (client.get('full_name_CLIENT') or 'CLIENT').strip()
+            _fio_l = (client.get('full_name_latin') or 'CLIENT').strip()
             # Легенда уходит клиенту печатным документом Word (A4); TXT держим локально.
             _docx = ROOT / 'data' / 'legends' / ('Legend %s.docx' % _fio_l)
             try:
-                from CLIENT import legend as _lg2
+                from services import legend as _lg2
                 _lg2.render_docx(json.loads(lp.read_text(encoding='utf-8')), _docx)
                 nm = 'Legend %s.docx' % _fio_l
-                gCLIENT_write.upload_file(sub_id, _docx, nm, overwrite=True)
+                gdrive_write.upload_file(sub_id, _docx, nm, overwrite=True)
                 uploaded.append(nm)
             except Exception:      # noqa: BLE001
                 nm = 'Legend %s.txt' % _fio_l
-                gCLIENT_write.upload_bytes(sub_id, body.encode('utf-8'), nm, 'text/plain', overwrite=True)
+                gdrive_write.upload_bytes(sub_id, body.encode('utf-8'), nm, 'text/plain', overwrite=True)
                 uploaded.append(nm)
     except Exception as e:      # noqa: BLE001
         errors.append('легенда: %s' % str(e)[:100])
@@ -255,9 +255,9 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
     # именами: клиент получает полный портфель — оригиналы + наши документы + легенду.
     try:
         import pathlib as _pl3, re as _re3
-        _cache = ROOT / 'data' / 'gCLIENT_cache' / ('client_%s' % (client.get('id') or 0))
-        _fio = str(client.get('full_name_CLIENT') or client.get('full_name') or 'CLIENT').strip()
-        _pass = str(client.get('passport_CLIENT') or '').strip()
+        _cache = ROOT / 'data' / 'gdrive_cache' / ('client_%s' % (client.get('id') or 0))
+        _fio = str(client.get('full_name_latin') or client.get('full_name') or 'CLIENT').strip()
+        _pass = str(client.get('passport_number') or '').strip()
         _date = str(a.get('created_at') or '')[:10]
         try:
             _date = '.'.join(reversed(_date.split('-')))
@@ -267,11 +267,11 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
         if _cache.is_dir():
             for _f in sorted(_cache.iterdir()):
                 _low = _f.name.lower()
-                for _key, _CLIENT, _ext in _rules:
-                    if _low.CLIENTswith(_key) or _low.CLIENTswith('passport') and _key == 'passport':
-                        _new = '%s %s %s %s%s' % (_CLIENT, _fio, _pass, _date, _f.suffix or _ext)
+                for _key, _title, _ext in _rules:
+                    if _low.startswith(_key) or _low.startswith('passport') and _key == 'passport':
+                        _new = '%s %s %s %s%s' % (_title, _fio, _pass, _date, _f.suffix or _ext)
                         _new = _re3.sub(r'\s+', ' ', _new).strip()
-                        _res = gCLIENT_write.upload_file(sub_id, _f, _new, overwrite=True)
+                        _res = gdrive_write.upload_file(sub_id, _f, _new, overwrite=True)
                         if _res:
                             uploaded.append(_new)
                         break
@@ -296,9 +296,9 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
     try:
         con = _conn()
         for r in sendable:
-            con.execute("UPDATE CLIENT_CLIENT SET CLIENT='sent' WHERE id=? AND CLIENT IN ('filled','verified')",
+            con.execute("UPDATE application_documents SET status='sent' WHERE id=? AND status IN ('filled','verified')",
                         (r['id'],))
-        con.execute("UPDATE CLIENT SET CLIENT='sent', sent_at=CLIENT('now') WHERE id=?", (app_id,))
+        con.execute("UPDATE applications SET status='sent', sent_at=datetime('now') WHERE id=?", (app_id,))
         con.commit()
         con.close()
     except Exception as e:      # noqa: BLE001

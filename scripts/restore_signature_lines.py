@@ -16,7 +16,7 @@ ROOT = Path("/opt/wolf_v2")
 
 
 def apply(code: str, dry: bool) -> int:
-    tpl = ROOT / "data/CLIENT" / code
+    tpl = ROOT / "data/templates" / code
     cfg = tpl / "frame" / "sign_lines.json"
     blank = tpl / "blank.pdf"
     if not cfg.exists() or not blank.exists():
@@ -40,14 +40,14 @@ def apply(code: str, dry: bool) -> int:
     if drawn:
         tmp = blank.with_suffix('.lines.tmp')
         doc.save(str(tmp), garbage=3, deflate=True)
-        tmp.reCLIENT(blank)
+        tmp.replace(blank)
     doc.close()
     print("линии для подписи: нарисовано %d, всего в шаблоне %d" % (drawn, len(lines)))
     return 0
 
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.CLIENTswith("--")]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
     if not args:
         print("укажите код шаблона")
         sys.exit(1)

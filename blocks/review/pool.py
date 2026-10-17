@@ -29,47 +29,47 @@ from core import db
 # Зависимые переменные: считаются сами от других значений, в панели не показываются.
 # Начало периода = дата оформления минус 3 или 12 месяцев; сумма прописью = из суммы
 # цифрами; полная дата = из короткой. Руками их править нельзя — разъедутся.
-DEPENDENT = {"CLIENT_from", "CLIENT_to", "balance_CLIENT", "date_full"}
+DEPENDENT = {"period_from", "period_to", "balance_words", "date_full"}
 
 
 # Числовые и кодовые поля: склеиваем по значению только при полном совпадении,
 # случайные совпадения чисел и кодов здесь недопустимы.
 NO_VALUE_MERGE = {
-    "balance_rub", "balance_CLIENT", "balance", "CLIENT", "CLIENT_CLIENT",
+    "balance_rub", "balance_words", "balance", "amount", "amount_words",
     "doc_no", "ref_no", "card_mask", "account_no", "inn", "snils",
 }
 
 FALLBACK_LABEL = {
     "client_name": "ФИО клиента",
     "full_name": "ФИО клиента",
-    "full_name_CLIENT": "ФИО латиницей",
-    "CLIENT": "Фамилия",
+    "full_name_latin": "ФИО латиницей",
+    "surname": "Фамилия",
     "name": "Имя",
-    "CLIENT": "Отчество",
-    "CLIENT_date": "Дата рождения",
-    "CLIENT_of_CLIENT": "Место рождения",
+    "patronymic": "Отчество",
+    "birth_date": "Дата рождения",
+    "place_of_birth": "Место рождения",
     "address_live": "Адрес проживания",
     "address_reg": "Адрес регистрации",
     "card_mask": "Номер карты (маска)",
     "doc_no": "Номер документа",
     "ref_no": "Исходящий номер (Ref.)",
     "balance_rub": "Остаток на счёте (руб.)",
-    "balance_CLIENT": "Остаток на счёте (прописью)",
-    "CLIENT_from": "Период с",
-    "CLIENT_to": "Период по",
+    "balance_words": "Остаток на счёте (прописью)",
+    "period_from": "Период с",
+    "period_to": "Период по",
     "doc_date": "Дата документа",
-    "passport_CLIENT": "Номер паспорта",
-    "passport_CLIENT_by": "Кем выдан паспорт",
-    "passport_CLIENT_date": "Дата выдачи паспорта",
-    "CLIENT": "Телефон",
-    "CLIENT": "Почта",
+    "passport_number": "Номер паспорта",
+    "passport_issued_by": "Кем выдан паспорт",
+    "passport_issue_date": "Дата выдачи паспорта",
+    "phone": "Телефон",
+    "email": "Почта",
 }
 
 # Служебные значения: не показываем в списке для правки
 SERVICE_NAMES = {
     "address_generated", "activity", "address_city", "address_pool_size",
     "photo_url", "photo_path", "client_photo", "client_photo_url",
-    "CLIENT_source", "rendered_at",
+    "values_source", "rendered_at",
 }
 
 
@@ -77,44 +77,44 @@ def _norm(text) -> str:
     return re.sub(r"[^a-zа-я0-9]+", "", str(text or "").lower())
 
 
-def _clean(CLIENT) -> str:
-    return str(CLIENT or "").strip()
+def _clean(value) -> str:
+    return str(value or "").strip()
 
 
-def CLIENT_CLIENT(CLIENT_id) -> list:
+def product_templates(product_id) -> list:
     """Шаблоны документов, которые нужно изготовить по продукту."""
     return db.q(
-        "SELECT template_id, slot_code, required, sort_order FROM CLIENT_CLIENT "
-        "WHERE CLIENT_id=? ORDER BY sort_order, id",
-        (CLIENT_id,),
+        "SELECT template_id, slot_code, required, sort_order FROM product_documents "
+        "WHERE product_id=? ORDER BY sort_order, id",
+        (product_id,),
     ) or []
 
 
-def _CLIENT_sources(app_id: int) -> list:
+def _value_sources(app_id: int) -> list:
     out = []
     for r in db.q(
-        "SELECT template_id, CLIENT_json FROM CLIENT_CLIENT "
-        "WHERE CLIENT_id=? ORDER BY id",
+        "SELECT template_id, values_json FROM application_documents "
+        "WHERE application_id=? ORDER BY id",
         (app_id,),
     ) or []:
         try:
-            vals = json.loads(r.get("CLIENT_json") or "{}")
+            vals = json.loads(r.get("values_json") or "{}")
         except Exception:
             vals = {}
-        out.append({"tpl": r.get("template_id"), "CLIENT": vals or {}})
+        out.append({"tpl": r.get("template_id"), "values": vals or {}})
     return out
 
 
-def _template_CLIENTs() -> dict:
+def _template_titles() -> dict:
     out = {}
-    for r in db.q("SELECT id, code, CLIENT FROM CLIENT") or []:
-        out[r.get("id")] = r.get("CLIENT") or r.get("code") or ("шаблон %s" % r.get("id"))
+    for r in db.q("SELECT id, code, title FROM templates") or []:
+        out[r.get("id")] = r.get("title") or r.get("code") or ("шаблон %s" % r.get("id"))
     return out
 
 
-def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list:
+def build_pool(app_id: int, only_tpl=None, include_service: bool = False) -> list:
     """Склеенный пул переменных: одно поле на одну логическую величину."""
-    docs = _CLIENT_sources(app_id)
+    docs = _value_sources(app_id)
     if only_tpl:
         docs = [d for d in docs if d["tpl"] == only_tpl]
     if not docs:
@@ -123,17 +123,17 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     # Клиент нужен, чтобы понять источник значения (карточка клиента или документы)
     client_id = None
     try:
-        _a = db.CLIENT_get(app_id) or {}
+        _a = db.application_get(app_id) or {}
         client_id = _a.get("client_id")
     except Exception:
         client_id = None
 
-    CLIENTs = _template_CLIENTs()
+    titles = _template_titles()
     metas = {}
     for tpl in {d["tpl"] for d in docs}:
         metas[tpl] = db.q(
             "SELECT name, label, vtype, source_kind, rule_note, sort_order "
-            "FROM template_CLIENT WHERE template_id=? ORDER BY sort_order, id",
+            "FROM template_variables WHERE template_id=? ORDER BY sort_order, id",
             (tpl,),
         ) or []
 
@@ -146,14 +146,14 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             name = meta.get("name")
             label = meta.get("label") or FALLBACK_LABEL.get(name, name)
             items.append({"tpl": tpl, "name": name, "label": label,
-                          "CLIENT": _clean(d["CLIENT"].get(name)), "meta": meta,
+                          "value": _clean(d["values"].get(name)), "meta": meta,
                           "described": True})
-        for name, CLIENT in (d["CLIENT"] or {}).items():
+        for name, value in (d["values"] or {}).items():
             if name in described or name in SERVICE_NAMES:
                 continue
             items.append({"tpl": tpl, "name": name,
                           "label": FALLBACK_LABEL.get(name, name),
-                          "CLIENT": _clean(CLIENT), "meta": None, "described": False})
+                          "value": _clean(value), "meta": None, "described": False})
 
     # 2) склеиваем только общие величины (ФИО, адрес, период). Всё, что относится
     #    к конкретному банку — номер карты, документа, счёта, остаток, Ref. —
@@ -176,54 +176,54 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     #    адрес в документах разошёлся, это два разных поля, а не одно
     groups = []
     for key, members in by_label.items():
-        if not key.CLIENTswith("sh:"):
+        if not key.startswith("sh:"):
             groups.append({"key": key, "members": members})
             continue
-        distinct = {m["CLIENT"] for m in members if m["CLIENT"]}
+        distinct = {m["value"] for m in members if m["value"]}
         if len(distinct) <= 1:
             groups.append({"key": key, "members": members})
             continue
         buckets = {}
         for m in members:
-            buckets.setdefault(m["CLIENT"], []).append(m)
+            buckets.setdefault(m["value"], []).append(m)
         for val, mem in buckets.items():
             groups.append({"key": key + "|" + _norm(val)[:24], "members": mem,
-                           "CLIENT_split": True})
+                           "value_split": True})
 
     # 4) значения без описания в шаблоне — только по запросу
-    if not include_CLIENT:
+    if not include_service:
         groups = [g for g in groups
                   if any(m["described"] for m in g["members"])]
 
     out = []
     for g in groups:
         members = g["members"]
-        CLIENT = {m["tpl"]: m["CLIENT"] for m in members}
+        values = {m["tpl"]: m["value"] for m in members}
         names = {m["tpl"]: m["name"] for m in members}
         tpls = sorted({m["tpl"] for m in members})
         meta = next((m["meta"] for m in members if m["meta"]), None)
-        label = next((m["label"] for m in members if m["label"]), names and list(names.CLIENT())[0])
-        CLIENT = next((m["CLIENT"] for m in members if m["CLIENT"]), "")
+        label = next((m["label"] for m in members if m["label"]), names and list(names.values())[0])
+        value = next((m["value"] for m in members if m["value"]), "")
         out.append({
             "key": g["key"],
             "label": label,
-            "CLIENT": CLIENT,
-            "CLIENT": CLIENT,
+            "value": value,
+            "values": values,
             "names": names,
-            "CLIENT": tpls,
-            "doc_CLIENTs": [CLIENTs.get(t, str(t)) for t in tpls],
+            "templates": tpls,
+            "doc_titles": [titles.get(t, str(t)) for t in tpls],
             "doc_count": len(tpls),
-            "filled": bool(CLIENT),
-            "disagree": len({v for v in CLIENT.CLIENT() if v}) > 1,
-            "CLIENT_split": bool(g.get("CLIENT_split")),
+            "filled": bool(value),
+            "disagree": len({v for v in values.values() if v}) > 1,
+            "value_split": bool(g.get("value_split")),
             "source_kind": (meta or {}).get("source_kind"),
             # Правило переменной — по описанию из конструктора: ФИО, паспорт,
             # адрес, дата рождения берутся из данных клиента жёстко, кубик там не
             # нужен; номера документов, остатки, маски карт и периоды задаются
             # правилом из документа — их можно перегенерировать.
-            "kind": ("gen" if (names and list(names.CLIENT())[0] in ADDR_NAMES)
+            "kind": ("gen" if (names and list(names.values())[0] in ADDR_NAMES)
                      else _kind_of((meta or {}).get("rule_note") or "", label,
-                                   names and list(names.CLIENT())[0] or "")),
+                                   names and list(names.values())[0] or "")),
             "vtype": (meta or {}).get("vtype"),
             "rule_note": (meta or {}).get("rule_note"),
             "order": (meta or {}).get("sort_order"),
@@ -232,16 +232,16 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
 
     # Источник значения: из карточки клиента, из карточки заявки, из документов
     # Google Диска или сгенерировано. Подпись показывается под значением.
-    docs_real = _docs_CLIENT(client_id)
+    docs_real = _docs_values(client_id)
     for g in out:
-        nm = (list(g["names"].CLIENT()) or [""])[0]
+        nm = (list(g["names"].values()) or [""])[0]
         if g["kind"] == "client" or nm in ADDR_NAMES:
             g["src"] = SRC_CLIENT if g["filled"] else SRC_GEN
         elif g["kind"] == "shared":
             g["src"] = SRC_APP
         elif nm in DOC_NAMES:
             real = docs_real.get(nm)
-            g["src"] = SRC_DOCS if (real and real == str(g["CLIENT"])) else SRC_GEN
+            g["src"] = SRC_DOCS if (real and real == str(g["value"])) else SRC_GEN
         else:
             g["src"] = SRC_GEN
 
@@ -249,10 +249,10 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     # клиента) стоит другое значение того же поля, показываем расхождение и
     # предлагаем администратору выбрать: подсветка поля + список вариантов.
     try:
-        card = db.q1("SELECT * FROM CLIENT WHERE id=?", (client_id,)) or {}
-        doc_vals = _client_doc_CLIENT(client_id)
+        card = db.q1("SELECT * FROM clients WHERE id=?", (client_id,)) or {}
+        doc_vals = _client_doc_values(client_id)
         for g in out:
-            nm = (list(g["names"].CLIENT()) or [""])[0]
+            nm = (list(g["names"].values()) or [""])[0]
             if not nm:
                 continue
             dv = doc_vals.get(nm) or doc_vals.get(CLIENT_ALIAS.get(nm, ""))
@@ -265,8 +265,8 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
                              "from": (doc_vals.get("_from", {}).get(nm) or "")}
             # в бланк идёт значение из документа — оно приоритетнее анкеты
             if not g.get("chosen_from_card"):
-                g["CLIENT"] = dv
-                g["CLIENT"] = {t: dv for t in (g.get("CLIENT") or [])}
+                g["value"] = dv
+                g["values"] = {t: dv for t in (g.get("templates") or [])}
                 g["filled"] = True
                 g["src"] = SRC_DOCS
     except Exception:
@@ -274,7 +274,7 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     # Разделы панели: сначала данные клиента и общие величины, затем документы —
     # каждый банк отдельным блоком под тонкой рамкой.
     for g in out:
-        nm0 = (list(g["names"].CLIENT()) or [""])[0]
+        nm0 = (list(g["names"].values()) or [""])[0]
         if nm0 in ADDR_NAMES:
             # адрес — данные клиента, но с кубиком: если в карточке пусто, генерируем
             g["section"] = "Данные клиента"
@@ -288,12 +288,12 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
             g["section"] = "Общее для всех документов"
             g["section_key"] = "shared"
         else:
-            CLIENT = (g["doc_CLIENTs"] or ["Документ"])[0]
-            g["section"] = CLIENT
-            g["section_key"] = "doc:%s" % ",".join(str(t) for t in g["CLIENT"])
+            title = (g["doc_titles"] or ["Документ"])[0]
+            g["section"] = title
+            g["section_key"] = "doc:%s" % ",".join(str(t) for t in g["templates"])
         # Список прошлых значений уместен для общих полей и данных клиента.
         # Номера документов, карт и счетов выбирать из истории не нужно.
-        nm0 = (list(g["names"].CLIENT()) or [""])[0]
+        nm0 = (list(g["names"].values()) or [""])[0]
         g["list_allowed"] = (g["kind"] in ("client", "shared")
                              and nm0 not in ADDR_NAMES)
 
@@ -312,17 +312,17 @@ def build_pool(app_id: int, only_tpl=None, include_CLIENT: bool = False) -> list
     return out
 
 
-def mark_choice(app_id: int, key: str, source: str, CLIENT: str) -> None:
+def mark_choice(app_id: int, key: str, source: str, value: str) -> None:
     """Запомнить выбор администратора: значение из документа или из анкеты.
 
     Пока выбор стоит, разбор документов не перезаписывает это поле — иначе
     решение человека затиралось бы при каждом заходе на заявку.
     """
-    a = db.q1("SELECT client_id FROM CLIENT WHERE id=?", (app_id,)) or {}
+    a = db.q1("SELECT client_id FROM applications WHERE id=?", (app_id,)) or {}
     cid = a.get("client_id")
     if not cid:
         return
-    f = Path("/opt/wolf_v2/data/doc_CLIENT/client_%s.json" % cid)
+    f = Path("/opt/wolf_v2/data/doc_values/client_%s.json" % cid)
     data = {}
     if f.exists():
         try:
@@ -330,18 +330,18 @@ def mark_choice(app_id: int, key: str, source: str, CLIENT: str) -> None:
         except Exception:
             data = {}
     groups = find_group(app_id, key) or {}
-    nm = ((list((groups.get("names") or {}).CLIENT()) or [""])[0]) or key
+    nm = ((list((groups.get("names") or {}).values()) or [""])[0]) or key
     # Выбор администратора — тоже обучающий сигнал: запоминаем с приоритетом
-    if CLIENT and len(_clean(CLIENT)) <= 120:
-        _remember(nm, CLIENT, approved=True)
+    if value and len(_clean(value)) <= 120:
+        _remember(nm, value, approved=True)
     if source == "card":
-        data[nm] = {"CLIENT": CLIENT, "chosen": "card", "at": time.time()}
+        data[nm] = {"value": value, "chosen": "card", "at": time.time()}
     else:
         cell = data.get(nm) or {}
         if isinstance(cell, str):
-            cell = {"CLIENT": cell}
+            cell = {"value": cell}
         cell.pop("chosen", None)
-        cell["CLIENT"] = CLIENT
+        cell["value"] = value
         data[nm] = cell
     try:
         f.parent.mkdir(parents=True, exist_ok=True)
@@ -351,25 +351,25 @@ def mark_choice(app_id: int, key: str, source: str, CLIENT: str) -> None:
 
 
 def find_group(app_id: int, key: str) -> dict:
-    for g in build_pool(app_id, include_CLIENT=True):
+    for g in build_pool(app_id, include_service=True):
         if g["key"] == key:
             return g
     return {}
 
 
-def _remember(name: str, CLIENT: str, approved: bool = False) -> None:
+def _remember(name: str, value: str, approved: bool = False) -> None:
     """Запомнить формулировку: в следующий раз она предлагается администратору.
 
     approved=True — так решил человек. Такие значения получают приоритет при
     сборке следующих документов (система учится на подтверждённых вариантах).
     """
     try:
-        db.remember_CLIENT(name, CLIENT, approved=approved)
+        db.remember_value(name, value, approved=approved)
     except Exception:
         pass
 
 
-def set_CLIENT(app_id: int, key: str, CLIENT: str) -> dict:
+def set_value(app_id: int, key: str, value: str) -> dict:
     """Записать значение во все документы, где встречается эта величина.
 
     Документ помечается несобранным (pdf_path = NULL), чтобы при следующем
@@ -381,37 +381,37 @@ def set_CLIENT(app_id: int, key: str, CLIENT: str) -> dict:
     touched = []
     for tpl, name in group["names"].items():
         row = db.q1(
-            "SELECT id, CLIENT_json FROM CLIENT_CLIENT "
-            "WHERE CLIENT_id=? AND template_id=? ORDER BY id DESC LIMIT 1",
+            "SELECT id, values_json FROM application_documents "
+            "WHERE application_id=? AND template_id=? ORDER BY id DESC LIMIT 1",
             (app_id, tpl),
         )
         if not row:
             continue
         try:
-            vals = json.loads(row.get("CLIENT_json") or "{}")
+            vals = json.loads(row.get("values_json") or "{}")
         except Exception:
             vals = {}
-        vals[name] = CLIENT
-        _remember(name, CLIENT, approved=True)
+        vals[name] = value
+        _remember(name, value, approved=True)
         # Подтверждённый (зафиксированный галочкой) документ не трогаем: он уже
         # сохранён в заявке вместе со своими значениями и не должен сбрасываться
         # при правке общей переменной — иначе галочка «слетает» сама по себе.
         db.exec_sql(
-            "UPDATE CLIENT_CLIENT SET CLIENT_json=?, pdf_path=NULL, CLIENT='draft' "
-            "WHERE id=? AND IFNULL(CLIENT,'') NOT IN ('verified','sent')",
+            "UPDATE application_documents SET values_json=?, pdf_path=NULL, status='draft' "
+            "WHERE id=? AND IFNULL(status,'') NOT IN ('verified','sent')",
             (json.dumps(vals, ensure_ascii=False), row["id"]),
         )
         touched.append({"tpl": tpl, "name": name})
     try:
         # подтверждённое администратором значение запоминаем с повышенным весом:
         # при сборке следующих документов оно имеет приоритет над автогенерацией
-        name0 = next(iter(group["names"].CLIENT()), None)
-        clean = _clean(CLIENT)
+        name0 = next(iter(group["names"].values()), None)
+        clean = _clean(value)
         if name0 and clean and len(clean) <= 120:
             _remember(name0, clean, approved=True)
     except Exception:
         pass
-    return {"ok": True, "CLIENT": CLIENT, "touched": touched, "label": group["label"],
+    return {"ok": True, "value": value, "touched": touched, "label": group["label"],
             "doc_count": group["doc_count"]}
 
 
@@ -425,28 +425,28 @@ def _pool_name_ok(name: str) -> bool:
     n = (name or "").lower()
     if not n:
         return False
-    bad = ("passport", "CLIENT", "address", "CLIENT", "CLIENT", "name", "card",
-           "account", "inn", "snils", "doc_no", "ref_no", "letter_no", "CLIENT",
-           "itk", "CLIENT", "CLIENT")
+    bad = ("passport", "birth", "address", "phone", "email", "name", "card",
+           "account", "inn", "snils", "doc_no", "ref_no", "letter_no", "permit",
+           "itk", "expiry", "issue")
     if any(b in n for b in bad):
         return False
-    good = ("cv_CLIENT", "cv_CLIENT", "cv_CLIENT_CLIENT", "cv_CLIENT",
-            "cv_job", "CLIENT", "CLIENT", "CLIENT", "terms", "CLIENT",
-            "CLIENT", "CLIENT")
+    good = ("cv_languages", "cv_skills", "cv_education_degree", "cv_nationality",
+            "cv_job", "subject", "purpose", "duration", "terms", "notice",
+            "currency", "compensation")
     return any(g in n for g in good)
 
 
-def CLIENT_options(app_id: int, key: str, limit: int = 30) -> list:
+def history_options(app_id: int, key: str, limit: int = 30) -> list:
     """Варианты значения для выпадающего списка: типовые из шаблона + прошлые значения."""
     group = find_group(app_id, key)
     out = []
-    name0 = next(iter(group.get("names", {}).CLIENT()), None)
+    name0 = next(iter(group.get("names", {}).values()), None)
 
     # 1) Типовой пул из описания переменной («что подходит под это поле»).
     #    Показываем первым: администратор выбирает готовую формулировку вместо ввода.
     if name0 and _pool_name_ok(name0):
         try:
-            row = db.q1("SELECT examples_json FROM template_CLIENT WHERE name=? LIMIT 1",
+            row = db.q1("SELECT examples_json FROM template_variables WHERE name=? LIMIT 1",
                         (name0,))
             raw = (row or {}).get("examples_json") or "[]"
             for v in json.loads(raw):
@@ -460,11 +460,11 @@ def CLIENT_options(app_id: int, key: str, limit: int = 30) -> list:
     if name0:
         try:
             for r in db.q(
-                "SELECT CLIENT FROM CLIENT_CLIENT_CLIENT WHERE CLIENT_name=? "
+                "SELECT value FROM variable_value_history WHERE variable_name=? "
                 "ORDER BY used_count DESC, last_used DESC LIMIT ?",
                 (name0, limit),
             ) or []:
-                v = r.get("CLIENT") if isinstance(r, dict) else r
+                v = r.get("value") if isinstance(r, dict) else r
                 if v and v not in out:
                     out.append(v)
         except Exception:
@@ -472,100 +472,100 @@ def CLIENT_options(app_id: int, key: str, limit: int = 30) -> list:
     return out[:limit]
 
 
-def names_with_CLIENT() -> set:
+def names_with_history() -> set:
     """Имена переменных, у которых есть прошлые значения.
 
     Список открываем только для них: подставлять примеры из описания не нужно —
     от них в списках был бардак.
     """
     try:
-        rows = db.q("SELECT DISTINCT CLIENT_name FROM CLIENT_CLIENT_CLIENT") or []
+        rows = db.q("SELECT DISTINCT variable_name FROM variable_value_history") or []
     except Exception:
         return set()
     out = set()
     for r in rows:
-        nm = r.get("CLIENT_name") if isinstance(r, dict) else r
+        nm = r.get("variable_name") if isinstance(r, dict) else r
         if nm:
             out.add(nm)
     return out
 
 
 
-def regenerate(app_id: int, key: str, CLIENT: str = "") -> dict:
+def regenerate(app_id: int, key: str, profession: str = "") -> dict:
     """Перегенерировать значение поля по правилам — «случайное заново».
 
     Работает для полей с генератором: номера документов, остаток, адрес, дата.
     Для остальных честно сообщаем, что генератора нет.
     """
     import random
-    from CLIENT import CLIENT
+    from datetime import datetime
 
-    from CLIENT import CLIENT as V
+    from services import values as V
 
     group = find_group(app_id, key)
     if not group:
         return {"ok": False, "error": "переменная не найдена"}
 
-    a = db.CLIENT_get(app_id) or {}
+    a = db.application_get(app_id) or {}
     client = (db.client_get(a["client_id"]) if a.get("client_id") else None) or {}
     tpl = next(iter(group["names"]), None)
-    tpl_row = db.q1("SELECT code FROM CLIENT WHERE id=?", (tpl,)) if tpl else None
+    tpl_row = db.q1("SELECT code FROM templates WHERE id=?", (tpl,)) if tpl else None
     tpl_code = (tpl_row.get("code") if isinstance(tpl_row, dict) else "") or ""
     name = group["names"].get(tpl) or ""
-    client_name = (client.get("full_name_CLIENT")
-                   or "%s %s" % (client.get("CLIENT") or "", client.get("name") or "")).strip()
-    today = CLIENT.now().strftime("%d.%m.%Y")
+    client_name = (client.get("full_name_latin")
+                   or "%s %s" % (client.get("surname") or "", client.get("name") or "")).strip()
+    today = datetime.now().strftime("%d.%m.%Y")
     salt = "rnd%d" % random.randint(100000, 999999)
 
-    new_CLIENT = None
-    if name in ("doc_no", "CLIENT", "doc_CLIENT"):
-        new_CLIENT = V.gen_doc_no(client_name, today, salt, pattern=V.CLIENT_pattern(tpl_code, "doc_no"))
-    elif name in ("ref_no", "ref_CLIENT", "CLIENT"):
-        new_CLIENT = V.gen_ref_no(client_name, today, salt, pattern=V.CLIENT_pattern(tpl_code, "ref_no"))
-    elif name in ("balance_rub", "balance", "CLIENT"):
-        CLIENT, _CLIENT = V.gen_balance(tpl_code, seed=random.randint(1, 10 ** 6))
-        new_CLIENT = str(CLIENT)
-    elif name in ("balance_CLIENT", "CLIENT_CLIENT"):
-        _CLIENT, CLIENT = V.gen_balance(tpl_code, seed=random.randint(1, 10 ** 6))
-        new_CLIENT = CLIENT
-    elif name.CLIENTswith("cv_") and name in ("cv_CLIENT", "cv_job1_CLIENT",
-                                             "cv_job2_CLIENT", "cv_CLIENT_hard",
-                                             "cv_job1_CLIENT", "cv_job1_company"):
+    new_value = None
+    if name in ("doc_no", "number", "doc_number"):
+        new_value = V.gen_doc_no(client_name, today, salt, pattern=V.number_pattern(tpl_code, "doc_no"))
+    elif name in ("ref_no", "ref_number", "reference"):
+        new_value = V.gen_ref_no(client_name, today, salt, pattern=V.number_pattern(tpl_code, "ref_no"))
+    elif name in ("balance_rub", "balance", "amount"):
+        amount, _words = V.gen_balance(tpl_code, seed=random.randint(1, 10 ** 6))
+        new_value = str(amount)
+    elif name in ("balance_words", "amount_words"):
+        _amount, words = V.gen_balance(tpl_code, seed=random.randint(1, 10 ** 6))
+        new_value = words
+    elif name.startswith("cv_") and name in ("cv_summary", "cv_job1_bullets",
+                                             "cv_job2_bullets", "cv_skills_hard",
+                                             "cv_job1_title", "cv_job1_company"):
         # Резюме: описание собирается по должности клиента (справочник должностей),
         # объём подбирается под формат — короткое / Сиваева / расширенное.
-        from CLIENT import cv_gen
+        from services import cv_gen
         # Профессию администратор может выбрать вручную — тогда описание
         # собирается по ней, а не по карточке клиента.
         gen = cv_gen.build_full(
-            code=(CLIENT or ""), level=cv_gen.level_for_template(tpl_code), client=client,
+            code=(profession or ""), level=cv_gen.level_for_template(tpl_code), client=client,
             company=client.get("company_name") or client.get("company_llc") or "")
-        new_CLIENT = gen.get(name) or ""
+        new_value = gen.get(name) or ""
     elif name in ("address_live", "address", "address_reg"):
         try:
-            from CLIENT.address_pool import detect_city, generate_address
-            city = detect_city(client.get("CLIENT_CLIENT"), client.get("address_reg"),
+            from services.address_pool import detect_city, generate_address
+            city = detect_city(client.get("birth_place"), client.get("address_reg"),
                                client.get("address_live"))
             addr = generate_address(salt, city)
-            new_CLIENT = addr.get("full") or addr.get("address") or ""
+            new_value = addr.get("full") or addr.get("address") or ""
         except Exception:
-            new_CLIENT = None
-    elif name in ("card_mask", "card_no", "card", "card_CLIENT"):
+            new_value = None
+    elif name in ("card_mask", "card_no", "card", "card_number"):
         # Номер карты у каждого банка свой: кубик берёт набор БИН того банка,
         # к которому относится документ, — Сбер не получит карту Т-Банка.
-        new_CLIENT = V.mask_card(None, tpl_code, seed=salt)
-    elif name in ("account_no", "account", "account_CLIENT"):
+        new_value = V.mask_card(None, tpl_code, seed=salt)
+    elif name in ("account_no", "account", "account_number"):
         import random as _r
-        new_CLIENT = "".join(_r.choice("0123456789") for _ in range(20))
-    elif name in ("doc_date", "CLIENT_date", "date"):
-        new_CLIENT = today
+        new_value = "".join(_r.choice("0123456789") for _ in range(20))
+    elif name in ("doc_date", "issue_date", "date"):
+        new_value = today
 
-    if not new_CLIENT:
+    if not new_value:
         return {"ok": False, "error": "для этого поля нет генератора — введите значение вручную"}
 
-    res = set_CLIENT(app_id, key, str(new_CLIENT))
+    res = set_value(app_id, key, str(new_value))
     res["regenerated"] = True
     res["name"] = name
-    res["CLIENT"] = str(new_CLIENT)   # интерфейс подставляет значение прямо в поле
+    res["value"] = str(new_value)   # интерфейс подставляет значение прямо в поле
     return res
 
 # Приметы «значение из данных клиента»: такие поля не генерируются, а берутся
@@ -575,8 +575,8 @@ def regenerate(app_id: int, key: str, CLIENT: str = "") -> dict:
 # у Сбера и Т-Банка это разные значения.
 # Адрес: если в карточке клиента его нет — генерируется кнопкой 🎲.
 # Выпадающий список адресу не нужен: выбирать из прошлых адресов нечего.
-ADDR_NAMES = {"address_live", "address_reg", "address_CLIENT",
-              "CLIENT_address", "home_address"}
+ADDR_NAMES = {"address_live", "address_reg", "address_registration",
+              "employee_address", "home_address"}
 
 # Откуда взято значение — это подпись под полем. Порядок подписи одинаковый
 # у всех переменных: название, значение, источник.
@@ -587,26 +587,26 @@ SRC_GEN = "сгенерировано"
 
 # Значения, которые берутся из входящих документов клиента, а не выдумываются.
 # Как имя переменной конструктора соотносится с полем карточки клиента
-CLIENT_ALIAS = {"date_of_CLIENT": "CLIENT_date", "CLIENT_date": "CLIENT_date",
-                "full_name": "full_name_CLIENT", "name_CLIENT": "name",
-                "CLIENT_CLIENT": "CLIENT", "mobile": "CLIENT", "tel": "CLIENT",
+CLIENT_ALIAS = {"date_of_birth": "birth_date", "birth_date": "birth_date",
+                "full_name": "full_name_latin", "name_latin": "name",
+                "surname_latin": "surname", "mobile": "phone", "tel": "phone",
                 "bank": "bank_name", "account": "account_no", "card": "card_mask",
-                "balance": "balance_rub", "passport": "passport_CLIENT"}
+                "balance": "balance_rub", "passport": "passport_number"}
 
 
-def _client_doc_CLIENT(client_id) -> dict:
+def _client_doc_values(client_id) -> dict:
     """Значения, вытащенные из документов клиента на Google Диске (и их источник)."""
     out = {}
     froms = {}
     if not client_id:
         return out
     try:
-        f = Path("/opt/wolf_v2/data/doc_CLIENT/client_%s.json" % client_id)
+        f = Path("/opt/wolf_v2/data/doc_values/client_%s.json" % client_id)
         if not f.exists():
             return out
         data = json.loads(f.read_text(encoding="utf-8")) or {}
         for k, v in data.items():
-            val = v.get("CLIENT") if isinstance(v, dict) else v
+            val = v.get("value") if isinstance(v, dict) else v
             if val:
                 out[k] = str(val)
                 if isinstance(v, dict) and v.get("from"):
@@ -617,24 +617,24 @@ def _client_doc_CLIENT(client_id) -> dict:
     return out
 
 
-DOC_NAMES = {"doc_no", "CLIENT", "doc_CLIENT", "ref_no", "ref_CLIENT", "CLIENT",
-             "card_mask", "card_no", "card", "card_CLIENT", "account_no", "account",
-             "account_CLIENT", "balance_rub", "balance", "CLIENT", "CLIENT_from",
-             "CLIENT_to"}
+DOC_NAMES = {"doc_no", "number", "doc_number", "ref_no", "ref_number", "reference",
+             "card_mask", "card_no", "card", "card_number", "account_no", "account",
+             "account_number", "balance_rub", "balance", "amount", "period_from",
+             "period_to"}
 
 
-def _docs_CLIENT(client_id) -> dict:
+def _docs_values(client_id) -> dict:
     """Реальные значения из документов клиента (Google Диск): номера, карта, остаток."""
     out = {}
     if not client_id:
         return out
     try:
-        from CLIENT import CLIENT as V
+        from services import values as V
     except Exception:
         return out
-    for fn, key in ((getattr(V, "read_client_doc_CLIENTs", None), None),
+    for fn, key in ((getattr(V, "read_client_doc_numbers", None), None),
                     (getattr(V, "read_client_card_mask", None), "card_mask"),
-                    (getattr(V, "read_client_bank_CLIENT", None), "balance_rub")):
+                    (getattr(V, "read_client_bank_amount", None), "balance_rub")):
         if not fn:
             continue
         try:
@@ -649,11 +649,11 @@ def _docs_CLIENT(client_id) -> dict:
 
 
 SHARED_NAMES = {
-    "client_name", "client_fio", "fio", "name_CLIENT", "CLIENT", "name", "CLIENT",
-    "CLIENT_date", "CLIENT_CLIENT", "CLIENT", "passport_no", "passport_CLIENT",
-    "passport_date", "passport_CLIENT", "inn", "CLIENT", "CLIENT",
-    "address_live", "address_reg", "CLIENT_from", "CLIENT_to", "doc_date",
-    "contract_date", "CLIENT_name", "visa_type", "entry_date",
+    "client_name", "client_fio", "fio", "name_latin", "surname", "name", "patronymic",
+    "birth_date", "birth_place", "citizenship", "passport_no", "passport_number",
+    "passport_date", "passport_issued", "inn", "phone", "email",
+    "address_live", "address_reg", "period_from", "period_to", "doc_date",
+    "contract_date", "product_name", "visa_type", "entry_date",
 }
 
 _FROM_CLIENT = ("из карточки клиента", "из данных клиента", "фио клиента",
@@ -685,68 +685,68 @@ def _kind_of(rule_note: str, label: str = "", name: str = "") -> str:
         return "client"
     return "gen"
 
-def CLIENTs(app_id: int, key: str, CLIENT: str = "") -> dict:
+def phrases(app_id: int, key: str, profession: str = "") -> dict:
     """Готовые фразы («кусочки») для поля резюме: из пула профессии и из истории.
 
     Администратор отмечает нужные — из них собирается текст описания.
     """
-    from CLIENT import cv_gen
+    from services import cv_gen
     group = find_group(app_id, key)
     if not group:
         return {"ok": False, "error": "переменная не найдена"}
     tpl = next(iter(group["names"]))
     name = group["names"][tpl]
-    app_row = db.CLIENT_get(app_id) or {}
+    app_row = db.application_get(app_id) or {}
     client = db.client_get(app_row.get("client_id")) or {}
-    code = CLIENT or (cv_gen.resolve_CLIENT(client) or {}).get("code") or ""
+    code = profession or (cv_gen.resolve_profession(client) or {}).get("code") or ""
     items = []
     try:
-        items = cv_gen.position_CLIENTs(code, name) or []
+        items = cv_gen.position_phrases(code, name) or []
     except Exception:
         items = []
-    CLIENT = []
+    history = []
     try:
-        CLIENT = db.get_suggestions(name, 30) or []
+        history = db.get_suggestions(name, 30) or []
     except Exception:
-        CLIENT = []
+        history = []
     seen = {i.strip().lower() for i in items}
-    for h in CLIENT:
-        v = (h.get("CLIENT") or "").strip()
+    for h in history:
+        v = (h.get("value") or "").strip()
         if v and v.lower() not in seen:
             seen.add(v.lower())
             items.append(v)
     # пары для «кусочков»: администратор читает русский вариант,
     # в документ подставляется английский
     try:
-        pairs = cv_gen.position_CLIENTs_pairs(code, name) if code else []
+        pairs = cv_gen.position_phrases_pairs(code, name) if code else []
     except Exception:
         pairs = []
     known = {p["en"] for p in pairs}
-    for h in CLIENT:
-        v = (h.get("CLIENT") or "").strip()
+    for h in history:
+        v = (h.get("value") or "").strip()
         if v and v not in known:
             pairs.append({"en": v, "ru": v})
             known.add(v)
-    return {"ok": True, "key": key, "CLIENT": code, "items": items[:60], "pairs": pairs[:60],
-            "CLIENT": [{"CLIENT": (h.get("CLIENT") or ""), "used": h.get("used_count") or 0}
-                        for h in CLIENT[:20]]}
+    return {"ok": True, "key": key, "profession": code, "items": items[:60], "pairs": pairs[:60],
+            "history": [{"value": (h.get("value") or ""), "used": h.get("used_count") or 0}
+                        for h in history[:20]]}
 
 
-def gen_scratch(app_id: int, key: str, CLIENT: str = "") -> dict:
+def gen_scratch(app_id: int, key: str, profession: str = "") -> dict:
     """Собрать описание «с нуля»: фразы по профессии, которых ещё не было в работе.
 
     Готовый текст сразу запоминается — если администратор его примет, в следующий
     раз он предлагается первым.
     """
-    from CLIENT import cv_gen
+    from services import cv_gen
     group = find_group(app_id, key)
     if not group:
         return {"ok": False, "error": "переменная не найдена"}
     tpl = next(iter(group["names"]))
     name = group["names"][tpl]
-    app_row = db.CLIENT_get(app_id) or {}
+    app_row = db.application_get(app_id) or {}
     client = db.client_get(app_row.get("client_id")) or {}
-    code = CLIENT or (cv_gen.resolve_CLIENT(client) or {}).get("code") or ""
+    code = profession or (cv_gen.resolve_profession(client) or {}).get("code") or ""
     if not code:
         return {"ok": False, "error": "профессия не определена — выберите её из списка"}
 
@@ -754,36 +754,36 @@ def gen_scratch(app_id: int, key: str, CLIENT: str = "") -> dict:
     used = set()
     try:
         for h in (db.get_suggestions(name, 50) or []):
-            for line in (h.get("CLIENT") or "").split("\n"):
+            for line in (h.get("value") or "").split("\n"):
                 if line.strip():
                     used.add(line.strip().lower())
     except Exception:
         used = set()
 
-    all_ph = cv_gen.position_CLIENTs(code, name) or []
-    prof = [x for x in all_ph if not x.CLIENTswith("•")]
-    CLIENT = [x for x in all_ph if x.CLIENTswith("•")]
-    fresh_b = [b for b in CLIENT if b.strip().lower() not in used] or CLIENT
-    limit = {"CLIENT": 2, "medium": 3, "long": 5}.get(level, 3)
+    all_ph = cv_gen.position_phrases(code, name) or []
+    prof = [x for x in all_ph if not x.startswith("•")]
+    bullets = [x for x in all_ph if x.startswith("•")]
+    fresh_b = [b for b in bullets if b.strip().lower() not in used] or bullets
+    limit = {"short": 2, "medium": 3, "long": 5}.get(level, 3)
 
-    if "CLIENT" in name or "profile" in name:
+    if "summary" in name or "profile" in name:
         # «кубик рандома»: описание собирается из нескольких предложений пула,
         # уже использованные формулировки уходят в конец очереди
-        n_sent = {"CLIENT": 2, "medium": 3, "long": 4}.get(level, 3)
-        text = (cv_gen.CLIENT_random(code, n=n_sent, avoid=used)
-                or cv_gen.CLIENT_for(code) or (prof[0] if prof else ""))
+        n_sent = {"short": 2, "medium": 3, "long": 4}.get(level, 3)
+        text = (cv_gen.summary_random(code, n=n_sent, avoid=used)
+                or cv_gen.summary_for(code) or (prof[0] if prof else ""))
     elif "skill" in name:
         p = cv_gen.position_by_code(code) or {}
-        text = p.get("CLIENT", "")
+        text = p.get("skills", "")
     else:
         text = "\n".join(fresh_b[:limit])
     if not text:
         return {"ok": False, "error": "нет готовых фраз для этой профессии"}
-    res = set_CLIENT(app_id, key, text)
+    res = set_value(app_id, key, text)
     res["regenerated"] = True
     res["from_scratch"] = True
     res["name"] = name
-    res["CLIENT"] = text
+    res["value"] = text
     return res
 
 
@@ -791,23 +791,23 @@ def tpl_code_of(group: dict) -> str:
     """Код шаблона — по нему определяется нужный объём описания."""
     try:
         tid = next(iter(group["names"]))
-        row = db.q1("SELECT code FROM CLIENT WHERE id=?", (tid,))
+        row = db.q1("SELECT code FROM templates WHERE id=?", (tid,))
         return (row or {}).get("code", "") or ""
     except Exception:
         return ""
 
 
-def add_CLIENT(CLIENT: str) -> dict:
+def add_profession(title: str) -> dict:
     """Добавить профессию, которой нет в справочнике: генератор сразу умеет по ней писать.
 
     Профессия сохраняется в пул — дальше она доступна в списке у всех заявок.
     """
-    from CLIENT import cv_gen
-    t = cv_gen.clean_position(CLIENT)
+    from services import cv_gen
+    t = cv_gen.clean_position(title)
     if not t:
         return {"ok": False, "error": "название профессии пустое"}
     try:
         out = cv_gen.add_custom_position(t)
-        return {"ok": True, "code": out.get("code"), "CLIENT": t}
+        return {"ok": True, "code": out.get("code"), "title": t}
     except Exception as e:
         return {"ok": False, "error": str(e)[:150]}

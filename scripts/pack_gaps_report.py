@@ -1,6 +1,6 @@
 """Сверка системы с реальностью: чего не хватает в пакетах заявок.
 
-Прогоняет CLIENT/pack_check по всем заявкам и пишет отчёт:
+Прогоняет services/pack_check по всем заявкам и пишет отчёт:
   docs/PACK_GAPS.md — сводка по продуктам и топ недостающих документов.
 
 Запуск: /usr/bin/python3 scripts/pack_gaps_report.py
@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
 
-from CLIENT import pack_check  # noqa: E402
+from services import pack_check  # noqa: E402
 
 OUT = Path('/opt/wolf_v2/docs/PACK_GAPS.md')
 
@@ -20,7 +20,7 @@ OUT = Path('/opt/wolf_v2/docs/PACK_GAPS.md')
 def main() -> int:
     con = sqlite3.connect('/opt/wolf_v2/data/wolf.db')
     con.row_factory = sqlite3.Row
-    ids = [r['id'] for r in con.execute("SELECT id FROM CLIENT ORDER BY id")]
+    ids = [r['id'] for r in con.execute("SELECT id FROM applications ORDER BY id")]
     full = 0
     by_prod = collections.defaultdict(lambda: [0, 0])
     miss_doc = collections.Counter()
@@ -33,15 +33,15 @@ def main() -> int:
             continue
         if not r.get('ok'):
             continue
-        by_prod[r['CLIENT']][1] += 1
+        by_prod[r['product']][1] += 1
         if r['complete']:
             full += 1
-            by_prod[r['CLIENT']][0] += 1
+            by_prod[r['product']][0] += 1
         for m in r['missing']:
-            miss_doc[(r['CLIENT'], m)] += 1
+            miss_doc[(r['product'], m)] += 1
         for m in r['missing_client']:
-            miss_cli[(r['CLIENT'], m)] += 1
-        rows.append((r['CLIENT_id'], r['CLIENT'], r['progress'], r['complete'],
+            miss_cli[(r['product'], m)] += 1
+        rows.append((r['application_id'], r['product'], r['progress'], r['complete'],
                      ', '.join(r['missing']) or '—', ', '.join(r['missing_client']) or '—'))
 
     L = ['# Пакеты заявок: чего не хватает', '',

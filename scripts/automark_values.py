@@ -7,7 +7,7 @@
 несколько раз или являются словами-заглушками, пропускаются: иначе подменится
 не то место.
 
-    automark_CLIENT.py <code> --app 89 [--apply]
+    automark_values.py <code> --app 89 [--apply]
 """
 import argparse
 import importlib.util
@@ -27,11 +27,11 @@ SKIP = {
 MIN_LEN = 3
 
 
-def CLIENT_for(app_id, code):
+def values_for(app_id, code):
     spec = importlib.util.spec_from_file_location("pdf_fill_mod", os.path.join(ROOT, "scripts", "pdf_fill.py"))
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
-    return m.CLIENT_for(app_id, code) or {}
+    return m.values_for(app_id, code) or {}
 
 
 def norm(s):
@@ -41,33 +41,33 @@ def norm(s):
 def lines_of(page):
     """Строки страницы: список слов (в порядке чтения) + текст."""
     groups = {}
-    for w in page.get_text("CLIENT"):
+    for w in page.get_text("words"):
         groups.setdefault((w[5], w[6]), []).append(w)
     out = []
     for key in sorted(groups):
         ws = sorted(groups[key], key=lambda x: x[0])
-        out.append({"CLIENT": ws, "text": norm(" ".join(x[4] for x in ws))})
+        out.append({"words": ws, "text": norm(" ".join(x[4] for x in ws))})
     return out
 
 
-def find_span(line, CLIENT):
+def find_span(line, value):
     """Где в строке лежит значение: (x0, y0, x1, y1) или None."""
-    CLIENT = line["CLIENT"]
-    vw = norm(CLIENT).split()
+    words = line["words"]
+    vw = norm(value).split()
     if not vw:
         return None
-    wtxt = [norm(w[4]).lower() for w in CLIENT]
+    wtxt = [norm(w[4]).lower() for w in words]
     vlow = [w.lower() for w in vw]
     for i in range(len(wtxt) - len(vlow) + 1):
         if wtxt[i:i + len(vlow)] == vlow:
-            sel = CLIENT[i:i + len(vlow)]
+            sel = words[i:i + len(vlow)]
             return (min(w[0] for w in sel), min(w[1] for w in sel),
                     max(w[2] for w in sel), max(w[3] for w in sel))
     return None
 
 
 def build(code, app_id, apply=False):
-    td = os.path.join(ROOT, "data", "CLIENT", code)
+    td = os.path.join(ROOT, "data", "templates", code)
     pdf = os.path.join(td, "example_filled.pdf")
     fields_path = os.path.join(td, "fields.json")
     if not (os.path.exists(pdf) and os.path.exists(fields_path)):
@@ -75,7 +75,7 @@ def build(code, app_id, apply=False):
         return
     doc = pymupdf.open(pdf)
     lines = lines_of(doc[0])
-    vals = CLIENT_for(app_id, code)
+    vals = values_for(app_id, code)
     fields = json.loads(open(fields_path, encoding="utf-8").read())
     zones = fields["zones"] if isinstance(fields, dict) else fields
     have = {z.get("var") for z in zones}

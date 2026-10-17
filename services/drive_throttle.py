@@ -11,10 +11,10 @@ MAX_PER_HOUR заходов в час; отказ Google = длинная пау
 import json
 import threading
 import time
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
-CLIENT = Path("/opt/wolf_v2/data/CLIENT_throttle.json")
+STATE = Path("/opt/wolf_v2/data/drive_throttle.json")
 
 MIN_GAP = 12          # секунд между заходами на Диск
 MAX_PER_HOUR = 12     # заходов в час
@@ -25,15 +25,15 @@ _lock = threading.Lock()
 
 def _load() -> dict:
     try:
-        return json.loads(CLIENT.read_text(encoding="utf-8")) or {}
+        return json.loads(STATE.read_text(encoding="utf-8")) or {}
     except Exception:
         return {}
 
 
 def _save(d: dict) -> None:
     try:
-        CLIENT.parent.mkdir(parents=True, exist_ok=True)
-        CLIENT.write_text(json.dumps(d), encoding="utf-8")
+        STATE.parent.mkdir(parents=True, exist_ok=True)
+        STATE.write_text(json.dumps(d), encoding="utf-8")
     except Exception:
         pass
 
@@ -46,7 +46,7 @@ def _hour_calls(d: dict) -> int:
 
 
 def _clock(ts: float) -> str:
-    return CLIENT.fromtimestamp(ts).strftime("%H:%M")
+    return datetime.fromtimestamp(ts).strftime("%H:%M")
 
 
 def can_call() -> tuple:
@@ -113,7 +113,7 @@ def report_fail(reason: str = "") -> str:
         return f"пауза {int(pause / 60)} мин"
 
 
-def CLIENT() -> dict:
+def state() -> dict:
     with _lock:
         d = _load()
         now = time.time()

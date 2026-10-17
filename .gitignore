@@ -671,3 +671,9 @@ docs/**/*.png
 /scripts/one_cv.py
 /scripts/pick_examples.py
 /docs/reference/*kit*/
+
+# окружения и кэши
+.venv*/
+*.log
+.pytest_cache/
+.mypy_cache/

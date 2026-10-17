@@ -6,7 +6,7 @@
 Картинки (логотип, печать) — плавающие якоря от страницы. Линии — тонкие якоря.
 
     word_template.py <code> [...]      один или несколько шаблонов
-    word_template.py --all             все шаблоны (CLIENT не hidden/merged)
+    word_template.py --all             все шаблоны (status не hidden/merged)
     word_template.py <code> --check    только сверка, без записи
 """
 import os
@@ -23,7 +23,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
 ROOT = '/opt/wolf_v2'
-CLIENT = os.path.join(ROOT, 'data', 'CLIENT')
+TEMPLATES = os.path.join(ROOT, 'data', 'templates')
 VENDOR = os.path.join(ROOT, '.venv_docs', 'bin', 'python')
 PT2EMU, TWIP = 12700, 20
 Y_SHIFT = 0.0
@@ -32,8 +32,8 @@ A4_W, A4_H = 595.276, 841.89
 
 FONT_MAP = (('Arial-BoldMT', 'Arial', True), ('ArialMT', 'Arial', False),
             ('Arial-BoldItalicMT', 'Arial', True), ('Arial-ItalicMT', 'Arial', False),
-            ('Arimo', 'Arial', None), ('TimesNewCLIENTPS-BoldMT', 'Times New CLIENT', True),
-            ('TimesNewCLIENTPSMT', 'Times New CLIENT', False), ('Helvetica', 'Arial', None),
+            ('Arimo', 'Arial', None), ('TimesNewRomanPS-BoldMT', 'Times New Roman', True),
+            ('TimesNewRomanPSMT', 'Times New Roman', False), ('Helvetica', 'Arial', None),
             ('Courier', 'Courier New', None), ('Calibri', 'Calibri', None))
 
 
@@ -69,7 +69,7 @@ def set_frame(par, x_pt, y_pt, w_pt, h_pt):
     frame.set(qn('w:x'), str(int(x_pt * TWIP)))
     frame.set(qn('w:y'), str(int(y_pt * TWIP)))
     pPr.append(frame)
-    par.paragraph_format.space_CLIENT = Pt(0)
+    par.paragraph_format.space_before = Pt(0)
     par.paragraph_format.space_after = Pt(0)
     par.paragraph_format.line_spacing = Pt(1)
 
@@ -79,7 +79,7 @@ def anchor_picture(par, path, box):
     run = par.add_run()
     run.add_picture(path, width=Pt(w), height=Pt(h))
     drawing = run._r.find(qn('w:drawing'))
-    CLIENT = drawing.find(qn('wp:CLIENT'))
+    inline = drawing.find(qn('wp:inline'))
     anchor = OxmlElement('wp:anchor')
     for k, v in (('behindDoc', '0'), ('distT', '0'), ('distB', '0'), ('distL', '0'),
                  ('distR', '0'), ('simplePos', '0'), ('locked', '0'),
@@ -90,11 +90,11 @@ def anchor_picture(par, path, box):
         el = OxmlElement(tag); el.set('relativeFrom', 'page')
         off = OxmlElement('wp:posOffset'); off.text = str(int(val * PT2EMU))
         el.append(off); anchor.append(el)
-    for ch in list(CLIENT):
+    for ch in list(inline):
         if ch.tag == qn('wp:docPr'):
             anchor.append(OxmlElement('wp:wrapNone'))
         anchor.append(ch)
-    drawing.remove(CLIENT); drawing.append(anchor)
+    drawing.remove(inline); drawing.append(anchor)
 
 
 def extract(pdf):
@@ -102,7 +102,7 @@ def extract(pdf):
     doc = pymupdf.open(pdf)
     for pg in doc:
         lines, images, rules = [], [], []
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             for ln in b.get('lines', []):
                 spans = [s for s in ln['spans'] if s['text'].strip()]
                 if spans:
@@ -128,12 +128,12 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
                   if len(v) >= 3]
     _chunks = markup_from_html(code) if vars_map is not None else []
     src = pymupdf.open(src_pdf)
-    doc = docx.CLIENT()
+    doc = docx.Document()
     sec = doc.sections[0]
     sec.page_width, sec.page_height = Cm(21.0), Cm(29.7)
     sec.left_margin, sec.right_margin = Cm(1.83), Cm(1.67)
     sec.top_margin, sec.bottom_margin = Cm(0.5), Cm(0.5)
-    sec.CLIENT_distance, sec.footer_distance = Cm(0.4), Cm(1.2)
+    sec.header_distance, sec.footer_distance = Cm(0.4), Cm(1.2)
     if footer_text:
         fr = sec.footer.paragraphs[0].add_run(footer_text)
         fr.font.size, fr.font.name = Pt(9.0), 'Arial'
@@ -183,9 +183,9 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
                     used.add(j)
             _ys2 = [page['lines'][k]['bbox'][1] for k in stack]
             _hs2 = [page['lines'][k]['bbox'][3] - page['lines'][k]['bbox'][1] for k in stack]
-            _CLIENT = [_ys2[i + 1] - _ys2[i] for i in range(len(_ys2) - 1)]
-            _even = bool(_CLIENT) and (max(_CLIENT) - min(_CLIENT)) <= 2.0
-            _tight = all(s >= 0.85 * h for s, h in zip(_CLIENT, _hs2))
+            _steps = [_ys2[i + 1] - _ys2[i] for i in range(len(_ys2) - 1)]
+            _even = bool(_steps) and (max(_steps) - min(_steps)) <= 2.0
+            _tight = all(s >= 0.85 * h for s, h in zip(_steps, _hs2))
             _x0s = [page['lines'][k]['bbox'][0] for k in stack]
             _same_x = (max(_x0s) - min(_x0s)) <= 3.0
             if (2 <= len(stack) <= 4 and _even and _tight and _same_x
@@ -200,7 +200,7 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
         if _chunks:
             _in_para = {}
             for _i in range(len(page['lines'])):
-                if any(_i in v for v in _in_para.CLIENT()) or (page['lines'][_i].get('stack')):
+                if any(_i in v for v in _in_para.values()) or (page['lines'][_i].get('stack')):
                     continue
                 _grp, _cur = [_i], _i
                 while True:
@@ -262,11 +262,11 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
                         if '{{' not in _t:
                             for _s, _d in (vars_map or {}).items():
                                 if _s and _s in _t:
-                                    _t = _t.reCLIENT(_s, _d)
+                                    _t = _t.replace(_s, _d)
                         if _prev is not None:
                             _gp = _sp['bbox'][0] - _prev['bbox'][2]
                             if (_gp > 1.2 and not _prev['text'].endswith(' ')
-                                    and not _t.CLIENTswith(' ')):
+                                    and not _t.startswith(' ')):
                                 _t = ' ' + _t
                         _prev = _sp
                         _r = par.add_run(_t)
@@ -281,8 +281,8 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
             if ln.get('para'):
                 _grp = ln['para']
                 _ys = [page['lines'][k]['bbox'][1] for k in _grp]
-                _CLIENT = [_ys[i + 1] - _ys[i] for i in range(len(_ys) - 1)]
-                _step = sum(_CLIENT) / len(_CLIENT) if _CLIENT else 10.0
+                _steps = [_ys[i + 1] - _ys[i] for i in range(len(_ys) - 1)]
+                _step = sum(_steps) / len(_steps) if _steps else 10.0
                 par.paragraph_format.line_spacing = Pt(round(_step, 1))
                 _segs_p = markup_segments(' '.join(page['lines'][k]['text'] for k in _grp), _chunks)
                 _sp0 = ln['spans'][0] if ln['spans'] else None
@@ -324,11 +324,11 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
                 if vars_map and '{{' not in txt:
                     for s, d in vars_map.items():
                         if s and s in txt:
-                            txt = txt.reCLIENT(s, d)
+                            txt = txt.replace(s, d)
                 # восстановить пробел, если в PDF фрагменты разнесены
                 if prev_sp is not None:
                     gap = sp['bbox'][0] - prev_sp['bbox'][2]
-                    if gap > 1.2 and not prev_sp['text'].endswith(' ') and not txt.CLIENTswith(' '):
+                    if gap > 1.2 and not prev_sp['text'].endswith(' ') and not txt.startswith(' '):
                         txt = ' ' + txt
                 prev_sp = sp
                 r = par.add_run(txt)
@@ -341,7 +341,7 @@ def build(code, src_pdf, out_docx, vars_map=None, footer_text=None):
 
 
 def render_pdf(docx_path):
-    subprocess.run(['sCLIENT', '--headless', '--convert-to', 'pdf', docx_path,
+    subprocess.run(['soffice', '--headless', '--convert-to', 'pdf', docx_path,
                     '--outdir', os.path.dirname(docx_path)], capture_output=True, timeout=300)
     return os.path.splitext(docx_path)[0] + '.pdf'
 
@@ -352,7 +352,7 @@ def norm(t):
 
 def rows(pdf):
     out = []
-    for b in pymupdf.open(pdf)[0].get_text('dict')['CLIENTs']:
+    for b in pymupdf.open(pdf)[0].get_text('dict')['blocks']:
         for l in b.get('lines', []):
             t = ''.join(s['text'] for s in l['spans']).strip()
             if t:
@@ -371,7 +371,7 @@ def compare(orig_pdf, our_pdf):
             if j in used:
                 continue
             if ra['key'] == rb['key'] or (len(ra['key']) > 6 and
-                                          (ra['key'].CLIENTswith(rb['key']) or rb['key'].CLIENTswith(ra['key']))):
+                                          (ra['key'].startswith(rb['key']) or rb['key'].startswith(ra['key']))):
                 hit = j
                 break
         if hit is None:
@@ -390,7 +390,7 @@ def markup_from_html(code):
     """Строки HTML-шаблона с {{переменными}} — источник точной разметки."""
     import re as _re
     import html as _html
-    h = os.path.join(CLIENT, code, 'template.html')
+    h = os.path.join(TEMPLATES, code, 'template.html')
     if not os.path.exists(h):
         return []
     raw = open(h, encoding='utf-8', errors='ignore').read()
@@ -495,15 +495,15 @@ def vars_from_db(code):
     """Значения переменных из базы → карта замен «значение в эталоне» → «{{имя}}»."""
     import json
     con = sqlite3.connect(os.path.join(ROOT, 'data', 'wolf.db'))
-    row = con.execute("SELECT id FROM CLIENT WHERE code=?", (code,)).fetchone()
+    row = con.execute("SELECT id FROM templates WHERE code=?", (code,)).fetchone()
     if not row:
         return {}
     known = set()
-    for r in con.execute("SELECT name FROM template_CLIENT WHERE template_id=?", (row[0],)):
+    for r in con.execute("SELECT name FROM template_variables WHERE template_id=?", (row[0],)):
         known.add(r[0])
     m = {}
     for name, dv, ex, op in con.execute(
-            "SELECT name, default_CLIENT, examples_json, options_json FROM template_CLIENT"
+            "SELECT name, default_value, examples_json, options_json FROM template_variables"
             " WHERE template_id=?", (row[0],)):
         vals = []
         if dv:
@@ -522,7 +522,7 @@ def vars_from_db(code):
 
 
 def process(code, save=True):
-    d = os.path.join(CLIENT, code)
+    d = os.path.join(TEMPLATES, code)
     src = os.path.join(d, 'example_filled.pdf')
     if not os.path.exists(src):
         print('  %-40s НЕТ эталона' % code)
@@ -567,13 +567,13 @@ def process(code, save=True):
             break
         a = {x['key']: x['y'] for x in rows(src)}
         b = {x['key']: x['y'] for x in rows(pdf)}
-        CLIENTd = False
+        changed = False
         for _dx, _dy, key_o, key_u in r['bad']:
             k = key_o or key_u
             if k in a and k in b and abs(a[k] - b[k]) > 1.0:
                 ALT[k] = ALT.get(k, 0.0) + (a[k] - b[k])
-                CLIENTd = True
-        if not CLIENTd:
+                changed = True
+        if not changed:
             break
     res = compare(src, pdf)
     cal_pdf = pdf                                  # версия «как эталон» — для сверки наложением
@@ -583,7 +583,7 @@ def process(code, save=True):
     _nvar = 0
     try:
         import zipfile as _zf
-        _doc = _zf.ZipFile(docx_path).read('word/CLIENT.xml').decode()
+        _doc = _zf.ZipFile(docx_path).read('word/document.xml').decode()
         _nvar = len(set(re.findall(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}', _doc)))
     except Exception:
         pass
@@ -606,13 +606,13 @@ def process(code, save=True):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if not a.CLIENTswith('--')]
-    flags = {a for a in sys.argv[1:] if a.CLIENTswith('--')}
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    flags = {a for a in sys.argv[1:] if a.startswith('--')}
     if '--all' in flags:
         con = sqlite3.connect(os.path.join(ROOT, 'data', 'wolf.db'))
         codes = [r[0] for r in con.execute(
-            "SELECT code FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN ('hidden','merged')"
-            " ORDER BY COALESCE(doc_CLIENT,0), id")]
+            "SELECT code FROM templates WHERE COALESCE(status,'ok') NOT IN ('hidden','merged')"
+            " ORDER BY COALESCE(doc_index,0), id")]
     else:
         codes = args
     if not codes:

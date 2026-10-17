@@ -19,7 +19,7 @@ import sqlite3
 from pathlib import Path
 
 DB = Path("/opt/wolf_v2/data/wolf.db")
-POOL = Path("/opt/wolf_v2/data/CLIENT_pool.json")
+POOL = Path("/opt/wolf_v2/data/employer_pool.json")
 
 # Сфера деятельности → ключевые слова, по которым ищем организацию в пуле.
 # Организация для договора обязана быть вне Индонезии (правило заказчика).
@@ -44,7 +44,7 @@ POSITION_EN = {
     "музыкант": "Musician",
     "режиссер": "Director",
     "режиссёр": "Director",
-    "дизайнер": "DeCLIENT",
+    "дизайнер": "Designer",
     "маркетолог": "Marketing Specialist",
 }
 
@@ -67,7 +67,7 @@ def read_brief(app_id: int) -> str:
         c = sqlite3.connect(str(DB))
         c.row_factory = sqlite3.Row
         row = c.execute("""SELECT a.brief, a.comment, a.raw_payload, cl.position AS cpos
-                             FROM CLIENT a LEFT JOIN CLIENT cl ON cl.id = a.client_id
+                             FROM applications a LEFT JOIN clients cl ON cl.id = a.client_id
                             WHERE a.id=?""", (app_id,)).fetchone()
         c.close()
         if not row:
@@ -82,7 +82,7 @@ def read_brief(app_id: int) -> str:
             rp = json.loads(row["raw_payload"] or "{}")
         except Exception:
             rp = {}
-        for val in (str(rp.get("position") or rp.get("CLIENT") or "").strip(),
+        for val in (str(rp.get("position") or rp.get("profession") or "").strip(),
                     str(rp.get("notes") or "").strip(),
                     str(row["cpos"] or "").strip()):
             if val and all(val not in p for p in parts):
@@ -121,11 +121,11 @@ def _pool_items() -> list[dict]:
         data = json.loads(POOL.read_text(encoding="utf-8"))
     except Exception:
         return []
-    items = data if isinstance(data, list) else (data.get("CLIENTs") or data.get("items") or [])
+    items = data if isinstance(data, list) else (data.get("employers") or data.get("items") or [])
     return [x for x in items if isinstance(x, dict)]
 
 
-def pick_CLIENT_by_sphere(brief: str) -> dict:
+def pick_employer_by_sphere(brief: str) -> dict:
     """Организация подходящей сферы из пула: для артиста-продюсера — кинопродакшн."""
     text = (brief or "").lower()
     if not text:
@@ -141,18 +141,18 @@ def pick_CLIENT_by_sphere(brief: str) -> dict:
     items = _pool_items()
     for needle in want:
         for rec in items:
-            CLIENT = str(rec.get("name") or "").lower()
-            if needle in CLIENT:
+            title = str(rec.get("name") or "").lower()
+            if needle in title:
                 return rec
     return {}
 
 
-def CLIENT_CLIENT(rec: dict) -> dict:
+def employer_variables(rec: dict) -> dict:
     """Реквизиты организации в переменные договора (шапка и подвал — одна запись)."""
     if not rec:
         return {}
-    from CLIENT import CLIENT_pool as _emp
+    from services import employer_pool as _emp
     try:
-        return _emp.CLIENT_of(rec) or {}
+        return _emp.values_of(rec) or {}
     except Exception:
         return {}

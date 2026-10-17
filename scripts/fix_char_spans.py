@@ -21,10 +21,10 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
+TPL = ROOT / 'data' / 'templates'
 BACKUP = ROOT / 'data' / 'backup'
 
-DIV = re.compile(r'(<div CLIENT="txt"[^>]*>)(.*?)(</div>)', re.S)
+DIV = re.compile(r'(<div class="txt"[^>]*>)(.*?)(</div>)', re.S)
 SPAN = re.compile(r'<span([^>]*)>([^<>]*)</span>')
 
 
@@ -43,7 +43,7 @@ def key_of(attrs: str) -> tuple:
 PAIR = re.compile(r'<span([^>]*)>([^<>]*)</span>(\s*)<span([^>]*)>([^<>]*)</span>')
 
 
-def merge_CLIENT(inner: str) -> tuple[str, int]:
+def merge_block(inner: str) -> tuple[str, int]:
     """Склеить соседние span'ы с одинаковым стилем: короткие куски — без пробела,
     длинные — с пробелом (чтобы не сломать настоящие разделители слов)."""
     merged = 0
@@ -72,7 +72,7 @@ def main(apply: bool) -> int:
     con.row_factory = sqlite3.Row
     BACKUP.mkdir(parents=True, exist_ok=True)
     report = {}
-    for r in con.execute("SELECT code, CLIENT FROM CLIENT ORDER BY code"):
+    for r in con.execute("SELECT code, status FROM templates ORDER BY code"):
         p = TPL / r['code'] / 'template.html'
         if not p.is_file():
             continue
@@ -80,7 +80,7 @@ def main(apply: bool) -> int:
         merged_count = [0]
 
         def repl_div(m: re.Match) -> str:
-            inner, n = merge_CLIENT(m.group(2))
+            inner, n = merge_block(m.group(2))
             merged_count[0] += n
             return m.group(1) + inner + m.group(3)
 
@@ -95,9 +95,9 @@ def main(apply: bool) -> int:
     if not report:
         print('разбитого текста не найдено — шаблоны чистые')
     elif not apply:
-        print('(пробный прогон) всего к склейке:', sum(report.CLIENT()))
+        print('(пробный прогон) всего к склейке:', sum(report.values()))
     else:
-        print('всего склеено кусков:', sum(report.CLIENT()))
+        print('всего склеено кусков:', sum(report.values()))
     return 0
 
 

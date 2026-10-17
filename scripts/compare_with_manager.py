@@ -3,7 +3,7 @@
 Запуск:  python3 scripts/compare_with_manager.py <app_id> [--png]
 
 Что делает:
- 1) берёт папку клиента из заявки (CLIENT.gCLIENT_url) и читает её через CLIENT API;
+ 1) берёт папку клиента из заявки (applications.gdrive_url) и читает её через Drive API;
  2) отделяет документы менеджера (лежали раньше) от нашей папки «Wolf AutoDoc*»;
  3) сопоставляет пары по типу документа (справка банка / договор / письмо / резюме);
  4) сверяет смысловые сущности: ФИО, паспорт, дата рождения, должность, суммы, организация,
@@ -24,16 +24,16 @@ sys.path.insert(0, "/opt/wolf_v2")
 
 import pymupdf  # noqa: E402
 
-from CLIENT import gCLIENT_api  # noqa: E402
+from services import gdrive_api  # noqa: E402
 
 DB = "/opt/wolf_v2/data/wolf.db"
 OUT = Path("/tmp/compare_app")
 TYPE_HINTS = [
-    ("bank_CLIENTment", ("bank", "CLIENTment", "balance", "справк", "CLIENTal", "tbank", "sber", "yandex")),
+    ("bank_statement", ("bank", "statement", "balance", "справк", "personal", "tbank", "sber", "yandex")),
     ("remote_work_agreement", ("remote work", "remote_work", "rwa", "kitas")),
     ("employment_contract", ("employment", "contract", "договор")),
     ("cv", ("cv", "resume", "резюме")),
-    ("letter", ("letter", "письмо", "bridging", "conversion", "e02", "CLIENT")),
+    ("letter", ("letter", "письмо", "bridging", "conversion", "e02", "sponsor")),
 ]
 ENTITIES = {
     "паспорт": r"\b\d{2}\s?\d{2}\s?\d{6}\b",
@@ -77,19 +77,19 @@ def main() -> None:
 
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
-    app = c.execute("SELECT id, client_id, gCLIENT_url, created_at, CLIENT, CLIENT_id "
-                    "FROM CLIENT WHERE id=?", (app_id,)).fetchone()
+    app = c.execute("SELECT id, client_id, gdrive_url, created_at, status, product_id "
+                    "FROM applications WHERE id=?", (app_id,)).fetchone()
     if not app:
         raise SystemExit("заявка не найдена")
-    cl = c.execute("SELECT * FROM CLIENT WHERE id=?", (app["client_id"],)).fetchone()
+    cl = c.execute("SELECT * FROM clients WHERE id=?", (app["client_id"],)).fetchone()
     client = dict(cl) if cl else {}
-    folder = (app["gCLIENT_url"] or client.get("gCLIENT_folder_url") or "").strip()
+    folder = (app["gdrive_url"] or client.get("gdrive_folder_url") or "").strip()
     print("заявка #%d | клиент: %s | папка клиента: %s" % (
         app_id, (client.get("full_name") or "—"), folder or "— (ссылки нет)"))
     if not folder:
         raise SystemExit("в заявке нет ссылки на папку клиента")
 
-    files = gCLIENT_api.list_files(folder, deep=True)
+    files = gdrive_api.list_files(folder, deep=True)
     ours, theirs = [], []
     for f in files:
         name = (f.get("name") or "")
@@ -102,9 +102,9 @@ def main() -> None:
 
     # наши документы: локальные сборки заявки, а если файлов нет — наша папка на Диске
     our_docs = []
-    for r in c.execute("""SELECT t.code, t.CLIENT, ad.pdf_path FROM CLIENT_CLIENT ad
-                          JOIN CLIENT t ON t.id=ad.template_id
-                          WHERE ad.CLIENT_id=?""", (app_id,)):
+    for r in c.execute("""SELECT t.code, t.title, ad.pdf_path FROM application_documents ad
+                          JOIN templates t ON t.id=ad.template_id
+                          WHERE ad.application_id=?""", (app_id,)):
         p = Path(r["pdf_path"] or "")
         if r["pdf_path"] and p.exists():
             our_docs.append({"code": r["code"], "name": p.name, "path": p})
@@ -114,7 +114,7 @@ def main() -> None:
             if not nm.lower().endswith(".pdf"):
                 continue
             dest = out_dir / ("our_" + nm)
-            if not dest.exists() and not gCLIENT_api.download(f["id"], dest):
+            if not dest.exists() and not gdrive_api.download(f["id"], dest):
                 continue
             our_docs.append({"code": doc_type(nm, ""), "name": nm, "path": dest})
     print("наших собранных документов: %d" % len(our_docs))
@@ -126,7 +126,7 @@ def main() -> None:
         safe = re.sub(r"[^\w.\- ]+", "_", (f.get("name") or "file"))
         dest = out_dir / ("%s_%s" % (f["id"][:8], safe))
         if not dest.exists():
-            ok = gCLIENT_api.download(f["id"], dest)
+            ok = gdrive_api.download(f["id"], dest)
             if not ok:
                 print("  ! не скачался: %s" % f.get("name"))
                 continue
@@ -145,7 +145,7 @@ def main() -> None:
             pg = next((p for p in doc if p.get_text().strip()), doc[0])
             fonts, sizes, xs, ys, ys_prev = {}, {}, [], [], None
             lead = []
-            for b in pg.get_text("dict")["CLIENTs"]:
+            for b in pg.get_text("dict")["blocks"]:
                 for line in b.get("lines", []):
                     lxs = [s["bbox"][0] for s in line["spans"]]
                     lys = [s["bbox"][1] for s in line["spans"]]

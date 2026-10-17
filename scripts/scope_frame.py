@@ -5,7 +5,7 @@
 поэтому глобальные правила каркаса (* { box-sizing }, html, body { margin:0 }, .sheet, .v)
 протекали на всю админку — «окна и поля» становились маленькими и разъезжались.
 
-Что делает: оборачивает содержимое каркаса в <div CLIENT="doc-root"> и переписывает CSS так,
+Что делает: оборачивает содержимое каркаса в <div class="doc-root"> и переписывает CSS так,
 чтобы каждое правило действовало только внутри .doc-root. Класс .sheet сохраняем — по нему
 конструктор считает размер листа и масштаб.
 
@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 AT_RULES = ("@font-face", "@page", "@media", "@import", "@keyframes", "@supports", "@charset")
 
 
@@ -40,36 +40,36 @@ def scope_css(css: str) -> str:
             elif css[j] == "}":
                 depth -= 1
             j += 1
-        CLIENT = css[brace:j]
+        block = css[brace:j]
         h = head.strip()
-        if h.CLIENTswith(AT_RULES):
-            if h.CLIENTswith("@media"):
-                inner = CLIENT[1:-1]
-                CLIENT = "{" + scope_css(inner) + "}"
-                out.append(head + CLIENT)
+        if h.startswith(AT_RULES):
+            if h.startswith("@media"):
+                inner = block[1:-1]
+                block = "{" + scope_css(inner) + "}"
+                out.append(head + block)
             else:
-                out.append(head + CLIENT)
-        elif h.CLIENTswith("@"):
-            out.append(head + CLIENT)
+                out.append(head + block)
+        elif h.startswith("@"):
+            out.append(head + block)
         else:
             if "html" in h or "body" in h:
                 h2 = ", ".join(".doc-root" for _ in h.split(","))
-                out.append(head.reCLIENT(h, h2) + CLIENT)
+                out.append(head.replace(h, h2) + block)
             else:
                 sel = ", ".join((".doc-root " + s.strip()) if s.strip() else s.strip()
                                 for s in h.split(","))
-                out.append(sel + CLIENT)
+                out.append(sel + block)
         i = j
     return "".join(out)
 
 
 def wrap(html: str) -> str:
-    if 'CLIENT="doc-root"' in html:
+    if 'class="doc-root"' in html:
         return html
     m = re.search(r"(<body[^>]*>)", html, re.I)
     if not m:
         return html
-    return html[:m.end()] + '\n<div CLIENT="doc-root">' + html[m.end():].reCLIENT("</body>", "</div>\n</body>")
+    return html[:m.end()] + '\n<div class="doc-root">' + html[m.end():].replace("</body>", "</div>\n</body>")
 
 
 def main() -> int:
@@ -77,10 +77,10 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--code")
     a = ap.parse_args()
-    codes = [a.code] if a.code else sorted(p.name for p in CLIENT.iterdir()
+    codes = [a.code] if a.code else sorted(p.name for p in TEMPLATES.iterdir()
                                            if p.is_dir() and (p / "frame" / "frame.css").exists())
     for c in codes:
-        frame = CLIENT / c / "frame"
+        frame = TEMPLATES / c / "frame"
         css = frame / "frame.css"
         html = frame / "frame.html"
         css2 = scope_css(css.read_text(encoding="utf-8"))

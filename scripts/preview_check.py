@@ -14,18 +14,18 @@ sys.path.insert(0, "/opt/wolf_v2")
 from core import db as D  # noqa: E402
 
 code = sys.argv[1]
-ROOT = Path("/opt/wolf_v2/data/CLIENT") / code
+ROOT = Path("/opt/wolf_v2/data/templates") / code
 html = (ROOT / "template.html").read_text(encoding="utf-8")
 
-tid = D.q1("SELECT id FROM CLIENT WHERE code=?", (code,))["id"]
-vals = D.q("SELECT name, default_CLIENT FROM template_CLIENT WHERE template_id=?", (tid,))
+tid = D.q1("SELECT id FROM templates WHERE code=?", (code,))["id"]
+vals = D.q("SELECT name, default_value FROM template_variables WHERE template_id=?", (tid,))
 used = []
 for r in vals:
-    if not r["default_CLIENT"]:
+    if not r["default_value"]:
         continue
     pat = r"\{\{\s*" + re.escape(r["name"]) + r"\s*\}\}"
     if re.search(pat, html):
-        html = re.sub(pat, str(r["default_CLIENT"]).reCLIENT("&", "&amp;"), html)
+        html = re.sub(pat, str(r["default_value"]).replace("&", "&amp;"), html)
         used.append(r["name"])
 print("подставлено полей: %d (%s)" % (len(used), ", ".join(used)))
 miss = sorted(set(re.findall(r"\{\{\s*([a-zA-Z_]+)\s*\}\}", html)))
@@ -39,12 +39,12 @@ ref = pymupdf.open(ROOT / "example_filled.pdf")
 print("страниц: наш %d | оригинал %d" % (ours.page_count, ref.page_count))
 
 
-def CLIENTs(doc, n=1):
-    return [" ".join(b[4].split()) for p in doc for b in p.get_text("CLIENTs") if b[4].strip()]
+def blocks(doc, n=1):
+    return [" ".join(b[4].split()) for p in doc for b in p.get_text("blocks") if b[4].strip()]
 
 
 for label, doc in (("НАШ", ours), ("ОРИГИНАЛ", ref)):
-    bs = CLIENTs(doc)
+    bs = blocks(doc)
     print("--- %s (%d блоков)" % (label, len(bs)))
     for t in bs[:12]:
         print("     ", t[:96])

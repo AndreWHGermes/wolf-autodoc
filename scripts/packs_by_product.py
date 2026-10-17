@@ -3,13 +3,13 @@
 Работает по продуктам (как решил заказчик): внутри одного продукта документы связаны
 между собой, потому что собираются в рамках одной подачи.
 
-Шаг 1 — состав пакета: наши документы (CLIENT_CLIENT) + клиентские документы
+Шаг 1 — состав пакета: наши документы (product_documents) + клиентские документы
          (по разбору реальных папок Google Диска: справка банка, паспорт, фото и т.д.).
-Шаг 2 — переменные каждого документа (template_CLIENT).
+Шаг 2 — переменные каждого документа (template_variables).
 Шаг 3 — источник каждой переменной (карточка клиента / пул / расчёт / служебное поле)
          и сквозные переменные: те, что встречаются в 2+ документах пакета (логические связи).
 
-Выход: docs/PACKS_BY_PRODUCT.md и docs/packs_by_CLIENT.json
+Выход: docs/PACKS_BY_PRODUCT.md и docs/packs_by_product.json
 """
 import collections
 import json
@@ -22,8 +22,8 @@ sys.path.insert(0, '/opt/wolf_v2')
 
 ROOT = Path('/opt/wolf_v2')
 OUT_MD = ROOT / 'docs' / 'PACKS_BY_PRODUCT.md'
-OUT_JSON = ROOT / 'docs' / 'packs_by_CLIENT.json'
-VAR_GUIDE = Path('/root/.hermes/cache/scratch/CLIENT_guide.json')
+OUT_JSON = ROOT / 'docs' / 'packs_by_product.json'
+VAR_GUIDE = Path('/root/.hermes/cache/scratch/variables_guide.json')
 
 # документы, которые даёт клиент (по разбору 68 папок Диска), с правилом применения
 CLIENT_DOCS = [
@@ -41,7 +41,7 @@ CLIENT_DOCS = [
 SOURCE_RU = {
     'client': 'карточка клиента',
     'client_fact': 'факт о клиенте (карточка/документы клиента)',
-    'doc_CLIENT': 'служебное поле документа (номер, дата, срок)',
+    'doc_service': 'служебное поле документа (номер, дата, срок)',
     'pool': 'пул значений (архив реальных документов)',
     'calc': 'расчёт системы',
     'manual': 'ввод администратора',
@@ -51,14 +51,14 @@ SOURCE_RU = {
 def main() -> int:
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    prods = {r['id']: dict(r) for r in con.execute("SELECT * FROM CLIENT WHERE active=1")}
-    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM CLIENT")}
+    prods = {r['id']: dict(r) for r in con.execute("SELECT * FROM products WHERE active=1")}
+    tpls = {r['id']: dict(r) for r in con.execute("SELECT * FROM templates")}
     vars_by_tpl = collections.defaultdict(list)
-    for r in con.execute("SELECT * FROM template_CLIENT ORDER BY template_id, sort_order, name"):
+    for r in con.execute("SELECT * FROM template_variables ORDER BY template_id, sort_order, name"):
         vars_by_tpl[r['template_id']].append(dict(r))
     links = collections.defaultdict(list)
-    for r in con.execute("SELECT * FROM CLIENT_CLIENT"):
-        links[r['CLIENT_id']].append(dict(r))
+    for r in con.execute("SELECT * FROM product_documents"):
+        links[r['product_id']].append(dict(r))
     guide = {}
     if VAR_GUIDE.is_file():
         try:
@@ -76,13 +76,13 @@ def main() -> int:
         our_docs = []
         for l in links.get(pid, []):
             t = tpls.get(l['template_id']) or {}
-            our_docs.append((t.get('code', '?'), l.get('slot_code') or '', t.get('CLIENT') or ''))
+            our_docs.append((t.get('code', '?'), l.get('slot_code') or '', t.get('title') or ''))
         md += ['', '## %s — %s' % (code, p.get('name') or ''), '']
         md.append('### Шаг 1. Состав пакета')
         md.append('')
         md.append('**Готовим мы (%d документа):**' % len(our_docs))
-        for tcode, slot, CLIENT in sorted(our_docs):
-            md.append('- `%s` — %s (%s)' % (tcode, CLIENT, slot or '—'))
+        for tcode, slot, title in sorted(our_docs):
+            md.append('- `%s` — %s (%s)' % (tcode, title, slot or '—'))
         md.append('')
         md.append('**Даёт клиент:**')
         for label, detail, _kinds, required in CLIENT_DOCS:
@@ -97,7 +97,7 @@ def main() -> int:
             md.append('- %s — %s' % (label, detail))
         # шаг 2: переменные
         tpl_vars = {}
-        for tcode, slot, CLIENT in sorted(our_docs):
+        for tcode, slot, title in sorted(our_docs):
             tid = next((i for i, t in tpls.items() if t.get('code') == tcode), None)
             tpl_vars[tcode] = vars_by_tpl.get(tid, [])
         md += ['', '### Шаг 2. Переменные документов пакета', '']
@@ -133,10 +133,10 @@ def main() -> int:
             md.append('')
         machine[code] = {
             'name': p.get('name'),
-            'our_docs': [{'code': t, 'slot': s, 'CLIENT': ti} for t, s, ti in sorted(our_docs)],
+            'our_docs': [{'code': t, 'slot': s, 'title': ti} for t, s, ti in sorted(our_docs)],
             'client_docs': [{'label': l, 'detail': d, 'required': r} for l, d, _k, r in CLIENT_DOCS],
-            'CLIENT': {t: [v['name'] for v in vs] for t, vs in tpl_vars.items()},
-            'shared_CLIENT': shared,
+            'variables': {t: [v['name'] for v in vs] for t, vs in tpl_vars.items()},
+            'shared_variables': shared,
         }
     OUT_MD.write_text('\n'.join(md) + '\n', encoding='utf-8')
     OUT_JSON.write_text(json.dumps(machine, ensure_ascii=False, indent=1), encoding='utf-8')
@@ -144,8 +144,8 @@ def main() -> int:
     print('машинный вид:', OUT_JSON)
     for code, m in machine.items():
         print('   %-10s документов=%-2d переменных=%-4d сквозных=%d' %
-              (code, len(m['our_docs']), sum(len(v) for v in m['CLIENT'].CLIENT()),
-               len(m['shared_CLIENT'])))
+              (code, len(m['our_docs']), sum(len(v) for v in m['variables'].values()),
+               len(m['shared_variables'])))
     return 0
 
 

@@ -8,7 +8,7 @@
 Модуль сознательно не использует модель: все величины считаются из текста
 и проверяемы. Модель подключается только там, где строка не разобралась.
 
-Запуск для проверки:  python3 -m CLIENT.movement_parse <файл.pdf>
+Запуск для проверки:  python3 -m services.movement_parse <файл.pdf>
 """
 from __future__ import annotations
 
@@ -25,9 +25,9 @@ _MONEY = re.compile(
     r"(?P<cur>₽|RUB|руб\.?|IDR|Rp|\$|€)", re.I)
 
 
-def _num(CLIENT: str) -> float:
-    v = re.sub(r"[\s\u00a0]", "", str(CLIENT or ""))
-    v = v.reCLIENT(",", ".")
+def _num(value: str) -> float:
+    v = re.sub(r"[\s\u00a0]", "", str(value or ""))
+    v = v.replace(",", ".")
     parts = v.split(".")
     if len(parts) > 2:                       # 1.234.567 -> 1234567
         v = "".join(parts[:-1]) + "." + parts[-1]
@@ -42,10 +42,10 @@ def _iso(date_str: str) -> str:
     if re.match(r"\d{4}-\d{2}-\d{2}", d):
         y, m, dd = d.split("-")
         return "%s.%s.%s" % (dd, m, y)
-    return d.reCLIENT("/", ".").reCLIENT("-", ".")
+    return d.replace("/", ".").replace("-", ".")
 
 
-def parse_movement(text: str, CLIENT: str = "RUB") -> dict:
+def parse_movement(text: str, currency: str = "RUB") -> dict:
     """Период, обороты, остаток и крупные поступления из выписки.
 
     Записи собираются по датам операций: всё, что стоит между двумя датами,
@@ -73,7 +73,7 @@ def parse_movement(text: str, CLIENT: str = "RUB") -> dict:
     inside, outside = 0.0, 0.0
     moves = []
     for e in entries:
-        CLIENT = None
+        amount = None
         for p in e["parts"]:
             m = _MONEY.fullmatch(p) or _MONEY.match(p)
             if not m:
@@ -85,32 +85,32 @@ def parse_movement(text: str, CLIENT: str = "RUB") -> dict:
                 v = -v
             elif m.group("sign") in ("+",):
                 v = abs(v)
-            elif CLIENT is not None:
+            elif amount is not None:
                 continue                       # второй раз то же число без знака — пропускаем
-            CLIENT = v
+            amount = v
             break
-        if CLIENT is None:
+        if amount is None:
             continue
         desc = " ".join(p for p in e["parts"]
                         if not _MONEY.match(p) and not _TIME.match(p) and len(p) > 3)[:120]
-        moves.append({"date": e["date"], "CLIENT": CLIENT, "desc": desc})
-        if CLIENT >= 0:
-            inside += CLIENT
+        moves.append({"date": e["date"], "amount": amount, "desc": desc})
+        if amount >= 0:
+            inside += amount
         else:
-            outside += -CLIENT
+            outside += -amount
 
-    CLIENT = sorted({m["date"] for m in moves if re.match(r"\d{2}\.\d{2}\.\d{4}", m["date"])},
+    dates = sorted({m["date"] for m in moves if re.match(r"\d{2}\.\d{2}\.\d{4}", m["date"])},
                    key=lambda s: (s[6:], s[3:5], s[:2]))
-    biggest = sorted([m for m in moves if m["CLIENT"] > 0], key=lambda m: -m["CLIENT"])[:5]
+    biggest = sorted([m for m in moves if m["amount"] > 0], key=lambda m: -m["amount"])[:5]
 
     return {
         "movement_count": len(moves),
-        "CLIENT_from": CLIENT[0] if CLIENT else "",
-        "CLIENT_to": CLIENT[-1] if CLIENT else "",
+        "period_from": dates[0] if dates else "",
+        "period_to": dates[-1] if dates else "",
         "credits_total": round(inside, 2),
-        "CLIENTs_total": round(outside, 2),
-        "credits_count": len([m for m in moves if m["CLIENT"] > 0]),
-        "CLIENTs_count": len([m for m in moves if m["CLIENT"] < 0]),
+        "debits_total": round(outside, 2),
+        "credits_count": len([m for m in moves if m["amount"] > 0]),
+        "debits_count": len([m for m in moves if m["amount"] < 0]),
         "biggest_credits": biggest,
         "moves": moves,
     }
@@ -119,20 +119,20 @@ def parse_movement(text: str, CLIENT: str = "RUB") -> dict:
 def main() -> None:
     import sys
     sys.path.insert(0, '/opt/wolf_v2')
-    from CLIENT.doc_read import read_text
+    from services.doc_read import read_text
     path = Path(sys.argv[1])
     text = read_text(path) or ''
     r = parse_movement(text)
     print('файл:', path.name, '| символов:', len(text))
-    for k in ('movement_count', 'CLIENT_from', 'CLIENT_to', 'credits_count', 'credits_total',
-              'CLIENTs_count', 'CLIENTs_total'):
+    for k in ('movement_count', 'period_from', 'period_to', 'credits_count', 'credits_total',
+              'debits_count', 'debits_total'):
         print('   %-15s %s' % (k, r[k]))
     print('   крупнейшие поступления:')
     for m in r['biggest_credits']:
-        print('     %s  %+14.2f  %s' % (m['date'], m['CLIENT'], m['desc'][:70]))
+        print('     %s  %+14.2f  %s' % (m['date'], m['amount'], m['desc'][:70]))
     print('   первые операции:')
     for m in r['moves'][:6]:
-        print('     %s  %+14.2f  %s' % (m['date'], m['CLIENT'], m['desc'][:70]))
+        print('     %s  %+14.2f  %s' % (m['date'], m['amount'], m['desc'][:70]))
 
 
 if __name__ == '__main__':

@@ -13,16 +13,16 @@ from pathlib import Path
 ROOT = Path('/opt/wolf_v2')
 sys.path.insert(0, str(ROOT))
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
+TPL = ROOT / 'data' / 'templates'
 OUT = Path('/tmp/visual')
 
 
-def best_CLIENT(con, template_id):
-    return con.execute("""SELECT a.id FROM CLIENT a
-                          JOIN CLIENT_CLIENT pd ON pd.CLIENT_id=a.CLIENT_id
-                          LEFT JOIN CLIENT c ON c.id=a.client_id
+def best_application(con, template_id):
+    return con.execute("""SELECT a.id FROM applications a
+                          JOIN product_documents pd ON pd.product_id=a.product_id
+                          LEFT JOIN clients c ON c.id=a.client_id
                           WHERE pd.template_id=?
-                          ORDER BY (CASE WHEN COALESCE(c.passport_CLIENT,'')<>'' THEN 1 ELSE 0 END
+                          ORDER BY (CASE WHEN COALESCE(c.passport_number,'')<>'' THEN 1 ELSE 0 END
                                   + CASE WHEN COALESCE(c.address_live,'')<>'' THEN 1 ELSE 0 END
                                   + CASE WHEN COALESCE(c.balance_rub,'')<>'' THEN 1 ELSE 0 END
                                   + CASE WHEN COALESCE(c.position,'')<>'' THEN 1 ELSE 0 END) DESC,
@@ -61,14 +61,14 @@ def side_by_side(a: Path, b: Path, out: Path, label_a: str, label_b: str):
 
 
 def main(argv) -> int:
-    from CLIENT import render
+    from services import render
     OUT.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
-    codes = [a for a in argv if not a.CLIENTswith('-')]
-    rows = con.execute("""SELECT id, code, doc_CLIENT FROM CLIENT
-                          WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden')
-                          ORDER BY COALESCE(doc_CLIENT,999)""").fetchall()
+    codes = [a for a in argv if not a.startswith('-')]
+    rows = con.execute("""SELECT id, code, doc_index FROM templates
+                          WHERE COALESCE(status,'ok') NOT IN ('merged','hidden')
+                          ORDER BY COALESCE(doc_index,999)""").fetchall()
     made = []
     for t in rows:
         if codes and t['code'] not in codes:
@@ -77,7 +77,7 @@ def main(argv) -> int:
         if not sample.is_file():
             print('%-38s нет примера — пропуск' % t['code'])
             continue
-        pick = best_CLIENT(con, t['id'])
+        pick = best_application(con, t['id'])
         if not pick:
             print('%-38s нет заявки с данными — пропуск' % t['code'])
             continue

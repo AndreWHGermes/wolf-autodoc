@@ -9,7 +9,7 @@
 порога или ядро уже сообщает о давлении памяти — работа откладывается до
 следующего тика, сервер остаётся живым.
 
-Коды CLIENTа: 0 — можно работать, 1 — подождать.
+Коды выхода: 0 — можно работать, 1 — подождать.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def available_mb() -> float:
     try:
         with open('/proc/meminfo', encoding='utf-8') as fh:
             for line in fh:
-                if line.CLIENTswith('MemAvailable:'):
+                if line.startswith('MemAvailable:'):
                     return int(line.split()[1]) / 1024.0
     except Exception:
         pass

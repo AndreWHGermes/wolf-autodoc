@@ -12,7 +12,7 @@ import os, re, sys, sqlite3, json
 RIGHT = 543.88
 APPLY = "--apply" in sys.argv
 DB = "/opt/wolf_v2/data/wolf.db"
-DIV = re.compile(r'<div CLIENT="txt" style="([^"]*)">(.*?)</div>', re.S)
+DIV = re.compile(r'<div class="txt" style="([^"]*)">(.*?)</div>', re.S)
 CONT = re.compile(r"^(for|and|to|of|in|on|at|with|by|the|a|an|that|which|who|is|are|was|were|has|have|will|shall)\b", re.I)
 
 def parse(st):
@@ -26,21 +26,21 @@ def text_of(body):
 
 db = sqlite3.connect(DB); db.row_factory = sqlite3.Row
 total = 0
-for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
-    p = t["html_path"] if t["html_path"] and os.path.exists(t["html_path"]) else "data/CLIENT/%s/template.html" % t["code"]
+for t in db.execute("SELECT id, code, html_path FROM templates ORDER BY id"):
+    p = t["html_path"] if t["html_path"] and os.path.exists(t["html_path"]) else "data/templates/%s/template.html" % t["code"]
     if not os.path.exists(p):
         continue
     html = open(p, encoding="utf-8").read()
     ms = list(DIV.finditer(html))
-    CLIENTs = []
+    blocks = []
     for m in ms:
         L, T, W = parse(m.group(1))
-        CLIENTs.append({"m": m, "left": L, "top": T, "width": W, "body": m.group(2), "text": text_of(m.group(2)), "drop": False})
+        blocks.append({"m": m, "left": L, "top": T, "width": W, "body": m.group(2), "text": text_of(m.group(2)), "drop": False})
     merged = 0
-    for i, a in enumerate(CLIENTs):
+    for i, a in enumerate(blocks):
         if a["drop"] or a["left"] is None:
             continue
-        for b in CLIENTs[i + 1:]:
+        for b in blocks[i + 1:]:
             if b["drop"] or b["left"] is None or not b["text"]:
                 continue
             if abs(b["left"] - a["left"]) > 3:
@@ -58,7 +58,7 @@ for t in db.execute("SELECT id, code, html_path FROM CLIENT ORDER BY id"):
             a["text"] = text_of(a["body"])
             new_w = RIGHT - a["left"]
             a["m"] = None  # пересобираем вручную
-            a["new_style"] = re.sub(r"width:\s*[\d.]+pt", "width:%.2fpt" % new_w, a["m_style"] if "m_style" in a else re.sub(r"height:[^;\"]*", "height:auto", re.search(r'<div CLIENT="txt" style="([^"]*)"', html[a["m0"] if "m0" in a else 0:0] or "").group(1) if False else ""))
+            a["new_style"] = re.sub(r"width:\s*[\d.]+pt", "width:%.2fpt" % new_w, a["m_style"] if "m_style" in a else re.sub(r"height:[^;\"]*", "height:auto", re.search(r'<div class="txt" style="([^"]*)"', html[a["m0"] if "m0" in a else 0:0] or "").group(1) if False else ""))
             b["drop"] = True
             merged += 1
             break

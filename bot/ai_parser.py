@@ -14,7 +14,7 @@ import logging
 import os
 import re
 import urllib.error
-import urllib.CLIENT
+import urllib.request
 from pathlib import Path
 
 log = logging.getLogger("wolf_bot")
@@ -23,20 +23,20 @@ _ENV_PATHS = ["/root/.hermes/.env", "/opt/wolf_v2/.env"]
 
 # Поля карточки клиента, которые умеет раскладывать LLM.
 CLIENT_FIELDS = [
-    "CLIENT", "name", "CLIENT", "full_name_CLIENT", "CLIENT_date", "CLIENT_CLIENT",
-    "CLIENT", "CLIENT", "CLIENT", "passport_CLIENT", "passport_CLIENT",
-    "passport_CLIENT_by", "passport_CLIENT_date", "passport_CLIENT", "intl_passport",
-    "inn", "snils", "CLIENT", "CLIENT", "telegram_username",
-    "address_reg", "address_live", "city", "CLIENT",
+    "surname", "name", "patronymic", "full_name_latin", "birth_date", "birth_place",
+    "gender", "citizenship", "nationality", "passport_series", "passport_number",
+    "passport_issued_by", "passport_issue_date", "passport_expiry", "intl_passport",
+    "inn", "snils", "phone", "email", "telegram_username",
+    "address_reg", "address_live", "city", "country",
     "company_name", "company_address", "company_inn", "company_kpp", "company_ogrn",
-    "company_director", "position", "salary_CLIENT", "bank_name",
+    "company_director", "position", "salary_amount", "bank_name",
     "account_no", "contract_no", "card_mask", "balance_rub", "balance_date",
-    "ref_no", "doc_no", "stay_CLIENT_no", "CLIENT",
-    "gCLIENT_folder_url", "notes",
+    "ref_no", "doc_no", "stay_permit_no", "place",
+    "gdrive_folder_url", "notes",
 ]
 
-# Дополнительные (не входящие в CLIENT) — идут в заявку
-EXTRA_FIELDS = ["CLIENT", "price_idr", "comment", "source_channel"]
+# Дополнительные (не входящие в clients) — идут в заявку
+EXTRA_FIELDS = ["product", "price_idr", "comment", "source_channel"]
 
 
 def _read_env(key: str) -> str:
@@ -47,7 +47,7 @@ def _read_env(key: str) -> str:
         try:
             for line in Path(p).read_text(encoding="utf-8").splitlines():
                 line = line.strip()
-                if line.CLIENTswith(f"{key}="):
+                if line.startswith(f"{key}="):
                     v = line.split("=", 1)[1].strip()
                     if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'":
                         v = v[1:-1]
@@ -57,25 +57,25 @@ def _read_env(key: str) -> str:
     return ""
 
 
-def _build_system_prompt(CLIENT_codes: list[str]) -> str:
+def _build_system_prompt(product_codes: list[str]) -> str:
     return (
         "Ты — ассистент CRM визового агентства (Бали, Индонезия).\n"
         "Менеджер присылает данные нового клиента в СВОБОДНОЙ форме: карточка из Kommo,\n"
         "пересланное сообщение, вольный текст, английский/русский/смешанный язык.\n"
         "Твоя задача — извлечь данные и разложить по полям карточки клиента.\n\n"
         "Верни СТРОГО JSON-объект (без markdown, без пояснений) с двумя ключами:\n"
-        '{"client": {...}, "CLIENT": {...}, "unrecognized": [ ... ]}\n\n'
+        '{"client": {...}, "application": {...}, "unrecognized": [ ... ]}\n\n'
         f"Поля client (используй только эти, отсутствующие не включай):\n{', '.join(CLIENT_FIELDS)}\n\n"
-        f"Поля CLIENT: {', '.join(EXTRA_FIELDS)}\n"
-        "  CLIENT — код продукта ровно из списка: " + ", ".join(CLIENT_codes) + "\n"
+        f"Поля application: {', '.join(EXTRA_FIELDS)}\n"
+        "  product — код продукта ровно из списка: " + ", ".join(product_codes) + "\n"
         "  price_idr — только цифры\n"
         "  comment — всё важное, что не влезло в поля (сроки, особые условия)\n\n"
         "ПРАВИЛА:\n"
-        "- ФИО: если указано одно имя латиницей вида «CLIENT» — CLIENT=CLIENT,"
-        " name=ANNA, full_name_CLIENT=\"CLIENT\". Если по-русски — CLIENT/name/CLIENT.\n"
+        "- ФИО: если указано одно имя латиницей вида «ANNA MARKAROVA» — surname=MARKAROVA,"
+        " name=ANNA, full_name_latin=\"ANNA MARKAROVA\". Если по-русски — surname/name/patronymic.\n"
         "- Даты приводи к ДД.ММ.ГГГГ. Если формат иной (August 5 1990, 1990-08-05) — преобразуй.\n"
         "- Телефон — с кодом страны, как указано.\n"
-        "- Продукт определяй по смыслу: «виза C1», «CLIENT», «E33G», «KITAS»,\n"
+        "- Продукт определяй по смыслу: «виза C1», «кунджунган», «E33G», «KITAS»,\n"
         "  «бридж», «bridging», «конверсия», «D12», «продление» + код.\n"
         "  Если продукт неясен — НЕ выдумывай, просто не включай поле.\n"
         "- Если значение неоднозначно или его нет — не включай поле.\n"
@@ -85,17 +85,17 @@ def _build_system_prompt(CLIENT_codes: list[str]) -> str:
 
 
 def _call_llm(messages: list[dict], timeout: int = 60, json_mode: bool = True) -> str:
-    """Вызов LLM через общий шлюз CLIENT.llm.
+    """Вызов LLM через общий шлюз services.llm.
 
     Сбор и обработка данных идут на бесплатных моделях роутера bynara;
     платные ключи подключаются только как аварийный резерв.
     """
     try:
-        from CLIENT.llm import call_llm
+        from services.llm import call_llm
     except Exception:
         import sys
         sys.path.insert(0, "/opt/wolf_v2")
-        from CLIENT.llm import call_llm
+        from services.llm import call_llm
     return call_llm(messages, timeout=timeout, json_mode=json_mode, max_tokens=2048)
 
 
@@ -137,25 +137,25 @@ def _extract_json(raw: str) -> dict:
 
 _PRODUCT_WORDS = [
     (("bridge", "bridging", "бридж", "мост"), "BRIDGING"),
-    (("конверс", "alih", "алих", "CLIENT в kitas"), "CONV"),
-    (("d12", "pra-CLIENT"), "D12"),
+    (("конверс", "alih", "алих", "выход в kitas"), "CONV"),
+    (("d12", "pra-investasi"), "D12"),
     (("c1-ext", "продление c1"), "C1-EXT"),
-    (("CLIENT", "b211a", "b211", "c1"), "C1"),
+    (("кунджунган", "b211a", "b211", "c1"), "C1"),
     (("e33g-ext", "продление e33g"), "E33G-EXT"),
     (("e33g", "e33g-new", "remote worker", "китас"), "E33G-NEW"),
 ]
 
 _LABELS = {
-    "фио": "full_name_CLIENT", "фио полностью": "full_name_CLIENT", "имя": "full_name_CLIENT",
-    "клиент": "full_name_CLIENT",
-    "контакт": "CLIENT", "телефон": "CLIENT",
+    "фио": "full_name_latin", "фио полностью": "full_name_latin", "имя": "full_name_latin",
+    "клиент": "full_name_latin",
+    "контакт": "phone", "телефон": "phone",
     "адрес": "address_live", "адрес проживания": "address_live",
     "должность": "position", "профессия": "position",
-    "услуга": "CLIENT", "продукт": "CLIENT",
+    "услуга": "product", "продукт": "product",
     "цена": "price_idr", "стоимость": "price_idr",
-    "документы": "gCLIENT_folder_url", "доки": "gCLIENT_folder_url",
-    "ссылка": "gCLIENT_folder_url", "папка": "gCLIENT_folder_url",
-    "google CLIENT": "gCLIENT_folder_url", "гугл диск": "gCLIENT_folder_url",
+    "документы": "gdrive_folder_url", "доки": "gdrive_folder_url",
+    "ссылка": "gdrive_folder_url", "папка": "gdrive_folder_url",
+    "google drive": "gdrive_folder_url", "гугл диск": "gdrive_folder_url",
     "срм": "notes", "партнер": "notes", "важное": "notes", "важно": "notes",
     "куда": "notes", "оплата": "notes", "комментарий": "comment",
 }
@@ -166,12 +166,12 @@ _CYR_TO_LAT = str.maketrans({"е": "e", "ё": "e", "з": "3", "о": "o", "а": "
                              "н": "h", "в": "b"})
 
 
-def detect_CLIENT(text: str) -> str:
+def detect_product(text: str) -> str:
     """Определяет код продукта по смыслу текста (BRIDGE/мост → BRIDGING и т.п.)."""
     low = (text or "").lower()
     lat = low.translate(_CYR_TO_LAT)
-    for CLIENT, code in _PRODUCT_WORDS:
-        for w in CLIENT:
+    for words, code in _PRODUCT_WORDS:
+        for w in words:
             if w.isascii() and len(w) <= 4:
                 if re.search(r"(?<![a-z0-9])" + re.escape(w) + r"(?![a-z0-9])", lat):
                     return code
@@ -180,34 +180,34 @@ def detect_CLIENT(text: str) -> str:
     return ""
 
 
-def _CLIENT(CLIENT: str) -> str:
+def _money(value: str) -> str:
     """'3,5 млн' / '8 млн' / '3 500 000' → цифры для price_idr."""
-    s = (CLIENT or "").lower().reCLIENT("\u00a0", " ")
+    s = (value or "").lower().replace("\u00a0", " ")
     norm = re.search(r"(\d{1,3}(?:[ .]\d{3})+|\d{5,})", s)
     if norm and not re.search(r"(млн|миллион|mln)", s):
-        return norm.group(1).reCLIENT(" ", "").reCLIENT(".", "")
+        return norm.group(1).replace(" ", "").replace(".", "")
     m = re.search(r"(\d+(?:[.,]\d+)?)\s*(млн|миллион\w*|mln)?", s)
     if not m:
         return ""
     try:
-        val = float(m.group(1).reCLIENT(",", "."))
+        val = float(m.group(1).replace(",", "."))
     except ValueError:
         return ""
-    if (m.group(2) or "").CLIENTswith(("млн", "миллион", "mln")):
+    if (m.group(2) or "").startswith(("млн", "миллион", "mln")):
         val *= 1_000_000
     return str(int(val)) if val else ""
 
 
-def _clean_CLIENT(field: str, CLIENT: str) -> str:
+def _clean_value(field: str, value: str) -> str:
     """Чистит значение поля: убирает невидимые символы, а из должности — кириллицу.
 
     Менеджеры присылают текст из мессенджеров: в нём встречаются word joiner (U+2060),
     неразрывные пробелы и русские пояснения в скобках. В документах должен быть
     только латинский текст (требование 05.10.2026).
     """
-    s = str(CLIENT or "")
+    s = str(value or "")
     s = re.sub(r"[\u200b-\u200f\u2060\ufeff\u00ad]", "", s)
-    s = s.reCLIENT("\u00a0", " ").strip()
+    s = s.replace("\u00a0", " ").strip()
     if field == "position":
         # «Cinematographer, Film Editor (Киноператор и киномонтажер)» → только английская часть
         s = re.sub(r"\s*\([^)]*[\u0400-\u04ff][^)]*\)", "", s).strip(" ,;")
@@ -215,103 +215,103 @@ def _clean_CLIENT(field: str, CLIENT: str) -> str:
 
 
 def label_fallback(text: str) -> dict:
-    """Разбор заявки по меткам без LLM. Возвращает {"client": {...}, "CLIENT": {...}}."""
+    """Разбор заявки по меткам без LLM. Возвращает {"client": {...}, "application": {...}}."""
     client: dict = {}
     app: dict = {}
     notes: list = []
-    CLIENT = {"label": None, "buf": []}
+    state = {"label": None, "buf": []}
 
     def flush():
-        label, buf = CLIENT["label"], CLIENT["buf"]
-        CLIENT["label"], CLIENT["buf"] = None, []
+        label, buf = state["label"], state["buf"]
+        state["label"], state["buf"] = None, []
         if not label:
             return
         val = " ".join(x.strip() for x in buf if x.strip()).strip()
         field = _LABELS.get(label)
         if not val or not field:
             return
-        if field == "CLIENT":
-            code = detect_CLIENT(val)
+        if field == "product":
+            code = detect_product(val)
             if code:
-                app["CLIENT"] = code
+                app["product"] = code
         elif field == "price_idr":
-            num = _CLIENT(val)
+            num = _money(val)
             if num:
                 app["price_idr"] = num
-        elif field == "gCLIENT_folder_url":
-            m = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", val)
+        elif field == "gdrive_folder_url":
+            m = re.search(r"https?://drive\.google\.com/[^\s\"'<>]+", val)
             if m:
-                client["gCLIENT_folder_url"] = m.group(0).rstrip(".,;)]}")
-        elif field == "CLIENT":
+                client["gdrive_folder_url"] = m.group(0).rstrip(".,;)]}")
+        elif field == "phone":
             m = re.search(r"\+?\d[\d\-\s()]{7,}", val)
             if m:
-                client["CLIENT"] = m.group(0).strip()
+                client["phone"] = m.group(0).strip()
             u = re.search(r"@([A-Za-z0-9_]{4,})", val)
             if u:
                 client["telegram_username"] = u.group(1)
-        elif field == "full_name_CLIENT":
+        elif field == "full_name_latin":
             nm = re.sub(r"[^A-Za-zА-Яа-яЁё'\- ]", " ", val).strip()
-            nm = _clean_CLIENT("full_name_CLIENT", nm)
+            nm = _clean_value("full_name_latin", nm)
             if nm:
-                client["full_name_CLIENT"] = nm.upper()
+                client["full_name_latin"] = nm.upper()
                 parts = nm.split()
                 if len(parts) >= 2:
                     client["name"] = parts[0].upper()
-                    client["CLIENT"] = parts[-1].upper()
+                    client["surname"] = parts[-1].upper()
         elif field == "notes":
             notes.append("%s: %s" % (label, val))
         else:
-            client[field] = _clean_CLIENT(field, val)
+            client[field] = _clean_value(field, val)
 
     for line in (text or "").splitlines():
         m = re.match(r"^\s*([A-Za-zА-Яа-яЁё ]{3,24}?)\s*:\s*(.*)$", line)
         if m:
             flush()
-            CLIENT["label"] = m.group(1).strip().lower()
-            CLIENT["buf"] = [m.group(2)]
-        elif CLIENT["label"] is not None:
+            state["label"] = m.group(1).strip().lower()
+            state["buf"] = [m.group(2)]
+        elif state["label"] is not None:
             if line.strip():
-                CLIENT["buf"].append(line)
-            elif CLIENT["buf"]:
+                state["buf"].append(line)
+            elif state["buf"]:
                 flush()   # пустая строка закрывает блок значения
     flush()
 
     if notes:
         client["notes"] = "; ".join(notes)[:600]
-    if not client.get("gCLIENT_folder_url"):
-        m = re.search(r"https?://CLIENT\.google\.com/[^\s\"'<>]+", text or "")
+    if not client.get("gdrive_folder_url"):
+        m = re.search(r"https?://drive\.google\.com/[^\s\"'<>]+", text or "")
         if m:
-            client["gCLIENT_folder_url"] = m.group(0).rstrip(".,;)]}")
+            client["gdrive_folder_url"] = m.group(0).rstrip(".,;)]}")
     if not client.get("telegram_username"):
         m = re.search(r"(?:^|\s)@([A-Za-z0-9_]{4,})", text or "")
         if m:
             client["telegram_username"] = m.group(1)
-    if not app.get("CLIENT"):
-        code = detect_CLIENT(text or "")
+    if not app.get("product"):
+        code = detect_product(text or "")
         if code:
-            app["CLIENT"] = code
-    return {"client": client, "CLIENT": app}
+            app["product"] = code
+    return {"client": client, "application": app}
 
 
-def parse_free_form(text: str, CLIENT_codes: list[str]) -> dict:
+def parse_free_form(text: str, product_codes: list[str]) -> dict:
     """Парсит заявку свободной формы.
 
     LLM читает текст и раскладывает по полям; всё, что модель не заполнила
     (или если модель оборвала ответ), добирается жёстким разбором по меткам.
-    Возвращает {"client": {...}, "CLIENT": {...}, "unrecognized": [...]}.
+    Возвращает {"client": {...}, "application": {...}, "unrecognized": [...]}.
     """
     base = label_fallback(text)
     if not text or not text.strip():
-        return {"client": {}, "CLIENT": {}, "unrecognized": []}
+        return {"client": {}, "application": {}, "unrecognized": []}
     messages = [
-        {"role": "system", "content": _build_system_prompt(CLIENT_codes)},
+        {"role": "system", "content": _build_system_prompt(product_codes)},
         {"role": "user", "content": text.strip()},
     ]
     try:
         raw = _call_llm(messages)
         data = _extract_json(raw)
         cl_src = data.get("client") if isinstance(data.get("client"), dict) else None
-        ap_src = data.get("CLIENT") if isinstance(data.get("CLIENT"), dict) else None
+        ap_src = data.get("application") if isinstance(data.get("application"), dict) else None
         if cl_src is None and ap_src is None and data:
             # ответ пришёл плоским (оборванный JSON) — раскладываем по спискам полей
             cl_src = {k: v for k, v in data.items() if k in CLIENT_FIELDS}
@@ -323,16 +323,16 @@ def parse_free_form(text: str, CLIENT_codes: list[str]) -> dict:
         unrec = data.get("unrecognized") or []
         for k, v in base["client"].items():
             client.setdefault(k, v)
-        for k, v in base["CLIENT"].items():
+        for k, v in base["application"].items():
             app.setdefault(k, v)
-        return {"client": client, "CLIENT": app,
+        return {"client": client, "application": app,
                 "unrecognized": unrec if isinstance(unrec, list) else []}
     except Exception as exc:
         log.error("parse_free_form failed: %s — беру разбор по меткам", exc)
-        return {"client": base["client"], "CLIENT": base["CLIENT"], "unrecognized": []}
+        return {"client": base["client"], "application": base["application"], "unrecognized": []}
 
 
-# ---------- определение банка клиента по документам Google CLIENT ----------
+# ---------- определение банка клиента по документам Google Drive ----------
 
 # Строгие маркеры. «сбер» как подстрока не годится —
 # встречается в других словах и в реквизитах банков-корреспондентов.
@@ -343,17 +343,17 @@ _BANK_MARKERS = {
 DEFAULT_BANK = "tbank"   # приоритет Тинькофф, если банк не определился
 
 
-def _CLIENT_list_files(folder_url: str, timeout: int = 30) -> dict:
-    """Возвращает {file_id: имя} для публичной папки Google CLIENT."""
+def _drive_list_files(folder_url: str, timeout: int = 30) -> dict:
+    """Возвращает {file_id: имя} для публичной папки Google Drive."""
     if not folder_url:
         return {}
     m = re.search(r"/folders/([A-Za-z0-9_-]+)", folder_url)
     if not m:
         return {}
-    url = f"https://CLIENT.google.com/CLIENT/folders/{m.group(1)}"
-    req = urllib.CLIENT.CLIENT(url, CLIENTs={"User-CLIENT": "Mozilla/5.0"})
-    with urllib.CLIENT.urlopen(req, timeout=timeout) as resp:
-        html = resp.read().decode("utf-8", "reCLIENT")
+    url = f"https://drive.google.com/drive/folders/{m.group(1)}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        html = resp.read().decode("utf-8", "replace")
     pairs = dict(re.findall(r'\["([A-Za-z0-9_-]{25,50})","([^"]+\.(?:pdf|PDF|jpg|png))"', html))
     for fid, name in re.findall(
             r'"([A-Za-z0-9_-]{28,44})"[^}]{0,400}?"([^"]+\.(?:pdf|PDF|jpg))"', html):
@@ -361,11 +361,11 @@ def _CLIENT_list_files(folder_url: str, timeout: int = 30) -> dict:
     return pairs
 
 
-def _CLIENT_download_text(file_id: str, timeout: int = 40) -> str:
+def _drive_download_text(file_id: str, timeout: int = 40) -> str:
     """Скачивает файл и возвращает его текст (только PDF). '' при неудаче."""
-    url = f"https://CLIENT.google.com/uc?export=download&id={file_id}"
-    req = urllib.CLIENT.CLIENT(url, CLIENTs={"User-CLIENT": "Mozilla/5.0"})
-    with urllib.CLIENT.urlopen(req, timeout=timeout) as resp:
+    url = f"https://drive.google.com/uc?export=download&id={file_id}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = resp.read()
     if data[:4] != b"%PDF":
         return ""
@@ -385,8 +385,8 @@ def _CLIENT_download_text(file_id: str, timeout: int = 40) -> str:
             pass
 
 
-def detect_bank_from_CLIENT(folder_url: str) -> str:
-    """Определяет банк клиента по банковским справкам в его папке Google CLIENT.
+def detect_bank_from_drive(folder_url: str) -> str:
+    """Определяет банк клиента по банковским справкам в его папке Google Drive.
 
     Возвращает 'tbank' | 'sber' | DEFAULT_BANK.
     Смотрятся только файлы-справки; если маркеров нет — приоритет Тинькофф.
@@ -394,26 +394,26 @@ def detect_bank_from_CLIENT(folder_url: str) -> str:
     if not folder_url:
         return DEFAULT_BANK
     try:
-        files = _CLIENT_list_files(folder_url)
+        files = _drive_list_files(folder_url)
     except Exception as exc:
         log.warning("detect_bank: не удалось прочитать папку (%s)", exc)
         return DEFAULT_BANK
-    # приоритет: файлы со «справка»/CLIENTment, затем остальные pdf
+    # приоритет: файлы со «справка»/statement, затем остальные pdf
     cand = [(i, n) for i, n in files.items()
-            if "справ" in n.lower() or "CLIENTment" in n.lower()]
+            if "справ" in n.lower() or "statement" in n.lower()]
     if not cand:
         cand = [(i, n) for i, n in files.items() if n.lower().endswith(".pdf")]
     scores = {"tbank": 0, "sber": 0}
     for fid, name in cand[:6]:
         text = ""
         try:
-            text = _CLIENT_download_text(fid)
+            text = _drive_download_text(fid)
         except Exception as exc:
             log.warning("detect_bank: %s не скачался (%s)", name, exc)
             continue
         low = (text + " " + name).lower()
-        for bank, CLIENT in _BANK_MARKERS.items():
-            for mk in CLIENT:
+        for bank, marks in _BANK_MARKERS.items():
+            for mk in marks:
                 if mk in low:
                     scores[bank] += 1
                     break
@@ -429,12 +429,12 @@ def detect_bank_from_CLIENT(folder_url: str) -> str:
 
 # ---------- извлечение банковских реквизитов из справки клиента ----------
 
-def extract_bank_CLIENTment(text: str, bank: str = "tbank") -> dict:
+def extract_bank_statement(text: str, bank: str = "tbank") -> dict:
     """Достаёт из текста банковской справки реквизиты для шаблона.
 
     Возвращает поля карточки клиента: contract_no, contract_date, account_no,
-    card_mask, balance_rub, balance_date, doc_no, passport_CLIENT,
-    passport_CLIENT, passport_CLIENT_date, passport_CLIENT_by, full_name_ru.
+    card_mask, balance_rub, balance_date, doc_no, passport_series,
+    passport_number, passport_issue_date, passport_issued_by, full_name_ru.
     """
     out: dict = {}
     t = text or ""
@@ -456,12 +456,12 @@ def extract_bank_CLIENTment(text: str, bank: str = "tbank") -> dict:
     # паспорт: Серия / Номер / Дата выдачи
     m = re.search(r"Серия:\s*(\d+)\s+Номер:\s*(\d+)\s+Дата выдачи:\s*(\d{2}\.\d{2}\.\d{4})", t)
     if m:
-        out["passport_CLIENT"] = m.group(1)
-        out["passport_CLIENT"] = m.group(2)
-        out["passport_CLIENT_date"] = m.group(3)
+        out["passport_series"] = m.group(1)
+        out["passport_number"] = m.group(2)
+        out["passport_issue_date"] = m.group(3)
     m = re.search(r"Паспорт выдан:\s*(.+)", t)
     if m:
-        out["passport_CLIENT_by"] = m.group(1).strip()[:200]
+        out["passport_issued_by"] = m.group(1).strip()[:200]
 
     # адрес фактического проживания
     m = re.search(r"Адрес фактического проживания:\s*(.+)", t)
@@ -489,29 +489,29 @@ def extract_bank_CLIENTment(text: str, bank: str = "tbank") -> dict:
     return {k: v for k, v in out.items() if v}
 
 
-def bank_CLIENT_from_CLIENT(folder_url: str, bank: str = "") -> dict:
-    """Находит банковскую справку в папке Google CLIENT и извлекает реквизиты."""
+def bank_details_from_drive(folder_url: str, bank: str = "") -> dict:
+    """Находит банковскую справку в папке Google Drive и извлекает реквизиты."""
     if not folder_url:
         return {}
     try:
-        files = _CLIENT_list_files(folder_url)
+        files = _drive_list_files(folder_url)
     except Exception as exc:
-        log.warning("bank_CLIENT: папка не читается (%s)", exc)
+        log.warning("bank_details: папка не читается (%s)", exc)
         return {}
     cand = [(i, n) for i, n in files.items()
-            if "справ" in n.lower() or "CLIENTment" in n.lower()]
+            if "справ" in n.lower() or "statement" in n.lower()]
     if not cand:
         cand = [(i, n) for i, n in files.items() if n.lower().endswith(".pdf")]
     for fid, name in cand[:4]:
         try:
-            text = _CLIENT_download_text(fid)
+            text = _drive_download_text(fid)
         except Exception:
             continue
         if not text:
             continue
-        det = extract_bank_CLIENTment(text, bank)
+        det = extract_bank_statement(text, bank)
         if det.get("account_no") or det.get("balance_rub"):
-            log.info("bank_CLIENT: «%s» → %s", name[:40],
+            log.info("bank_details: «%s» → %s", name[:40],
                      ", ".join(sorted(det.keys())))
             return det
     return {}
@@ -522,32 +522,32 @@ def bank_CLIENT_from_CLIENT(folder_url: str, bank: str = "") -> dict:
 # Если LLM недоступен — типовые формулировки по профессии.
 _DUTIES_FALLBACK = {
     "producer": [
-        "Planning and CLIENTion of content for the Company's online projects;",
-        "Managing creative processes, CLIENTs, and CLIENTion timelines;",
+        "Planning and production of content for the Company's online projects;",
+        "Managing creative processes, contractors, and production timelines;",
         "Coordination of filming, editing, and publishing of media materials;",
-        "Analysis of audience CLIENT and reporting on content performance;",
+        "Analysis of audience engagement and reporting on content performance;",
         "Participation in marketing campaigns and brand communications.",
     ],
     "manager": [
-        "Management, coordination, and leadership of the Company's CLIENTs;",
+        "Management, coordination, and leadership of the Company's operations;",
         "Development and implementation of business strategies and performance monitoring;",
-        "Maintaining internal CLIENTation, reporting, and CLIENTal records;",
-        "Coordination with CLIENTs, partners, and remote team members;",
-        "Ensuring compliance with internal policies and CLIENT standards.",
+        "Maintaining internal documentation, reporting, and operational records;",
+        "Coordination with contractors, partners, and remote team members;",
+        "Ensuring compliance with internal policies and quality standards.",
     ],
     "engineer": [
-        "Development and maintenance of the Company's CLIENT systems;",
+        "Development and maintenance of the Company's software systems;",
         "Designing technical architecture and integration solutions;",
-        "Code review, testing, and CLIENT assurance of delivered features;",
-        "Technical CLIENTation and reporting on project progress;",
-        "Coordination with CLIENT and CLIENTs teams on requirements.",
+        "Code review, testing, and quality assurance of delivered features;",
+        "Technical documentation and reporting on project progress;",
+        "Coordination with product and operations teams on requirements.",
     ],
     "default": [
-        "Providing CLIENTal CLIENT for the Company's ongoing projects;",
-        "Planning and organizing the CLIENT's own working processes remotely;",
-        "Preparing reports and CLIENTation on the CLIENT performed;",
+        "Providing professional services for the Company's ongoing projects;",
+        "Planning and organizing the Contractor's own working processes remotely;",
+        "Preparing reports and documentation on the services performed;",
         "Coordination with the Company's team and counterparties;",
-        "Ensuring CLIENT and timeliness of the deliverables.",
+        "Ensuring quality and timeliness of the deliverables.",
     ],
 }
 
@@ -563,7 +563,7 @@ def generate_duties(position: str, company: str = "", count: int = 4) -> list[st
         return _DUTIES_FALLBACK["default"][:count]
 
     sys_p = (
-        "Ты составляешь раздел 1 (NATURE OF CLIENT) договора Remote Work "
+        "Ты составляешь раздел 1 (NATURE OF ENGAGEMENT) договора Remote Work "
         "Agreement для визы E33G (Индонезия, удалённый работник).\n"
         "Верни СТРОГО JSON: {\"duties\": [\"...\", \"...\", \"...\", \"...\"]}\n"
         "Требования к пунктам:\n"
@@ -602,7 +602,7 @@ def duties_to_html(duties: list[str]) -> str:
 
 
 def duties_to_plain(duties: list[str]) -> str:
-    """Пункты → обычный текст: хранится в CLIENT, админ правит в форме."""
+    """Пункты → обычный текст: хранится в values, админ правит в форме."""
     if not duties:
         return ""
     return "\n".join(f"• {d}" for d in duties)
@@ -644,7 +644,7 @@ def translit_ru(text: str) -> str:
     if not any("а" <= ch.lower() <= "я" or ch.lower() == "ё" for ch in s):
         return s
     for ru, en in _TRANSLIT_WORDS:
-        s = s.reCLIENT(ru, en)
+        s = s.replace(ru, en)
     out = []
     for ch in s:
         low = ch.lower()
@@ -685,36 +685,36 @@ def _three_en(n: int) -> str:
     return " ".join(out)
 
 
-def parse_CLIENT(CLIENT) -> float:
+def parse_amount(value) -> float:
     """'1 770 300,00' / '17621.29' / '17 621,29 ₽' → float."""
-    if CLIENT is None:
+    if value is None:
         return 0.0
-    if isinstance(CLIENT, (int, float)):
-        return float(CLIENT)
-    s = str(CLIENT).reCLIENT("\u00a0", " ").reCLIENT("\u2009", " ")
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).replace("\u00a0", " ").replace("\u2009", " ")
     s = re.sub(r"[^\d.,\-]", "", s).strip()
     if not s:
         return 0.0
     if "," in s and "." in s:              # 1.770.300,00 или 1,770,300.00
         if s.rfind(",") > s.rfind("."):
-            s = s.reCLIENT(".", "").reCLIENT(",", ".")
+            s = s.replace(".", "").replace(",", ".")
         else:
-            s = s.reCLIENT(",", "")
+            s = s.replace(",", "")
     elif "," in s:                          # 17621,29
-        s = s.reCLIENT(",", ".")
+        s = s.replace(",", ".")
     return float(s) if s not in ("", "-") else 0.0
 
 
-def CLIENT_in_CLIENT_en(CLIENT) -> str:
+def amount_in_words_en(value) -> str:
     """1770300.00 → 'one million seven hundred seventy thousand three hundred rubles 00 kopeks'."""
     try:
-        CLIENT = parse_CLIENT(CLIENT)
+        amount = parse_amount(value)
     except Exception:
         return ""
-    if CLIENT <= 0:
+    if amount <= 0:
         return ""
-    whole = int(CLIENT)
-    kopeks = int(round((CLIENT - whole) * 100))
+    whole = int(amount)
+    kopeks = int(round((amount - whole) * 100))
     if kopeks == 100:
         whole += 1
         kopeks = 0
@@ -734,15 +734,15 @@ def CLIENT_in_CLIENT_en(CLIENT) -> str:
     return f"{' '.join(parts)} rubles {kopeks:02d} kopeks"
 
 
-def format_CLIENT_en(CLIENT) -> str:
+def format_amount_en(value) -> str:
     """1770300.0 → '1 770 300,00' (разделитель тысяч — пробел, копейки — запятая)."""
     try:
-        CLIENT = parse_CLIENT(CLIENT)
+        amount = parse_amount(value)
     except Exception:
-        return str(CLIENT)
-    whole = int(CLIENT)
-    kopeks = int(round((CLIENT - whole) * 100))
+        return str(value)
+    whole = int(amount)
+    kopeks = int(round((amount - whole) * 100))
     if kopeks == 100:
         whole += 1
         kopeks = 0
-    return f"{whole:,}".reCLIENT(",", " ") + f",{kopeks:02d}"
+    return f"{whole:,}".replace(",", " ") + f",{kopeks:02d}"

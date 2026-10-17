@@ -21,15 +21,15 @@ def main() -> None:
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
     row = c.execute(
-        """SELECT ad.template_id FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id = ad.template_id
-           WHERE ad.CLIENT_id = ? AND t.code = ?""", (app_id, code)).fetchone()
+        """SELECT ad.template_id FROM application_documents ad JOIN templates t ON t.id = ad.template_id
+           WHERE ad.application_id = ? AND t.code = ?""", (app_id, code)).fetchone()
     if not row:
         print("нет документа %s в заявке %d" % (code, app_id))
         return
     if out.exists():
         out.unlink()
 
-    from CLIENT import render
+    from services import render
 
     res = render.generate(app_id, row["template_id"], out)
     print("собран:", res.get("pdf_path") if isinstance(res, dict) else res)
@@ -39,7 +39,7 @@ def main() -> None:
     d = pymupdf.open(out)
     print("страниц:", d.page_count)
     for pno in range(d.page_count):
-        for b in d[pno].get_text("dict")["CLIENTs"]:
+        for b in d[pno].get_text("dict")["blocks"]:
             for line in b.get("lines", []):
                 txt = "".join(s["text"] for s in line["spans"]).strip()
                 if not txt:

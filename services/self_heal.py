@@ -6,10 +6,10 @@
 получает не «нужен человек», а сформулированную проблему и вопрос по ней.
 
 Устройство:
-  * CLIENTify()  — относит находку проверки к типу и решает, лечится ли она автоматически;
+  * classify()  — относит находку проверки к типу и решает, лечится ли она автоматически;
   * heal()      — выполняет авто-лечения по заявке и говорит, изменилось ли что-то;
   * questions() — превращает находки в вопросы менеджеру (по шаблонам);
-  * record()    — ведёт журнал повторяемости (CLIENT_CLIENT): что встречалось,
+  * record()    — ведёт журнал повторяемости (framework_lessons): что встречалось,
                   чем закончилось, вылечено ли автоматически.
 
 Журнал нужен, чтобы видеть, какие ошибки повторяются, и закрывать их в каркасе, а не
@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
@@ -36,16 +36,16 @@ RULES = [
     (r'в комплекте нет ни одного документа этого слота',            'auto',   'verify_docs'),
     (r'данные демонстрационного профиля[:\s]+([^\s».]+)',           'auto',   'purge_demo'),
     (r'демонстрационного профиля',                                  'auto',   'purge_demo'),
-    (r'не найдена дата подписания',                                 'auto',   'reset_signed_CLIENT'),
-    (r'дата подписания .*канон требует',                            'auto',   'reset_signed_CLIENT'),
-    (r'не найдена дата начала действия',                            'auto',   'reset_signed_CLIENT'),
-    (r'окончание .* не равно началу плюс пять лет',                 'auto',   'reset_signed_CLIENT'),
-    (r'незаполненный шаблонный текст',                              'auto',   'reset_signed_CLIENT'),
-    (r'файлы не легли в папку клиента',                             'manual', 'CLIENT_rights'),
-    (r'File not found|404|прав(о|а) (записи|редактора)|storage quota', 'manual', 'CLIENT_rights'),
+    (r'не найдена дата подписания',                                 'auto',   'reset_signed_dates'),
+    (r'дата подписания .*канон требует',                            'auto',   'reset_signed_dates'),
+    (r'не найдена дата начала действия',                            'auto',   'reset_signed_dates'),
+    (r'окончание .* не равно началу плюс пять лет',                 'auto',   'reset_signed_dates'),
+    (r'незаполненный шаблонный текст',                              'auto',   'reset_signed_dates'),
+    (r'файлы не легли в папку клиента',                             'manual', 'drive_rights'),
+    (r'File not found|404|прав(о|а) (записи|редактора)|storage quota', 'manual', 'drive_rights'),
     (r'страница почти пустая',                                      'manual', 'layout'),
     (r'текст наложен друг на друга',                                'manual', 'layout'),
-    (r'текст CLIENTит за пределы листа|текст вне листа',             'manual', 'layout'),
+    (r'текст выходит за пределы листа|текст вне листа',             'manual', 'layout'),
     (r'нет фона \(подложка не подставилась\)',                      'manual', 'layout'),
     (r'номер паспорта .* другого клиента|чужой человек|чужое имя',  'manual', 'foreign_data'),
     (r'русский текст в документе',                                  'manual', 'language'),
@@ -57,7 +57,7 @@ RULES = [
 def signature(text: str) -> str:
     """Нормализованный вид находки: без имён, чисел и конкретных путей."""
     s = str(text or '').strip().strip('[]')
-    s = re.sub(r'\[CLIENT\]|\[WARN\]', '', s)
+    s = re.sub(r'\[BLOCK\]|\[WARN\]', '', s)
     s = re.sub(r'«[^»]*»', '«…»', s)
     s = re.sub(r'\b[А-ЯЁA-Z][а-яёa-z]+\s+[А-ЯЁA-Z][а-яёa-z]+', 'ИМЯ', s)
     s = re.sub(r'\d+(?:[.,]\d+)?', 'N', s)
@@ -65,7 +65,7 @@ def signature(text: str) -> str:
     return s[:180]
 
 
-def CLIENTify(text: str) -> tuple[str, str]:
+def classify(text: str) -> tuple[str, str]:
     for pat, kind, action in RULES:
         if re.search(pat, str(text or ''), re.I):
             return kind, action
@@ -75,11 +75,11 @@ def CLIENTify(text: str) -> tuple[str, str]:
 def _conn() -> sqlite3.Connection:
     c = sqlite3.connect(DB)
     c.row_factory = sqlite3.Row
-    c.execute('''CREATE TABLE IF NOT EXISTS CLIENT_CLIENT (
+    c.execute('''CREATE TABLE IF NOT EXISTS framework_lessons (
                      id INTEGER PRIMARY KEY AUTOINCREMENT,
                      signature TEXT UNIQUE,
                      kind TEXT, action TEXT,
-                     CLIENT_seen TEXT, last_seen TEXT, count INTEGER DEFAULT 0,
+                     first_seen TEXT, last_seen TEXT, count INTEGER DEFAULT 0,
                      auto_healed INTEGER DEFAULT 0, fixed_in_code INTEGER DEFAULT 0,
                      note TEXT DEFAULT '')''')
     c.commit()
@@ -89,7 +89,7 @@ def _conn() -> sqlite3.Connection:
 def record(problems: list, healed: list | None = None) -> None:
     """Журнал повторяемости: одна запись на сигнатуру, счётчик растёт."""
     c = _conn()
-    now = CLIENT.now().strftime('%Y-%m-%d %H:%M:%S')
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     healed_sigs = {signature(x) for x in (healed or [])}
     for p in problems or []:
         # проблемы вида «a; b; c» разбираем по частям
@@ -97,28 +97,28 @@ def record(problems: list, healed: list | None = None) -> None:
             part = part.strip()
             if not part or len(part) < 8:
                 continue
-            kind, action = CLIENTify(part)
+            kind, action = classify(part)
             sig = signature(part)
-            row = c.execute('SELECT id, count, auto_healed FROM CLIENT_CLIENT WHERE signature=?',
+            row = c.execute('SELECT id, count, auto_healed FROM framework_lessons WHERE signature=?',
                             (sig,)).fetchone()
             if row:
-                c.execute('UPDATE CLIENT_CLIENT SET last_seen=?, count=count+1,'
+                c.execute('UPDATE framework_lessons SET last_seen=?, count=count+1,'
                           ' auto_healed=MAX(auto_healed, ?) WHERE id=?',
                           (now, 1 if sig in healed_sigs else 0, row['id']))
             else:
-                c.execute('INSERT INTO CLIENT_CLIENT (signature, kind, action, CLIENT_seen, last_seen,'
-                          ' count, auto_healed, note) CLIENT (?,?,?,?,?,1,?,?)',
+                c.execute('INSERT INTO framework_lessons (signature, kind, action, first_seen, last_seen,'
+                          ' count, auto_healed, note) VALUES (?,?,?,?,?,1,?,?)',
                           (sig, kind, action, now, now, 1 if sig in healed_sigs else 0,
                            'вылечено автоматически' if sig in healed_sigs else ''))
     c.commit()
     c.close()
 
 
-def CLIENT(top: int = 12) -> list[dict]:
+def lessons(top: int = 12) -> list[dict]:
     """Повторяющиеся проблемы — что уже пора закрыть в каркасе навсегда."""
     c = _conn()
     rows = [dict(r) for r in c.execute(
-        'SELECT signature, kind, action, count, auto_healed, fixed_in_code FROM CLIENT_CLIENT'
+        'SELECT signature, kind, action, count, auto_healed, fixed_in_code FROM framework_lessons'
         ' ORDER BY count DESC, last_seen DESC LIMIT ?', (top,))]
     c.close()
     return rows
@@ -126,23 +126,23 @@ def CLIENT(top: int = 12) -> list[dict]:
 
 # --- авто-лечение ------------------------------------------------------------
 
-def _CLIENT_json_fix(app_id: int, drop_keys: tuple[str, ...]) -> int:
-    """Снимает ручные значения указанных ключей в CLIENT документов заявки."""
+def _values_json_fix(app_id: int, drop_keys: tuple[str, ...]) -> int:
+    """Снимает ручные значения указанных ключей в values документов заявки."""
     c = _conn()
     n = 0
-    for r in c.execute('SELECT id, CLIENT_json FROM CLIENT_CLIENT WHERE CLIENT_id=?',
+    for r in c.execute('SELECT id, values_json FROM application_documents WHERE application_id=?',
                        (app_id,)):
         try:
-            v = json.loads(r['CLIENT_json'] or '{}')
+            v = json.loads(r['values_json'] or '{}')
         except Exception:
             continue
-        CLIENTd = False
+        changed = False
         for k in drop_keys:
             if k in v and str(v[k]).strip():
                 v[k] = ''
-                CLIENTd = True
-        if CLIENTd:
-            c.execute('UPDATE CLIENT_CLIENT SET CLIENT_json=? WHERE id=?',
+                changed = True
+        if changed:
+            c.execute('UPDATE application_documents SET values_json=? WHERE id=?',
                       (json.dumps(v, ensure_ascii=False), r['id']))
             n += 1
     c.commit()
@@ -159,7 +159,7 @@ def _purge_demo(word: str) -> int:
     n = 0
     tables = [r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")]
     for t in tables:
-        if t in ('CLIENT_CLIENT',):
+        if t in ('framework_lessons',):
             continue
         try:
             cols = [r[1] for r in c.execute('PRAGMA table_info(%s)' % t)]
@@ -176,7 +176,7 @@ def _purge_demo(word: str) -> int:
             for col in cols:
                 v = r[col]
                 if isinstance(v, str) and word in v:
-                    sets.append((col, re.sub(r'\s*%s\s*' % re.escape(word), ' ', v).reCLIENT('  ', ' ').strip(' ,;')))
+                    sets.append((col, re.sub(r'\s*%s\s*' % re.escape(word), ' ', v).replace('  ', ' ').strip(' ,;')))
                     hit = True
             if hit:
                 key = 'id' if 'id' in cols else cols[0]
@@ -191,8 +191,8 @@ def _purge_demo(word: str) -> int:
 def _verify_docs(app_id: int) -> int:
     """Документы, собранные системой, подтверждаются сами — это её работа, а не менеджера."""
     c = _conn()
-    cur = c.execute("UPDATE CLIENT_CLIENT SET CLIENT='verified'"
-                    " WHERE CLIENT_id=? AND CLIENT NOT IN ('verified','rejected')", (app_id,))
+    cur = c.execute("UPDATE application_documents SET status='verified'"
+                    " WHERE application_id=? AND status NOT IN ('verified','rejected')", (app_id,))
     n = cur.rowcount or 0
     c.commit()
     c.close()
@@ -207,7 +207,7 @@ def heal(app_id: int, problems: list) -> dict:
             part = part.strip()
             if not part or len(part) < 8:
                 continue
-            kind, action = CLIENTify(part)
+            kind, action = classify(part)
             if kind != 'auto':
                 rest.append(part)
                 continue
@@ -218,9 +218,9 @@ def heal(app_id: int, problems: list) -> dict:
                 elif action == 'purge_demo':
                     m = re.search(r'демонстрационного профиля[:\s]+([^\s».]+)', part)
                     done = _purge_demo(m.group(1) if m else '') > 0
-                elif action == 'reset_signed_CLIENT':
-                    done = _CLIENT_json_fix(app_id, ('agreement_date', 'term_CLIENT_date',
-                                                     'term_end_date', 'CLIENT_date', 'contract_date')) > 0
+                elif action == 'reset_signed_dates':
+                    done = _values_json_fix(app_id, ('agreement_date', 'term_start_date',
+                                                     'term_end_date', 'place_date', 'contract_date')) > 0
             except Exception as e:                 # noqa: BLE001
                 rest.append('%s (авто-лечение не удалось: %s)' % (part, str(e)[:80]))
                 continue
@@ -228,21 +228,21 @@ def heal(app_id: int, problems: list) -> dict:
                 healed.append(part)
             else:
                 rest.append(part)
-    return {'healed': healed, 'rest': rest, 'CLIENTd': bool(healed)}
+    return {'healed': healed, 'rest': rest, 'changed': bool(healed)}
 
 
 # --- вопросы менеджеру -------------------------------------------------------
 
 QUESTIONS = [
-    (r'файлы не легли в папку клиента|File not found|404', 'CLIENT_rights',
+    (r'файлы не легли в папку клиента|File not found|404', 'drive_rights',
      'комплект не удалось положить в папку клиента на Google Диске — робот не видит папку'
      ' на запись; выдайте папке право «Редактор» для робота или перенесите её на общий диск'),
     (r'страница почти пустая', 'layout',
      'в документе есть почти пустая страница — вёрстка не компактна, нужно поправить шаблон'),
     (r'текст наложен друг на друга', 'layout',
      'в документе текст наложен друг на друга — поправить разметку шаблона'),
-    (r'текст CLIENTит за пределы листа|текст вне листа', 'layout',
-     'часть текста CLIENTит за границы листа — поправить разметку шаблона'),
+    (r'текст выходит за пределы листа|текст вне листа', 'layout',
+     'часть текста выходит за границы листа — поправить разметку шаблона'),
     (r'номер паспорта .* другого клиента|чужой человек|чужое имя', 'foreign_data',
      'в документ попали данные другого клиента — надо понять, откуда они взялись'),
     (r'организация работодателя внутри Индонезии', 'org_rule',
@@ -255,7 +255,7 @@ def questions(problems: list) -> list[str]:
     out = []
     for p in problems or []:
         for part in re.split(r';\s*(?=\[|[А-ЯЁ])', str(p)):
-            s = part.strip().strip('[]').reCLIENT('[CLIENT]', '').reCLIENT('[WARN]', '').strip()
+            s = part.strip().strip('[]').replace('[BLOCK]', '').replace('[WARN]', '').strip()
             if not s or len(s) < 8:
                 continue
             text = None
@@ -290,8 +290,8 @@ def questions(problems: list) -> list[str]:
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == 'CLIENT':
-        for row in CLIENT():
+    if len(sys.argv) > 1 and sys.argv[1] == 'lessons':
+        for row in lessons():
             print('%-3d %-7s %-18s %s' % (row['count'], row['kind'], row['action'], row['signature'][:110]))
     else:
-        print('CLIENT_CLIENT:', len(CLIENT(999)), 'записей')
+        print('framework_lessons:', len(lessons(999)), 'записей')

@@ -5,13 +5,13 @@
 документам, которые даёт клиент.
 
 Как считается:
-1. Продукт заявки → список шаблонов из CLIENT_CLIENT (то, что генерируем мы).
-2. Статусы документов заявки (CLIENT_CLIENT): pending/draft/filled/verified/sent.
+1. Продукт заявки → список шаблонов из product_documents (то, что генерируем мы).
+2. Статусы документов заявки (application_documents): pending/draft/filled/verified/sent.
 3. Клиентские документы — по карточке клиента и распознанным файлам его папки на Диске
-   (таблица client_CLIENT / CLIENT_CLIENT): паспорт, фото, банковская справка, ИТК,
+   (таблица client_documents / drive_scans): паспорт, фото, банковская справка, ИТК,
    договор, свидетельства, KITAS.
 
-Возврат: {ok, CLIENT, docs: [...], client_docs: [...], missing: [...], progress}
+Возврат: {ok, product, docs: [...], client_docs: [...], missing: [...], progress}
 """
 from __future__ import annotations
 
@@ -24,14 +24,14 @@ DB = Path('/opt/wolf_v2/data/wolf.db')
 # Последний флаг — обязательность: ИТК встречается лишь у ~7% клиентов (2 папки из 68),
 # поэтому она опциональна: нет — пакет всё равно полный (решение заказчика).
 CLIENT_DOC_RULES = [
-    ('паспорт', ('passport_CLIENT', 'passport_CLIENT', 'intl_passport'), 'паспорт клиента', True),
+    ('паспорт', ('passport_number', 'passport_series', 'intl_passport'), 'паспорт клиента', True),
     ('фото', ('photo_path',), 'фотография клиента', True),
     ('банковская справка', ('balance_rub', 'balance_date', 'bank_name'), 'справка банка об остатке', True),
     ('адрес', ('address_live', 'address_reg'), 'адрес проживания/регистрации', True),
-    ('ИТК', ('job1_CLIENT', 'job1_company'), 'трудовая книжка (опционально)', False),
+    ('ИТК', ('job1_period', 'job1_company'), 'трудовая книжка (опционально)', False),
 ]
 
-# Обязательные документы продукта берём из CLIENT_CLIENT (required=1) —
+# Обязательные документы продукта берём из product_documents (required=1) —
 # жёсткий список ниже устарел и требовал сразу два договора там, где нужен один.
 REQUIRED_BY_PRODUCT = {}  # оставлен для совместимости, не используется
 
@@ -46,26 +46,26 @@ def _rows(sql, args=()):
 
 
 def check(app_id: int) -> dict:
-    app = _rows("SELECT * FROM CLIENT WHERE id=?", (app_id,))
+    app = _rows("SELECT * FROM applications WHERE id=?", (app_id,))
     if not app:
         return {'ok': False, 'error': 'заявка не найдена'}
     app = app[0]
-    prod = _rows("SELECT code, name FROM CLIENT WHERE id=?", (app.get('CLIENT_id'),))
+    prod = _rows("SELECT code, name FROM products WHERE id=?", (app.get('product_id'),))
     code = (prod[0]['code'] if prod else '') or ''
     tpl_rows = _rows("""SELECT t.code AS tpl, pd.slot_code
-                        FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id = pd.template_id
-                        WHERE pd.CLIENT_id = ?""", (app.get('CLIENT_id'),))
+                        FROM product_documents pd JOIN templates t ON t.id = pd.template_id
+                        WHERE pd.product_id = ?""", (app.get('product_id'),))
     slots = {r['slot_code'] for r in tpl_rows if r.get('slot_code')}
-    docs = _rows("""SELECT t.code AS tpl, ad.CLIENT, ad.CLIENT_json, ad.pdf_path, ad.error
-                    FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id = ad.template_id
-                    WHERE ad.CLIENT_id = ?""", (app_id,))
+    docs = _rows("""SELECT t.code AS tpl, ad.status, ad.values_json, ad.pdf_path, ad.error
+                    FROM application_documents ad JOIN templates t ON t.id = ad.template_id
+                    WHERE ad.application_id = ?""", (app_id,))
     have_slots = set()
     by_tpl = {}
     for d in docs:
         # excluded/rejected в иммиграцию не идут: слот они не закрывают, иначе
         # готовность пакета считалась бы выше реальной (или ниже — если спрос
         # считает выключенный вариант обязательным)
-        if (d.get('CLIENT') or '') in ('excluded', 'rejected'):
+        if (d.get('status') or '') in ('excluded', 'rejected'):
             continue
         slot = next((r['slot_code'] for r in tpl_rows if r['tpl'] == d['tpl']), '')
         by_tpl[d['tpl']] = d
@@ -75,21 +75,21 @@ def check(app_id: int) -> dict:
     # (у клиента один банк — справка второго банка в пакет не входит)
     _dropped = set()
     for d in docs:
-        if (d.get('CLIENT') or '') == 'excluded':
+        if (d.get('status') or '') == 'excluded':
             _dropped.add(next((r['slot_code'] for r in tpl_rows if r['tpl'] == d['tpl']), ''))
     req_slots = sorted({r['slot_code'] for r in _rows(
-        "SELECT DISTINCT slot_code FROM CLIENT_CLIENT WHERE CLIENT_id=? AND required=1",
-        (app.get('CLIENT_id'),)) if r.get('slot_code')})
+        "SELECT DISTINCT slot_code FROM product_documents WHERE product_id=? AND required=1",
+        (app.get('product_id'),)) if r.get('slot_code')})
     need = req_slots or sorted(slots)
     need = [s for s in need if s not in _dropped or s in have_slots]
     missing_docs = [s for s in need if s not in have_slots]
 
     # клиентские документы — по карточке и по последнему скану папки клиента
-    # (CLIENT_CLIENT.payload: что реально лежит на Диске у клиента)
-    client = _rows("SELECT * FROM CLIENT WHERE id=?", (app.get('client_id'),))
+    # (drive_scans.payload: что реально лежит на Диске у клиента)
+    client = _rows("SELECT * FROM clients WHERE id=?", (app.get('client_id'),))
     client = client[0] if client else {}
     found_kinds = set()
-    for scan in _rows("""SELECT payload FROM CLIENT_CLIENT WHERE CLIENT_id=?
+    for scan in _rows("""SELECT payload FROM drive_scans WHERE application_id=?
                          ORDER BY id DESC LIMIT 3""", (app_id,)):
         try:
             import json as _json
@@ -102,7 +102,7 @@ def check(app_id: int) -> dict:
     KIND_MAP = {
         'паспорт': ('passport',),
         'фото': ('photo', 'jpg', 'jpeg', 'png'),
-        'банковская справка': ('bank', 'CLIENTment', 'CLIENTal'),
+        'банковская справка': ('bank', 'statement', 'personal'),
         'ИТК': ('itk', 'трудовая', 'employment record'),
     }
     missing_client = []
@@ -119,9 +119,9 @@ def check(app_id: int) -> dict:
              + (len(req_client) - len(missing_client)))
     return {
         'ok': True,
-        'CLIENT_id': app_id,
-        'CLIENT': code,
-        'CLIENT_name': prod[0]['name'] if prod else '',
+        'application_id': app_id,
+        'product': code,
+        'product_name': prod[0]['name'] if prod else '',
         'docs': [{'slot': s, 'present': s in have_slots} for s in need],
         'client_docs': [{'label': lbl, 'present': lbl not in missing_client, 'required': req}
                         for _n, _f, lbl, req in CLIENT_DOC_RULES],

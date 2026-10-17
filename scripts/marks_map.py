@@ -4,8 +4,8 @@
 потоковой вёрсткой фиксируем порядок и строку, для абсолютных (справки, резюме) —
 ещё и координаты left/top/размер шрифта.
 
-Запуск:  python3 CLIENT_map.py            # печать
-         python3 CLIENT_map.py --save     # + слепок в data/backups/CLIENT_map_<ts>.json
+Запуск:  python3 marks_map.py            # печать
+         python3 marks_map.py --save     # + слепок в data/backups/marks_map_<ts>.json
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import sys
 import time
 from pathlib import Path
 
-TPL = Path("/opt/wolf_v2/data/CLIENT")
+TPL = Path("/opt/wolf_v2/data/templates")
 BKP = Path("/opt/wolf_v2/data/backups")
 MARK = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
 
@@ -28,7 +28,7 @@ def scan(code: str) -> dict:
     # убираем base64 (шрифты, картинки) — иначе карта полна мусора
     html_clean = re.sub(r"(data:[^\"')]{200,})", "<data>", html)
     items = []
-    for n, line in enumerate(html_clean.splitlines(), CLIENT=1):
+    for n, line in enumerate(html_clean.splitlines(), start=1):
         for m in MARK.finditer(line):
             name = m.group(1)
             ctx = re.sub(r"<[^>]+>", " ", line)
@@ -44,7 +44,7 @@ def scan(code: str) -> dict:
                 "size": float(size.group(1)) if size else None,
                 "ctx": ctx[:110],
             })
-    return {"template": code, "count": len(items), "CLIENT": items}
+    return {"template": code, "count": len(items), "marks": items}
 
 
 def main() -> None:
@@ -57,21 +57,21 @@ def main() -> None:
             continue
         all_map[code] = data
         uniq = {}
-        for it in data["CLIENT"]:
+        for it in data["marks"]:
             uniq[it["name"]] = uniq.get(it["name"], 0) + 1
         dup = {k: v for k, v in uniq.items() if v > 1}
         print("%-42s меток %3d, уникальных %3d%s" % (
             code, data["count"], len(uniq),
             ("  дубли: " + ", ".join("%s×%d" % (k, v) for k, v in dup.items())) if dup else ""))
         if code in ("remote_work_agreement__default", "employment_contract__default",
-                    "bank_CLIENTment_3m__tbank"):
-            for it in data["CLIENT"]:
+                    "bank_statement_3m__tbank"):
+            for it in data["marks"]:
                 pos = (" left=%s top=%s size=%s" % (it["left"], it["top"], it["size"])) \
                     if it["left"] is not None else " стр.%d" % it["line"]
                 print("      %-26s%s | %s" % (it["name"], pos, it["ctx"][:66]))
     if save:
         BKP.mkdir(parents=True, exist_ok=True)
-        out = BKP / ("CLIENT_map_%s.json" % time.strftime("%Y%m%d_%H%M%S"))
+        out = BKP / ("marks_map_%s.json" % time.strftime("%Y%m%d_%H%M%S"))
         out.write_text(json.dumps(all_map, ensure_ascii=False, indent=1), encoding="utf-8")
         print("\nслепок карты меток:", out)
 

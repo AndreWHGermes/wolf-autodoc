@@ -5,8 +5,8 @@
 не читали — и в договорах, которые собираем сами, реквизиты оставались
 пустыми, хотя данные лежали в присланных файлах.
 
-Понимает и русскую запись («ИНН 000000000, КПП 773101001, ОГРН ...»),
-и английскую, как в наших бланках («INN 000000000, KPP 773101001»).
+Понимает и русскую запись («ИНН 77 05 ******, КПП 773101001, ОГРН ...»),
+и английскую, как в наших бланках («INN 77 05 ******, KPP 773101001»).
 """
 from __future__ import annotations
 
@@ -20,17 +20,17 @@ _NAME_EN = re.compile(r'\b(LLC|Ltd|Limited|JSC|PJSC|PLC|Inc|Corp)\b\s*[«"”]?\
 # «Limited Stay Visa No. 26E33G97730» — это вид разрешения, а не компания:
 # такие сочетания в названия попадать не должны
 _NOT_A_NAME = (
-    'stay visa', 'stay CLIENT', 'limited stay', 'visit visa', 'entry visa', 'kitas',
-    'CLIENT no', 'visa no', 'passport no', 'krasnodar', 'краснодар', 'moscow, ',
-    'bank', 'CLIENTment', 'insurance', 'policy', 'agreement no', 'contract no',
+    'stay visa', 'stay permit', 'limited stay', 'visit visa', 'entry visa', 'kitas',
+    'permit no', 'visa no', 'passport no', 'krasnodar', 'краснодар', 'moscow, ',
+    'bank', 'statement', 'insurance', 'policy', 'agreement no', 'contract no',
     # служебные слова бланков: «Limited "Suite C"», «Limited "Signature …"»
-    'signature', 'suite', 'CLIENT CLIENT', 'part a', 'part b', 'article',
-    'section', 'annex', 'CLIENT', 'exhibit', 'blank', 'page',
+    'signature', 'suite', 'registered office', 'part a', 'part b', 'article',
+    'section', 'annex', 'schedule', 'exhibit', 'blank', 'page',
 )
 
 
 def _clean_name(raw: str) -> str:
-    """Убрать из названия хвосты вроде «CLIENT No …» и отбраковать мусор."""
+    """Убрать из названия хвосты вроде «permit No …» и отбраковать мусор."""
     name = re.sub(r'\s+', ' ', str(raw or '')).strip(' »,."')
     low = name.lower()
     if any(bad in low for bad in _NOT_A_NAME):
@@ -38,11 +38,11 @@ def _clean_name(raw: str) -> str:
     # «No. 26E33G…», «№ 123» — это номер документа, а не название
     if re.match(r'^(no\.?|№)\s*\S', low) or re.search(r'\bno\.?\s*\d', low):
         return ''
-    CLIENT = [w for w in re.split(r'[\s/,]+', name) if len(w) > 1]
-    if not CLIENT or len(name) < 3:
+    words = [w for w in re.split(r'[\s/,]+', name) if len(w) > 1]
+    if not words or len(name) < 3:
         return ''
     # одиночная аббревиатура без названия («LLC», «ИП») — не компания
-    if len(CLIENT) == 1 and CLIENT[0].upper() in ('LLC', 'LTD', 'JSC', 'PJSC', 'PLC',
+    if len(words) == 1 and words[0].upper() in ('LLC', 'LTD', 'JSC', 'PJSC', 'PLC',
                                                 'INC', 'CORP', 'ИП', 'ООО', 'АО'):
         return ''
     return name[:70]
@@ -55,7 +55,7 @@ _ORG_KEYS = {
              r'\bOGRNIP\b[^\d]{0,6}(\d{15})'),
 }
 _ADDRESS = (
-    r'(?:юридический\s+адрес|адрес\s+место\s+нахождения|CLIENT\s+address|'
+    r'(?:юридический\s+адрес|адрес\s+место\s+нахождения|registered\s+address|'
     r'address\s+of\s+the\s+company|company\s+address)[:\s]*([^\n]{10,140})',
     r'(?:адрес)[:\s]*((?:Россия|г\.|улица|ул\.|проспект|просп\.)[^\n]{10,140})',
 )
@@ -84,7 +84,7 @@ def parse_company(text: str) -> dict:
             # «in Kazan» — предлог попал из формулировки договора
             addr = re.sub(r'^(?:in|at|г\.?)\s+', '', addr, flags=re.I).strip(' ,.')
             if len(addr) > 3:
-                out['company_CLIENT_address'] = addr[:160]
+                out['company_registered_address'] = addr[:160]
                 break
 
     # название: сначала английская форма (она уходит в наши бланки), потом русская
@@ -110,7 +110,7 @@ def parse_company(text: str) -> dict:
         out.setdefault('company_name_ru', name_ru)
     if name_en:
         out['company_name'] = name_en
-        out.setdefault('company_name_in_CLIENT', name_en)
+        out.setdefault('company_name_in_quotes', name_en)
         out.setdefault('company_full_name', name_en)
     elif name_ru:
         out['company_name'] = name_ru

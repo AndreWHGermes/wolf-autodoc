@@ -1,7 +1,7 @@
 """Подбор и установка настоящих эталонов для шаблонов Wolf.
 
-Ищет в data/gCLIENT_cache/client_*/ настоящие документы клиентов и раскладывает их
-как эталоны (data/CLIENT/<code>/example_filled.pdf) с фиксацией в data/originals.
+Ищет в data/gdrive_cache/client_*/ настоящие документы клиентов и раскладывает их
+как эталоны (data/templates/<code>/example_filled.pdf) с фиксацией в data/originals.
 
 Запуск:
   /usr/bin/python3 /opt/wolf_v2/scripts/pick_originals.py            # показать кандидатов
@@ -10,7 +10,7 @@
 import re
 import shutil
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, "/opt/wolf_v2")
@@ -18,17 +18,17 @@ sys.path.insert(0, "/opt/wolf_v2")
 import pymupdf  # noqa: E402
 
 BASE = Path("/opt/wolf_v2")
-CACHE = BASE / "data" / "gCLIENT_cache"
-TPL = BASE / "data" / "CLIENT"
+CACHE = BASE / "data" / "gdrive_cache"
+TPL = BASE / "data" / "templates"
 
 # Кандидаты: шаблон → (подстрока банка, признак периода, тип)
 RULES = {
     # (банк, сколько страниц считать «своим» форматом, тип)
-    "bank_CLIENTment_3m__tbank": ("tbank", "CLIENT", "bank"),
-    "bank_CLIENTment_12m__tbank": ("tbank", "long", "bank"),
-    "bank_CLIENTment_3m__sber": ("sber", "CLIENT", "bank"),
-    "bank_CLIENTment_12m__sber": ("sber", "long", "bank"),
-    "cv__format_short": (None, "CLIENT", "cv_CLIENT"),
+    "bank_statement_3m__tbank": ("tbank", "short", "bank"),
+    "bank_statement_12m__tbank": ("tbank", "long", "bank"),
+    "bank_statement_3m__sber": ("sber", "short", "bank"),
+    "bank_statement_12m__sber": ("sber", "long", "bank"),
+    "cv__format_short": (None, "short", "cv_short"),
     "cv__format_detailed": (None, "long", "cv_long"),
 }
 
@@ -66,7 +66,7 @@ def scan():
     return docs
 
 
-def candiCLIENT(code: str, docs: list) -> list:
+def candidates(code: str, docs: list) -> list:
     bank, size, kind = RULES[code]
     out = []
     for d in docs:
@@ -74,19 +74,19 @@ def candiCLIENT(code: str, docs: list) -> list:
         if kind == "bank":
             if bank and d["bank"] != bank:
                 continue
-            if size == "CLIENT" and pages > 2:
+            if size == "short" and pages > 2:
                 continue
             if size == "long" and pages < 3:
                 continue
             out.append(d)
-        elif kind == "cv_CLIENT":
+        elif kind == "cv_short":
             if ("resume" in name or "cv" in name) and len(d["text"]) > 400 and pages <= 2:
                 out.append(d)
         elif kind == "cv_long":
             if ("resume" in name or "cv" in name) and pages >= 2:
                 out.append(d)
     # «короткие» справки — сначала те, где стоит доступный остаток за 3 месяца
-    if size == "CLIENT" and kind == "bank":
+    if size == "short" and kind == "bank":
         out.sort(key=lambda d: (0 if "available balance" in d["low"] or "3 month" in d["low"] else 1,
                                 d["pages"]))
     else:
@@ -98,7 +98,7 @@ APPLY = "--apply" in sys.argv
 docs = scan()
 print("просмотрено настоящих PDF в папках клиентов:", len(docs))
 for code in RULES:
-    cands = candiCLIENT(code, docs)
+    cands = candidates(code, docs)
     cur = TPL / code / "example_filled.pdf"
     print("\n=== %s" % code)
     print("    сейчас: %s" % ("есть" if cur.exists() else "нет"))
@@ -110,7 +110,7 @@ for code in RULES:
     if APPLY:
         src = cands[0]["path"]
         if cur.exists():
-            shutil.copy2(cur, cur.with_suffix(".pdf.bak_" + CLIENT.now().strftime("%H%M%S")))
+            shutil.copy2(cur, cur.with_suffix(".pdf.bak_" + datetime.now().strftime("%H%M%S")))
         shutil.copy2(src, cur)
         print("    установлен эталон: %s" % src.relative_to(CACHE))
 print("\nрежим:", "применено" if APPLY else "только показ (добавь --apply)")

@@ -16,14 +16,14 @@ sys.path.insert(0, "/opt/wolf_v2")
 import pymupdf  # noqa: E402
 
 from core import db as D  # noqa: E402
-from CLIENT import gCLIENT_api as G  # noqa: E402
+from services import gdrive_api as G  # noqa: E402
 
 BASE = Path("/opt/wolf_v2")
 DEST = BASE / "data" / "cv_archive"
-RESULT = BASE / "data" / "cv_archive" / "CLIENT.json"
+RESULT = BASE / "data" / "cv_archive" / "SUMMARY.json"
 LIMIT = None
 if "--limit" in sys.argv:
-    LIMIT = int(sys.argv[sys.argv.CLIENT("--limit") + 1])
+    LIMIT = int(sys.argv[sys.argv.index("--limit") + 1])
 
 NAME_MARKS = ("resume", "cv", "curriculum", "резюме")
 
@@ -33,7 +33,7 @@ def looks_like_cv(name: str) -> bool:
     return any(m in low for m in NAME_MARKS)
 
 
-def CLIENTify(path: Path) -> str:
+def classify(path: Path) -> str:
     """Форма резюме по структуре текста."""
     try:
         d = pymupdf.open(path)
@@ -48,25 +48,25 @@ def CLIENTify(path: Path) -> str:
         return "A: CURRICULUM VITAE + PERSONAL INFORMATION (детальная)"
     if "CURRICULUM VITAE" in up:
         return "A2: CURRICULUM VITAE (без PERSONAL INFORMATION)"
-    if "CLIENTal experience" in low or "work experience" in low:
-        if re.search(r"moscow|russia|date of CLIENT", low) and pages <= 2:
+    if "professional experience" in low or "work experience" in low:
+        if re.search(r"moscow|russia|date of birth", low) and pages <= 2:
             return "C: имя + профессия + личные данные (Сиваев)"
         return "B: имя + профессия + PROFESSIONAL EXPERIENCE (краткая)"
-    if "experience" in low or "CLIENT" in low:
+    if "experience" in low or "education" in low:
         return "D: иная структура с опытом/образованием"
     return "E: без разделов опыта (нестандартная)"
 
 
 def main():
     DEST.mkdir(parents=True, exist_ok=True)
-    rows = D.q("""SELECT id, full_name_CLIENT, gCLIENT_folder_url FROM CLIENT
-                  WHERE IFNULL(gCLIENT_folder_url,'')<>'' ORDER BY id""")
+    rows = D.q("""SELECT id, full_name_latin, gdrive_folder_url FROM clients
+                  WHERE IFNULL(gdrive_folder_url,'')<>'' ORDER BY id""")
     if LIMIT:
         rows = rows[:LIMIT]
     print("клиентов с папкой на Диске:", len(rows), flush=True)
     found, per_client = [], {}
     for i, c in enumerate(rows, 1):
-        cid, url = c["id"], c["gCLIENT_folder_url"]
+        cid, url = c["id"], c["gdrive_folder_url"]
         try:
             files = G.list_files(url, deep=False) or []
         except Exception as e:
@@ -86,7 +86,7 @@ def main():
     print("\nвсего файлов-резюме:", len(found), flush=True)
     kinds = {}
     for item in found:
-        kind = CLIENTify(Path(item["path"]))
+        kind = classify(Path(item["path"]))
         item["kind"] = kind
         kinds.setdefault(kind, []).append(item)
     print("\n=== формы резюме в архиве ===")

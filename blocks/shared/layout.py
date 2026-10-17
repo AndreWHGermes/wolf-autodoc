@@ -377,7 +377,9 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){
     content.style.visibility='hidden';
     var canvas=document.createElement('div'); canvas.className='zp-canvas';
     host.insertBefore(canvas,content); canvas.appendChild(content);
-    var userScale=null, ox=0, oy=0, bx=0, by=0, s=.62;
+    /* Масштаб по умолчанию — 70% для всех документов (Андрей, 16.10.2026).
+       Кнопка «вписать» по-прежнему считает масштаб по окну. */
+    var userScale=0.70, ox=0, oy=0, bx=0, by=0, s=.70;
     // Панель управления масштабом
     var bar=document.createElement('div'); bar.className='zp-bar';
     // ВАЖНО: строка статическая (без пользовательских данных) — XSS невозможен
@@ -512,7 +514,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){
       var targetH=Math.min(Math.ceil(natH*s),maxH);
       if(!window.__zpHoldWindow && !window.__zpFreezeH && Math.abs((host.clientHeight||0)-targetH)>1) host.style.height=targetH+'px';
       var ch=host.clientHeight||targetH;
-      host.dataset.pannable=(natH*s>ch+1||natW*s>cw+1)?'1':'0';
+      host.dataset.pannable=(host.dataset.onePage!=='1'&&(natH*s>ch+1||natW*s>cw+1))?'1':'0';
       valEl.textContent=Math.round(s*100)+'%';
       /* Первый расчёт: показываем лист уже вписанным и ставим вид в начало —
          документ сразу по центру, окно больше не дёргается. */
@@ -625,7 +627,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){
       /* Клик по кнопке (галочка/крестик, ссылки) — не начало перетаскивания листа */
       var t=e.target;
       if(t && t.closest && t.closest('button,a,.doc-verdict-float')) return;
-      if(host.dataset.pannable!=='1') return;
+      if(host.dataset.pannable!=='1'||host.dataset.onePage==='1') return;
       panning=true; sx=e.clientX; sy=e.clientY; sl=host.scrollLeft; st=host.scrollTop;
       host.classList.add('zp-dragging'); e.preventDefault();
     }

@@ -21,7 +21,7 @@ def _parse_payload(raw: str) -> dict:
     """Разобрать ответ модели в объект.
 
     Общая функция разбора иногда выхватывает вложенный объект (например
-    {"CLIENT": "...", "quote": "..."} из ответа) и тогда кажется, что модель
+    {"value": "...", "quote": "..."} из ответа) и тогда кажется, что модель
     ничего не нашла. Поэтому сначала пробуем честный разбор всего ответа
     без markdown-обёртки, и только потом — общую функцию.
     """
@@ -41,40 +41,40 @@ def _parse_payload(raw: str) -> dict:
 
 # что имеет смысл спрашивать по каждому типу документа
 MISSING_BY_KIND = {
-    "passport": ["passport_CLIENT_by", "passport_CLIENT_date", "passport_CLIENT",
-                 "passport_CLIENT", "CLIENT_CLIENT", "CLIENT_date", "passport_CLIENT"],
-    "itk": ["itk_no", "itk_CLIENT", "CLIENT_stay_CLIENT", "passport_CLIENT", "CLIENT_date"],
-    "visa": ["bridging_visa_no", "passport_CLIENT", "passport_CLIENT"],
-    "contract": ["contract_no", "contract_date", "position", "salary_CLIENT", "company_name"],
+    "passport": ["passport_issued_by", "passport_issue_date", "passport_series",
+                 "passport_number", "birth_place", "birth_date", "passport_expiry"],
+    "itk": ["itk_no", "itk_expiry", "existing_stay_permit", "passport_number", "birth_date"],
+    "visa": ["bridging_visa_no", "passport_number", "passport_expiry"],
+    "contract": ["contract_no", "contract_date", "position", "salary_amount", "company_name"],
     "bank_balance": ["balance_rub", "account_no", "card_mask", "ref_no", "doc_no"],
-    "bank_movement": ["CLIENT_from", "CLIENT_to", "credits_total"],
+    "bank_movement": ["period_from", "period_to", "credits_total"],
 }
 
 # человекочитаемые подсказки, чтобы модель не путала поля
 _HINTS = {
-    "passport_CLIENT_by": "орган, выдавший паспорт (кем выдан)",
-    "passport_CLIENT_date": "дата выдачи паспорта, формат ДД.ММ.ГГГГ",
-    "passport_CLIENT": "серия паспорта (2 или 4 цифры)",
-    "passport_CLIENT": "номер паспорта без серии",
-    "CLIENT_CLIENT": "место рождения",
-    "CLIENT_date": "дата рождения, формат ДД.ММ.ГГГГ",
-    "passport_CLIENT": "срок действия паспорта, формат ДД.ММ.ГГГГ",
-    "itk_no": "номер карточки ВНЖ (CLIENT CLIENT)",
-    "itk_CLIENT": "срок действия ВНЖ, формат ДД.ММ.ГГГГ",
-    "CLIENT_stay_CLIENT": "номер ранее выданного разрешения на пребывание",
+    "passport_issued_by": "орган, выдавший паспорт (кем выдан)",
+    "passport_issue_date": "дата выдачи паспорта, формат ДД.ММ.ГГГГ",
+    "passport_series": "серия паспорта (2 или 4 цифры)",
+    "passport_number": "номер паспорта без серии",
+    "birth_place": "место рождения",
+    "birth_date": "дата рождения, формат ДД.ММ.ГГГГ",
+    "passport_expiry": "срок действия паспорта, формат ДД.ММ.ГГГГ",
+    "itk_no": "номер карточки ВНЖ (permit number)",
+    "itk_expiry": "срок действия ВНЖ, формат ДД.ММ.ГГГГ",
+    "existing_stay_permit": "номер ранее выданного разрешения на пребывание",
     "bridging_visa_no": "номер bridging-визы или визы",
     "contract_no": "номер договора",
     "contract_date": "дата договора, формат ДД.ММ.ГГГГ",
     "position": "должность по договору",
-    "salary_CLIENT": "оклад или сумма по договору с валютой",
+    "salary_amount": "оклад или сумма по договору с валютой",
     "company_name": "название организации-работодателя",
     "balance_rub": "остаток по счёту в рублях",
     "account_no": "номер счёта",
     "card_mask": "маска номера карты (например 220070******1202)",
     "ref_no": "исходящая ссылка банка (Ref.)",
     "doc_no": "номер документа",
-    "CLIENT_from": "начало периода, ДД.ММ.ГГГГ",
-    "CLIENT_to": "конец периода, ДД.ММ.ГГГГ",
+    "period_from": "начало периода, ДД.ММ.ГГГГ",
+    "period_to": "конец периода, ДД.ММ.ГГГГ",
     "credits_total": "сумма всех поступлений за период",
 }
 
@@ -103,7 +103,7 @@ def build_prompt(text: str, kind: str, missing: list[str]) -> list[dict]:
     system = (
         "Ты извлекаешь данные из документа для визового агентства.\n"
         "Тебе дан ТЕКСТ документа, распознанный сканером (возможны опечатки распознавания).\n"
-        "Верни СТРОГО JSON-объект: {\"<поле>\": {\"CLIENT\": \"...\", \"quote\": \"...\"}}.\n"
+        "Верни СТРОГО JSON-объект: {\"<поле>\": {\"value\": \"...\", \"quote\": \"...\"}}.\n"
         "Правила, которые нельзя нарушать:\n"
         "- quote — точная подстрока из данного текста, откуда взято значение.\n"
         "- Если значения в тексте нет — не включай это поле вообще. Не догадывайся,\n"
@@ -158,29 +158,29 @@ def extract_missing(text: str, kind: str, missing: list[str] | None = None,
     for var in fields:
         item = data.get(var)
         if isinstance(item, str):
-            item = {"CLIENT": item, "quote": item}
+            item = {"value": item, "quote": item}
         if not isinstance(item, dict):
             continue
-        CLIENT = str(item.get("CLIENT") or "").strip()
+        value = str(item.get("value") or "").strip()
         quote = str(item.get("quote") or "").strip()
-        if not CLIENT:
+        if not value:
             continue
         if not _quote_found(quote, text):
             rejected.append(var)          # значение не подтверждено текстом — в работу не идёт
             continue
-        out[var] = CLIENT
+        out[var] = value
     if rejected:
         out["_rejected"] = rejected       # для журнала: что модель придумала
     return out
 
 
 def main() -> None:
-    """Проверка на реальном файле: python3 -m CLIENT.llm_extract <файл> [тип]"""
+    """Проверка на реальном файле: python3 -m services.llm_extract <файл> [тип]"""
     import sys
     sys.path.insert(0, '/opt/wolf_v2')
     from pathlib import Path
-    from CLIENT.doc_read import read_text
-    from scripts.CLIENT_scan import doc_kind_name
+    from services.doc_read import read_text
+    from scripts.drive_scan import doc_kind_name
 
     path = Path(sys.argv[1])
     text = read_text(path) or ''

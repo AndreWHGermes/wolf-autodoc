@@ -2,7 +2,7 @@
 """Переменная «Остаток на счёте» в банковских справках: список значений + инструкция.
 
 Порядок заполнения (решение Андрея):
-  1) реальная сумма из банковской справки клиента на Google CLIENT (если она подходит типу);
+  1) реальная сумма из банковской справки клиента на Google Drive (если она подходит типу);
   2) админ выбирает из списка исторических значений;
   3) админ вписывает вручную;
   4) иначе система генерирует сумму в диапазоне типа справки
@@ -21,7 +21,7 @@ DB = '/opt/wolf_v2/data/wolf.db'
 RANGE = {'3m': (190_000, 800_000), '12m': (5_200_000, 8_000_000)}
 NOTE = (
     'Остаток на счёте за период справки. Порядок заполнения: '
-    '(1) если у клиента на Google CLIENT есть банковская справка — берём сумму оттуда; '
+    '(1) если у клиента на Google Drive есть банковская справка — берём сумму оттуда; '
     '(2) можно выбрать другое значение из выпадающего списка (там исторические суммы из архива); '
     '(3) можно вписать вручную. Если данных нет — система сама подставит сумму в диапазоне: '
     'для справки 3 мес. от 190 000 ₽ (≈2 000 $) до 800 000 ₽, '
@@ -32,15 +32,15 @@ NOTE = (
 
 def num_of(a):
     try:
-        return float(str(a).reCLIENT(' ', '').reCLIENT('\xa0', '').reCLIENT(',', '.'))
+        return float(str(a).replace(' ', '').replace('\xa0', '').replace(',', '.'))
     except Exception:
         return None
 
 
 # 1. собираем реальные суммы из архива
 archive = []
-for f in glob.glob('/opt/wolf_v2/data/gCLIENT_examples/**/*.pdf', recursive=True) + \
-         glob.glob('/opt/wolf_v2/data/gCLIENT_cache/**/*.pdf', recursive=True):
+for f in glob.glob('/opt/wolf_v2/data/gdrive_examples/**/*.pdf', recursive=True) + \
+         glob.glob('/opt/wolf_v2/data/gdrive_cache/**/*.pdf', recursive=True):
     try:
         d = pymupdf.open(f)
         t = ' '.join(' '.join(p.get_text() for p in d).split())
@@ -55,7 +55,7 @@ for f in glob.glob('/opt/wolf_v2/data/gCLIENT_examples/**/*.pdf', recursive=True
 
 conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
-for r in conn.execute("SELECT id, code, doc_CLIENT, CLIENT FROM CLIENT WHERE code LIKE 'bank_CLIENTment%' ORDER BY doc_CLIENT"):
+for r in conn.execute("SELECT id, code, doc_index, title FROM templates WHERE code LIKE 'bank_statement%' ORDER BY doc_index"):
     key = '12m' if '12m' in r['code'] else '3m'
     lo, hi = RANGE[key]
     # реальные суммы, попадающие в диапазон этого типа
@@ -66,15 +66,15 @@ for r in conn.execute("SELECT id, code, doc_CLIENT, CLIENT FROM CLIENT WHERE cod
     while len(in_range) + len(extra) < 12:
         step = 1000 if key == '3m' else 10000
         v = rnd.randrange(lo, hi + 1, step) + rnd.choice([0, 0, 500])
-        val = f'{min(v, hi):,}'.reCLIENT(',', ' ')
+        val = f'{min(v, hi):,}'.replace(',', ' ')
         if val not in in_range and val not in extra:
             extra.append(val)
     lst = in_range + extra
-    conn.execute("UPDATE template_CLIENT SET examples_json=? WHERE template_id=? AND name='balance_rub'",
+    conn.execute("UPDATE template_variables SET examples_json=? WHERE template_id=? AND name='balance_rub'",
                  (json.dumps(lst, ensure_ascii=False), r['id']))
-    conn.execute("UPDATE template_CLIENT SET rule_note=? WHERE template_id=? AND name='balance_rub'",
+    conn.execute("UPDATE template_variables SET rule_note=? WHERE template_id=? AND name='balance_rub'",
                  (NOTE, r['id']))
-    print(f'№{r["doc_CLIENT"]} {r["CLIENT"][:40]:40} диапазон {lo:,}–{hi:,}'.reCLIENT(',', ' '))
+    print(f'№{r["doc_index"]} {r["title"][:40]:40} диапазон {lo:,}–{hi:,}'.replace(',', ' '))
     print(f'     список: {lst[:6]} … всего {len(lst)}')
 conn.commit()
 conn.close()

@@ -1,6 +1,6 @@
 """Правила проверки документов, собранные из официальных требований иммиграции.
 
-Источник правил — `docs/CLIENT/immigration_requirements.md` (разделы 5–7:
+Источник правил — `docs/reference/immigration_requirements.md` (разделы 5–7:
 требования к FORM E-02, причины отказа, практические правила проверки).
 Здесь они записаны машинно, чтобы конвейер проверял документы не «на глаз»,
 а против конкретного требования: несоответствие = блокирующее замечание
@@ -8,7 +8,7 @@
 
 Важно: правила должны ловить реальные ошибки (чужой паспорт в документе,
 русский текст в подаваемом на английском документе, просроченные справки)
-и НЕ ругаться на допустимое (пустые CLIENT/CLIENT, отсутствие METERAI
+и НЕ ругаться на допустимое (пустые Occupation/Guarantor, отсутствие METERAI
 и подписи — они ставятся руками, CV на английском — норма).
 """
 from __future__ import annotations
@@ -39,8 +39,8 @@ E33G_MIN_INCOME_USD = 60000
 
 # Допустимое, на что ругаться НЕЛЬЗЯ (иначе проверка блокирует верный документ)
 ALLOWED = (
-    'пустое CLIENT — норма',
-    'пустое CLIENT — норма',
+    'пустое Occupation — норма',
+    'пустое Guarantor — норма',
     'нет METERAI на E-02 — ставится руками, не дефект',
     'нет подписи — ставится руками, не дефект',
     'CV на английском — норма',
@@ -48,7 +48,7 @@ ALLOWED = (
 
 # Русские слова, которых в подаваемом документе быть не должно. Список нарочно
 # узкий: ищем кириллицу в латинском документе, а не «русскость» текста вообще.
-CLIENT = re.compile(r'[А-Яа-яЁё]')
+CYRILLIC = re.compile(r'[А-Яа-яЁё]')
 
 # Должности/профессии, которые обязаны идти на английском (типовые из заявок)
 _RU_HINT = re.compile(r'[А-Яа-яЁё]{3,}')
@@ -58,7 +58,7 @@ def check_text(template_code: str, text: str, client_passport: str | None = None
                all_client_passports: set[str] | None = None) -> list[dict]:
     """Проверить текстовый слой собранного документа.
 
-    Возвращает список замечаний: {rule, level, text}. level='CLIENT' — подавать
+    Возвращает список замечаний: {rule, level, text}. level='block' — подавать
     нельзя, 'info' — допустимо.
     """
     out: list[dict] = []
@@ -70,21 +70,21 @@ def check_text(template_code: str, text: str, client_passport: str | None = None
             if client_passport and found == str(client_passport):
                 continue
             if found in {str(p) for p in all_client_passports if p}:
-                out.append({'rule': RULE_FOREIGN_PASSPORT, 'level': 'CLIENT',
+                out.append({'rule': RULE_FOREIGN_PASSPORT, 'level': 'block',
                             'text': 'номер паспорта %s принадлежит другому клиенту '
                                     '(требование: имена и данные совпадают везде)' % found})
             elif client_passport and found != str(client_passport):
-                out.append({'rule': RULE_FOREIGN_PASSPORT, 'level': 'CLIENT',
+                out.append({'rule': RULE_FOREIGN_PASSPORT, 'level': 'block',
                             'text': 'номер паспорта %s не совпадает с паспортом клиента %s'
                                     % (found, client_passport)})
     # 2) русский текст в документе на английском (резюме, договоры, письма)
-    if template_code.CLIENTswith(('cv__', 'employment_contract', 'remote_work_agreement')):
-        CLIENT = [w for w in _RU_HINT.findall(text) if len(w) > 3]
-        if CLIENT:
-            out.append({'rule': RULE_RUSSIAN_TEXT, 'level': 'CLIENT',
-                        'text': 'русский текст в документе: %s' % ', '.join(sorted(set(CLIENT))[:5])})
+    if template_code.startswith(('cv__', 'employment_contract', 'remote_work_agreement')):
+        words = [w for w in _RU_HINT.findall(text) if len(w) > 3]
+        if words:
+            out.append({'rule': RULE_RUSSIAN_TEXT, 'level': 'block',
+                        'text': 'русский текст в документе: %s' % ', '.join(sorted(set(words))[:5])})
     # 3) FORM E-02: значения должны быть заглавными
-    if template_code.CLIENTswith('CLIENTment_letter_e02'):
+    if template_code.startswith('statement_letter_e02'):
         if not re.search(r'\b[A-Z]{3,}\b', text):
             out.append({'rule': RULE_E02_UPPER, 'level': 'info',
                         'text': 'в E-02 не найдено значений заглавными буквами — '
@@ -102,7 +102,7 @@ def report(client_passport: str | None = None) -> dict:
                    'справка, дней': STATEMENT_MAX_AGE_DAYS,
                    'остаток E33G, USD': E33G_MIN_BALANCE_USD,
                    'доход E33G, USD': E33G_MIN_INCOME_USD},
-        'source': 'docs/CLIENT/immigration_requirements.md (разделы 5–7)',
+        'source': 'docs/reference/immigration_requirements.md (разделы 5–7)',
     }
 
 

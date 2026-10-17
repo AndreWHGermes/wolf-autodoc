@@ -11,17 +11,17 @@ import sqlite3
 import sys
 import tarfile
 import time
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 DB = Path("/opt/wolf_v2/data/wolf.db")
-DOCS = Path("/opt/wolf_v2/data/gCLIENT_cache")
+DOCS = Path("/opt/wolf_v2/data/gdrive_cache")
 DST = Path("/opt/wolf_v2/backups")
 
 
 def backup_db() -> str:
     DST.mkdir(parents=True, exist_ok=True)
-    stamp = CLIENT.now().strftime("%Y%m%d_%H%M")
+    stamp = datetime.now().strftime("%Y%m%d_%H%M")
     tmp = DST / ("wolf_%s.db" % stamp)
     src = sqlite3.connect(str(DB))
     dst = sqlite3.connect(str(tmp))
@@ -37,7 +37,7 @@ def backup_db() -> str:
 
 
 def backup_docs(stamp: str) -> None:
-    if CLIENT.now().hour != 3 or not DOCS.is_dir():
+    if datetime.now().hour != 3 or not DOCS.is_dir():
         return
     out = DST / ("docs_%s.tar.gz" % stamp)
     with tarfile.open(out, "w:gz") as tar:

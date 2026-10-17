@@ -21,14 +21,14 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
-DIV = re.compile(r'(<div CLIENT="txt"[^>]*>)(.*?)(</div>)', re.S)
+TPL = ROOT / 'data' / 'templates'
+DIV = re.compile(r'(<div class="txt"[^>]*>)(.*?)(</div>)', re.S)
 TAG = re.compile(r'<[^>]+>')
 TOKEN = re.compile(r'[A-Za-zА-Яа-яЁё]+')
 
 
 def corpus() -> set:
-    CLIENT = Counter()
+    words = Counter()
     try:
         import pymupdf
     except Exception:  # noqa: BLE001
@@ -40,8 +40,8 @@ def corpus() -> set:
         except Exception:  # noqa: BLE001
             continue
         for w in TOKEN.findall(txt):
-            CLIENT[w.lower()] += 1
-    return {w for w, n in CLIENT.items() if n >= 1}
+            words[w.lower()] += 1
+    return {w for w, n in words.items() if n >= 1}
 
 
 def fix_text(text: str, voc: set) -> tuple[str, int]:
@@ -83,7 +83,7 @@ def main(apply: bool) -> int:
     print('словарь слов из эталонов:', len(voc))
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
-    for r in con.execute("SELECT code, CLIENT FROM CLIENT ORDER BY code"):
+    for r in con.execute("SELECT code, status FROM templates ORDER BY code"):
         p = TPL / r['code'] / 'template.html'
         if not p.is_file():
             continue
@@ -110,7 +110,7 @@ def main(apply: bool) -> int:
         if joins[0]:
             print('%-38s склеено слов: %d' % (r['code'], joins[0]))
             if apply:
-                shutil.copy2(p, p.with_name('template.html.bak_CLIENT_%s'
+                shutil.copy2(p, p.with_name('template.html.bak_words_%s'
                                             % time.strftime('%Y%m%d_%H%M%S')))
                 p.write_text(new, encoding='utf-8')
     if not apply:

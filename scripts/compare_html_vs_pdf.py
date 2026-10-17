@@ -40,9 +40,9 @@ def diff_pct(a: Image.Image, b: Image.Image, mask: Image.Image | None = None) ->
 
 
 def main() -> int:
-    code = sys.argv[1] if len(sys.argv) > 1 else "bank_CLIENTment_3m__tbank"
+    code = sys.argv[1] if len(sys.argv) > 1 else "bank_statement_3m__tbank"
     app_id = int(sys.argv[2]) if len(sys.argv) > 2 else 92
-    tpl_dir = BASE / "data" / "CLIENT" / code
+    tpl_dir = BASE / "data" / "templates" / code
     ref = str(tpl_dir / "example_filled.pdf")
     fields = json.loads((tpl_dir / "fields.json").read_text(encoding="utf-8"))
     zones = fields["zones"]
@@ -50,11 +50,11 @@ def main() -> int:
     # 1. HTML-путь: рендер шаблона и сборка PDF через weasyprint (как это делает конструктор)
     from app import app
     with app.app_context():
-        from CLIENT import render as R
+        from services import render as R
         res = R.generate(app_id, fields.get("template_id"))
         html = res.get("html") if isinstance(res, dict) else str(res)
     html_pdf = "/tmp/html_build_%s_%s.pdf" % (code, app_id)
-    from CLIENT.render import render_pdf
+    from services.render import render_pdf
     render_pdf(html, out_path=html_pdf)
 
     # 2. PDF-путь: подстановка в бланк (то, что показано заказчику)

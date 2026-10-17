@@ -13,12 +13,12 @@
 Документы делятся на два вида:
   * ОТ КЛИЕНТА — то, что изготовить нельзя: загранпаспорт, фотография,
     действующий ВНЖ/виза, адрес пребывания. Их наличие проверяем;
-  * НАШИ — всё, что стоит в наборе продукта (CLIENT_CLIENT): письма,
+  * НАШИ — всё, что стоит в наборе продукта (product_documents): письма,
     форма E-02, договоры, справка банка, резюме, спонсорские письма.
     Их собираем автоматически, добирая недостающие данные.
 
 Запуск:
-    python3 -m CLIENT.kit <CLIENT_id> [--llm]
+    python3 -m services.kit <application_id> [--llm]
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ CLIENT_INPUTS = {
     'photo': 'Фотография клиента',
     'kitas': 'Действующий ВНЖ / виза (ITK, eVisa)',
     'address': 'Адрес пребывания в Индонезии',
-    'CLIENT': 'Профессия / должность',
+    'profession': 'Профессия / должность',
 }
 
 
@@ -47,40 +47,40 @@ def _db() -> sqlite3.Connection:
     return conn
 
 
-def CLIENT_kit(CLIENT_id: int) -> dict:
+def product_kit(product_id: int) -> dict:
     """Что входит в комплект для продукта: наши документы по слотам."""
     conn = _db()
     rows = list(conn.execute(
-        'SELECT pd.slot_code, pd.required, pd.sort_order, t.code AS tpl, t.CLIENT, t.id AS tpl_id '
-        'FROM CLIENT_CLIENT pd LEFT JOIN CLIENT t ON t.id=pd.template_id '
-        'WHERE pd.CLIENT_id=? ORDER BY pd.sort_order', (CLIENT_id,)))
+        'SELECT pd.slot_code, pd.required, pd.sort_order, t.code AS tpl, t.title, t.id AS tpl_id '
+        'FROM product_documents pd LEFT JOIN templates t ON t.id=pd.template_id '
+        'WHERE pd.product_id=? ORDER BY pd.sort_order', (product_id,)))
     return {'docs': [dict(r) for r in rows]}
 
 
-def build_kit(CLIENT_id: int, use_llm: bool = False, render: bool = True) -> dict:
+def build_kit(application_id: int, use_llm: bool = False, render: bool = True) -> dict:
     """Собрать полный комплект: входные данные клиента + наши документы."""
-    from CLIENT import intake_gate, pipeline
+    from services import intake_gate, pipeline
 
     conn = _db()
-    app = conn.execute('SELECT * FROM CLIENT WHERE id=?', (CLIENT_id,)).fetchone()
+    app = conn.execute('SELECT * FROM applications WHERE id=?', (application_id,)).fetchone()
     if not app:
-        return {'error': 'заявка %s не найдена' % CLIENT_id}
+        return {'error': 'заявка %s не найдена' % application_id}
     app = dict(app)
 
     gate = {}
     try:
-        gate = intake_gate.gate(CLIENT_id) or {}
+        gate = intake_gate.gate(application_id) or {}
         if not isinstance(gate, dict):
             gate = {}
     except Exception as e:                                            # noqa: BLE001
         gate = {'error': str(e)[:200]}
 
-    CLIENT_code = gate.get('CLIENT') or ''
-    CLIENT_id = app.get('CLIENT_id')
-    if not CLIENT_id and CLIENT_code:
-        row = conn.execute('SELECT id FROM CLIENT WHERE code=?', (CLIENT_code,)).fetchone()
-        CLIENT_id = row['id'] if row else None
-    kit = CLIENT_kit(CLIENT_id) if CLIENT_id else {'docs': []}
+    product_code = gate.get('product') or ''
+    product_id = app.get('product_id')
+    if not product_id and product_code:
+        row = conn.execute('SELECT id FROM products WHERE code=?', (product_code,)).fetchone()
+        product_id = row['id'] if row else None
+    kit = product_kit(product_id) if product_id else {'docs': []}
 
     # что реально пришло от клиента — это входные данные, их не изготовить
     # что реально пришло от клиента — это входные данные, их не изготовить.
@@ -89,26 +89,26 @@ def build_kit(CLIENT_id: int, use_llm: bool = False, render: bool = True) -> dic
     inputs, missing_inputs = [], []
     st = {}
     try:
-        st = intake_gate.client_docs_status(CLIENT_id) or {}
+        st = intake_gate.client_docs_status(application_id) or {}
     except Exception:                                                 # noqa: BLE001
         st = {}
     pool_rows = list(conn.execute(
-        'SELECT CLIENT_name, CLIENT, CLIENT FROM client_CLIENT_pool WHERE client_id=?',
+        'SELECT variable_name, value, person FROM client_values_pool WHERE client_id=?',
         (app['client_id'],)))
-    own = [r for r in pool_rows if (r['CLIENT'] or 'main') == 'main']
-    own_vars = {r['CLIENT_name'] for r in own if (r['CLIENT'] or '').strip()}
-    st['passport'] = bool(own_vars & {'passport_no', 'passport_CLIENT'} and
-                          own_vars & {'passport_CLIENT', 'passport_CLIENT_date', 'CLIENT_date',
-                                      'passport_CLIENT'})
-    for key, CLIENT in CLIENT_INPUTS.items():
+    own = [r for r in pool_rows if (r['person'] or 'main') == 'main']
+    own_vars = {r['variable_name'] for r in own if (r['value'] or '').strip()}
+    st['passport'] = bool(own_vars & {'passport_no', 'passport_number'} and
+                          own_vars & {'passport_series', 'passport_issue_date', 'birth_date',
+                                      'passport_expiry'})
+    for key, title in CLIENT_INPUTS.items():
         have = bool(st.get(key))
-        inputs.append({'что': CLIENT, 'есть': have,
+        inputs.append({'что': title, 'есть': have,
                        'статус': 'получено' if have else 'ждём от клиента'})
         if not have:
-            missing_inputs.append(CLIENT)
+            missing_inputs.append(title)
 
     # наши документы: собираем весь набор, включая те, которых у клиента нет
-    result = pipeline.run(CLIENT_id, use_llm=use_llm, render=render, verbose=False)
+    result = pipeline.run(application_id, use_llm=use_llm, render=render, verbose=False)
     built = {b['документ']: b for b in (result.get('built') or [])}
 
     ours = []
@@ -116,7 +116,7 @@ def build_kit(CLIENT_id: int, use_llm: bool = False, render: bool = True) -> dic
         code = d['tpl'] or d['slot_code'] or '?'
         b = built.get(code, {})
         ours.append({
-            'документ': d['CLIENT'] or code,
+            'документ': d['title'] or code,
             'код': code,
             'слот': d['slot_code'],
             'обязательный': bool(d['required']),
@@ -138,10 +138,10 @@ def build_kit(CLIENT_id: int, use_llm: bool = False, render: bool = True) -> dic
 
     out_total = sum(1 for o in ours if o['собран нами'])
     return {
-        'CLIENT_id': CLIENT_id,
+        'application_id': application_id,
         'client_id': app.get('client_id'),
-        'CLIENT': CLIENT_code,
-        'CLIENT_name': gate.get('CLIENT_name') or '',
+        'product': product_code,
+        'product_name': gate.get('product_name') or '',
         'inputs_from_client': inputs,
         'inputs_missing': missing_inputs,
         'ours': ours,
@@ -164,7 +164,7 @@ def main() -> None:
         print('ошибка:', kit['error'])
         return
 
-    print('заявка %d — %s (%s)' % (kit['CLIENT_id'], kit['CLIENT'], kit['CLIENT_name']))
+    print('заявка %d — %s (%s)' % (kit['application_id'], kit['product'], kit['product_name']))
     print('\nчто пришло от клиента:')
     for i in kit['inputs_from_client']:
         print('   %-6s %s' % ('есть' if i['есть'] else 'НЕТ', i['что']))

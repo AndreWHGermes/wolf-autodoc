@@ -16,44 +16,44 @@ OUT_MD = ROOT / 'docs' / 'INTAKE_GATE.md'
 
 
 def main() -> int:
-    from CLIENT.intake_gate import gate
+    from services.intake_gate import gate
     con = sqlite3.connect('file:%s?mode=ro' % DB, uri=True)
     con.row_factory = sqlite3.Row
-    apps = con.execute("""SELECT a.id, p.code AS CLIENT, c.full_name_CLIENT AS name,
+    apps = con.execute("""SELECT a.id, p.code AS product, c.full_name_latin AS name,
                                  a.comment, a.brief
-                          FROM CLIENT a
-                          LEFT JOIN CLIENT p ON p.id=a.CLIENT_id
-                          LEFT JOIN CLIENT c ON c.id=a.client_id
+                          FROM applications a
+                          LEFT JOIN products p ON p.id=a.product_id
+                          LEFT JOIN clients c ON c.id=a.client_id
                           ORDER BY COALESCE(p.code,'zz'), a.id""").fetchall()
-    rows, ready, CLIENTed = [], [], []
+    rows, ready, blocked = [], [], []
     for a in apps:
         g = gate(a['id'])
-        item = {'id': a['id'], 'CLIENT': g['CLIENT'], 'name': a['name'],
+        item = {'id': a['id'], 'product': g['product'], 'name': a['name'],
                 'ok': g['ok'], 'stops': g['stops'],
                 'free_text': bool((a['comment'] or '').strip())}
         rows.append(item)
-        (ready if g['ok'] else CLIENTed).append(item)
-    by_CLIENT = {}
+        (ready if g['ok'] else blocked).append(item)
+    by_product = {}
     for r in rows:
-        by_CLIENT.setdefault(r['CLIENT'] or '—', [0, 0])
-        by_CLIENT[r['CLIENT'] or '—'][0 if r['ok'] else 1] += 1
-    out = {'total': len(rows), 'ready': len(ready), 'CLIENTed': len(CLIENTed),
-           'by_CLIENT': by_CLIENT, 'CLIENT': rows}
+        by_product.setdefault(r['product'] or '—', [0, 0])
+        by_product[r['product'] or '—'][0 if r['ok'] else 1] += 1
+    out = {'total': len(rows), 'ready': len(ready), 'blocked': len(blocked),
+           'by_product': by_product, 'applications': rows}
     OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding='utf-8')
     md = ['# Контроль приёма заявок', '',
           'Заявок всего: %d. Готовы к автоматической сборке: %d. Требуют документов или данных: %d.'
-          % (len(rows), len(ready), len(CLIENTed)), '']
+          % (len(rows), len(ready), len(blocked)), '']
     md.append('| продукт | готовы | стоп |')
-    for code, (ok, bad) in sorted(by_CLIENT.items()):
+    for code, (ok, bad) in sorted(by_product.items()):
         md.append('| %s | %d | %d |' % (code, ok, bad))
     md += ['', '## Чего не хватает (по заявкам)', '']
-    for r in CLIENTed[:60]:
-        md.append('- №%s %s — %s' % (r['id'], r['CLIENT'] or 'продукт не определён',
+    for r in blocked[:60]:
+        md.append('- №%s %s — %s' % (r['id'], r['product'] or 'продукт не определён',
                                      '; '.join(r['stops'][:3])))
     OUT_MD.write_text('\n'.join(md) + '\n', encoding='utf-8')
     print('сводка:', OUT_JSON)
-    print('заявок: %d | готовы: %d | стоп: %d' % (len(rows), len(ready), len(CLIENTed)))
-    for code, (ok, bad) in sorted(by_CLIENT.items()):
+    print('заявок: %d | готовы: %d | стоп: %d' % (len(rows), len(ready), len(blocked)))
+    for code, (ok, bad) in sorted(by_product.items()):
         print('   %-9s готовы %-3d стоп %-3d' % (code, ok, bad))
     return 0
 

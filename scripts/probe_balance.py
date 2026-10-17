@@ -7,13 +7,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT.doc_read import read_text  # noqa: E402
+from services.doc_read import read_text  # noqa: E402
 
 
 def main() -> None:
     cid = int(sys.argv[1])
     needle = (sys.argv[2] if len(sys.argv) > 2 else 'bank').lower()
-    folder = Path('/opt/wolf_v2/data/gCLIENT_cache/client_%d' % cid)
+    folder = Path('/opt/wolf_v2/data/gdrive_cache/client_%d' % cid)
     for f in sorted(folder.glob('*')):
         if not f.is_file() or needle not in f.name.lower():
             continue

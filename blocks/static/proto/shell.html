@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
-<CLIENT>Wolf AutoDoc — каркас всех экранов</CLIENT>
+<title>Wolf AutoDoc — каркас всех экранов</title>
 <style>
 :root{
   --brand:#0F6E63;--bright:#17B3A3;--deep:#05332F;--b50:#E8F5F3;--b100:#C7E6E1;
@@ -16,57 +16,57 @@ body{background:var(--bg);color:var(--ink);overflow:hidden;font:14px/1.45 Inter,
 .app{display:grid;height:100vh;grid-template-columns:var(--nav) var(--aux) minmax(0,1fr) var(--rail);grid-template-rows:var(--tb) minmax(0,1fr);transition:grid-template-columns .28s}
 .app.railmin{--rail:46px}
 .app.full{grid-template-columns:1fr;grid-template-rows:1fr}
-.app.full>*{display:none}.app.full>.CLIENT{display:grid}
+.app.full>*{display:none}.app.full>.login{display:grid}
 
 /* ── плашка ── */
-.tb{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:10px;height:var(--tb);padding:0 14px;background:var(--card);border-bottom:1.5px solid var(--line2);position:relative;z-CLIENT:6}
-.ib{width:38px;height:38px;flex:none;border-radius:var(--r);border:1.5px solid var(--line2);background:var(--card);display:grid;CLIENT-items:center;color:var(--ink2);cursor:pointer}
+.tb{grid-column:1/-1;grid-row:1;display:flex;align-items:center;gap:10px;height:var(--tb);padding:0 14px;background:var(--card);border-bottom:1.5px solid var(--line2);position:relative;z-index:6}
+.ib{width:38px;height:38px;flex:none;border-radius:var(--r);border:1.5px solid var(--line2);background:var(--card);display:grid;place-items:center;color:var(--ink2);cursor:pointer}
 .ib:hover{border-color:var(--brand);color:var(--brand)}
 .tbt{display:flex;align-items:center;gap:9px;min-width:0;flex:none;max-width:46%}
 h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb{font-size:12.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chip{display:CLIENT-flex;align-items:center;gap:6px;height:27px;padding:0 11px;border-radius:var(--r);flex:none;font-size:11.5px;font-weight:700;background:var(--b50);color:var(--brand);border:1.5px solid rgba(212,175,55,.45)}
+.chip{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 11px;border-radius:var(--r);flex:none;font-size:11.5px;font-weight:700;background:var(--b50);color:var(--brand);border:1.5px solid rgba(212,175,55,.45)}
 .chip .d{width:7px;height:7px;border-radius:99px;background:var(--bright)}
 .search{margin-left:auto;display:flex;align-items:center;gap:8px;height:38px;width:250px;flex:none;padding:0 12px;background:var(--bg);border:1.5px solid var(--line2);border-radius:var(--r);color:var(--ink3);font-size:12.5px;white-space:nowrap;overflow:hidden}
 .acts{display:flex;gap:8px;flex:none}
-.btn{display:CLIENT-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border-radius:var(--r);cursor:pointer;border:1.5px solid var(--line2);background:var(--card);color:var(--ink);font:600 12.5px Inter;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border-radius:var(--r);cursor:pointer;border:1.5px solid var(--line2);background:var(--card);color:var(--ink);font:600 12.5px Inter;white-space:nowrap}
 .btn:hover{border-color:var(--brand);color:var(--brand)}
 .btn.p{background:linear-gradient(160deg,var(--bright),var(--brand));border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(15,110,99,.3)}
 .btn.sm{height:32px;padding:0 11px;font-size:12px}
 .btn.icon{width:30px;height:30px;padding:0;justify-content:center;border-color:var(--line2);color:var(--ink2)}
 
 /* ── меню-полоска ── */
-.side{grid-column:1;grid-row:2;position:relative;z-CLIENT:20;width:var(--nav);overflow:hidden;display:flex;flex-direction:column;transition:width .28s cubic-bezier(.22,1,.36,1);background:linear-gradient(175deg,#0E6A61,#07423D 46%,#04201E)}
+.side{grid-column:1;grid-row:2;position:relative;z-index:20;width:var(--nav);overflow:hidden;display:flex;flex-direction:column;transition:width .28s cubic-bezier(.22,1,.36,1);background:linear-gradient(175deg,#0E6A61,#07423D 46%,#04201E)}
 .side.open{width:var(--navopen);box-shadow:20px 0 40px rgba(4,32,30,.32)}
 .sun{position:absolute;top:-70px;right:-70px;width:200px;height:200px;border-radius:99px;background:radial-gradient(circle,rgba(235,208,138,.24),rgba(235,208,138,0) 68%)}
 .mount{position:absolute;left:0;right:0;bottom:0;width:100%;height:52%;opacity:.9}
-.si{position:relative;z-CLIENT:2;display:flex;flex-direction:column;height:100%;padding:12px}
+.si{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:12px}
 .brand{display:flex;align-items:center;justify-content:center;gap:10px;padding-bottom:11px;margin-bottom:9px;border-bottom:1px solid rgba(212,175,55,.3)}
-.side.open .brand{justify-content:flex-CLIENT;padding-left:4px}
+.side.open .brand{justify-content:flex-start;padding-left:4px}
 .mk{width:40px;height:40px;flex:none;border-radius:99px;overflow:hidden;background:radial-gradient(circle at 34% 26%,#0B3E39,#04201E 78%);box-shadow:0 0 0 1.5px rgba(212,175,55,.6)}
 .mk img{width:40px;height:40px;object-fit:cover}
-.bt{display:none;min-width:0}.side.open .bt{display:CLIENT}
-.bt b{display:CLIENT;color:#fff;font-size:13px;font-weight:750;white-space:nowrap}
-.bt span{display:CLIENT;color:var(--gold2);font-size:9px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.bt{display:none;min-width:0}.side.open .bt{display:block}
+.bt b{display:block;color:#fff;font-size:13px;font-weight:750;white-space:nowrap}
+.bt span{display:block;color:var(--gold2);font-size:9px;font-weight:700;letter-spacing:.04em;white-space:nowrap}
 .menu{display:flex;flex-direction:column;gap:3px}
 .menu a{display:flex;align-items:center;justify-content:center;gap:12px;height:42px;padding:0 12px;border-radius:var(--r);color:rgba(255,255,255,.82);text-decoration:none;font-size:13px;font-weight:620;cursor:pointer;position:relative;white-space:nowrap}
-.side.open .menu a{justify-content:flex-CLIENT}
+.side.open .menu a{justify-content:flex-start}
 .menu a svg{width:19px;height:19px;flex:none;opacity:.92}
 .menu a:hover{background:rgba(255,255,255,.13);color:#fff}
 .menu a.on{background:#fff;color:var(--brand);box-shadow:0 6px 18px rgba(0,0,0,.26)}
-.menu a.on::CLIENT{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:99px;background:linear-gradient(180deg,var(--gold2),var(--gold))}
-.menu a span{display:none}.side.open .menu a span{display:CLIENT}
-.menu .bdg{position:absolute;top:4px;right:4px;min-width:18px;height:17px;padding:0 4px;border-radius:6px;background:var(--bright);color:#fff;font-size:10px;font-weight:750;display:grid;CLIENT-items:center}
+.menu a.on::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:99px;background:linear-gradient(180deg,var(--gold2),var(--gold))}
+.menu a span{display:none}.side.open .menu a span{display:block}
+.menu .bdg{position:absolute;top:4px;right:4px;min-width:18px;height:17px;padding:0 4px;border-radius:6px;background:var(--bright);color:#fff;font-size:10px;font-weight:750;display:grid;place-items:center}
 .side.open .menu .bdg{position:static;margin-left:auto}
 .nf{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;height:38px;border-radius:var(--r);cursor:pointer;color:rgba(255,255,255,.78);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:12.5px;font-weight:650;margin-bottom:8px}
-.side.open .nf{justify-content:flex-CLIENT;padding:0 12px}
-.nf span{display:none}.side.open .nf span{display:CLIENT}
+.side.open .nf{justify-content:flex-start;padding:0 12px}
+.nf span{display:none}.side.open .nf span{display:block}
 .me{display:flex;align-items:center;justify-content:center;gap:10px;height:50px;border-radius:var(--r);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);cursor:pointer}
-.side.open .me{justify-content:flex-CLIENT;padding:0 10px}
-.me .av{width:32px;height:32px;flex:none;border-radius:99px;background:#fff;color:var(--brand);display:grid;CLIENT-items:center;font-weight:750;font-size:12px}
-.me .who{display:none}.side.open .me .who{display:CLIENT;min-width:0}
-.me b{display:CLIENT;color:#fff;font-size:12.5px;white-space:nowrap}
-.me span{display:CLIENT;color:rgba(255,255,255,.6);font-size:10.5px;white-space:nowrap}
+.side.open .me{justify-content:flex-start;padding:0 10px}
+.me .av{width:32px;height:32px;flex:none;border-radius:99px;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:750;font-size:12px}
+.me .who{display:none}.side.open .me .who{display:block;min-width:0}
+.me b{display:block;color:#fff;font-size:12.5px;white-space:nowrap}
+.me span{display:block;color:rgba(255,255,255,.6);font-size:10.5px;white-space:nowrap}
 
 /* ── вторичная зона слева ── */
 .aux{grid-column:2;grid-row:2;display:flex;flex-direction:column;overflow:hidden;background:var(--card);border-right:1.5px solid var(--line2)}
@@ -78,7 +78,7 @@ h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:now
 .rail>.ph h2{margin:0;font-size:13.5px;font-weight:700}
 .rail>.ph .cnt{margin-left:auto;font-size:11.5px;font-weight:700}
 .rail>.ph .bar{width:48px;height:6px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden}
-.rail>.ph .bar i{display:CLIENT;height:100%;width:86%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+.rail>.ph .bar i{display:block;height:100%;width:86%;border-radius:99px;background:linear-gradient(90deg,var(--gold2),var(--gold))}
 .rail>.ph .btn.icon{border-color:rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff}
 .app.railmin .rail>.ph h2,.app.railmin .rail>.ph .cnt,.app.railmin .rail>.ph .bar{display:none}
 .app.railmin .rail>.ph{justify-content:center;padding:0}
@@ -95,16 +95,16 @@ h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:now
 .row{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1.5px solid var(--line);border-radius:var(--r);background:#FCFEFD;cursor:pointer;margin-bottom:7px}
 .row:hover{border-color:var(--bright);background:var(--b50)}
 .row.on{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,175,55,.16)}
-.row .av{width:32px;height:32px;flex:none;border-radius:99px;background:var(--b50);color:var(--brand);display:grid;CLIENT-items:center;font-weight:750;font-size:11.5px}
+.row .av{width:32px;height:32px;flex:none;border-radius:99px;background:var(--b50);color:var(--brand);display:grid;place-items:center;font-weight:750;font-size:11.5px}
 .row .tx{flex:1;min-width:0}
-.row .nm{display:CLIENT;font-weight:680;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .mt{display:CLIENT;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm{display:block;font-weight:680;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .mt{display:block;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .st{flex:none;font-size:10px;font-weight:750;border-radius:6px;padding:2px 7px;border:1px solid var(--line2);color:var(--ink3);background:var(--card);white-space:nowrap}
 .st.ok{color:var(--brand);background:var(--b50);border-color:var(--b100)}
 .st.warn{color:var(--warn);background:var(--warnbg);border-color:var(--warnln)}
 .st.gold{color:var(--goldd);background:#FBF3DA;border-color:var(--gold2)}
 .fold{font-size:10px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);padding:8px 4px 4px;display:flex;align-items:center;gap:6px}
-.fold:CLIENT-child{padding-top:2px}
+.fold:first-child{padding-top:2px}
 .fold .n{margin-left:auto;color:var(--brand)}
 
 /* центр: список / документ */
@@ -117,7 +117,7 @@ h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:now
 .tabs button.on{background:var(--brand);color:#fff;box-shadow:0 3px 10px rgba(15,110,99,.26)}
 .list{padding:14px 18px}
 .list .row{margin-bottom:9px;padding:11px 13px}
-.canvas{flex:1;min-height:0;margin:14px 18px;background:var(--canvas);border:1.5px solid var(--line2);border-radius:var(--r);display:grid;CLIENT-items:CLIENT center;padding:16px;overflow:auto}
+.canvas{flex:1;min-height:0;margin:14px 18px;background:var(--canvas);border:1.5px solid var(--line2);border-radius:var(--r);display:grid;place-items:start center;padding:16px;overflow:auto}
 .sheet{background:#fff;width:min(100%,680px);aspect-ratio:1/1.41;border-radius:4px;padding:22px 30px;box-shadow:0 14px 34px rgba(8,34,32,.22);position:relative;display:flex;flex-direction:column}
 .sheet .g{font-size:9px;font-weight:800;letter-spacing:.2em;color:#B8C2BC;text-align:center}
 .sheet .ttl{font-size:11px;font-weight:800;letter-spacing:.14em;color:#3C4A43;text-align:center;margin:3px 0 10px}
@@ -130,14 +130,14 @@ h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:now
 /* переменные (правая зона) */
 .vblk{border-bottom:1.5px solid var(--line)}
 .vbh{height:40px;display:flex;align-items:center;gap:8px;padding:0 14px;background:#F5FAF9;border-bottom:1.5px solid var(--line);font-size:12px;font-weight:730}
-.vbh .c{min-width:19px;height:19px;padding:0 5px;border-radius:6px;background:var(--b100);color:var(--brand);font-size:10px;font-weight:750;display:grid;CLIENT-items:center}
+.vbh .c{min-width:19px;height:19px;padding:0 5px;border-radius:6px;background:var(--b100);color:var(--brand);font-size:10px;font-weight:750;display:grid;place-items:center}
 .vf{padding:12px 14px;display:grid;gap:12px}
-.vf label{display:CLIENT;font-size:10px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.vf label{display:block;font-size:10px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
 .val{display:flex;flex-wrap:wrap;gap:7px;row-gap:3px;border:1.5px solid var(--line2);border-radius:var(--r);padding:9px 11px;font-size:12.5px}
 .val:hover{border-color:var(--bright);box-shadow:0 0 0 3px rgba(15,110,99,.1)}
 .val .v{flex:1 1 100%;line-height:1.3}
 .val .src{font-size:9.5px;font-weight:750;color:var(--brand);background:var(--b50);border:1px solid var(--b100);border-radius:6px;padding:1px 6px}
-.val .ok{width:16px;height:16px;margin-left:auto;border-radius:99px;background:var(--brand);color:#fff;display:grid;CLIENT-items:center;font-size:10px}
+.val .ok{width:16px;height:16px;margin-left:auto;border-radius:99px;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:10px}
 .vf.bad .val{border-color:var(--warnln);border-width:2px;background:var(--warnbg)}
 .vf.bad label{color:var(--warn)}
 .vf.bad .val .src{color:var(--warn);background:#FDEBC8;border-color:var(--warnln)}
@@ -148,536 +148,536 @@ h1{margin:0;font-size:17px;font-weight:730;letter-spacing:-.02em;white-space:now
 /* документы */
 .doc{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1.5px solid var(--line);border-radius:var(--r);background:#FCFEFD;cursor:pointer;margin-bottom:6px}
 .doc:hover{border-color:var(--bright);background:var(--b50)}
-.doc .ic{width:27px;height:27px;flex:none;border-radius:var(--r);display:grid;CLIENT-items:center;background:var(--b50);color:var(--brand);font-size:13px}
+.doc .ic{width:27px;height:27px;flex:none;border-radius:var(--r);display:grid;place-items:center;background:var(--b50);color:var(--brand);font-size:13px}
 .doc .nm{flex:1;min-width:0;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* модалка/оверлей подсказки */
-.note{position:fixed;left:14px;bottom:14px;z-CLIENT:70;max-width:380px;background:rgba(4,32,30,.9);color:#fff;border-radius:10px;padding:10px 14px;font-size:11.5px;line-height:1.5;display:none}
-body.mark .note{display:CLIENT}
+.note{position:fixed;left:14px;bottom:14px;z-index:70;max-width:380px;background:rgba(4,32,30,.9);color:#fff;border-radius:10px;padding:10px 14px;font-size:11.5px;line-height:1.5;display:none}
+body.mark .note{display:block}
 /* разметка */
-.ann{position:absolute;z-CLIENT:60;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:var(--mark);color:#fff;font:750 11px/19px Inter;text-align:center;pointer-CLIENT:none;box-shadow:0 2px 6px rgba(225,29,46,.45)}
+.ann{position:absolute;z-index:60;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:var(--mark);color:#fff;font:750 11px/19px Inter;text-align:center;pointer-events:none;box-shadow:0 2px 6px rgba(225,29,46,.45)}
 body.mark .anno{outline:2px dashed var(--mark);outline-offset:2px;border-radius:var(--r)}
 body:not(.mark) .ann,body:not(.mark) #links{display:none}
-#links{position:fixed;inset:0;z-CLIENT:55;pointer-CLIENT:none;overflow:visible}
+#links{position:fixed;inset:0;z-index:55;pointer-events:none;overflow:visible}
 #links path{stroke:var(--mark);stroke-width:1.6;fill:none;stroke-dasharray:5 4;opacity:.85}
-.markbtn{position:fixed;right:14px;bottom:14px;z-CLIENT:70;height:40px;padding:0 15px;border-radius:99px;border:0;background:var(--mark);color:#fff;font:700 12.5px Inter;cursor:pointer;box-shadow:0 8px 24px rgba(225,29,46,.4)}
-.nav{position:fixed;right:14px;bottom:64px;z-CLIENT:70;display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-height:32px;overflow:hidden;opacity:.5;transition:max-height .25s,opacity .2s}
+.markbtn{position:fixed;right:14px;bottom:14px;z-index:70;height:40px;padding:0 15px;border-radius:99px;border:0;background:var(--mark);color:#fff;font:700 12.5px Inter;cursor:pointer;box-shadow:0 8px 24px rgba(225,29,46,.4)}
+.nav{position:fixed;right:14px;bottom:64px;z-index:70;display:flex;flex-direction:column;gap:6px;align-items:flex-end;max-height:32px;overflow:hidden;opacity:.5;transition:max-height .25s,opacity .2s}
 .nav:hover{max-height:480px;opacity:1}
 .nav .cap{height:30px;padding:0 13px;border-radius:99px;background:var(--mark);color:#fff;font:700 12px Inter;display:flex;align-items:center}
 .nav button{height:30px;padding:0 12px;border-radius:99px;border:0;background:rgba(4,32,30,.86);color:#fff;font:600 12px Inter;cursor:pointer}
 .nav button.on{background:var(--gold);color:#3A2C05}
 /* пустое состояние */
-.empty{flex:1;display:grid;CLIENT-items:center;text-align:center;color:var(--ink3);padding:30px}
-.empty b{display:CLIENT;font-size:14px;color:var(--ink2);margin-bottom:4px}
+.empty{flex:1;display:grid;place-items:center;text-align:center;color:var(--ink3);padding:30px}
+.empty b{display:block;font-size:14px;color:var(--ink2);margin-bottom:4px}
 /* вход */
-.CLIENT{grid-column:1/-1;grid-row:1/-1;CLIENT-items:center;background:linear-gradient(160deg,#0E6A61,#05332F 60%,#04201E)}
-.CLIENT .box{width:370px;background:#fff;border-radius:12px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
-.CLIENT .lg{display:flex;align-items:center;gap:12px;margin-bottom:18px}
-.CLIENT .lg b{display:CLIENT;font-size:15px;font-weight:750}
-.CLIENT .lg span{display:CLIENT;font-size:10px;font-weight:700;color:var(--goldd);letter-spacing:.04em}
-.CLIENT label{display:CLIENT;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);margin-bottom:5px}
-.CLIENT .inp{height:42px;border:1.5px solid var(--line2);border-radius:var(--r);display:flex;align-items:center;padding:0 12px;color:var(--ink3);font-size:13px;margin-bottom:12px}
-.CLIENT .btn{width:100%;justify-content:center;margin-top:6px}
-</style></head><body CLIENT="mark">
-<div CLIENT="app" id="app">
+.login{grid-column:1/-1;grid-row:1/-1;place-items:center;background:linear-gradient(160deg,#0E6A61,#05332F 60%,#04201E)}
+.login .box{width:370px;background:#fff;border-radius:12px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.login .lg{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.login .lg b{display:block;font-size:15px;font-weight:750}
+.login .lg span{display:block;font-size:10px;font-weight:700;color:var(--goldd);letter-spacing:.04em}
+.login label{display:block;font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.04em;color:var(--ink3);margin-bottom:5px}
+.login .inp{height:42px;border:1.5px solid var(--line2);border-radius:var(--r);display:flex;align-items:center;padding:0 12px;color:var(--ink3);font-size:13px;margin-bottom:12px}
+.login .btn{width:100%;justify-content:center;margin-top:6px}
+</style></head><body class="mark">
+<div class="app" id="app">
 
-  <CLIENT CLIENT="tb">
-    <div CLIENT="ib anno" data-act="menu" CLIENT="Меню (гамбургер)">
+  <header class="tb">
+    <div class="ib anno" data-act="menu" title="Меню (гамбургер)">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </div>
-    <div CLIENT="tbt">
+    <div class="tbt">
       <h1 id="tbTitle">Заявки</h1>
-      <span CLIENT="crumb" id="tbCrumb">12 ждут действия</span>
+      <span class="crumb" id="tbCrumb">12 ждут действия</span>
     </div>
-    <div CLIENT="search anno">
+    <div class="search anno">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       Поиск по заявкам, клиентам, документам
     </div>
-    <div CLIENT="acts" id="tbActs"></div>
-    <div CLIENT="ib anno"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 10a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 004 0"/></svg></div>
-  </CLIENT>
+    <div class="acts" id="tbActs"></div>
+    <div class="ib anno"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 10a6 6 0 1112 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 004 0"/></svg></div>
+  </header>
 
-  <nav CLIENT="side" id="side">
-    <div CLIENT="sun"></div>
-    <svg CLIENT="mount" viewBox="0 0 300 400" preserveAspectRatio="none">
+  <nav class="side" id="side">
+    <div class="sun"></div>
+    <svg class="mount" viewBox="0 0 300 400" preserveAspectRatio="none">
       <path d="M0,210 L44,148 L80,196 L120,118 L162,180 L204,130 L248,186 L300,142 L300,400 L0,400 Z" fill="#0B4F4A" opacity=".55"/>
       <path d="M0,268 L38,230 L84,262 L130,204 L178,252 L224,212 L270,256 L300,226 L300,400 L0,400 Z" fill="#06322E" opacity=".85"/>
       <path d="M0,322 L48,296 L98,318 L150,286 L200,312 L252,288 L300,308 L300,400 L0,400 Z" fill="#04201E"/>
     </svg>
-    <div CLIENT="si">
-      <div CLIENT="brand">
-        <span CLIENT="mk"><img src="wolf_gold.png" alt=""></span>
-        <span CLIENT="bt"><b>Wolf AutoDoc</b><span>VISA AUTOMATION SYSTEM</span></span>
+    <div class="si">
+      <div class="brand">
+        <span class="mk"><img src="wolf_gold.png" alt=""></span>
+        <span class="bt"><b>Wolf AutoDoc</b><span>VISA AUTOMATION SYSTEM</span></span>
       </div>
-      <div CLIENT="menu" id="menu">
-        <a CLIENT="anno" data-go="CLIENT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Заявки</span><span CLIENT="bdg">12</span></a>
-        <a CLIENT="anno" data-go="CLIENT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg><span>Клиенты</span></a>
-        <a CLIENT="anno" data-go="CLIENT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h4"/></svg><span>Шаблоны</span></a>
-        <a CLIENT="anno" data-go="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><span>Настройки</span></a>
+      <div class="menu" id="menu">
+        <a class="anno" data-go="applications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg><span>Заявки</span><span class="bdg">12</span></a>
+        <a class="anno" data-go="clients"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg><span>Клиенты</span></a>
+        <a class="anno" data-go="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h6M9 16h4"/></svg><span>Шаблоны</span></a>
+        <a class="anno" data-go="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><span>Настройки</span></a>
       </div>
-      <div CLIENT="nf anno" data-act="menu"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg><span>Свернуть меню</span></div>
-      <div CLIENT="me anno" data-go="CLIENT"><span CLIENT="av">АВ</span><span CLIENT="who"><b>CLIENT В.</b><span>Администратор</span></span></div>
+      <div class="nf anno" data-act="menu"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg><span>Свернуть меню</span></div>
+      <div class="me anno" data-go="login"><span class="av">АВ</span><span class="who"><b>Андрей В.</b><span>Администратор</span></span></div>
     </div>
   </nav>
 
   <!-- ═══ левая вторичная зона ═══ -->
-  <aside CLIENT="aux" id="aux">
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="h">Группы<span CLIENT="cnt">12</span></div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Входящие</span><span CLIENT="mt">новые заявки</span></span><span CLIENT="st gold">4</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">В работе у меня</span><span CLIENT="mt">взял в работу</span></span><span CLIENT="st ok">3</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Готовы к отправке</span><span CLIENT="mt">все документы проверены</span></span><span CLIENT="st ok">2</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Отправленные</span><span CLIENT="mt">ушли на Диск</span></span><span CLIENT="st">3</span></div>
+  <aside class="aux" id="aux">
+    <div class="pane" data-for="applications">
+      <div class="h">Группы<span class="cnt">12</span></div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Входящие</span><span class="mt">новые заявки</span></span><span class="st gold">4</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">В работе у меня</span><span class="mt">взял в работу</span></span><span class="st ok">3</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Готовы к отправке</span><span class="mt">все документы проверены</span></span><span class="st ok">2</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Отправленные</span><span class="mt">ушли на Диск</span></span><span class="st">3</span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="review">
-      <div CLIENT="h" id="auxHead">Реальные документы<span CLIENT="cnt">4</span></div>
+    <div class="pane" data-for="review">
+      <div class="h" id="auxHead">Реальные документы<span class="cnt">4</span></div>
       <!-- миниатюры вкладки 1: что прислал клиент -->
-      <div CLIENT="scroll" data-tabpane="real">
-        <div CLIENT="row on anno" data-doc="Паспорт, стр. 1"><span CLIENT="tx"><span CLIENT="nm">Паспорт, стр. 1</span><span CLIENT="mt">распознан · источник значений</span></span><span CLIENT="st ok">✓</span></div>
-        <div CLIENT="row anno" data-doc="Паспорт, стр. 2"><span CLIENT="tx"><span CLIENT="nm">Паспорт, стр. 2</span><span CLIENT="mt">не разобран</span></span></div>
-        <div CLIENT="row anno" data-doc="Банковская справка"><span CLIENT="tx"><span CLIENT="nm">Банковская справка</span><span CLIENT="mt">распознан · Сбер</span></span><span CLIENT="st ok">✓</span></div>
-        <div CLIENT="row anno" data-doc="Письмо иммиграции (вход.)"><span CLIENT="tx"><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="mt">не разобран</span></span></div>
-        <div CLIENT="row anno" data-act="pull"><span CLIENT="tx"><span CLIENT="nm">+ выгрузить с Диска</span></span></div>
+      <div class="scroll" data-tabpane="real">
+        <div class="row on anno" data-doc="Паспорт, стр. 1"><span class="tx"><span class="nm">Паспорт, стр. 1</span><span class="mt">распознан · источник значений</span></span><span class="st ok">✓</span></div>
+        <div class="row anno" data-doc="Паспорт, стр. 2"><span class="tx"><span class="nm">Паспорт, стр. 2</span><span class="mt">не разобран</span></span></div>
+        <div class="row anno" data-doc="Банковская справка"><span class="tx"><span class="nm">Банковская справка</span><span class="mt">распознан · Сбер</span></span><span class="st ok">✓</span></div>
+        <div class="row anno" data-doc="Письмо иммиграции (вход.)"><span class="tx"><span class="nm">Письмо иммиграции</span><span class="mt">не разобран</span></span></div>
+        <div class="row anno" data-act="pull"><span class="tx"><span class="nm">+ выгрузить с Диска</span></span></div>
       </div>
       <!-- миниатюры вкладки 2: наши документы по шаблонам продукта -->
-      <div CLIENT="scroll" data-tabpane="ours" style="display:none">
-        <div CLIENT="row on anno" data-doc="Письмо иммиграции (наш)"><span CLIENT="tx"><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="mt">сохранён · 03.10</span></span><span CLIENT="st ok">✓</span></div>
-        <div CLIENT="row anno" data-doc="Спонсорское письмо (наш)"><span CLIENT="tx"><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="mt">не хватает 2 полей</span></span><span CLIENT="st warn">!</span></div>
-        <div CLIENT="row anno" data-doc="Банковская справка (наш)"><span CLIENT="tx"><span CLIENT="nm">Банковская справка · Сбер</span><span CLIENT="mt">сохранён · 03.10</span></span><span CLIENT="st ok">✓</span></div>
-        <div CLIENT="row anno" data-doc="Заявление (наш)"><span CLIENT="tx"><span CLIENT="nm">Заявление в иммиграцию</span><span CLIENT="mt">черновик</span></span></div>
-        <div CLIENT="row anno" data-doc="Договор RWA (наш)"><span CLIENT="tx"><span CLIENT="nm">Договор (RWA)</span><span CLIENT="mt">ещё не создан</span></span></div>
+      <div class="scroll" data-tabpane="ours" style="display:none">
+        <div class="row on anno" data-doc="Письмо иммиграции (наш)"><span class="tx"><span class="nm">Письмо иммиграции</span><span class="mt">сохранён · 03.10</span></span><span class="st ok">✓</span></div>
+        <div class="row anno" data-doc="Спонсорское письмо (наш)"><span class="tx"><span class="nm">Спонсорское письмо</span><span class="mt">не хватает 2 полей</span></span><span class="st warn">!</span></div>
+        <div class="row anno" data-doc="Банковская справка (наш)"><span class="tx"><span class="nm">Банковская справка · Сбер</span><span class="mt">сохранён · 03.10</span></span><span class="st ok">✓</span></div>
+        <div class="row anno" data-doc="Заявление (наш)"><span class="tx"><span class="nm">Заявление в иммиграцию</span><span class="mt">черновик</span></span></div>
+        <div class="row anno" data-doc="Договор RWA (наш)"><span class="tx"><span class="nm">Договор (RWA)</span><span class="mt">ещё не создан</span></span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="h">Фильтры</div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Все клиенты</span><span CLIENT="mt">12</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">С документами</span><span CLIENT="mt">папка на Диске</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Без документов</span><span CLIENT="mt">ждут загрузки</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Повторные</span><span CLIENT="mt">продления</span></span></div>
+    <div class="pane" data-for="clients">
+      <div class="h">Фильтры</div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Все клиенты</span><span class="mt">12</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">С документами</span><span class="mt">папка на Диске</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Без документов</span><span class="mt">ждут загрузки</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Повторные</span><span class="mt">продления</span></span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="h">Типы документов</div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Банковские справки</span><span CLIENT="mt">3 шаблона</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Резюме (CV)</span><span CLIENT="mt">2 шаблона</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Письма иммиграции</span><span CLIENT="mt">4 шаблона</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Договоры (RWA)</span><span CLIENT="mt">2 шаблона</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Statement Letter</span><span CLIENT="mt">1 шаблон</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Прочее</span><span CLIENT="mt">2 шаблона</span></span></div>
+    <div class="pane" data-for="templates">
+      <div class="h">Типы документов</div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Банковские справки</span><span class="mt">3 шаблона</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Резюме (CV)</span><span class="mt">2 шаблона</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Письма иммиграции</span><span class="mt">4 шаблона</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Договоры (RWA)</span><span class="mt">2 шаблона</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Statement Letter</span><span class="mt">1 шаблон</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Прочее</span><span class="mt">2 шаблона</span></span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="tpledit">
-      <div CLIENT="h">Шаблоны продукта</div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="mt">14 переменных</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="mt">9 переменных</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Заявление</span><span CLIENT="mt">11 переменных</span></span></div>
+    <div class="pane" data-for="tpledit">
+      <div class="h">Шаблоны продукта</div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Письмо иммиграции</span><span class="mt">14 переменных</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Спонсорское письмо</span><span class="mt">9 переменных</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Заявление</span><span class="mt">11 переменных</span></span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="settings">
-      <div CLIENT="h">Разделы</div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Бот</span><span CLIENT="mt">статус, вебхук</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Доступ</span><span CLIENT="mt">пользователи, приглашения</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Интеграции</span><span CLIENT="mt">Google Диск, распознавание</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Продукты</span><span CLIENT="mt">визы и цены</span></span></div>
+    <div class="pane" data-for="settings">
+      <div class="h">Разделы</div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Бот</span><span class="mt">статус, вебхук</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Доступ</span><span class="mt">пользователи, приглашения</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Интеграции</span><span class="mt">Google Диск, распознавание</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Продукты</span><span class="mt">визы и цены</span></span></div>
       </div>
     </div>
-    <div CLIENT="pane" data-for="docview">
-      <div CLIENT="h">Страницы<span CLIENT="cnt">4</span></div>
-      <div CLIENT="scroll">
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Стр. 1 · фото и данные</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Стр. 2 · регистрация</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Стр. 3 · дети</span></span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Стр. 4 · MRZ</span></span></div>
+    <div class="pane" data-for="docview">
+      <div class="h">Страницы<span class="cnt">4</span></div>
+      <div class="scroll">
+        <div class="row on anno"><span class="tx"><span class="nm">Стр. 1 · фото и данные</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Стр. 2 · регистрация</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Стр. 3 · дети</span></span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Стр. 4 · MRZ</span></span></div>
       </div>
     </div>
   </aside>
 
   <!-- ═══ рабочие области (центр) ═══ -->
-  <main CLIENT="work" id="work">
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="lhe" style="flex:none;display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--card);border-bottom:1.5px solid var(--line2)">
-        <span style="font-size:14.5px;font-weight:730" CLIENT="anno">Входящие заявки</span>
+  <main class="work" id="work">
+    <div class="pane" data-for="applications">
+      <div class="lhe" style="flex:none;display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--card);border-bottom:1.5px solid var(--line2)">
+        <span style="font-size:14.5px;font-weight:730" class="anno">Входящие заявки</span>
         <span style="font-size:12px;color:var(--ink3)">сначала новые</span>
         <div style="margin-left:auto;display:flex;gap:7px">
-          <button CLIENT="btn sm anno">Фильтр</button>
-          <button CLIENT="btn sm anno">Список / плитки</button>
+          <button class="btn sm anno">Фильтр</button>
+          <button class="btn sm anno">Список / плитки</button>
         </div>
       </div>
-      <div CLIENT="wscroll list">
-        <div CLIENT="row on anno" data-pick="76"><span CLIENT="av">76</span><span CLIENT="tx"><span CLIENT="nm">CLIENT CLIENT ILDAROVICH</span><span CLIENT="mt">CLIENT C1 · от А. Вишня · 02.10 04:56 · IDR 12 500 000</span></span><span CLIENT="st gold">проверка данных</span></div>
-        <div CLIENT="row anno" data-pick="75"><span CLIENT="av">75</span><span CLIENT="tx"><span CLIENT="nm">IVANOVA MARIA</span><span CLIENT="mt">KITAS 6 мес · от А. Вишня · 01.10 · IDR 9 800 000</span></span><span CLIENT="st ok">готова</span></div>
-        <div CLIENT="row anno" data-pick="74"><span CLIENT="av">74</span><span CLIENT="tx"><span CLIENT="nm">PETROV SERGEY</span><span CLIENT="mt">E33G · от менеджера · 30.09 · IDR 14 200 000</span></span><span CLIENT="st">новая</span></div>
-        <div CLIENT="row anno" data-pick="73"><span CLIENT="av">73</span><span CLIENT="tx"><span CLIENT="nm">SIDOROVA ANNA</span><span CLIENT="mt">CLIENT D12 · 29.09 · IDR 7 400 000</span></span><span CLIENT="st ok">отправлена</span></div>
+      <div class="wscroll list">
+        <div class="row on anno" data-pick="76"><span class="av">76</span><span class="tx"><span class="nm">AKHMADEEV DANIEL ILDAROVICH</span><span class="mt">Продление C1 · от А. Вишня · 02.10 04:56 · IDR 12 500 000</span></span><span class="st gold">проверка данных</span></div>
+        <div class="row anno" data-pick="75"><span class="av">75</span><span class="tx"><span class="nm">IVANOVA MARIA</span><span class="mt">KITAS 6 мес · от А. Вишня · 01.10 · IDR 9 800 000</span></span><span class="st ok">готова</span></div>
+        <div class="row anno" data-pick="74"><span class="av">74</span><span class="tx"><span class="nm">PETROV SERGEY</span><span class="mt">E33G · от менеджера · 30.09 · IDR 14 200 000</span></span><span class="st">новая</span></div>
+        <div class="row anno" data-pick="73"><span class="av">73</span><span class="tx"><span class="nm">SIDOROVA ANNA</span><span class="mt">Продление D12 · 29.09 · IDR 7 400 000</span></span><span class="st ok">отправлена</span></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="review">
+    <div class="pane" data-for="review">
       <!-- функциональные кнопки над окном просмотра -->
-      <div CLIENT="chead">
-        <button CLIENT="btn sm anno" data-act="autofill">Заполнить автоматически</button>
-        <button CLIENT="btn sm anno" data-act="pull">Выгрузить из Google Диска</button>
-        <button CLIENT="btn p sm anno" data-act="push">Отправить на Google Диск</button>
-        <span CLIENT="mt" style="margin-left:auto" id="rvState">готово 3 из 5 документов</span>
+      <div class="chead">
+        <button class="btn sm anno" data-act="autofill">Заполнить автоматически</button>
+        <button class="btn sm anno" data-act="pull">Выгрузить из Google Диска</button>
+        <button class="btn p sm anno" data-act="push">Отправить на Google Диск</button>
+        <span class="mt" style="margin-left:auto" id="rvState">готово 3 из 5 документов</span>
       </div>
       <!-- две вкладки: реальные документы и наши -->
-      <div CLIENT="tabs anno">
-        <button CLIENT="on" data-tab="real">Реальные документы (Диск)</button>
+      <div class="tabs anno">
+        <button class="on" data-tab="real">Реальные документы (Диск)</button>
         <button data-tab="ours">Наши документы (по шаблонам)</button>
       </div>
-      <div CLIENT="chead" style="border-top:1.5px solid var(--line2)">
-        <span CLIENT="ti anno" id="rvDoc">Паспорт, стр. 1</span><span CLIENT="st" id="rvSrc">источник данных</span>
+      <div class="chead" style="border-top:1.5px solid var(--line2)">
+        <span class="ti anno" id="rvDoc">Паспорт, стр. 1</span><span class="st" id="rvSrc">источник данных</span>
         <div style="margin-left:auto;display:flex;gap:6px">
-          <button CLIENT="btn icon anno">+</button><button CLIENT="btn icon anno">−</button>
-          <span CLIENT="btn icon anno" style="width:auto;padding:0 9px">1/4</span>
+          <button class="btn icon anno">+</button><button class="btn icon anno">−</button>
+          <span class="btn icon anno" style="width:auto;padding:0 9px">1/4</span>
         </div>
       </div>
       <!-- вкладка 1: реальный документ клиента -->
-      <div CLIENT="rvstage" data-tabstage="real" style="flex:1;min-height:0;display:flex">
-        <div CLIENT="canvas"><div CLIENT="sheet anno">
-          <div CLIENT="g">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div><div CLIENT="ttl">ПАСПОРТ · СТР. 1</div>
-          <div CLIENT="photo"></div>
-          <div CLIENT="fk"><span CLIENT="k">ФИО</span><span CLIENT="v">CLIENT CLIENT ILDAROVICH</span></div>
-          <div CLIENT="fk"><span CLIENT="k">Дата рожд.</span><span CLIENT="v">12.04.1990</span></div>
-          <div CLIENT="fk hl"><span CLIENT="k">Номер</span><span CLIENT="v">AB123456</span></div>
-          <div CLIENT="mrz">подсвечено поле, из которого взято значение → справа в переменных</div>
+      <div class="rvstage" data-tabstage="real" style="flex:1;min-height:0;display:flex">
+        <div class="canvas"><div class="sheet anno">
+          <div class="g">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div><div class="ttl">ПАСПОРТ · СТР. 1</div>
+          <div class="photo"></div>
+          <div class="fk"><span class="k">ФИО</span><span class="v">AKHMADEEV DANIEL ILDAROVICH</span></div>
+          <div class="fk"><span class="k">Дата рожд.</span><span class="v">12.04.1990</span></div>
+          <div class="fk hl"><span class="k">Номер</span><span class="v">AB123456</span></div>
+          <div class="mrz">подсвечено поле, из которого взято значение → справа в переменных</div>
         </div></div>
       </div>
       <!-- вкладка 2: наш документ по шаблону продукта -->
-      <div CLIENT="rvstage" data-tabstage="ours" style="flex:1;min-height:0;display:none">
-        <div CLIENT="canvas"><div CLIENT="sheet anno">
-          <div CLIENT="g">KANTOR IMIGRASI KELAS I KHUSUS TPI DENPASAR</div>
-          <div CLIENT="ttl">ПИСЬМО-ХОДАТАЙСТВО · НАШ ДОКУМЕНТ</div>
-          <div CLIENT="fk hl"><span CLIENT="k">Nama</span><span CLIENT="v">CLIENT CLIENT ILDAROVICH</span></div>
-          <div CLIENT="fk"><span CLIENT="k">Paspor</span><span CLIENT="v">AB123456</span></div>
-          <div CLIENT="fk"><span CLIENT="k">CLIENT</span><span CLIENT="v">PT PANTEON</span></div>
-          <div CLIENT="mrz">сверяйте с реальным документом на первой вкладке · подсвеченное поле ↔ строка справа</div>
+      <div class="rvstage" data-tabstage="ours" style="flex:1;min-height:0;display:none">
+        <div class="canvas"><div class="sheet anno">
+          <div class="g">KANTOR IMIGRASI KELAS I KHUSUS TPI DENPASAR</div>
+          <div class="ttl">ПИСЬМО-ХОДАТАЙСТВО · НАШ ДОКУМЕНТ</div>
+          <div class="fk hl"><span class="k">Nama</span><span class="v">AKHMADEEV DANIEL ILDAROVICH</span></div>
+          <div class="fk"><span class="k">Paspor</span><span class="v">AB123456</span></div>
+          <div class="fk"><span class="k">Sponsor</span><span class="v">PT PANTEON</span></div>
+          <div class="mrz">сверяйте с реальным документом на первой вкладке · подсвеченное поле ↔ строка справа</div>
         </div></div>
         <div style="flex:none;display:flex;justify-content:flex-end;gap:7px;padding:10px 18px;border-top:1.5px solid var(--line2);background:#F8FBFA">
-          <button CLIENT="btn sm anno">Редактировать поля</button><button CLIENT="btn p sm anno">Сохранить документ</button>
+          <button class="btn sm anno">Редактировать поля</button><button class="btn p sm anno">Сохранить документ</button>
         </div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="CLIENT">
+    <div class="pane" data-for="clients">
       <div style="flex:none;display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--card);border-bottom:1.5px solid var(--line2)">
-        <span style="font-size:14.5px;font-weight:730" CLIENT="anno">Клиенты</span>
+        <span style="font-size:14.5px;font-weight:730" class="anno">Клиенты</span>
         <span style="font-size:12px;color:var(--ink3)">12 человек · выберите строку</span>
-        <button CLIENT="btn sm anno" style="margin-left:auto">+ CLIENT клиент</button>
+        <button class="btn sm anno" style="margin-left:auto">+ Новый клиент</button>
       </div>
-      <div CLIENT="wscroll list">
-        <div CLIENT="row on anno" data-pick="c1"><span CLIENT="av">AD</span><span CLIENT="tx"><span CLIENT="nm">CLIENT CLIENT ILDAROVICH</span><span CLIENT="mt">CLIENT C1 · проверка данных · 02.10</span></span><span CLIENT="st gold">#76</span></div>
-        <div CLIENT="row anno" data-pick="c2"><span CLIENT="av">IM</span><span CLIENT="tx"><span CLIENT="nm">IVANOVA MARIA</span><span CLIENT="mt">KITAS 6 мес · готова · 01.10</span></span><span CLIENT="st ok">#75</span></div>
-        <div CLIENT="row anno" data-pick="c3"><span CLIENT="av">PS</span><span CLIENT="tx"><span CLIENT="nm">PETROV SERGEY</span><span CLIENT="mt">E33G · новая · 30.09</span></span><span CLIENT="st">#74</span></div>
+      <div class="wscroll list">
+        <div class="row on anno" data-pick="c1"><span class="av">AD</span><span class="tx"><span class="nm">AKHMADEEV DANIEL ILDAROVICH</span><span class="mt">Продление C1 · проверка данных · 02.10</span></span><span class="st gold">#76</span></div>
+        <div class="row anno" data-pick="c2"><span class="av">IM</span><span class="tx"><span class="nm">IVANOVA MARIA</span><span class="mt">KITAS 6 мес · готова · 01.10</span></span><span class="st ok">#75</span></div>
+        <div class="row anno" data-pick="c3"><span class="av">PS</span><span class="tx"><span class="nm">PETROV SERGEY</span><span class="mt">E33G · новая · 30.09</span></span><span class="st">#74</span></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="CLIENT">
+    <div class="pane" data-for="templates">
       <div style="flex:none;display:flex;align-items:center;gap:10px;padding:13px 18px;background:var(--card);border-bottom:1.5px solid var(--line2)">
-        <span style="font-size:14.5px;font-weight:730" CLIENT="anno">Документы и шаблоны</span>
+        <span style="font-size:14.5px;font-weight:730" class="anno">Документы и шаблоны</span>
         <span style="font-size:12px;color:var(--ink3)">по продуктам</span>
         <div style="margin-left:auto;display:flex;gap:7px">
-          <button CLIENT="btn sm anno">+ Загрузить PDF</button><button CLIENT="btn sm anno">+ Продукт</button>
+          <button class="btn sm anno">+ Загрузить PDF</button><button class="btn sm anno">+ Продукт</button>
         </div>
       </div>
-      <div CLIENT="wscroll list">
-        <div CLIENT="fold">Продукт · CLIENT C1</div>
-        <div CLIENT="row on anno"><span CLIENT="tx"><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="mt">3 мес · 14 переменных</span></span><span CLIENT="st ok">готов</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="mt">3 мес · 9 переменных</span></span><span CLIENT="st warn">требует проверки</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Банковская справка · Сбер</span><span CLIENT="mt">12 мес · 12 переменных</span></span><span CLIENT="st ok">готов</span></div>
-        <div CLIENT="fold">Продукт · KITAS 6 мес</div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Письмо иммиграции</span><span CLIENT="mt">6 мес · 14 переменных</span></span><span CLIENT="st ok">готов</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Резюме (CV)</span><span CLIENT="mt">2 шаблона · 11 переменных</span></span><span CLIENT="st">черновик</span></div>
+      <div class="wscroll list">
+        <div class="fold">Продукт · Продление C1</div>
+        <div class="row on anno"><span class="tx"><span class="nm">Письмо иммиграции</span><span class="mt">3 мес · 14 переменных</span></span><span class="st ok">готов</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Спонсорское письмо</span><span class="mt">3 мес · 9 переменных</span></span><span class="st warn">требует проверки</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Банковская справка · Сбер</span><span class="mt">12 мес · 12 переменных</span></span><span class="st ok">готов</span></div>
+        <div class="fold">Продукт · KITAS 6 мес</div>
+        <div class="row anno"><span class="tx"><span class="nm">Письмо иммиграции</span><span class="mt">6 мес · 14 переменных</span></span><span class="st ok">готов</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Резюме (CV)</span><span class="mt">2 шаблона · 11 переменных</span></span><span class="st">черновик</span></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="tpledit">
-      <div CLIENT="chead"><span CLIENT="ti anno">Письмо иммиграции</span><span CLIENT="mt">14 переменных · 1 стр.</span>
-        <div style="margin-left:auto;display:flex;gap:7px"><button CLIENT="btn sm anno">Сформировать PDF</button><button CLIENT="btn sm anno">Сохранить правила</button></div>
+    <div class="pane" data-for="tpledit">
+      <div class="chead"><span class="ti anno">Письмо иммиграции</span><span class="mt">14 переменных · 1 стр.</span>
+        <div style="margin-left:auto;display:flex;gap:7px"><button class="btn sm anno">Сформировать PDF</button><button class="btn sm anno">Сохранить правила</button></div>
       </div>
-      <div CLIENT="tabs anno"><button CLIENT="on">Документ (PDF)</button><button>HTML-редактор</button></div>
-      <div CLIENT="canvas"><div CLIENT="sheet anno">
-        <div CLIENT="g">KANTOR IMIGRASI KELAS I KHUSUS TPI DENPASAR</div>
-        <div CLIENT="ttl">SURAT PERMOHONAN · ПИСЬМО-ХОДАТАЙСТВО</div>
-        <div CLIENT="fk hl"><span CLIENT="k">Nama</span><span CLIENT="v">{{full_name}}</span></div>
-        <div CLIENT="fk"><span CLIENT="k">Paspor</span><span CLIENT="v">{{passport_no}}</span></div>
-        <div CLIENT="fk"><span CLIENT="k">CLIENT</span><span CLIENT="v">{{CLIENT_name}}</span></div>
-        <div CLIENT="mrz">подсветка переменной в документе ↔ строка справа</div>
+      <div class="tabs anno"><button class="on">Документ (PDF)</button><button>HTML-редактор</button></div>
+      <div class="canvas"><div class="sheet anno">
+        <div class="g">KANTOR IMIGRASI KELAS I KHUSUS TPI DENPASAR</div>
+        <div class="ttl">SURAT PERMOHONAN · ПИСЬМО-ХОДАТАЙСТВО</div>
+        <div class="fk hl"><span class="k">Nama</span><span class="v">{{full_name}}</span></div>
+        <div class="fk"><span class="k">Paspor</span><span class="v">{{passport_no}}</span></div>
+        <div class="fk"><span class="k">Sponsor</span><span class="v">{{sponsor_name}}</span></div>
+        <div class="mrz">подсветка переменной в документе ↔ строка справа</div>
       </div></div>
     </div>
 
-    <div CLIENT="pane" data-for="settings">
+    <div class="pane" data-for="settings">
       <div style="flex:none;padding:14px 18px;background:var(--card);border-bottom:1.5px solid var(--line2)">
-        <span style="font-size:14.5px;font-weight:730" CLIENT="anno">Доступ: пользователи и приглашения</span>
+        <span style="font-size:14.5px;font-weight:730" class="anno">Доступ: пользователи и приглашения</span>
       </div>
-      <div CLIENT="wscroll list">
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">CLIENT Вишня</span><span CLIENT="mt">@mrAndrez · администратор</span></span><span CLIENT="st ok">активен</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">Алина</span><span CLIENT="mt">@kiki_pum · менеджер</span></span><span CLIENT="st ok">активен</span></div>
-        <div CLIENT="row anno"><span CLIENT="tx"><span CLIENT="nm">+ Пригласить</span><span CLIENT="mt">ссылка живёт 30 минут и уходит в Telegram</span></span><span CLIENT="st gold">приглашение</span></div>
+      <div class="wscroll list">
+        <div class="row anno"><span class="tx"><span class="nm">Андрей Вишня</span><span class="mt">@mrAndrez · администратор</span></span><span class="st ok">активен</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">Алина</span><span class="mt">@kiki_pum · менеджер</span></span><span class="st ok">активен</span></div>
+        <div class="row anno"><span class="tx"><span class="nm">+ Пригласить</span><span class="mt">ссылка живёт 30 минут и уходит в Telegram</span></span><span class="st gold">приглашение</span></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="docview">
-      <div CLIENT="chead">
-        <button CLIENT="btn icon anno" data-go="CLIENT">←</button>
-        <span CLIENT="ti anno" id="dvTitle">Паспорт РФ, стр. 1</span>
-        <span CLIENT="mt">CLIENT CLIENT · заявка #76</span>
+    <div class="pane" data-for="docview">
+      <div class="chead">
+        <button class="btn icon anno" data-go="clients">←</button>
+        <span class="ti anno" id="dvTitle">Паспорт РФ, стр. 1</span>
+        <span class="mt">AKHMADEEV DANIEL · заявка #76</span>
         <div style="margin-left:auto;display:flex;gap:6px">
-          <button CLIENT="btn icon anno">+</button><button CLIENT="btn icon anno">−</button>
-          <button CLIENT="btn sm anno">Открыть оригинал</button>
+          <button class="btn icon anno">+</button><button class="btn icon anno">−</button>
+          <button class="btn sm anno">Открыть оригинал</button>
         </div>
       </div>
-      <div CLIENT="canvas"><div CLIENT="sheet anno">
-        <div CLIENT="g">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div><div CLIENT="ttl">ПАСПОРТ ГРАЖДАНИНА РФ · СТР. 1</div>
-        <div CLIENT="photo"></div>
-        <div CLIENT="fk"><span CLIENT="k">ФИО</span><span CLIENT="v">CLIENT CLIENT ILDAROVICH</span></div>
-        <div CLIENT="fk hl"><span CLIENT="k">Номер</span><span CLIENT="v">AB123456</span></div>
-        <div CLIENT="mrz">данные страницы · листайте страницы слева</div>
+      <div class="canvas"><div class="sheet anno">
+        <div class="g">РОССИЙСКАЯ ФЕДЕРАЦИЯ</div><div class="ttl">ПАСПОРТ ГРАЖДАНИНА РФ · СТР. 1</div>
+        <div class="photo"></div>
+        <div class="fk"><span class="k">ФИО</span><span class="v">AKHMADEEV DANIEL ILDAROVICH</span></div>
+        <div class="fk hl"><span class="k">Номер</span><span class="v">AB123456</span></div>
+        <div class="mrz">данные страницы · листайте страницы слева</div>
       </div></div>
     </div>
   </main>
 
   <!-- ═══ правая зона: контекст выбранного объекта ═══ -->
-  <aside CLIENT="rail" id="rail">
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="ph anno"><h2>Заявка #76</h2><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll" id="appDetails">
-        <div CLIENT="vblk"><div CLIENT="vbh">Кратко</div><div CLIENT="vf" style="gap:0">
-          <div CLIENT="kvi"><span CLIENT="k">Клиент</span><span CLIENT="v">CLIENT CLIENT ILDAROVICH</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Продукт</span><span CLIENT="v">CLIENT C1 (+60 дней)</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">От кого</span><span CLIENT="v">А. Вишня (@mrAndrez), Telegram</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Стоимость</span><span CLIENT="v">IDR 12 500 000</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Создана</span><span CLIENT="v">02.10.2026, 04:56</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Статус</span><span CLIENT="v">проверка данных</span></div>
+  <aside class="rail" id="rail">
+    <div class="pane" data-for="applications">
+      <div class="ph anno"><h2>Заявка #76</h2><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll" id="appDetails">
+        <div class="vblk"><div class="vbh">Кратко</div><div class="vf" style="gap:0">
+          <div class="kvi"><span class="k">Клиент</span><span class="v">AKHMADEEV DANIEL ILDAROVICH</span></div>
+          <div class="kvi"><span class="k">Продукт</span><span class="v">Продление C1 (+60 дней)</span></div>
+          <div class="kvi"><span class="k">От кого</span><span class="v">А. Вишня (@mrAndrez), Telegram</span></div>
+          <div class="kvi"><span class="k">Стоимость</span><span class="v">IDR 12 500 000</span></div>
+          <div class="kvi"><span class="k">Создана</span><span class="v">02.10.2026, 04:56</span></div>
+          <div class="kvi"><span class="k">Статус</span><span class="v">проверка данных</span></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Документы<span CLIENT="c">6</span></div><div CLIENT="vf">
-          <div CLIENT="fold" style="padding-top:2px">На Google Диске</div>
-          <div CLIENT="doc anno" data-doc="Паспорт РФ, стр. 1"><span CLIENT="ic">▤</span><span CLIENT="nm">Паспорт РФ, стр. 1</span><span CLIENT="st ok">распознан</span></div>
-          <div CLIENT="doc anno" data-doc="Паспорт РФ, стр. 2"><span CLIENT="ic">▤</span><span CLIENT="nm">Паспорт РФ, стр. 2</span><span CLIENT="st">не разобран</span></div>
-          <div CLIENT="doc anno" data-doc="Банковская справка · Сбер"><span CLIENT="ic">▤</span><span CLIENT="nm">Банковская справка · Сбер</span><span CLIENT="st ok">распознан</span></div>
-          <div CLIENT="fold">Собрано нами</div>
-          <div CLIENT="doc anno" data-doc="Спонсорское письмо (PDF)"><span CLIENT="ic">✓</span><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="st ok">готов</span></div>
-          <div CLIENT="doc anno" data-doc="Заявление в иммиграцию"><span CLIENT="ic">✎</span><span CLIENT="nm">Заявление в иммиграцию</span><span CLIENT="st warn">не хватает 2 полей</span></div>
+        <div class="vblk"><div class="vbh">Документы<span class="c">6</span></div><div class="vf">
+          <div class="fold" style="padding-top:2px">На Google Диске</div>
+          <div class="doc anno" data-doc="Паспорт РФ, стр. 1"><span class="ic">▤</span><span class="nm">Паспорт РФ, стр. 1</span><span class="st ok">распознан</span></div>
+          <div class="doc anno" data-doc="Паспорт РФ, стр. 2"><span class="ic">▤</span><span class="nm">Паспорт РФ, стр. 2</span><span class="st">не разобран</span></div>
+          <div class="doc anno" data-doc="Банковская справка · Сбер"><span class="ic">▤</span><span class="nm">Банковская справка · Сбер</span><span class="st ok">распознан</span></div>
+          <div class="fold">Собрано нами</div>
+          <div class="doc anno" data-doc="Спонсорское письмо (PDF)"><span class="ic">✓</span><span class="nm">Спонсорское письмо</span><span class="st ok">готов</span></div>
+          <div class="doc anno" data-doc="Заявление в иммиграцию"><span class="ic">✎</span><span class="nm">Заявление в иммиграцию</span><span class="st warn">не хватает 2 полей</span></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Комментарий менеджера</div><div CLIENT="vf">
+        <div class="vblk"><div class="vbh">Комментарий менеджера</div><div class="vf">
           <div style="font-size:12.5px;background:var(--warnbg);border:1.5px solid var(--warnln);border-radius:var(--r);padding:9px 11px">Клиент продлевает визу второй раз, справка из Сбера свежая — от 02.10</div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vf" style="grid-auto-flow:column;grid-auto-columns:1fr">
-          <button CLIENT="btn sm anno">Взять в работу</button>
-          <button CLIENT="btn p sm anno" data-go="review">Открыть заявку →</button>
+        <div class="vblk"><div class="vf" style="grid-auto-flow:column;grid-auto-columns:1fr">
+          <button class="btn sm anno">Взять в работу</button>
+          <button class="btn p sm anno" data-go="review">Открыть заявку →</button>
         </div></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="review">
-      <div CLIENT="ph anno"><h2>Переменные</h2><span CLIENT="cnt">12/14</span><span CLIENT="bar"><i></i></span><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll">
-        <div CLIENT="vblk"><div CLIENT="vbh">Статус заявки<span CLIENT="c">шаг 3/4</span></div><div CLIENT="vf" style="gap:7px">
+    <div class="pane" data-for="review">
+      <div class="ph anno"><h2>Переменные</h2><span class="cnt">12/14</span><span class="bar"><i></i></span><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll">
+        <div class="vblk"><div class="vbh">Статус заявки<span class="c">шаг 3/4</span></div><div class="vf" style="gap:7px">
           <div style="font-size:12px;color:var(--ink3)">✓ документы получены · ✓ распознавание · <b style="color:var(--goldd)">3 проверка значений</b> · 4 генерация PDF</div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Данные клиента<span CLIENT="c">4</span></div><div CLIENT="vf">
-          <div CLIENT="anno"><label>ФИО (латиница)</label><div CLIENT="val"><span CLIENT="v">CLIENT CLIENT ILDAROVICH</span><span CLIENT="src">паспорт</span><span CLIENT="ok">✓</span></div></div>
-          <div CLIENT="anno"><label>Дата рождения</label><div CLIENT="val"><span CLIENT="v">12.04.1990</span><span CLIENT="src">паспорт</span><span CLIENT="ok">✓</span></div></div>
-          <div CLIENT="anno"><label>Адрес проживания</label><div CLIENT="val"><span CLIENT="v">450010, Респ. Башкортостан, г. Уфа, ул. Достоевского, д. 3, кв. 5</span><span CLIENT="src">карточка</span></div></div>
+        <div class="vblk"><div class="vbh">Данные клиента<span class="c">4</span></div><div class="vf">
+          <div class="anno"><label>ФИО (латиница)</label><div class="val"><span class="v">AKHMADEEV DANIEL ILDAROVICH</span><span class="src">паспорт</span><span class="ok">✓</span></div></div>
+          <div class="anno"><label>Дата рождения</label><div class="val"><span class="v">12.04.1990</span><span class="src">паспорт</span><span class="ok">✓</span></div></div>
+          <div class="anno"><label>Адрес проживания</label><div class="val"><span class="v">450010, Респ. Башкортостан, г. Уфа, ул. Достоевского, д. 3, кв. 5</span><span class="src">карточка</span></div></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Банковская справка · Сбер<span CLIENT="c">4</span></div><div CLIENT="vf">
-          <div CLIENT="anno"><label>Номер документа</label><div CLIENT="val"><span CLIENT="v">0512387v</span><span CLIENT="src">справка</span><span CLIENT="ok">✓</span></div></div>
-          <div CLIENT="vf bad anno" style="padding:0"><div style="width:100%"><label>Номер карты (маска)</label><div CLIENT="val"><span CLIENT="v">427616••••••4813</span><span CLIENT="src">проверить</span></div><div style="font-size:10.5px;font-weight:650;color:var(--warn);margin-top:4px">Распознано неуверенно — сверьте с документом</div></div></div>
-          <div CLIENT="anno"><label>Остаток на счёте</label><div CLIENT="val"><span CLIENT="v">667 592,79 ₽</span><span CLIENT="src">справка</span><span CLIENT="ok">✓</span></div></div>
+        <div class="vblk"><div class="vbh">Банковская справка · Сбер<span class="c">4</span></div><div class="vf">
+          <div class="anno"><label>Номер документа</label><div class="val"><span class="v">0512387v</span><span class="src">справка</span><span class="ok">✓</span></div></div>
+          <div class="vf bad anno" style="padding:0"><div style="width:100%"><label>Номер карты (маска)</label><div class="val"><span class="v">427616••••••4813</span><span class="src">проверить</span></div><div style="font-size:10.5px;font-weight:650;color:var(--warn);margin-top:4px">Распознано неуверенно — сверьте с документом</div></div></div>
+          <div class="anno"><label>Остаток на счёте</label><div class="val"><span class="v">667 592,79 ₽</span><span class="src">справка</span><span class="ok">✓</span></div></div>
         </div></div>
       </div>
       <div style="flex:none;display:flex;justify-content:flex-end;gap:7px;padding:11px 14px;border-top:1.5px solid var(--line2);background:#F8FBFA">
-        <button CLIENT="btn sm anno">Отменить</button><button CLIENT="btn p sm anno">Сохранить PDF</button>
+        <button class="btn sm anno">Отменить</button><button class="btn p sm anno">Сохранить PDF</button>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="ph anno"><h2 id="clName">CLIENT CLIENT</h2><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll">
-        <div CLIENT="vblk"><div CLIENT="vbh">Данные клиента</div><div CLIENT="vf" style="gap:0">
-          <div CLIENT="kvi"><span CLIENT="k">Паспорт</span><span CLIENT="v">AB123456, ОВД г. Уфа, 12.04.2015</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Дата рождения</span><span CLIENT="v">12.04.1990</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Гражданство</span><span CLIENT="v">Российская Федерация</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Адрес</span><span CLIENT="v">450010, Респ. Башкортостан, г. Уфа, ул. Достоевского, д. 3, кв. 5</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">Банк</span><span CLIENT="v">Сбер · справка от 02.10 · 667 592,79 ₽</span></div>
+    <div class="pane" data-for="clients">
+      <div class="ph anno"><h2 id="clName">AKHMADEEV DANIEL</h2><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll">
+        <div class="vblk"><div class="vbh">Данные клиента</div><div class="vf" style="gap:0">
+          <div class="kvi"><span class="k">Паспорт</span><span class="v">AB123456, ОВД г. Уфа, 12.04.2015</span></div>
+          <div class="kvi"><span class="k">Дата рождения</span><span class="v">12.04.1990</span></div>
+          <div class="kvi"><span class="k">Гражданство</span><span class="v">Российская Федерация</span></div>
+          <div class="kvi"><span class="k">Адрес</span><span class="v">450010, Респ. Башкортостан, г. Уфа, ул. Достоевского, д. 3, кв. 5</span></div>
+          <div class="kvi"><span class="k">Банк</span><span class="v">Сбер · справка от 02.10 · 667 592,79 ₽</span></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Документы<span CLIENT="c">6</span></div><div CLIENT="vf">
-          <div CLIENT="fold" style="padding-top:2px">На Google Диске</div>
-          <div CLIENT="doc anno" data-doc="Паспорт РФ, стр. 1"><span CLIENT="ic">▤</span><span CLIENT="nm">Паспорт РФ, стр. 1</span><span CLIENT="st ok">распознан</span></div>
-          <div CLIENT="doc anno" data-doc="Банковская справка · Сбер"><span CLIENT="ic">▤</span><span CLIENT="nm">Банковская справка · Сбер</span><span CLIENT="st ok">распознан</span></div>
-          <div CLIENT="fold">Собрано нами</div>
-          <div CLIENT="doc anno" data-doc="Спонсорское письмо (PDF)"><span CLIENT="ic">✓</span><span CLIENT="nm">Спонсорское письмо</span><span CLIENT="st ok">готов</span></div>
+        <div class="vblk"><div class="vbh">Документы<span class="c">6</span></div><div class="vf">
+          <div class="fold" style="padding-top:2px">На Google Диске</div>
+          <div class="doc anno" data-doc="Паспорт РФ, стр. 1"><span class="ic">▤</span><span class="nm">Паспорт РФ, стр. 1</span><span class="st ok">распознан</span></div>
+          <div class="doc anno" data-doc="Банковская справка · Сбер"><span class="ic">▤</span><span class="nm">Банковская справка · Сбер</span><span class="st ok">распознан</span></div>
+          <div class="fold">Собрано нами</div>
+          <div class="doc anno" data-doc="Спонсорское письмо (PDF)"><span class="ic">✓</span><span class="nm">Спонсорское письмо</span><span class="st ok">готов</span></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vf"><button CLIENT="btn sm anno" data-go="review">Открыть заявку →</button></div></div>
+        <div class="vblk"><div class="vf"><button class="btn sm anno" data-go="review">Открыть заявку →</button></div></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="CLIENT">
-      <div CLIENT="ph anno"><h2>Письмо иммиграции</h2><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll">
-        <div CLIENT="vblk"><div CLIENT="vbh">О документе</div><div CLIENT="vf">
+    <div class="pane" data-for="templates">
+      <div class="ph anno"><h2>Письмо иммиграции</h2><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll">
+        <div class="vblk"><div class="vbh">О документе</div><div class="vf">
           <div style="font-size:12.5px">Письмо-ходатайство в иммиграцию: кто приглашает, на какой срок, к кому приезжает. Нужно по всем продуктам KITAS.</div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Переменные<span CLIENT="c">14</span></div><div CLIENT="vf" style="gap:0">
-          <div CLIENT="kvi"><span CLIENT="k">full_name</span><span CLIENT="v">из заявки · подтверждено ✓</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">passport_no</span><span CLIENT="v">из заявки · подтверждено ✓</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">CLIENT_name</span><span CLIENT="v">правило · требует проверки</span></div>
-          <div CLIENT="kvi"><span CLIENT="k">doc_date</span><span CLIENT="v">правило: сегодня</span></div>
+        <div class="vblk"><div class="vbh">Переменные<span class="c">14</span></div><div class="vf" style="gap:0">
+          <div class="kvi"><span class="k">full_name</span><span class="v">из заявки · подтверждено ✓</span></div>
+          <div class="kvi"><span class="k">passport_no</span><span class="v">из заявки · подтверждено ✓</span></div>
+          <div class="kvi"><span class="k">sponsor_name</span><span class="v">правило · требует проверки</span></div>
+          <div class="kvi"><span class="k">doc_date</span><span class="v">правило: сегодня</span></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vf"><button CLIENT="btn p sm anno" data-go="tpledit">Открыть редактор →</button></div></div>
+        <div class="vblk"><div class="vf"><button class="btn p sm anno" data-go="tpledit">Открыть редактор →</button></div></div>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="tpledit">
-      <div CLIENT="ph anno"><h2>Переменные шаблона</h2><span CLIENT="cnt">9/14</span><span CLIENT="bar"><i></i></span><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll">
-        <div CLIENT="vblk"><div CLIENT="vbh">Из заявки<span CLIENT="c">6</span></div><div CLIENT="vf">
-          <div CLIENT="anno"><label>full_name → ФИО</label><div CLIENT="val"><span CLIENT="v">берётся из «ФИО (латиница)»</span><span CLIENT="src">заявка</span></div></div>
-          <div CLIENT="anno"><label>passport_no → номер</label><div CLIENT="val"><span CLIENT="v">берётся из «Номер»</span><span CLIENT="src">заявка</span></div></div>
-          <div CLIENT="anno"><label>CLIENT_name</label><div CLIENT="val"><span CLIENT="v">правило: название спонсора</span><span CLIENT="src">правило</span></div></div>
+    <div class="pane" data-for="tpledit">
+      <div class="ph anno"><h2>Переменные шаблона</h2><span class="cnt">9/14</span><span class="bar"><i></i></span><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll">
+        <div class="vblk"><div class="vbh">Из заявки<span class="c">6</span></div><div class="vf">
+          <div class="anno"><label>full_name → ФИО</label><div class="val"><span class="v">берётся из «ФИО (латиница)»</span><span class="src">заявка</span></div></div>
+          <div class="anno"><label>passport_no → номер</label><div class="val"><span class="v">берётся из «Номер»</span><span class="src">заявка</span></div></div>
+          <div class="anno"><label>sponsor_name</label><div class="val"><span class="v">правило: название спонсора</span><span class="src">правило</span></div></div>
         </div></div>
-        <div CLIENT="vblk"><div CLIENT="vbh">Правило переменной</div><div CLIENT="vf">
+        <div class="vblk"><div class="vbh">Правило переменной</div><div class="vf">
           <div style="font-size:12.5px;background:var(--b50);border:1.5px solid var(--b100);border-radius:var(--r);padding:9px 11px">Номер документа: 4 цифры + «v», генерируется при первом заполнении</div>
         </div></div>
       </div>
       <div style="flex:none;display:flex;justify-content:flex-end;gap:7px;padding:11px 14px;border-top:1.5px solid var(--line2);background:#F8FBFA">
-        <button CLIENT="btn sm anno">Спросить у ИИ</button><button CLIENT="btn p sm anno">Подтвердить</button>
+        <button class="btn sm anno">Спросить у ИИ</button><button class="btn p sm anno">Подтвердить</button>
       </div>
     </div>
 
-    <div CLIENT="pane" data-for="settings">
-      <div CLIENT="ph anno"><h2>Справка</h2><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll"><div CLIENT="vblk"><div CLIENT="vbh">Что здесь</div><div CLIENT="vf">
+    <div class="pane" data-for="settings">
+      <div class="ph anno"><h2>Справка</h2><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll"><div class="vblk"><div class="vbh">Что здесь</div><div class="vf">
         <div style="font-size:12.5px">Приглашение живёт 30 минут и отправляется человеку в Telegram — ссылку нельзя переслать кому угодно.</div>
         <div style="font-size:12.5px">Администратор видит всё. Менеджер — только свои заявки.</div>
       </div></div></div>
     </div>
 
-    <div CLIENT="pane" data-for="docview">
-      <div CLIENT="ph anno"><h2>О документе</h2><button CLIENT="btn icon" data-act="railmin">›</button></div>
-      <div CLIENT="wscroll"><div CLIENT="vblk"><div CLIENT="vbh">Метаданные</div><div CLIENT="vf" style="gap:0">
-        <div CLIENT="kvi"><span CLIENT="k">Клиент</span><span CLIENT="v">CLIENT CLIENT</span></div>
-        <div CLIENT="kvi"><span CLIENT="k">Заявка</span><span CLIENT="v">#76 · CLIENT C1</span></div>
-        <div CLIENT="kvi"><span CLIENT="k">Источник</span><span CLIENT="v">Google Диск, папка клиента</span></div>
-        <div CLIENT="kvi"><span CLIENT="k">Загружен</span><span CLIENT="v">02.10.2026, 04:58</span></div>
-        <div CLIENT="kvi"><span CLIENT="k">Распознан</span><span CLIENT="v">да · 6 значений</span></div>
+    <div class="pane" data-for="docview">
+      <div class="ph anno"><h2>О документе</h2><button class="btn icon" data-act="railmin">›</button></div>
+      <div class="wscroll"><div class="vblk"><div class="vbh">Метаданные</div><div class="vf" style="gap:0">
+        <div class="kvi"><span class="k">Клиент</span><span class="v">AKHMADEEV DANIEL</span></div>
+        <div class="kvi"><span class="k">Заявка</span><span class="v">#76 · Продление C1</span></div>
+        <div class="kvi"><span class="k">Источник</span><span class="v">Google Диск, папка клиента</span></div>
+        <div class="kvi"><span class="k">Загружен</span><span class="v">02.10.2026, 04:58</span></div>
+        <div class="kvi"><span class="k">Распознан</span><span class="v">да · 6 значений</span></div>
       </div></div>
-      <div CLIENT="vblk"><div CLIENT="vf">
-        <button CLIENT="btn sm anno" data-go="CLIENT">← К клиенту</button>
-        <button CLIENT="btn sm anno">Скачать</button>
+      <div class="vblk"><div class="vf">
+        <button class="btn sm anno" data-go="clients">← К клиенту</button>
+        <button class="btn sm anno">Скачать</button>
       </div></div></div>
     </div>
   </aside>
 
-  <div CLIENT="CLIENT pane" data-for="CLIENT">
-    <div CLIENT="box">
-      <div CLIENT="lg"><span CLIENT="mk"><img src="wolf_gold.png" alt=""></span><span><b>Wolf AutoDoc</b><span>VISA AUTOMATION SYSTEM</span></span></div>
-      <label>Логин</label><div CLIENT="inp anno">admin</div>
-      <label>Пароль</label><div CLIENT="inp anno">•••••••••</div>
-      <button CLIENT="btn p anno" data-go="CLIENT">Войти</button>
+  <div class="login pane" data-for="login">
+    <div class="box">
+      <div class="lg"><span class="mk"><img src="wolf_gold.png" alt=""></span><span><b>Wolf AutoDoc</b><span>VISA AUTOMATION SYSTEM</span></span></div>
+      <label>Логин</label><div class="inp anno">admin</div>
+      <label>Пароль</label><div class="inp anno">•••••••••</div>
+      <button class="btn p anno" data-go="applications">Войти</button>
     </div>
   </div>
 </div>
 
 <svg id="links"></svg>
-<div CLIENT="note">Красные номера — поля и кнопки. Пунктир — смысловые связи: что откуда берётся и что открывается.</div>
-<div CLIENT="nav">
-  <div CLIENT="cap">Экраны ▾</div>
-  <button data-jump="CLIENT" CLIENT="on">Заявки</button>
+<div class="note">Красные номера — поля и кнопки. Пунктир — смысловые связи: что откуда берётся и что открывается.</div>
+<div class="nav">
+  <div class="cap">Экраны ▾</div>
+  <button data-jump="applications" class="on">Заявки</button>
   <button data-jump="review">Заявка (редактор)</button>
-  <button data-jump="CLIENT">Клиенты</button>
-  <button data-jump="CLIENT">Шаблоны</button>
+  <button data-jump="clients">Клиенты</button>
+  <button data-jump="templates">Шаблоны</button>
   <button data-jump="tpledit">Редактор шаблона</button>
   <button data-jump="docview">Просмотр документа</button>
   <button data-jump="settings">Настройки</button>
-  <button data-jump="CLIENT">Вход</button>
+  <button data-jump="login">Вход</button>
 </div>
-<button CLIENT="markbtn" id="markBtn">Разметка: вкл</button>
+<button class="markbtn" id="markBtn">Разметка: вкл</button>
 
 <script>
-const app=CLIENT.getElementById('app'),side=CLIENT.getElementById('side');
-const TITLES={CLIENT:['Заявки','12 ждут действия'],review:['Заявка #76','Проверка данных'],CLIENT:['Клиенты','12 человек'],CLIENT:['Шаблоны','Продукты и документы'],tpledit:['Редактор шаблона','Письмо иммиграции'],docview:['Просмотр документа','Паспорт РФ, стр. 1'],settings:['Настройки','Бот, доступ, интеграции'],CLIENT:['','']};
-const ACTS={CLIENT:'<button CLIENT="btn anno">Фильтр</button>',review:'<button CLIENT="btn anno">Заполнить</button><button CLIENT="btn p anno">Разобрать документы</button>',CLIENT:'<button CLIENT="btn anno">Экспорт</button>',CLIENT:'',tpledit:'',docview:'',settings:'<button CLIENT="btn p anno">Сохранить</button>',CLIENT:''};
-let mark=true,cur='CLIENT';
+const app=document.getElementById('app'),side=document.getElementById('side');
+const TITLES={applications:['Заявки','12 ждут действия'],review:['Заявка #76','Проверка данных'],clients:['Клиенты','12 человек'],templates:['Шаблоны','Продукты и документы'],tpledit:['Редактор шаблона','Письмо иммиграции'],docview:['Просмотр документа','Паспорт РФ, стр. 1'],settings:['Настройки','Бот, доступ, интеграции'],login:['','']};
+const ACTS={applications:'<button class="btn anno">Фильтр</button>',review:'<button class="btn anno">Заполнить</button><button class="btn p anno">Разобрать документы</button>',clients:'<button class="btn anno">Экспорт</button>',templates:'',tpledit:'',docview:'',settings:'<button class="btn p anno">Сохранить</button>',login:''};
+let mark=true,cur='applications';
 function show(s){
   cur=s;
-  CLIENT.querySelectorAll('.pane').forEach(p=>p.CLIENTList.toggle('on',p.dataset.for===s));
-  CLIENT.querySelectorAll('#menu a').forEach(a=>a.CLIENTList.toggle('on',a.dataset.go===s));
-  CLIENT.querySelectorAll('.nav button').forEach(b=>b.CLIENTList.toggle('on',b.dataset.jump===s));
-  const t=TITLES[s]||['',''];CLIENT.getElementById('tbTitle').textContent=t[0];CLIENT.getElementById('tbCrumb').textContent=t[1];
-  CLIENT.getElementById('tbActs').innerHTML=ACTS[s]||'';
-  app.CLIENTList.toggle('full',s==='CLIENT');
-  setTimeout(()=>{CLIENTing();drawLinks();},70);
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.dataset.for===s));
+  document.querySelectorAll('#menu a').forEach(a=>a.classList.toggle('on',a.dataset.go===s));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.jump===s));
+  const t=TITLES[s]||['',''];document.getElementById('tbTitle').textContent=t[0];document.getElementById('tbCrumb').textContent=t[1];
+  document.getElementById('tbActs').innerHTML=ACTS[s]||'';
+  app.classList.toggle('full',s==='login');
+  setTimeout(()=>{numbering();drawLinks();},70);
 }
-CLIENT.addEventListener('click',e=>{
-  const go=e.target.closest('[data-go]');if(go){const s=go.dataset.go;if(s!=='CLIENT'||confirm)show(s);return;}
+document.addEventListener('click',e=>{
+  const go=e.target.closest('[data-go]');if(go){const s=go.dataset.go;if(s!=='login'||confirm)show(s);return;}
   const jp=e.target.closest('[data-jump]');if(jp){show(jp.dataset.jump);return;}
-  const m=e.target.closest('[data-act="menu"]');if(m){side.CLIENTList.toggle('open');setTimeout(()=>{CLIENTing();drawLinks();},320);return;}
-  const rm=e.target.closest('[data-act="railmin"]');if(rm){app.CLIENTList.toggle('railmin');setTimeout(()=>{CLIENTing();drawLinks();},320);return;}
+  const m=e.target.closest('[data-act="menu"]');if(m){side.classList.toggle('open');setTimeout(()=>{numbering();drawLinks();},320);return;}
+  const rm=e.target.closest('[data-act="railmin"]');if(rm){app.classList.toggle('railmin');setTimeout(()=>{numbering();drawLinks();},320);return;}
   const pk=e.target.closest('[data-pick]');
-  if(pk){const box=pk.closest('.pane');box.querySelectorAll('[data-pick]').forEach(r=>r.CLIENTList.remove('on'));pk.CLIENTList.add('on');
+  if(pk){const box=pk.closest('.pane');box.querySelectorAll('[data-pick]').forEach(r=>r.classList.remove('on'));pk.classList.add('on');
     const n=pk.querySelector('.nm').textContent;
-    const h=CLIENT.querySelector('.rail .pane.on .ph h2')||CLIENT.getElementById('clName');if(h)h.textContent=n;
-    setTimeout(()=>{CLIENTing();drawLinks();},60);return;}
+    const h=document.querySelector('.rail .pane.on .ph h2')||document.getElementById('clName');if(h)h.textContent=n;
+    setTimeout(()=>{numbering();drawLinks();},60);return;}
   const dc=e.target.closest('[data-doc]');
   if(dc){
     if(cur==='review'){
       /* в заявке миниатюра меняет документ в центральном окне */
-      CLIENT.getElementById('rvDoc').textContent=dc.querySelector('.nm').textContent;
-      const box=dc.closest('.scroll');box.querySelectorAll('[data-doc]').forEach(x=>x.CLIENTList.remove('on'));dc.CLIENTList.add('on');
-      setTimeout(()=>{CLIENTing();drawLinks();},50);return;
+      document.getElementById('rvDoc').textContent=dc.querySelector('.nm').textContent;
+      const box=dc.closest('.scroll');box.querySelectorAll('[data-doc]').forEach(x=>x.classList.remove('on'));dc.classList.add('on');
+      setTimeout(()=>{numbering();drawLinks();},50);return;
     }
-    CLIENT.getElementById('dvTitle').textContent=dc.dataset.doc;show('docview');return;
+    document.getElementById('dvTitle').textContent=dc.dataset.doc;show('docview');return;
   }
   /* две вкладки в заявке: реальные документы ↔ наши */
   const tb=e.target.closest('[data-tab]');
   if(tb){const p=tb.closest('.pane');const v=tb.dataset.tab;
-    p.querySelectorAll('[data-tab]').forEach(x=>x.CLIENTList.toggle('on',x===tb));
-    CLIENT.querySelectorAll('.work .pane[data-for="review"] .rvstage').forEach(st=>st.style.display=(st.dataset.tabstage===v?'flex':'none'));
-    CLIENT.querySelectorAll('.aux .pane[data-for="review"] [data-tabpane]').forEach(sp=>sp.style.display=(sp.dataset.tabpane===v?'':'none'));
-    const head=CLIENT.getElementById('auxHead');
-    head.CLIENTChild.textContent=v==='real'?'Реальные документы':'Наши документы';
+    p.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x===tb));
+    document.querySelectorAll('.work .pane[data-for="review"] .rvstage').forEach(st=>st.style.display=(st.dataset.tabstage===v?'flex':'none'));
+    document.querySelectorAll('.aux .pane[data-for="review"] [data-tabpane]').forEach(sp=>sp.style.display=(sp.dataset.tabpane===v?'':'none'));
+    const head=document.getElementById('auxHead');
+    head.firstChild.textContent=v==='real'?'Реальные документы':'Наши документы';
     head.querySelector('.cnt').textContent=v==='real'?'4':'5';
-    const doc=CLIENT.getElementById('rvDoc'),src=CLIENT.getElementById('rvSrc');
+    const doc=document.getElementById('rvDoc'),src=document.getElementById('rvSrc');
     if(v==='real'){doc.textContent='Паспорт, стр. 1';src.textContent='источник данных';}
     else{doc.textContent='Письмо иммиграции (наш документ)';src.textContent='сверка с реальным';}
-    setTimeout(()=>{CLIENTing();drawLinks();},60);return;}
+    setTimeout(()=>{numbering();drawLinks();},60);return;}
 });
 const LINKS={
-  CLIENT:[{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'},{f:'.rail .pane.on .doc',t:'.rail .pane.on .vbh:last-of-type'},{f:'.aux .pane.on .row.on',t:'.work .pane.on .row.on'}],
+  applications:[{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'},{f:'.rail .pane.on .doc',t:'.rail .pane.on .vbh:last-of-type'},{f:'.aux .pane.on .row.on',t:'.work .pane.on .row.on'}],
   review:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .sheet'},{f:'.work .pane.on .sheet',t:'.rail .pane.on .vf.bad'},{f:'.rail .pane.on .vblk:last-of-type',t:'.rail .pane.on .vblk:last-of-type .btn'}],
-  CLIENT:[{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'},{f:'.rail .pane.on .doc',t:'.rail .pane.on .vbh'}],
-  CLIENT:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .row'},{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'}],
+  clients:[{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'},{f:'.rail .pane.on .doc',t:'.rail .pane.on .vbh'}],
+  templates:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .row'},{f:'.work .pane.on .row.on',t:'.rail .pane.on .ph'}],
   tpledit:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .sheet'},{f:'.work .pane.on .sheet',t:'.rail .pane.on .vf'}],
   docview:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .sheet'},{f:'.work .pane.on .sheet',t:'.rail .pane.on .ph'}],
   settings:[{f:'.aux .pane.on .row.on',t:'.work .pane.on .row'},{f:'.work .pane.on .row',t:'.rail .pane.on .vbh'}]
 };
-function clearAnn(){CLIENT.querySelectorAll('.ann').forEach(a=>a.remove());}
-function CLIENTing(){clearAnn();if(!mark)return;
-  const items=[...CLIENT.querySelectorAll('.tb .anno,.aux .pane.on .anno,.work .pane.on .anno,.rail .pane.on .anno')].filter(el=>el.offsetParent!==null);
-  items.forEach((el,i)=>{const r=el.getBoundingClientRect(),b=CLIENT.createElement('div');b.CLIENTName='ann';b.textContent=i+1;
-    b.style.left=(r.left>40?r.left-30:r.right-18)+'px';b.style.top=(r.top+1)+'px';CLIENT.body.appendChild(b);});
+function clearAnn(){document.querySelectorAll('.ann').forEach(a=>a.remove());}
+function numbering(){clearAnn();if(!mark)return;
+  const items=[...document.querySelectorAll('.tb .anno,.aux .pane.on .anno,.work .pane.on .anno,.rail .pane.on .anno')].filter(el=>el.offsetParent!==null);
+  items.forEach((el,i)=>{const r=el.getBoundingClientRect(),b=document.createElement('div');b.className='ann';b.textContent=i+1;
+    b.style.left=(r.left>40?r.left-30:r.right-18)+'px';b.style.top=(r.top+1)+'px';document.body.appendChild(b);});
 }
-function drawLinks(){const svg=CLIENT.getElementById('links');svg.innerHTML='';if(!mark)return;
-  (LINKS[cur]||[]).forEach(l=>{const a=CLIENT.querySelector(l.f),b=CLIENT.querySelector(l.t);
+function drawLinks(){const svg=document.getElementById('links');svg.innerHTML='';if(!mark)return;
+  (LINKS[cur]||[]).forEach(l=>{const a=document.querySelector(l.f),b=document.querySelector(l.t);
     if(!a||!b||a.offsetParent===null||b.offsetParent===null)return;
     const ra=a.getBoundingClientRect(),rb=b.getBoundingClientRect();
     const x1=ra.left+ra.width/2,y1=ra.top+ra.height/2,x2=rb.left+rb.width/2,y2=rb.top+rb.height/2,m=(x1+x2)/2;
-    const p=CLIENT.createElementNS('http://www.w3.org/2000/svg','path');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',`M ${x1} ${y1} C ${m} ${y1}, ${m} ${y2}, ${x2} ${y2}`);svg.appendChild(p);
-    [[x1,y1],[x2,y2]].forEach(([cx,cy])=>{const c=CLIENT.createElementNS('http://www.w3.org/2000/svg','circle');
+    [[x1,y1],[x2,y2]].forEach(([cx,cy])=>{const c=document.createElementNS('http://www.w3.org/2000/svg','circle');
       c.setAttribute('cx',cx);c.setAttribute('cy',cy);c.setAttribute('r',3);svg.appendChild(c);});});
 }
-CLIENT.getElementById('markBtn').onclick=()=>{mark=!mark;CLIENT.body.CLIENTList.toggle('mark',mark);
-  CLIENT.getElementById('markBtn').textContent='Разметка: '+(mark?'вкл':'выкл');if(mark){CLIENTing();drawLinks();}else{clearAnn();CLIENT.getElementById('links').innerHTML='';}};
-window.addEventListener('resize',()=>{if(mark){CLIENTing();drawLinks();}});
+document.getElementById('markBtn').onclick=()=>{mark=!mark;document.body.classList.toggle('mark',mark);
+  document.getElementById('markBtn').textContent='Разметка: '+(mark?'вкл':'выкл');if(mark){numbering();drawLinks();}else{clearAnn();document.getElementById('links').innerHTML='';}};
+window.addEventListener('resize',()=>{if(mark){numbering();drawLinks();}});
 /* прямой вход: shell.html#review!ours — экран и вкладка */
 const _h=location.hash.slice(1).split('!');
-show(_h[0]||'CLIENT');
-if(_h[1]){const t=CLIENT.querySelector('[data-tab="'+_h[1]+'"]');if(t)t.click();}
+show(_h[0]||'applications');
+if(_h[1]){const t=document.querySelector('[data-tab="'+_h[1]+'"]');if(t)t.click();}
 </script>
 </body></html>

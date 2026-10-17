@@ -5,7 +5,7 @@
 
   1) пустые переменные — в документе осталось «{{ имя }}» или обязательное значение пусто;
   2) наложения — две строки текста пересекаются (текст «налезает» друг на друга);
-  3) CLIENT за поле — строка CLIENTит за правый/левый край или за низ листа;
+  3) выход за поле — строка выходит за правый/левый край или за низ листа;
   4) прыгающие строки — строка сдвинута относительно своего места в оригинальном примере;
   5) текст-мусор — склейки из соседних колонок, одиночные буквы между словами, служебные знаки;
   6) расхождение с примером — строки примера, которым нет места в шаблоне, и лишние блоки.
@@ -40,21 +40,21 @@ def collect(code: str) -> dict:
     sys.path.insert(0, str(ROOT))
     import weasyprint
     import pymupdf
-    from CLIENT import previews
+    from services import previews
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    row = con.execute('SELECT id FROM CLIENT WHERE code=?', (code,)).fetchone()
-    tdir = ROOT / 'data' / 'CLIENT' / code
+    row = con.execute('SELECT id FROM templates WHERE code=?', (code,)).fetchone()
+    tdir = ROOT / 'data' / 'templates' / code
     html = previews._fill_example((tdir / 'template.html').read_text(encoding='utf-8', errors='ignore'),
                                   row['id'], code)
     out = Path('/tmp/qa')
     out.mkdir(exist_ok=True)
     pdf = out / ('%s.pdf' % code)
-    weasyprint.HTML(string=html, base_url=str(ROOT / 'CLIENTs')).write_pdf(str(pdf))
+    weasyprint.HTML(string=html, base_url=str(ROOT / 'blocks')).write_pdf(str(pdf))
     lines = []
     doc = pymupdf.open(str(pdf))
     for pno, pg in enumerate(doc):
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for l in b['lines']:
@@ -85,12 +85,12 @@ def check(code: str) -> tuple[bool, list[str]]:
     lines = data['lines']
     problems: list[str] = []
     # правый край поля — как в примере: у части документов лист шире A4, и жёсткий порог
-    # 545pt давал ложные «CLIENTы за поле»
+    # 545pt давал ложные «выходы за поле»
     import pymupdf
     exdoc = pymupdf.open(str(data['example']))
     ex_max_x = 0.0
     for pg in exdoc:
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] == 0:
                 for l in b['lines']:
                     if ' '.join(s['text'] for s in l['spans']).strip():
@@ -98,7 +98,7 @@ def check(code: str) -> tuple[bool, list[str]]:
     right_field = max(RIGHT_FIELD, ex_max_x + 6.0)
     ex_lines = []
     for pg in exdoc:
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for l in b['lines']:
@@ -114,7 +114,7 @@ def check(code: str) -> tuple[bool, list[str]]:
             frag = m.group(0)
             if frag in ex_text:          # в примере так же — значит так и надо
                 continue
-            if why.CLIENTswith('незаполненное место') and ':' in l['text']:
+            if why.startswith('незаполненное место') and ':' in l['text']:
                 continue                 # пунктир бланка под значением — не дефект
             if frag in ('•', '|', '• ') and frag in ex_text:
                 continue
@@ -122,7 +122,7 @@ def check(code: str) -> tuple[bool, list[str]]:
             break
     for i, a in enumerate(lines):
         if a['x1'] > right_field + 1 or a['x0'] < LEFT_FIELD - 1:
-            problems.append('стр%d y=%.0f: CLIENTит за поле (x %.0f..%.0f) — %r'
+            problems.append('стр%d y=%.0f: выходит за поле (x %.0f..%.0f) — %r'
                             % (a['page'] + 1, a['y0'], a['x0'], a['x1'], a['text'][:50]))
         if a['y1'] > PAGE_H - 10:
             problems.append('стр%d: уходит под низ листа (y2=%.0f) — %r'
@@ -163,8 +163,8 @@ def check(code: str) -> tuple[bool, list[str]]:
                 problems.append('стр%d: наложение (%.0f%%) — %r ↔ %r'
                                 % (a['page'] + 1, ov * 100, a['text'][:32], b['text'][:32]))
     # сверка с примером: ищем по тексту (в потоковой вёрстке .para координат top нет)
-    from scripts.compare_structure import html_CLIENTs, pdf_CLIENTs
-    hb, pb = html_CLIENTs(data['template']), pdf_CLIENTs(data['example'])
+    from scripts.compare_structure import html_blocks, pdf_blocks
+    hb, pb = html_blocks(data['template']), pdf_blocks(data['example'])
     tmpl_text = ' '.join((h.get('text') or '') for h in hb)
     import re as _re
     tmpl_norm = _re.sub(r'\s+', ' ', tmpl_text)
@@ -174,10 +174,10 @@ def check(code: str) -> tuple[bool, list[str]]:
     import sqlite3 as _s
     conn = _s.connect(str(ROOT / 'data' / 'wolf.db'))
     conn.row_factory = _s.Row
-    tid = conn.execute('SELECT id FROM CLIENT WHERE code=?', (code,)).fetchone()['id']
+    tid = conn.execute('SELECT id FROM templates WHERE code=?', (code,)).fetchone()['id']
     vals_blob = _re.sub(r'\s+', ' ', ' '.join(
-        str(r['default_CLIENT'] or '') + ' ' + str(r['examples_json'] or '')
-        for r in conn.execute('SELECT default_CLIENT, examples_json FROM template_CLIENT '
+        str(r['default_value'] or '') + ' ' + str(r['examples_json'] or '')
+        for r in conn.execute('SELECT default_value, examples_json FROM template_variables '
                               'WHERE template_id=?', (tid,))))
 
     def _covered(t: str) -> bool:
@@ -227,21 +227,21 @@ def check(code: str) -> tuple[bool, list[str]]:
 
 
 def main(argv) -> int:
-    codes = [a for a in argv if not a.CLIENTswith('-')]
+    codes = [a for a in argv if not a.startswith('-')]
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    q = ("SELECT code, doc_CLIENT FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN "
+    q = ("SELECT code, doc_index FROM templates WHERE COALESCE(status,'ok') NOT IN "
          "('merged','hidden')")
     args = []
     if codes:
         q += " AND code IN (%s)" % ','.join('?' * len(codes))
         args = codes
-    q += " ORDER BY COALESCE(doc_CLIENT,999)"
+    q += " ORDER BY COALESCE(doc_index,999)"
     good, bad = [], []
     report = []
     for r in con.execute(q, args):
         ok, problems = check(r['code'])
-        head = '№%-3s %-38s %s' % (r['doc_CLIENT'] or '—', r['code'], 'ГОДЕН' if ok else
+        head = '№%-3s %-38s %s' % (r['doc_index'] or '—', r['code'], 'ГОДЕН' if ok else
                                    'НА ПЕРЕДЕЛКУ (%d)' % len(problems))
         print('\n' + head)
         for p in problems[:12]:
@@ -254,7 +254,7 @@ def main(argv) -> int:
     if '--report' in argv:
         (ROOT / 'docs' / 'HTML_QA.md').write_text(
             '# Приёмка HTML-шаблонов\n\nДата: %s\n\n```\n%s\n```\n'
-            % (__import__('CLIENT').CLIENT.now().strftime('%d.%m.%Y %H:%M'), '\n\n'.join(report)),
+            % (__import__('datetime').datetime.now().strftime('%d.%m.%Y %H:%M'), '\n\n'.join(report)),
             encoding='utf-8')
         print('отчёт: docs/HTML_QA.md')
     return 0

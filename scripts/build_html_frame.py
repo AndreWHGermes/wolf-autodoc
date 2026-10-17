@@ -15,7 +15,7 @@
   6. Графика бланка (линии, логотип, печать, подпись, статический текст) берётся из
      подготовленного бланка blank.pdf — то есть из самого оригинала, а не рисуется заново.
 
-Результат работы скрипта — папка data/CLIENT/<code>/frame/:
+Результат работы скрипта — папка data/templates/<code>/frame/:
     frame.html   — каркас с {{переменными}} в их координатах
     frame.css    — правила листа, полей и переноса
     bg.png       — подложка бланка (300 dpi)
@@ -35,7 +35,7 @@ import pymupdf
 import pymupdf as fitz
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 A4_W, A4_H = 595.28, 841.89
 ASCENT = 0.905            # доля кегля от базовой линии вверх (метрика Arial)
 LEFT_EDGE, RIGHT_EDGE = 40.0, 555.0     # направляющие рабочего поля (pt)
@@ -68,8 +68,8 @@ def make_background(code: str, out_png: Path, dpi: int = 300) -> None:
     Договоры занимают 2-3 страницы: каркас должен рисовать каждый лист отдельно, иначе
     в документе останется только первая страница. Рядом с bg.png кладём bg-1.png, bg-2.png…
     """
-    blank = CLIENT / code / "blank.pdf"
-    src = blank if blank.exists() else CLIENT / code / "example_filled.pdf"
+    blank = TEMPLATES / code / "blank.pdf"
+    src = blank if blank.exists() else TEMPLATES / code / "example_filled.pdf"
     d = pymupdf.open(str(src))
     for i, page in enumerate(d, 1):
         page.get_pixmap(dpi=dpi).save(str(out_png.parent / ("bg-%d.png" % i)))
@@ -79,7 +79,7 @@ def make_background(code: str, out_png: Path, dpi: int = 300) -> None:
 
 
 def build(code: str, apply: bool = False) -> dict:
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     fields = json.loads((tpl_dir / "fields.json").read_text(encoding="utf-8"))
     zones = [z for z in fields["zones"] if z.get("bbox")]
     ref = tpl_dir / "example_filled.pdf"
@@ -105,7 +105,7 @@ html, body {{ margin: 0; padding: 0; }}
   position: relative; width: {A4_W}pt; height: {A4_H}pt; overflow: hidden;
   background: #fff;
 }}
-.sheet + .sheet {{ page-break-CLIENT: always; }}
+.sheet + .sheet {{ page-break-before: always; }}
 .bg {{                         /* графика бланка — из оригинала */
   position: absolute; left: 0; top: 0; width: {A4_W}pt; height: {A4_H}pt;
 }}
@@ -122,7 +122,7 @@ html, body {{ margin: 0; padding: 0; }}
 }}
 """
 
-    CLIENTs = []
+    blocks = []
     for z in zones:
         fam_weight = "font-weight:700;" if z.get("bold") else ""
         col = z.get("color") or [0, 0, 0]
@@ -133,17 +133,17 @@ html, body {{ margin: 0; padding: 0; }}
         top = baseline - ASCENT * size
         width = float(z["bbox"][2]) - x
         flow = " flow" if z.get("wipe") or z["var"].endswith("_2") else ""
-        CLIENTs.append(
-            '<span CLIENT="v%s" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt; '
+        blocks.append(
+            '<span class="v%s" style="left:%.2fpt; top:%.2fpt; font-size:%.2fpt; '
             'color:%s;%s width:%.2fpt">{{ %s }}</span>'
             % (flow, x, top, size, color, fam_weight, max(width, 10.0), z["var"]))
 
     html = (f"<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
-            f"<CLIENT>{code}</CLIENT>\n<link rel=\"stylesheet\" href=\"frame.css\">\n"
-            f"</head>\n<body>\n<div CLIENT=\"sheet\">\n"
-            f"  <img CLIENT=\"bg\" src=\"bg.png\" alt=\"\">\n"
-            f"  <div CLIENT=\"guide\"></div>\n"
-            + "".join("  " + b + "\n" for b in CLIENTs) +
+            f"<title>{code}</title>\n<link rel=\"stylesheet\" href=\"frame.css\">\n"
+            f"</head>\n<body>\n<div class=\"sheet\">\n"
+            f"  <img class=\"bg\" src=\"bg.png\" alt=\"\">\n"
+            f"  <div class=\"guide\"></div>\n"
+            + "".join("  " + b + "\n" for b in blocks) +
             "</div>\n</body>\n</html>\n")
 
     if apply:

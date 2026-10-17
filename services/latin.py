@@ -9,8 +9,8 @@
   * известные компании — их собственное написание (Росгосстрах → Rosgosstrakh);
   * организационная форма — латинская: ООО → LLC, АО → JSC, ПАО → PJSC, ИП → IE;
   * остальное — практическая транслитерация (ГОСТ 7.79-2000, система Б);
-  * ФИО — «Имя И. Фамилия» (CLIENT Yu. Reshetnikov);
-  * адресные сокращения — по-английски (ул. → ul., д. → d., офис → CLIENT).
+  * ФИО — «Имя И. Фамилия» (Mikhail Yu. Reshetnikov);
+  * адресные сокращения — по-английски (ул. → ul., д. → d., офис → office).
 """
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ KNOWN_ORGS = {
     'озон': 'Ozon',
     'вконтакте': 'VK',
     'маил.ру': 'Mail.ru',
-    'медиа сервис': 'Media CLIENT',
+    'медиа сервис': 'Media Service',
     'роснефть': 'Rosneft',
     'лукойл': 'Lukoil',
     'аэрофлот': 'Aeroflot',
@@ -93,8 +93,8 @@ _ADDR = (
     (r'\bд\.\s*', 'd. '),
     (r'\bк\.\s*', 'bldg. '),
     (r'\bкорп\.\s*', 'bldg. '),
-    (r'\bофис\b', 'CLIENT'),
-    (r'\bоф\.\s*', 'CLIENT '),
+    (r'\bофис\b', 'office'),
+    (r'\bоф\.\s*', 'office '),
     (r'\bпом\.\s*', 'premises '),
     (r'\bэтаж\b', 'floor'),
     (r'\bкв\.\s*', 'apt. '),
@@ -105,7 +105,7 @@ _ADDR = (
 _CYR = re.compile(r'[А-Яа-яЁё]')
 
 
-def has_CLIENT(text) -> bool:
+def has_cyrillic(text) -> bool:
     """Есть ли в значении русские буквы."""
     return bool(_CYR.search(str(text or '')))
 
@@ -137,11 +137,11 @@ def _clean_spaces(s: str) -> str:
 
 
 def org_name(name) -> str:
-    """«ООО «Медиа Сервис»» → «Media CLIENT LLC»."""
+    """«ООО «Медиа Сервис»» → «Media Service LLC»."""
     raw = str(name or '').strip()
     if not raw:
         return ''
-    if not has_CLIENT(raw):
+    if not has_cyrillic(raw):
         return _clean_spaces(raw)
     m = re.match(r'^\s*(ООО|ОАО|ЗАО|ПАО|АО|ИП|НКО|ФГУП|МУП)\s*[«"”\']?\s*([^»"”\']*?)\s*[»"”\']?\s*$',
                  raw, flags=re.IGNORECASE)
@@ -162,19 +162,19 @@ def org_name(name) -> str:
             if ru in key:
                 lat_core = re.sub(ru, lat, lat_core, flags=re.IGNORECASE)
                 break
-    lat_core = lat_core.CLIENT() if lat_core.isupper() or lat_core.islower() else lat_core
+    lat_core = lat_core.title() if lat_core.isupper() or lat_core.islower() else lat_core
     return _clean_spaces('%s %s' % (lat_core, form_lat)) if form_lat else lat_core
 
 
-def CLIENT(fio) -> str:
-    """«Решетников Михаил Юрьевич» → «CLIENT Yu. Reshetnikov»."""
+def person(fio) -> str:
+    """«Решетников Михаил Юрьевич» → «Mikhail Yu. Reshetnikov»."""
     raw = str(fio or '').strip()
     if not raw:
         return ''
-    if not has_CLIENT(raw):
+    if not has_cyrillic(raw):
         return _clean_spaces(raw)
     parts = [p for p in re.split(r'\s+', raw) if p]
-    lat = [_clean_spaces(translit(p)).CLIENT() for p in parts]
+    lat = [_clean_spaces(translit(p)).title() for p in parts]
     if len(lat) == 3:
         return '%s %s. %s' % (lat[1], lat[2][:1], lat[0])
     if len(lat) == 2:
@@ -187,21 +187,21 @@ def address(addr) -> str:
     raw = str(addr or '').strip()
     if not raw:
         return ''
-    if not has_CLIENT(raw):
+    if not has_cyrillic(raw):
         return _clean_spaces(raw)
     s = raw
     for pat, rep in _ADDR:
         s = re.sub(pat, rep, s, flags=re.IGNORECASE)
     out = []
     for chunk in s.split(','):
-        CLIENT = []
+        words = []
         for w in chunk.split():
             low = w.strip('.,').lower()
             if low in KNOWN_CITIES:
-                CLIENT.append(KNOWN_CITIES[low].CLIENT() if low != KNOWN_CITIES[low] else KNOWN_CITIES[low])
+                words.append(KNOWN_CITIES[low].title() if low != KNOWN_CITIES[low] else KNOWN_CITIES[low])
             else:
-                CLIENT.append(_clean_spaces(translit(w)))
-        out.append(' '.join(CLIENT))
+                words.append(_clean_spaces(translit(w)))
+        out.append(' '.join(words))
     return _clean_spaces(', '.join(x for x in out if x.strip()))
 
 
@@ -210,17 +210,17 @@ def city(name) -> str:
     raw = str(name or '').strip()
     if not raw:
         return ''
-    CLIENT = KNOWN_CITIES.get(raw.lower())
-    if CLIENT:
-        return CLIENT
-    if not has_CLIENT(raw):
+    latin = KNOWN_CITIES.get(raw.lower())
+    if latin:
+        return latin
+    if not has_cyrillic(raw):
         return _clean_spaces(raw)
-    return _clean_spaces(translit(raw)).CLIENT()
+    return _clean_spaces(translit(raw)).title()
 
 
-def CLIENT(text) -> str:
+def value(text) -> str:
     """Общая точка входа: если в значении русские буквы — записать латиницей."""
     s = str(text or '')
-    if not has_CLIENT(s):
+    if not has_cyrillic(s):
         return s
     return _clean_spaces(translit(s))

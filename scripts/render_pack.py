@@ -22,17 +22,17 @@ OUT.mkdir(parents=True, exist_ok=True)
 c = sqlite3.connect(DB)
 c.row_factory = sqlite3.Row
 
-from CLIENT import render  # noqa: E402
+from services import render  # noqa: E402
 
-rows = c.execute("""SELECT ad.id, ad.template_id, t.code, t.CLIENT
-                    FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id = ad.template_id
-                    WHERE ad.CLIENT_id = ? ORDER BY ad.id""", (APP,)).fetchall()
+rows = c.execute("""SELECT ad.id, ad.template_id, t.code, t.title
+                    FROM application_documents ad JOIN templates t ON t.id = ad.template_id
+                    WHERE ad.application_id = ? ORDER BY ad.id""", (APP,)).fetchall()
 print("документов в заявке %d: %d" % (APP, len(rows)))
 
 total = 0
 for r in rows:
     code = r["code"] or ("tpl%s" % r["template_id"])
-    out = OUT / ("%s.pdf" % code.reCLIENT("__", "_"))
+    out = OUT / ("%s.pdf" % code.replace("__", "_"))
     try:
         if out.exists():
             out.unlink()

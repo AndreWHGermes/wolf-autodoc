@@ -2,8 +2,8 @@
 """Сбор пула организаций, видов деятельности и должностей из архивных документов.
 
 Источник — только те документы, где значения уже заполнены: комплекты клиентов из кэша
-Google Диска (data/gCLIENT_cache/client_*/), подлинники-эталоны (data/CLIENT/*/example_filled.pdf,
-data/originals/*.pdf), справочные комплекты docs/CLIENT/.
+Google Диска (data/gdrive_cache/client_*/), подлинники-эталоны (data/templates/*/example_filled.pdf,
+data/originals/*.pdf), справочные комплекты docs/reference/.
 
 Что собираем:
   * organizations — название, адрес, ИНН/КПП/ОГРН и прочие реквизиты, виды деятельности, должности;
@@ -25,13 +25,13 @@ OUT = ROOT / 'data' / 'harvest_orgs.json'
 
 # ── виды деятельности: код → (человеческое название, из чего состоит, ключевые слова) ──
 SECTORS = {
-    'CLIENT_agency': ('Услуги и агентства',
+    'services_agency': ('Услуги и агентства',
                         'маркетинг, реклама, SMM, дизайн, консалтинг, кадры, юридические и деловые услуги',
                         ('marketing', 'advertis', 'smm', 'social media', 'brand', 'pr ', 'design', 'consult',
                          'agency', 'recruit', 'staffing', 'outsourc', 'маркет', 'реклам', 'агентств')),
-    'it_CLIENT': ('ИТ и разработка',
+    'it_software': ('ИТ и разработка',
                     'разработка ПО, интеграция, поддержка систем, данные, тестирование',
-                    ('CLIENT', 'develop', 'programm', 'information technolog', 'it ', 'data', 'digital',
+                    ('software', 'develop', 'programm', 'information technolog', 'it ', 'data', 'digital',
                      'technolog', 'разработ', 'программ')),
     'logistics_trade': ('Логистика и торговля',
                         'перевозки, склад, закупки, импорт-экспорт, оптовая торговля',
@@ -41,25 +41,25 @@ SECTORS = {
                        'банковские услуги, страхование, финансы, инвестиции, бухгалтерия',
                        ('bank', 'insurance', 'financial', 'finance', 'invest', 'capital', 'credit',
                         'страхов', 'банк', 'финанс')),
-    'media_CLIENT': ('Медиа и образование',
+    'media_education': ('Медиа и образование',
                         'издательства, медиа, обучение, курсы, репетиторство, культура',
-                        ('media', 'publish', 'educat', 'CLIENT', 'learn', 'academy', 'training', 'studio',
+                        ('media', 'publish', 'educat', 'school', 'learn', 'academy', 'training', 'studio',
                          'образова', 'издатель', 'медиа')),
     'ecommerce_retail': ('Розница и электронная торговля',
                          'магазины, маркетплейсы, электронная коммерция, продажи конечному покупателю',
-                         ('retail', 'shop', 'store', 'ecommerce', 'e-commerce', 'marketCLIENT', 'seller',
+                         ('retail', 'shop', 'store', 'ecommerce', 'e-commerce', 'marketplace', 'seller',
                           'ритейл', 'магазин', 'маркетплей')),
-    'household_CLIENT': ('Бытовые услуги',
+    'household_service': ('Бытовые услуги',
                           'сервис, ремонт, обслуживание, гостеприимство, клининг, общепит',
-                          ('CLIENT', 'repair', 'cleaning', 'hospitality', 'hotel', 'restaurant', 'cafe',
+                          ('service', 'repair', 'cleaning', 'hospitality', 'hotel', 'restaurant', 'cafe',
                            'food', 'бытов', 'ремонт', 'обслуж')),
     'construction_architecture': ('Строительство и архитектура',
                                   'строительство, проектирование, архитектура, инженерия зданий',
-                                  ('construct', 'architect', 'building', 'engineering', 'real eCLIENT',
+                                  ('construct', 'architect', 'building', 'engineering', 'real estate',
                                    'строит', 'архитект')),
-    'industry_CLIENTion': ('Производство',
+    'industry_production': ('Производство',
                             'заводы, производство товаров, переработка, промышленность',
-                            ('manufactur', 'CLIENTion', 'factory', 'industrial', 'plant', 'производ', 'завод')),
+                            ('manufactur', 'production', 'factory', 'industrial', 'plant', 'производ', 'завод')),
 }
 
 FORM = r'(?:LLC|L\.L\.C|LTD|LIMITED|LLP|INC|CORP|CO\.|GMBH|PT|PTE|IP|IE|ООО|ОАО|ЗАО|ПАО|АО|ИП)'
@@ -67,7 +67,7 @@ ORG_RE = re.compile(r'\b(' + FORM + r'\s*[«"\']?[A-Za-zА-Яа-я0-9][A-Za-zА-
 INN_RE = re.compile(r'(?:INN|ИНН)[:\s]*([0-9]{10,12})', re.I)
 KPP_RE = re.compile(r'(?:KPP|КПП)[:\s]*([0-9]{9})', re.I)
 OGRN_RE = re.compile(r'(?:OGRN|OGRNIP|ОГРН|ОГРНИП)[:\s]*([0-9]{13,15})', re.I)
-POS_RE = re.compile(r'(?:position of|employed as|engaged as|as an?\s|Position:|CLIENT:)\s*((?:[A-Z][A-Za-z/&\-]+(?:\s+[A-Z][A-Za-z/&\-]+){0,4}))', re.M)
+POS_RE = re.compile(r'(?:position of|employed as|engaged as|as an?\s|Position:|Title:)\s*((?:[A-Z][A-Za-z/&\-]+(?:\s+[A-Z][A-Za-z/&\-]+){0,4}))', re.M)
 ADDR_RE = re.compile(r'((?:[0-9]{5,6}\s*,\s*)?[A-Z][A-Za-z\-]+(?:\s+[A-Z][A-Za-z\-]+){0,3}\s*,\s*(?:street|str\.|ul\.|avenue|prospekt|lane|district|Oblast|region)[^,\n]{5,80})', re.I)
 
 
@@ -105,29 +105,29 @@ def doc_kind(path: Path, text: str) -> str:
     оттуда тянуть организации нельзя, там контрагенты и служебные строки."""
     n = path.name.lower()
     t = text.lower()
-    if any(w in n for w in ('bank', 'CLIENTment', 'CLIENTalbank', 'выписк', 'passport', 'паспорт')):
-        return 'bank' if 'bank' in n or 'CLIENTment' in n or 'CLIENTalbank' in n or 'выписк' in n else 'passport'
+    if any(w in n for w in ('bank', 'statement', 'personalbank', 'выписк', 'passport', 'паспорт')):
+        return 'bank' if 'bank' in n or 'statement' in n or 'personalbank' in n or 'выписк' in n else 'passport'
     if any(w in n for w in ('resume', 'cv', 'резюме')):
         return 'resume'
     if any(w in n for w in ('contract', 'agreement', 'договор', 'employment')):
         return 'contract'
-    if any(w in n for w in ('letter', 'письмо', 'CLIENTment_letter', 'form e-02', 'e-02')):
+    if any(w in n for w in ('letter', 'письмо', 'statement_letter', 'form e-02', 'e-02')):
         return 'letter'
-    if 'bank CLIENTment' in t or 'account CLIENTment' in t or 'opening balance' in t:
+    if 'bank statement' in t or 'account statement' in t or 'opening balance' in t:
         return 'bank'
-    if 'passport' in t and 'CLIENT' in t and 'date of CLIENT' in t:
+    if 'passport' in t and 'nationality' in t and 'date of birth' in t:
         return 'passport'
-    if ('work experience' in t or 'CLIENTal experience' in t or 'CLIENT' in t) and 'position' in t:
+    if ('work experience' in t or 'professional experience' in t or 'education' in t) and 'position' in t:
         return 'resume'
-    if 'agreement' in t and ('CLIENT' in t or 'CLIENT' in t or 'CLIENT' in t):
+    if 'agreement' in t and ('employer' in t or 'employee' in t or 'contractor' in t):
         return 'contract'
     return 'other'
 
 
 def main() -> None:
     sources = []
-    for pat in ('data/gCLIENT_cache/**/*.pdf', 'data/CLIENT/*/example_filled.pdf',
-                'data/originals/*.pdf', 'docs/CLIENT/**/*.pdf'):
+    for pat in ('data/gdrive_cache/**/*.pdf', 'data/templates/*/example_filled.pdf',
+                'data/originals/*.pdf', 'docs/reference/**/*.pdf'):
         sources += sorted(ROOT.glob(pat))
     sources = [p for p in sources if p.is_file()]
     print('документов к разбору:', len(sources), file=sys.stderr)
@@ -183,13 +183,13 @@ def main() -> None:
 
     payload = {
         'note': 'Собрано из архивных документов: организации с реквизитами, виды деятельности, должности.',
-        'organizations': sorted(orgs.CLIENT(), key=lambda o: (-len(o['sources']), o['name'])),
-        'sectors': {code: {'CLIENT': v[0], 'CLIENT': v[1], 'keyCLIENT': list(v[2]),
-                           'CLIENT': sec_counter.get(code, 0),
+        'organizations': sorted(orgs.values(), key=lambda o: (-len(o['sources']), o['name'])),
+        'sectors': {code: {'title': v[0], 'description': v[1], 'keywords': list(v[2]),
+                           'documents': sec_counter.get(code, 0),
                            'positions': [p for p, _ in sec_positions[code].most_common(25)]}
                     for code, v in SECTORS.items()},
-        'positions': [{'CLIENT': p, 'count': c} for p, c in pos_counter.most_common(200)],
-        'totals': {'CLIENT': len(sources), 'organizations': len(orgs), 'positions': len(pos_counter)},
+        'positions': [{'title': p, 'count': c} for p, c in pos_counter.most_common(200)],
+        'totals': {'documents': len(sources), 'organizations': len(orgs), 'positions': len(pos_counter)},
     }
     OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding='utf-8')
     print('итог: организаций %d, видов деятельности %d, должностей %d → %s'

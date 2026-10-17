@@ -904,6 +904,41 @@ def _smart_title(s: str) -> str:
     return ' '.join(out)
 
 
+def _passport_fio(client: dict) -> str:
+    """ФИО полностью так, как напечатано в заграничном паспорте клиента.
+
+    Бланк даёт «Фамилия» и «Имя» (в поле имени напечатано имя вместе с отчеством),
+    поэтому результат = ФАМИЛИЯ ИМЯ ОТЧЕСТВО. Источник — документ клиента вида passport
+    (печатные поля бланка). Кириллицу транслитерируем, регистр — верхний.
+    Пусто — если паспорта в карточке нет: тогда работает обычная цепочка источников.
+    """
+    cid = client.get("id") or client.get("client_id")
+    if not cid:
+        return ""
+    try:
+        rows = db.q("""SELECT title, path, text_dump, doc_kind, kind FROM client_documents
+                       WHERE client_id=? ORDER BY id""", (cid,))
+    except Exception:                                                 # noqa: BLE001
+        return ""
+    for r in rows or []:
+        low = " ".join(str(r.get(k) or "").lower() for k in ("title", "doc_kind", "kind"))
+        if "passport" not in low and "паспорт" not in low:
+            continue
+        text = (r.get("text_dump") or "").strip()
+        if not text:
+            continue
+        try:
+            from services import mrz as _mrz
+            m = _mrz.parse_printed(text)
+        except Exception:                                             # noqa: BLE001
+            m = {}
+        sur = str(m.get("surname_printed") or "").strip()
+        nam = str(m.get("name_printed") or "").strip()
+        if sur and nam:
+            return _translit("%s %s" % (sur, nam)).upper()
+    return ""
+
+
 def _fio_full_latin(client: dict, tpl_code: str = "") -> str:
     """ФИО для документов банка: ФАМИЛИЯ ИМЯ ОТЧЕСТВО (латиница, верхний регистр).
 
@@ -912,6 +947,10 @@ def _fio_full_latin(client: dict, tpl_code: str = "") -> str:
     вставляем все части, как в паспорте.
     """
     client = client or {}
+    if "statement_letter_e02" in (tpl_code or ""):
+        _pf = _passport_fio(client)
+        if _pf:
+            return _pf
     surname = (client.get("surname") or "").strip()
     name = (client.get("name") or "").strip()
     patronymic = (client.get("patronymic") or "").strip()
@@ -937,7 +976,10 @@ def _fio_full_latin(client: dict, tpl_code: str = "") -> str:
     # «Blium Elizaveta Sergeevna», а в образцах Сбербанка и 12-месячных — заглавными,
     # поэтому одно общее правило здесь неверно.
     _fio = _translit(" ".join(parts))
-    if "bank_statement_3m__tbank" in (tpl_code or ""):
+    # ТБанк-справки (3 и 12 месяцев) — «Фамилия Имя Отчество»; Сбер и прочие банки — капсом.
+    # Регистр был «как в образце», из-за этого 3м и 12м ТБанк выглядели по-разному
+    # (Андрей, 16.10.2026: у обоих ТБанк-шаблонов вид должен совпадать).
+    if "tbank" in (tpl_code or ""):
         return _smart_title(_fio)
     return _fio.upper()
 # Документы, где адрес по смыслу ИНДОНЕЗИЙСКИЙ: письма в иммиграцию, заявления,
@@ -1352,7 +1394,7 @@ def _build_template_values_impl(client: dict, tpl_code: str, doc_values: dict = 
     _doc_key = _dt.now().strftime("%d.%m.%Y")
     _salt_key = tpl_code or ""       # разные документы одного клиента — разные номера
     simple = {
-        "full_name": _fio_full_latin(client),
+        "full_name": _fio_full_latin(client, tpl_code),
         "surname": client.get("surname"), "name": client.get("name"),
         "patronymic": client.get("patronymic"),
         "full_name_latin": _fio_full_latin(client),
@@ -3051,7 +3093,7 @@ def build_template_values(*args, **kwargs):
             try:
                 _row5 = db.q1("""SELECT ad.values_json FROM application_documents ad
                                    JOIN templates t ON t.id = ad.template_id
-                                  WHERE ad.application_id=? AND t.doc_index=11
+                                  WHERE ad.application_id=? AND t.code='remote_work_agreement__default'
                                   ORDER BY ad.id DESC LIMIT 1""", (int(_az5 or 0),))
                 _dv5 = json.loads((_row5 or {}).get("values_json") or "{}")
                 _from_contract = str(_dv5.get("company_name_in_quotes") or _dv5.get("company_name") or "").strip()
@@ -3127,7 +3169,7 @@ def build_template_values(*args, **kwargs):
             try:
                 _row7 = db.q1("""SELECT ad.values_json FROM application_documents ad
                                    JOIN templates t ON t.id = ad.template_id
-                                  WHERE ad.application_id=? AND t.doc_index=11
+                                  WHERE ad.application_id=? AND t.code='remote_work_agreement__default'
                                   ORDER BY ad.id DESC LIMIT 1""", (int(_az7 or 0),))
                 _dv7 = json.loads((_row7 or {}).get("values_json") or "{}")
                 _company7 = str(_dv7.get("company_name_in_quotes") or _dv7.get("company_name") or "").strip()
@@ -3878,7 +3920,7 @@ def _org_for_application(client: dict, app_id, vals: dict) -> str:
         if app_id:
             row = db.q1("""SELECT ad.values_json FROM application_documents ad
                              JOIN templates t ON t.id = ad.template_id
-                            WHERE ad.application_id=? AND t.doc_index=11
+                            WHERE ad.application_id=? AND t.code='remote_work_agreement__default'
                             ORDER BY ad.id DESC LIMIT 1""", (int(app_id),))
             dv = _json8.loads((row or {}).get("values_json") or "{}")
             c = _clean8(dv.get("company_name_in_quotes") or dv.get("company_name") or "")

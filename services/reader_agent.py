@@ -12,8 +12,8 @@
 `unverified` и не блокирует отправку.
 
 Запуск:
-  python3 -m CLIENT.reader_CLIENT <app_id>        — вердикт по пакету
-  python3 -m CLIENT.reader_CLIENT <app_id> --json — то же в JSON
+  python3 -m services.reader_agent <app_id>        — вердикт по пакету
+  python3 -m services.reader_agent <app_id> --json — то же в JSON
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
 DB = ROOT / 'data' / 'wolf.db'
-REFS = ROOT / 'docs' / 'CLIENT'
+REFS = ROOT / 'docs' / 'reference'
 
 
 def _conn() -> sqlite3.Connection:
@@ -37,15 +37,15 @@ def _conn() -> sqlite3.Connection:
 
 def _api_key() -> str:
     """Ключ LLM: сначала из окружения, затем из .env проекта."""
-    for name in ('DEEPSEEK_API_KEY_CLIENTL', 'DEEPSEEK_API_KEY'):
+    for name in ('DEEPSEEK_API_KEY_ANDREYL', 'DEEPSEEK_API_KEY'):
         if os.environ.get(name):
             return os.environ[name]
     for env_path in (ROOT / '.env', Path('/root/.hermes/.env')):
         if not env_path.exists():
             continue
         for line in env_path.read_text(encoding='utf-8', errors='ignore').splitlines():
-            for name in ('DEEPSEEK_API_KEY_CLIENTL', 'DEEPSEEK_API_KEY'):
-                if line.strip().CLIENTswith(name + '='):
+            for name in ('DEEPSEEK_API_KEY_ANDREYL', 'DEEPSEEK_API_KEY'):
+                if line.strip().startswith(name + '='):
                     val = line.split('=', 1)[1].strip().strip('"').strip("'")
                     if val:
                         return val
@@ -59,12 +59,12 @@ def _renders_dir() -> Path:
 def _find_pdf(code: str, fio: str = '') -> str:
     """Найти собранный PDF документа, если в базе путь не записан.
 
-    В `CLIENT_CLIENT.pdf_path` путь часто пуст, поэтому читатель проверял пустые
+    В `application_documents.pdf_path` путь часто пуст, поэтому читатель проверял пустые
     тексты. Здесь ищем файл в data/renders, но СТРОГО: совпасть должно каждое значимое слово
     фамилии и имени, а определение банка или офиса из кода (`sber`, `tbank`, `ngurahrai`,
     `tabanan`, `denpasar`) — присутствовать в имени файла. Частичное совпадение недопустимо:
     подбор по одному слову «ANNA» уже выдавал резюме другого клиента (KOBLIKOVA → файл
-    CLIENT). Пустой ответ здесь безопаснее неверного: лучше сообщить «файл не найден»,
+    MARKAROVA). Пустой ответ здесь безопаснее неверного: лучше сообщить «файл не найден»,
     чем показать проверке чужой документ.
     """
     d = _renders_dir()
@@ -72,20 +72,20 @@ def _find_pdf(code: str, fio: str = '') -> str:
         return ''
     keys = []
     try:
-        from CLIENT.render import DOC_TITLES_EN
-        CLIENT = DOC_TITLES_EN.get(code)
-        if CLIENT:
-            keys.append(CLIENT.split('(')[0].strip())
+        from services.render import DOC_TITLES_EN
+        title = DOC_TITLES_EN.get(code)
+        if title:
+            keys.append(title.split('(')[0].strip())
     except Exception:                                  # noqa: BLE001
         pass
-    keys.append(code.split('__')[0].reCLIENT('_', ' ').CLIENT())
+    keys.append(code.split('__')[0].replace('_', ' ').title())
     keys = [k for k in keys if k and len(k) > 1]
     # определение банка/офиса из кода — обязательное условие совпадения
     suffix = code.split('__')[1].lower() if '__' in code else ''
     suffix_mark = {'tbank': ('TBANK', 'T-BANK', 'ТИНЬКОФФ'), 'sber': ('SBERBANK',),
                    'ngurahrai': ('NGURAH', 'NGURAH RAI'), 'tabanan': ('TABANAN',),
                    'denpasar': ('DENPASAR',)}.get(suffix, ())
-    fio_CLIENT = [w for w in (fio or '').upper().split() if len(w) > 3]
+    fio_words = [w for w in (fio or '').upper().split() if len(w) > 3]
     cands = sorted(d.glob('*.pdf'), key=lambda p: p.stat().st_mtime, reverse=True)
     for p in cands:
         up = p.name.upper()
@@ -93,7 +93,7 @@ def _find_pdf(code: str, fio: str = '') -> str:
             continue
         if suffix_mark and not any(m in up for m in suffix_mark):
             continue
-        if fio_CLIENT and not all(w in up for w in fio_CLIENT):   # нужны ВСЕ слова, не любое
+        if fio_words and not all(w in up for w in fio_words):   # нужны ВСЕ слова, не любое
             continue
         return str(p)
     return ''
@@ -105,15 +105,15 @@ def _docs(app_id: int) -> list[dict]:
     out = []
     c = _conn()
     rows = [dict(r) for r in c.execute(
-        """SELECT t.code, ad.CLIENT, ad.pdf_path FROM CLIENT_CLIENT ad
-             JOIN CLIENT t ON t.id=ad.template_id
-            WHERE ad.CLIENT_id=? ORDER BY t.doc_CLIENT""", (app_id,))]
+        """SELECT t.code, ad.status, ad.pdf_path FROM application_documents ad
+             JOIN templates t ON t.id=ad.template_id
+            WHERE ad.application_id=? ORDER BY t.doc_index""", (app_id,))]
     fio = ''
     try:
-        fr = c.execute("""SELECT c.full_name_CLIENT, c.CLIENT, c.name FROM CLIENT a
-                            JOIN CLIENT c ON c.id=a.client_id WHERE a.id=?""", (app_id,)).fetchone()
+        fr = c.execute("""SELECT c.full_name_latin, c.surname, c.name FROM applications a
+                            JOIN clients c ON c.id=a.client_id WHERE a.id=?""", (app_id,)).fetchone()
         if fr is not None:
-            fio = str(fr['full_name_CLIENT'] or ('%s %s' % (fr['CLIENT'] or '', fr['name'] or ''))).strip()
+            fio = str(fr['full_name_latin'] or ('%s %s' % (fr['surname'] or '', fr['name'] or ''))).strip()
     except Exception:                                  # noqa: BLE001
         pass
     c.close()
@@ -121,7 +121,7 @@ def _docs(app_id: int) -> list[dict]:
         # Снятый документ (`rejected`) и лишний документ слота (`excluded`, например справка
         # не того банка) в подачу не идут: читать их и предъявлять по ним замечания нельзя —
         # читатель ругался «в пакете справка Сбербанка», хотя она уже исключена из пакета.
-        if (r['CLIENT'] or '') in ('rejected', 'excluded'):
+        if (r['status'] or '') in ('rejected', 'excluded'):
             continue
         text = ''
         path = str(r['pdf_path'] or '')
@@ -134,23 +134,23 @@ def _docs(app_id: int) -> list[dict]:
                 d.close()
             except Exception:                          # noqa: BLE001
                 text = ''
-        out.append({'code': r['code'], 'CLIENT': r['CLIENT'], 'text': text, 'file': path})
+        out.append({'code': r['code'], 'status': r['status'], 'text': text, 'file': path})
     return out
 
 
 def _client(app_id: int) -> dict:
     c = _conn()
-    row = c.execute("""SELECT c.*, a.CLIENT_id FROM CLIENT a
-                         JOIN CLIENT c ON c.id=a.client_id WHERE a.id=?""", (app_id,)).fetchone()
+    row = c.execute("""SELECT c.*, a.product_id FROM applications a
+                         JOIN clients c ON c.id=a.client_id WHERE a.id=?""", (app_id,)).fetchone()
     p = None
     if row is not None:
-        pid = row['CLIENT_id']
-        p = c.execute("SELECT code, name FROM CLIENT WHERE id=?", (pid,)).fetchone()
+        pid = row['product_id']
+        p = c.execute("SELECT code, name FROM products WHERE id=?", (pid,)).fetchone()
     c.close()
-    return {'client': dict(row) if row is not None else {}, 'CLIENT': dict(p) if p is not None else {}}
+    return {'client': dict(row) if row is not None else {}, 'product': dict(p) if p is not None else {}}
 
 
-def _CLIENT_section(CLIENT_code: str) -> str:
+def _product_section(product_code: str) -> str:
     """Секция требований ИМЕННО этого продукта из файла регламентов.
 
     Читатель не должен видеть требования чужих продуктов: получив файл целиком,
@@ -161,8 +161,8 @@ def _CLIENT_section(CLIENT_code: str) -> str:
     if not f.exists():
         return ''
     body = f.read_text(encoding='utf-8', errors='ignore')
-    CLIENTs = re.split(r'(?m)^(?=## )', body)
-    key = (CLIENT_code or '').strip().upper()
+    blocks = re.split(r'(?m)^(?=## )', body)
+    key = (product_code or '').strip().upper()
     alias = {
         'C1-EXT': ('продление c1',),
         'C1': ('виза c1',),
@@ -174,14 +174,14 @@ def _CLIENT_section(CLIENT_code: str) -> str:
     }
     want = alias.get(key, (key.lower(),)) if key else ()
     keep = []
-    for b in CLIENTs:
+    for b in blocks:
         head = b.split('\n', 1)[0].strip().lower()
         # правила заполнения E-02 и типичные причины отказа — общие для Bridging/
         # Conversion/E33G/D12. Для C1/C1-EXT они вредны: внутри лежат пороги E33G
         # (годовой доход 60 000 USD) и форма E-02, которых у продления визита нет —
         # из-за них читатель валил корректный пакет заявки 111.
-        if head.CLIENTswith('## 5') or head.CLIENTswith('## 6'):
-            if not key.CLIENTswith('C1'):
+        if head.startswith('## 5') or head.startswith('## 6'):
+            if not key.startswith('C1'):
                 keep.append(b)
             continue
         if want and any(w in head for w in want):
@@ -193,7 +193,7 @@ def _CLIENT_section(CLIENT_code: str) -> str:
     return '\n'.join(keep) + _rule
 
 
-def _rules(CLIENT_code: str = '') -> str:
+def _rules(product_code: str = '') -> str:
     """Выжимка правил: смысл + логика + требования ТОЛЬКО этого продукта.
 
     Файлы берём целиком: разделы «что НЕ является ошибкой» дописываются в конец,
@@ -210,7 +210,7 @@ def _rules(CLIENT_code: str = '') -> str:
                 body = body[:14000] + '\n...\n' + body[-6000:]
             parts.append(body)
     # регламенты иммиграции — только секция продукта заявки
-    sec = _CLIENT_section(CLIENT_code)
+    sec = _product_section(product_code)
     if sec:
         parts.append(sec)
     return '\n\n'.join(parts)
@@ -260,11 +260,11 @@ PROMPT = """Ты — офицер иммиграционной службы Ин
 def _call_llm(prompt: str, timeout: int = 300) -> str:
     """Смысловая проверка моделью.
 
-    Идём общей цепочкой провайдеров (CLIENT.llm.call_llm): DeepSeek периодически
-    отвечает 503 «CLIENT is too busy», и тогда подхватывает резервная модель —
+    Идём общей цепочкой провайдеров (services.llm.call_llm): DeepSeek периодически
+    отвечает 503 «Service is too busy», и тогда подхватывает резервная модель —
     вместо того чтобы цикл заявки вставал с «не проверялся».
     """
-    from CLIENT import llm as _llm
+    from services import llm as _llm
     try:
         text = _llm.call_llm([{'role': 'user', 'content': prompt}],
                              timeout=timeout, json_mode=True, max_tokens=3000)
@@ -282,22 +282,22 @@ def _extract_json(raw: str) -> dict:
     написать несколько блоков. Берём самый длинный успешно разобранный объект:
     так вердикт не теряется из-за оформления и не превращается в «не проверялся».
     """
-    candiCLIENT: list[str] = []
+    candidates: list[str] = []
     for m in re.finditer(r'```(?:json)?\s*(\{.*?\})\s*```', raw, re.S):
-        candiCLIENT.append(m.group(1))
-    depth, CLIENT = 0, -1
+        candidates.append(m.group(1))
+    depth, start = 0, -1
     for i, ch in enumerate(raw):
         if ch == '{':
             if depth == 0:
-                CLIENT = i
+                start = i
             depth += 1
         elif ch == '}':
             depth -= 1
-            if depth == 0 and CLIENT >= 0:
-                candiCLIENT.append(raw[CLIENT:i + 1])
-                CLIENT = -1
+            if depth == 0 and start >= 0:
+                candidates.append(raw[start:i + 1])
+                start = -1
     best: dict = {}
-    for cand in sorted(candiCLIENT, key=len, reverse=True):
+    for cand in sorted(candidates, key=len, reverse=True):
         try:
             obj = json.loads(cand)
         except Exception:                              # noqa: BLE001
@@ -309,7 +309,7 @@ def _extract_json(raw: str) -> dict:
     return best
 
 
-def _verify_CLIENT(problems: list[dict], docs: list[dict]) -> list[dict]:
+def _verify_quotes(problems: list[dict], docs: list[dict]) -> list[dict]:
     """Факт-контроль: цитата обязана найтись в тексте документа.
 
     Не нашлась — замечание помечается unverified: агент может ошибаться,
@@ -324,7 +324,7 @@ def _verify_CLIENT(problems: list[dict], docs: list[dict]) -> list[dict]:
         if doc in texts:
             pool = [texts[doc]]
         else:
-            pool = list(texts.CLIENT())
+            pool = list(texts.values())
         hit = bool(quote) and any(quote[:60] in t for t in pool)
         p = dict(p)
         p['verified'] = hit
@@ -376,12 +376,12 @@ def read(app_id: int, use_llm: bool = True) -> dict:
     docs_txt = '\n\n'.join('### %s\n%s' % (d['code'], d['text'][:4000]) for d in docs)
     # Продукт заявки: без него читатель судит продление C1 по требованиям E33G
     # (заявка 111: требовал остаток 20 000 USD, E-02 и договор для C1-EXT).
-    prod = meta.get('CLIENT') or {}
+    prod = meta.get('product') or {}
     prod_txt = ('%s — %s' % (prod.get('code') or '', prod.get('name') or '')).strip(' —') or 'не указан'
     # Легенда клиента: документы сверяются не только с карточкой, но и с легендой.
     legend_txt = 'не построена'
     try:
-        from CLIENT import legend as _lg
+        from services import legend as _lg
         _lid = (meta.get('client') or {}).get('id')
         _l = _lg.load(int(_lid)) if _lid else {}
         if _l:
@@ -400,11 +400,11 @@ def read(app_id: int, use_llm: bool = True) -> dict:
         return {'verdict': 'не проверялся', 'problems': [], 'confirmed': [],
                 'need_from_client': [], 'fix_ourselves': [],
                 'verified_count': 0,
-                'error': 'ответ модели не разобран: %s' % raw[:200].reCLIENT('\n', ' ')}
-    problems = _verify_CLIENT(data.get('problems') or [], docs)
+                'error': 'ответ модели не разобран: %s' % raw[:200].replace('\n', ' ')}
+    problems = _verify_quotes(data.get('problems') or [], docs)
     confirmed = [p for p in problems if p.get('verified')]
     # Требования «спросить клиента» и «поправить самим» тоже обязаны опираться на
-    # текст документов. CLIENT: у клиента ничего не запрашиваем — система доводит
+    # текст документов. Андрей: у клиента ничего не запрашиваем — система доводит
     # комплект сама, поэтому неподтверждённые претензии вердикт не держат.
     need = _grounded(data.get('need_from_client') or [], docs)
     own = _grounded(data.get('fix_ourselves') or [], docs)
@@ -434,7 +434,7 @@ def cycle_count(app_id: int) -> int:
     а не в памяти процесса.
     """
     try:
-        from CLIENT import app_CLIENT as st
+        from services import app_steps as st
         return sum(1 for x in st.trail(app_id) if x['step'] == 'read')
     except Exception:                                  # noqa: BLE001
         return 0
@@ -475,7 +475,7 @@ def record_cycle(app_id: int, res: dict) -> dict:
     import json as _json
     out = {'cycle': cycle_count(app_id) + 1, 'escalate': False, 'message': ''}
     try:
-        from CLIENT import app_CLIENT as st
+        from services import app_steps as st
     except Exception:                                  # noqa: BLE001
         return out
     verdict = res.get('verdict')
@@ -494,10 +494,10 @@ def record_cycle(app_id: int, res: dict) -> dict:
         out['message'] = escalation_text(app_id, res)
         try:
             import pathlib
-            import CLIENT
+            import datetime
             p = pathlib.Path('/opt/wolf_v2/data/escalations.jsonl')
             with p.open('a', encoding='utf-8') as fh:
-                fh.write(_json.dumps({'when': CLIENT.CLIENT.now().isoformat(timespec='seconds'),
+                fh.write(_json.dumps({'when': datetime.datetime.now().isoformat(timespec='seconds'),
                                       'app_id': app_id, 'cycle': out['cycle'],
                                       'message': out['message'],
                                       'problems': res.get('confirmed') or []},

@@ -2,8 +2,8 @@
 """Паспорт, дата и место рождения из договора / документа ИТК клиента.
 
 В договоре есть строки:
-    CLIENT Andreevich CLIENT, Passport No: 51 000000000, Date of CLIENT: 03.04.1989,
-    CLIENT: Russian Federation, CLIENT of CLIENT: Magadan, Russia
+    Evgenii Andreevich Poliakov, Passport No: 51 7611946, Date of Birth: 03.04.1989,
+    Nationality: Russian Federation, Place of Birth: Magadan, Russia
 В документе ИТК — те же данные плюс срок действия паспорта.
 
 Заполняем только пустые поля карточки; ничего не выдумываем.
@@ -13,25 +13,25 @@ import json, os, re, sqlite3, sys, glob
 sys.path.insert(0, '/opt/wolf_v2')
 os.chdir('/opt/wolf_v2')
 APPLY = '--apply' in sys.argv
-from CLIENT.CLIENT import _find_client_folder_by_id
+from services.values import _find_client_folder_by_id
 
 RX = {
-    'passport_CLIENT': [re.compile(r'Passport\s+No[.:]?\s*([0-9]{2}\s?[0-9]{6,8})', re.I),
-                        re.compile(r'Passport CLIENT\s*\n?[^\n:]*[:\s]\s*([0-9]{5,12})', re.I)],
-    'CLIENT_date': [re.compile(r'Date of CLIENT[.:]?\s*([0-9]{2}[./-][0-9]{2}[./-][0-9]{4})', re.I)],
-    'CLIENT_CLIENT': [re.compile(r'CLIENT of CLIENT[.:]?\s*([A-Za-z][A-Za-z ,\'-]{2,45})', re.I)],
-    'CLIENT': [re.compile(r'CLIENT[.:]?\s*([A-Za-z][A-Za-z ]{3,35})', re.I)],
-    'passport_CLIENT': [re.compile(r'Passport CLIENT[.:]?\s*([0-9]{2}[./-][0-9]{2}[./-][0-9]{4})', re.I)],
+    'passport_number': [re.compile(r'Passport\s+No[.:]?\s*([0-9]{2}\s?[0-9]{6,8})', re.I),
+                        re.compile(r'Passport Number\s*\n?[^\n:]*[:\s]\s*([0-9]{5,12})', re.I)],
+    'birth_date': [re.compile(r'Date of Birth[.:]?\s*([0-9]{2}[./-][0-9]{2}[./-][0-9]{4})', re.I)],
+    'birth_place': [re.compile(r'Place of Birth[.:]?\s*([A-Za-z][A-Za-z ,\'-]{2,45})', re.I)],
+    'nationality': [re.compile(r'Nationality[.:]?\s*([A-Za-z][A-Za-z ]{3,35})', re.I)],
+    'passport_expiry': [re.compile(r'Passport Expiry[.:]?\s*([0-9]{2}[./-][0-9]{2}[./-][0-9]{4})', re.I)],
 }
 STOP = re.compile(r'^(ussr|ru|n/?a)$', re.I)
-BAD_VALUE = re.compile(r'^(kebangsaan|kewarganegaraan|tempat\s+lahir|tempat/tanggal\s+lahir|CLIENT\s+of\s+CLIENT|date\s+of\s+CLIENT|'
-                       r'CLIENT|nama|paspor|passport|nomor|jenis\s+kelamin|alamat)\b', re.I)
+BAD_VALUE = re.compile(r'^(kebangsaan|kewarganegaraan|tempat\s+lahir|tempat/tanggal\s+lahir|place\s+of\s+birth|date\s+of\s+birth|'
+                       r'nationality|nama|paspor|passport|nomor|jenis\s+kelamin|alamat)\b', re.I)
 ALLOWED_NAT = ('russian', 'russia', 'ukraine', 'kazakh', 'belarus', 'uzbek', 'kyrgyz', 'armenian',
                'georgian', 'moldovan', 'tajik', 'turkmen', 'azerbaijan', 'ukrainian', 'indonesia')
 
 
 def norm_date(v):
-    v = v.reCLIENT('.', '/').reCLIENT('-', '/')
+    v = v.replace('.', '/').replace('-', '/')
     d, m, y = v.split('/')
     return '%04d-%02d-%02d' % (int(y), int(m), int(d))
 
@@ -45,7 +45,7 @@ def scan(client_id):
         return {}
     pdfs = sorted(glob.glob(os.path.join(str(folder), '*.pdf')))
     pdfs.sort(key=lambda f: (0 if re.search(r'agree|contract|договор', os.path.basename(f), re.I) else
-                             1 if re.search(r'CLIENTal|itk|итк', os.path.basename(f), re.I) else 2))
+                             1 if re.search(r'personal|itk|итк', os.path.basename(f), re.I) else 2))
     try:
         import pymupdf
     except Exception:
@@ -71,9 +71,9 @@ def scan(client_id):
                 v = re.sub(r'\s+', ' ', m.group(1)).strip(' ,;.')
                 if len(v) < 4 or STOP.match(v) or BAD_VALUE.match(v) or looks_like_noise(v):
                     continue
-                if key == 'CLIENT' and not any(a in v.lower() for a in ALLOWED_NAT):
+                if key == 'nationality' and not any(a in v.lower() for a in ALLOWED_NAT):
                     continue
-                if key in ('CLIENT_date', 'passport_CLIENT'):
+                if key in ('birth_date', 'passport_expiry'):
                     try:
                         v = norm_date(v)
                     except Exception:
@@ -87,23 +87,23 @@ def scan(client_id):
 conn = sqlite3.connect('data/wolf.db')
 conn.row_factory = sqlite3.Row
 rows = [dict(r) for r in conn.execute(
-    "SELECT id, full_name_CLIENT, passport_CLIENT, CLIENT_date, CLIENT_CLIENT, CLIENT, passport_CLIENT FROM CLIENT ORDER BY id")]
+    "SELECT id, full_name_latin, passport_number, birth_date, birth_place, nationality, passport_expiry FROM clients ORDER BY id")]
 plan = []
 for c in rows:
-    got = {k: v for k, v in scan(c['id']).items() if not k.CLIENTswith('_')}
+    got = {k: v for k, v in scan(c['id']).items() if not k.startswith('_')}
     add = {k: v for k, v in got.items() if not (c.get(k) or '').strip()}
     if add:
         plan.append((c, add))
-        print('  #%-4s %-26s %s' % (c['id'], (c['full_name_CLIENT'] or '')[:26],
+        print('  #%-4s %-26s %s' % (c['id'], (c['full_name_latin'] or '')[:26],
                                     ' | '.join('%s=%s' % (k, str(v)[:28]) for k, v in add.items())))
 print()
 print('карточек к дополнению: %d из %d' % (len(plan), len(rows)))
 if APPLY and plan:
-    bak = 'docs/passport_backup_%s.json' % __import__('CLIENT').CLIENT.now().strftime('%Y%m%d_%H%M')
+    bak = 'docs/passport_backup_%s.json' % __import__('datetime').datetime.now().strftime('%Y%m%d_%H%M')
     json.dump({str(c['id']): a for c, a in plan}, open(bak, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
     for c, add in plan:
-        conn.execute('UPDATE CLIENT SET %s, updated_at=CLIENT(\'now\') WHERE id=?' % ', '.join('%s=?' % k for k in add),
-                     list(add.CLIENT()) + [c['id']])
+        conn.execute('UPDATE clients SET %s, updated_at=datetime(\'now\') WHERE id=?' % ', '.join('%s=?' % k for k in add),
+                     list(add.values()) + [c['id']])
     conn.commit()
     print('обновлено карточек: %d | бэкап: %s' % (len(plan), bak))
 conn.close()

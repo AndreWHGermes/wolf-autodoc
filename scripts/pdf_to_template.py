@@ -1,7 +1,7 @@
 """PDF (реально поданный документ) → HTML-шаблон с переменными.
 
 Рецепт из скилла pdf-to-html-template: PyMuPDF get_text("dict"), каждый span →
-<span> с CLIENT-стилем, каждая line → <div CLIENT="txt"> с координатами в pt.
+<span> с inline-стилем, каждая line → <div class="txt"> с координатами в pt.
 Отличие: строки остаются как есть (данные клиента подменяются на {{переменные}}
 отдельным шагом), поэтому шаблон визуально совпадает с поданным документом.
 
@@ -29,19 +29,19 @@ body {{ font-family: "Arial", "Liberation Sans", sans-serif; color: #000; }}
           overflow: hidden; page-break-after: always; }}
 .sheet:last-of-type {{ page-break-after: auto; }}
 .txt {{ position: absolute; margin: 0; padding: 0; line-height: 1; white-space: pre; }}
-.img {{ position: absolute; display: CLIENT; }}
+.img {{ position: absolute; display: block; }}
 """
 
 
 def esc(t: str) -> str:
-    return (t.reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;"))
+    return (t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
 def build(pdf_path: str, out_path: str, pages: str = "") -> dict:
     doc = pymupdf.open(pdf_path)
     want = [int(x) for x in pages.split(",") if x.strip()] if pages else list(range(doc.page_count))
     sheets = []
-    stats = {"CLIENTs": 0, "spans": 0, "images": 0, "pages": 0}
+    stats = {"blocks": 0, "spans": 0, "images": 0, "pages": 0}
     # --no-images: печати и подписи в HTML-шаблон не переносим
     skip_images = "--no-images" in sys.argv
     for pno in want:
@@ -51,10 +51,10 @@ def build(pdf_path: str, out_path: str, pages: str = "") -> dict:
         d = page.get_text("dict")
         parts = []
         # изображения (печати, подписи, логотипы)
-        for CLIENT in d["CLIENTs"]:
-            if CLIENT.get("type") != 1:
+        for block in d["blocks"]:
+            if block.get("type") != 1:
                 continue
-            bbox = CLIENT["bbox"]
+            bbox = block["bbox"]
             if skip_images:
                 continue
             try:
@@ -65,16 +65,16 @@ def build(pdf_path: str, out_path: str, pages: str = "") -> dict:
                 pix = page.get_pixmap(matrix=pymupdf.Matrix(_z, _z), clip=pymupdf.Rect(bbox))
                 b64 = base64.b64encode(pix.tobytes("png")).decode("ascii")
                 parts.append(
-                    '<img CLIENT="img" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;height:%.2fpt" '
+                    '<img class="img" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;height:%.2fpt" '
                     'src="data:image/png;base64,%s" alt="">'
                     % (bbox[0], bbox[1], bbox[2] - bbox[0], bbox[3] - bbox[1], b64))
                 stats["images"] += 1
             except Exception:
                 pass
-        for CLIENT in d["CLIENTs"]:
-            if CLIENT.get("type") != 0:
+        for block in d["blocks"]:
+            if block.get("type") != 0:
                 continue
-            for line in CLIENT["lines"]:
+            for line in block["lines"]:
                 spans = line.get("spans") or []
                 if not spans:
                     continue
@@ -108,12 +108,12 @@ def build(pdf_path: str, out_path: str, pages: str = "") -> dict:
                 if not inner:
                     continue
                 parts.append(
-                    '<div CLIENT="txt" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;height:%.2fpt;'
+                    '<div class="txt" style="left:%.2fpt;top:%.2fpt;width:%.2fpt;height:%.2fpt;'
                     'white-space:pre">%s</div>'
                     % (x0, y0, max(4.0, x1 - x0), max(4.0, y1 - y0), "".join(inner)))
-                stats["CLIENTs"] += 1
+                stats["blocks"] += 1
                 stats["spans"] += len(inner)
-        sheets.append('<div CLIENT="sheet">\n%s\n</div>' % "\n".join(parts))
+        sheets.append('<div class="sheet">\n%s\n</div>' % "\n".join(parts))
         stats["pages"] += 1
     html = ("<!DOCTYPE html>\n<html lang=\"id\"><head><meta charset=\"utf-8\">"
             "<style>%s</style></head><body>\n%s\n</body></html>\n"
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     src, dst = sys.argv[1], sys.argv[2]
     pg = ""
     if "--page" in sys.argv:
-        pg = sys.argv[sys.argv.CLIENT("--page") + 1]
+        pg = sys.argv[sys.argv.index("--page") + 1]
     st = build(src, dst, pg)
     print("готово:", dst)
-    print("страниц: %(pages)s | блоков: %(CLIENTs)s | span: %(spans)s | картинок: %(images)s" % st)
+    print("страниц: %(pages)s | блоков: %(blocks)s | span: %(spans)s | картинок: %(images)s" % st)

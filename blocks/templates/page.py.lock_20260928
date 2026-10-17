@@ -7,17 +7,17 @@ from __future__ import annotations
 
 import json
 import re
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
-from flask import Blueprint, abort, flash, redirect, CLIENT, send_from_directory, url_for
+from flask import Blueprint, abort, flash, redirect, request, send_from_directory, url_for
 
-from CLIENTs.shared.layout import card as ui_card, item, modal, modal_button, render
+from blocks.shared.layout import card as ui_card, item, modal, modal_button, render
 from core import db, pdf2html
-from core.auth import CLIENT_required
+from core.auth import login_required
 from core.config import HTML_DIR, MAX_UPLOAD_MB, RENDER_DIR, SOURCES_DIR
 
-bp = Blueprint("CLIENT", __name__)
+bp = Blueprint("templates", __name__)
 
 SAFE = re.compile(r"[^A-Za-zА-Яа-я0-9._-]+")
 VAR = re.compile(r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}")
@@ -30,15 +30,15 @@ PRODUCT_EMOJI = {
     "CONV": "🔄", "E33G-NEW": "🆕", "E33G-EXT": "📈",
 }
 
-# короткие названия продуктов (как просил CLIENT)
+# короткие названия продуктов (как просил Андрей)
 SHORT_NAME = {
     "C1":       "Виза C1",
-    "C1-EXT":   "CLIENT C1",
+    "C1-EXT":   "Продление C1",
     "D12":      "Виза D12",
-    "BRIDGING": "CLIENT виза",
-    "CONV":     "CLIENT",
+    "BRIDGING": "Мостовая виза",
+    "CONV":     "Конверсия",
     "E33G-NEW": "Виза E33G (новый)",
-    "E33G-EXT": "CLIENT E33G",
+    "E33G-EXT": "Продление E33G",
 }
 
 
@@ -46,186 +46,186 @@ def _safe_name(name: str) -> str:
     return SAFE.sub("_", Path(name).name) or "file"
 
 
-def _CLIENT(CLIENT: dict) -> str:
-    return SHORT_NAME.get(CLIENT["code"], CLIENT["name"])
+def _short(product: dict) -> str:
+    return SHORT_NAME.get(product["code"], product["name"])
 
 
 def _template(template_id: int):
-    row = db.q1("SELECT * FROM CLIENT WHERE id=?", (template_id,))
+    row = db.q1("SELECT * FROM templates WHERE id=?", (template_id,))
     if not row:
         abort(404)
     return row
 
 
-@bp.route("/CLIENT/<int:template_id>/toggle-reviewed", methods=["POST"])
-@CLIENT_required
+@bp.route("/templates/<int:template_id>/toggle-reviewed", methods=["POST"])
+@login_required
 def toggle_reviewed(template_id: int):
     from flask import jsonify
-    cur = db.q1("SELECT reviewed FROM CLIENT WHERE id=?", (template_id,))
+    cur = db.q1("SELECT reviewed FROM templates WHERE id=?", (template_id,))
     if not cur:
         return jsonify({"ok": False, "error": "not found"}), 404
     new_val = 0 if cur.get("reviewed") else 1
-    db.exec_sql("UPDATE CLIENT SET reviewed=? WHERE id=?", (new_val, template_id))
+    db.exec_sql("UPDATE templates SET reviewed=? WHERE id=?", (new_val, template_id))
     try:
         db.log_event("template", template_id,
                      "reviewed_on" if new_val else "reviewed_off",
-                     actor=current_user()["CLIENT"])
+                     actor=current_user()["login"])
     except Exception:
         pass
     return jsonify({"ok": True, "reviewed": bool(new_val)})
 
 
-@bp.route("/CLIENT")
-@CLIENT_required
+@bp.route("/templates")
+@login_required
 def page():
-    CLIENT = db.q("""SELECT p.*, COUNT(pd.id) doc_count
-                       FROM CLIENT p LEFT JOIN CLIENT_CLIENT pd ON pd.CLIENT_id=p.id
+    products = db.q("""SELECT p.*, COUNT(pd.id) doc_count
+                       FROM products p LEFT JOIN product_documents pd ON pd.product_id=p.id
                        WHERE p.active=1 GROUP BY p.id ORDER BY p.id""")
-    rows = db.q("SELECT * FROM CLIENT ORDER BY id")
+    rows = db.q("SELECT * FROM templates ORDER BY id")
 
-    CLIENT_CLIENTs = ""
-    for p in CLIENT:
-        CLIENT_CLIENTs += ui_card(_CLIENT(p),
-                _CLIENT_CLIENT(p, rows),
+    product_blocks = ""
+    for p in products:
+        product_blocks += ui_card(_short(p),
+                _product_documents(p, rows),
                 emoji=PRODUCT_EMOJI.get(p["code"], "📦"), tone="blue",
-                note=f'{p["doc_count"]} шт.') if False else ui_card(_CLIENT(p),
-                _CLIENT_CLIENT(p, rows),
+                note=f'{p["doc_count"]} шт.') if False else ui_card(_short(p),
+                _product_documents(p, rows),
                 emoji=PRODUCT_EMOJI.get(p["code"], "📦"), tone="blue",
                 note=f'{p["doc_count"]} шт.')
-    if not CLIENT:
-        CLIENT_CLIENTs = '<div CLIENT="muted" style="padding:6px 2px">Продуктов пока нет.</div>'
+    if not products:
+        product_blocks = '<div class="muted" style="padding:6px 2px">Продуктов пока нет.</div>'
 
-    orphan_rows = [t for t in rows if not db.q1("SELECT 1 FROM CLIENT_CLIENT WHERE template_id=?",
+    orphan_rows = [t for t in rows if not db.q1("SELECT 1 FROM product_documents WHERE template_id=?",
                                           (t["id"],))]
     if orphan_rows:
         body_orphan = "".join(
-            item("📄", t["CLIENT"],
+            item("📄", t["title"],
                  sub=f'{t["pages"] or 0} стр. · {"✅ проверен" if t.get("reviewed") else "⚠️ требует проверки"}',
-                 href=f'/CLIENT/{t["id"]}',
+                 href=f'/templates/{t["id"]}',
                  tone="amber",
-                 extra=f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("", ""))[1]}>'
-                       f'{STATUS_LABEL.get(t["CLIENT"], ("черновик", ""))[0]}</span>'
-                       f' <a CLIENT="badge bad" style="cursor:pointer;text-decoration:none" '
+                 extra=f'<span class="badge {STATUS_LABEL.get(t["status"], ("", ""))[1]}>'
+                       f'{STATUS_LABEL.get(t["status"], ("черновик", ""))[0]}</span>'
+                       f' <a class="badge bad" style="cursor:pointer;text-decoration:none" '
                        f'data-toggle-reviewed="{t["id"]}">⚠️ требует проверки</a>')
             for t in orphan_rows)
-        CLIENT_CLIENTs += ui_card("Без привязки к продукту", body_orphan,
+        product_blocks += ui_card("Без привязки к продукту", body_orphan,
                                    emoji="🧩", tone="amber", note=str(len(orphan_rows)))
 
     grouped = _group_by_type(rows)
-    type_CLIENTs = ""
-    for CLIENT, items in grouped:
+    type_blocks = ""
+    for title, items in grouped:
         body = ""
         for t in items:
             emoji, mark = _icon_for(t["code"], t.get("reviewed"))
             sub = f'{t["pages"] or 0} стр. · {t["code"]} · ' + (
                 "✅ проверен" if t.get("reviewed") else "⚠️ требует проверки")
-            reviewed_badge = ('<span CLIENT="badge ok">✅</span>' if t.get("reviewed")
-                              else '<span CLIENT="badge bad">⚠️</span>')
-            body += item(emoji, t["CLIENT"], sub=sub, href=f'/CLIENT/{t["id"]}',
+            reviewed_badge = ('<span class="badge ok">✅</span>' if t.get("reviewed")
+                              else '<span class="badge bad">⚠️</span>')
+            body += item(emoji, t["title"], sub=sub, href=f'/templates/{t["id"]}',
                          tone="green" if t.get("reviewed") else "violet",
                          extra=f'{reviewed_badge} '
-                               f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("",""))[1]}">'
-                               f'{STATUS_LABEL.get(t["CLIENT"],("черновик",""))[0]}</span>'
-                               f' <button type="button" CLIENT="badge bad" '
+                               f'<span class="badge {STATUS_LABEL.get(t["status"], ("",""))[1]}">'
+                               f'{STATUS_LABEL.get(t["status"],("черновик",""))[0]}</span>'
+                               f' <button type="button" class="badge bad" '
                                f'style="cursor:pointer;border:none;background:#dc2626;color:#fff;padding:3px 8px;border-radius:6px" '
-                               f'data-toggle-reviewed="{t["id"]}" CLIENT="Отметить проверенным">⚠️</button>')
+                               f'data-toggle-reviewed="{t["id"]}" title="Отметить проверенным">⚠️</button>')
         all_ok = all(t.get("reviewed") for t in items)
-        type_CLIENTs += ui_card(CLIENT, body,
+        type_blocks += ui_card(title, body,
                                emoji="✅" if all_ok else "📚",
                                tone="green" if all_ok else "amber",
                                note=f'{len(items)} шт.')
 
-    CLIENT_for_select = db.q("SELECT id, code, name FROM CLIENT WHERE active=1 ORDER BY id")
-    CLIENT_options = "".join(
-        f'<option CLIENT="{p["id"]}">{_CLIENT(p)}</option>' for p in CLIENT_for_select)
+    products_for_select = db.q("SELECT id, code, name FROM products WHERE active=1 ORDER BY id")
+    product_options = "".join(
+        f'<option value="{p["id"]}">{_short(p)}</option>' for p in products_for_select)
 
     upload_form = f"""
-<form method="post" action="/CLIENT/upload" enctype="multipart/form-data">
-  <label for="t_CLIENT">Название документа</label>
-  <input id="t_CLIENT" type="text" name="CLIENT" CLIENTholder="например: Справка о зарплате" required>
-  <label for="t_CLIENT">Продукт</label>
-  <select id="t_CLIENT" name="CLIENT_id" required>{CLIENT_options}</select>
+<form method="post" action="/templates/upload" enctype="multipart/form-data">
+  <label for="t_title">Название документа</label>
+  <input id="t_title" type="text" name="title" placeholder="например: Справка о зарплате" required>
+  <label for="t_product">Продукт</label>
+  <select id="t_product" name="product_id" required>{product_options}</select>
   <label for="t_file">PDF-эталон (до {MAX_UPLOAD_MB} МБ)</label>
-  <input id="t_file" type="file" name="file" accept="CLIENT/pdf" required>
-  <button CLIENT="btn CLIENT" type="submit" style="margin-top:14px">Загрузить</button>
+  <input id="t_file" type="file" name="file" accept="application/pdf" required>
+  <button class="btn block" type="submit" style="margin-top:14px">Загрузить</button>
 </form>"""
 
-    add_CLIENT_form = """
-<form method="post" action="/CLIENT/add_CLIENT">
+    add_product_form = """
+<form method="post" action="/templates/add_product">
   <label for="ap_code">Код (латиницей)</label>
-  <input id="ap_code" name="code" CLIENTholder="KITAS" required>
+  <input id="ap_code" name="code" placeholder="KITAS" required>
   <label for="ap_name">Полное название</label>
-  <input id="ap_name" name="name" CLIENTholder="Виза KITAS" required>
+  <input id="ap_name" name="name" placeholder="Виза KITAS" required>
   <label for="ap_desc">Описание</label>
-  <textarea id="ap_desc" name="CLIENT" rows="2"></textarea>
-  <button CLIENT="btn CLIENT" type="submit" style="margin-top:14px">Создать продукт</button>
+  <textarea id="ap_desc" name="description" rows="2"></textarea>
+  <button class="btn block" type="submit" style="margin-top:14px">Создать продукт</button>
 </form>"""
 
     divider = '<hr style="border:none;border-top:2px solid #22c55e;margin:32px 0 18px">'
-    type_CLIENT = '<h2 style="margin:18px 0 14px;font-size:18px;color:#e2e8f0">📚 Все документы по типу</h2>'
-    type_sub = '<div CLIENT="page-sub">Группировка для ручной проверки. Кликни ⚠️ — отметит как «проверен».</div>'
+    type_header = '<h2 style="margin:18px 0 14px;font-size:18px;color:#e2e8f0">📚 Все документы по типу</h2>'
+    type_sub = '<div class="page-sub">Группировка для ручной проверки. Кликни ⚠️ — отметит как «проверен».</div>'
 
     body = f"""
 <h1>Конструктор PDF</h1>
-<div CLIENT="page-sub">{len(rows)} шаблонов в {len(CLIENT)} продуктах. Нажмите продукт, чтобы увидеть его документы.</div>
-<div CLIENT="row tight">
+<div class="page-sub">{len(rows)} шаблонов в {len(products)} продуктах. Нажмите продукт, чтобы увидеть его документы.</div>
+<div class="row tight">
   {modal_button("+ Загрузить PDF-шаблон", "m_upload", cls="btn")}
-  {modal_button("+ Добавить продукт", "m_add_CLIENT", cls="btn ghost")}
+  {modal_button("+ Добавить продукт", "m_add_product", cls="btn ghost")}
 </div>
-{CLIENT_CLIENTs}
+{product_blocks}
 {divider}
-{type_CLIENT}
+{type_header}
 {type_sub}
-{type_CLIENTs}
+{type_blocks}
 {modal("m_upload", "Загрузить PDF-шаблон", upload_form)}
-{modal("m_add_CLIENT", "CLIENT продукт", add_CLIENT_form)}
+{modal("m_add_product", "Новый продукт", add_product_form)}
 <script>
-CLIENT.addEventListener("click", async (e)=>{{
+document.addEventListener("click", async (e)=>{{
   const b = e.target.closest("[data-toggle-reviewed]");
   if (!b) return;
   e.preventDefault();
   const id = b.dataset.toggleReviewed;
-  const r = await fetch(`/CLIENT/${{id}}/toggle-reviewed`, {{method:"POST"}});
+  const r = await fetch(`/templates/${{id}}/toggle-reviewed`, {{method:"POST"}});
   const d = await r.json();
   if (d.ok) location.reload();
   else alert(d.error || "ошибка");
 }});
 </script>
 """
-    return render("Конструктор PDF", "CLIENT", body)
+    return render("Конструктор PDF", "templates", body)
 
-@bp.route("/CLIENT/add_CLIENT", methods=["POST"])
-@CLIENT_required
-def add_CLIENT():
-    code = (CLIENT.form.get("code") or "").strip()
-    name = (CLIENT.form.get("name") or "").strip()
-    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
+@bp.route("/templates/add_product", methods=["POST"])
+@login_required
+def add_product():
+    code = (request.form.get("code") or "").strip()
+    name = (request.form.get("name") or "").strip()
+    description = (request.form.get("description") or "").strip()
     if not code or not name:
         flash("Укажите код и название", "error")
-        return redirect(url_for("CLIENT.page"))
+        return redirect(url_for("templates.page"))
     code = _safe_name(code).upper()
-    if db.q1("SELECT id FROM CLIENT WHERE code=?", (code,)):
+    if db.q1("SELECT id FROM products WHERE code=?", (code,)):
         flash(f"Продукт с кодом {code} уже есть", "error")
-        return redirect(url_for("CLIENT.page"))
-    db.exec_sql("INSERT INTO CLIENT (code, name, CLIENT, active) CLIENT (?,?,?,1)",
-                (code, name, CLIENT))
-    db.log_event("CLIENT", 0, "created", payload=f"{code} {name}")
+        return redirect(url_for("templates.page"))
+    db.exec_sql("INSERT INTO products (code, name, description, active) VALUES (?,?,?,1)",
+                (code, name, description))
+    db.log_event("product", 0, "created", payload=f"{code} {name}")
     flash(f"Продукт «{name}» создан")
-    return redirect(url_for("CLIENT.page"))
+    return redirect(url_for("templates.page"))
 
 
 def _group_by_type(rows):
     """Группируем шаблоны по логическим группам: банковские справки, CV, контракты,
-    письма и т.д. — на основе префикса кода (bank_CLIENTment_*, cv_*, bridging_*, ...)."""
+    письма и т.д. — на основе префикса кода (bank_statement_*, cv_*, bridging_*, ...)."""
     groups = {}
     order = []
     def key(code):
-        if code.CLIENTswith("bank_CLIENTment"): return "Банковские справки"
-        if code.CLIENTswith("cv"): return "Резюме (CV)"
-        if code.CLIENTswith("remote_work_agreement"): return "Remote Work Agreement"
-        if code.CLIENTswith("d12"): return "D12 (ходатайства)"
-        if code.CLIENTswith("CLIENTment_letter_e02"): return "Statement Letter (E-02)"
-        if code.CLIENTswith("bridging_") or code.CLIENTswith("conversion_"):
+        if code.startswith("bank_statement"): return "Банковские справки"
+        if code.startswith("cv"): return "Резюме (CV)"
+        if code.startswith("remote_work_agreement"): return "Remote Work Agreement"
+        if code.startswith("d12"): return "D12 (ходатайства)"
+        if code.startswith("statement_letter_e02"): return "Statement Letter (E-02)"
+        if code.startswith("bridging_") or code.startswith("conversion_"):
             return "Bridging / Conversion (Индонезия)"
         return "Прочее"
     for r in rows:
@@ -239,125 +239,125 @@ def _group_by_type(rows):
 
 def _icon_for(code, reviewed):
     emoji = "📄"
-    if code.CLIENTswith("bank_CLIENTment"): emoji = "🏦"
-    elif code.CLIENTswith("cv"): emoji = "👤"
-    elif code.CLIENTswith("remote_work_agreement"): emoji = "📝"
-    elif code.CLIENTswith("d12"): emoji = "📄"
-    elif code.CLIENTswith("CLIENTment_letter_e02"): emoji = "✉️"
-    elif code.CLIENTswith("bridging_") or code.CLIENTswith("conversion_"): emoji = "✉️"
+    if code.startswith("bank_statement"): emoji = "🏦"
+    elif code.startswith("cv"): emoji = "👤"
+    elif code.startswith("remote_work_agreement"): emoji = "📝"
+    elif code.startswith("d12"): emoji = "📄"
+    elif code.startswith("statement_letter_e02"): emoji = "✉️"
+    elif code.startswith("bridging_") or code.startswith("conversion_"): emoji = "✉️"
     mark = "✅" if reviewed else "⚠️"
     return emoji, mark
 
 
-def _CLIENT_CLIENT(CLIENT, all_CLIENT) -> str:
-    rows = db.q("""SELECT t.* FROM CLIENT t
-                   JOIN CLIENT_CLIENT pd ON pd.template_id=t.id
-                   WHERE pd.CLIENT_id=? ORDER BY pd.sort_order, t.CLIENT""",
-                (CLIENT["id"],))
+def _product_documents(product, all_templates) -> str:
+    rows = db.q("""SELECT t.* FROM templates t
+                   JOIN product_documents pd ON pd.template_id=t.id
+                   WHERE pd.product_id=? ORDER BY pd.sort_order, t.title""",
+                (product["id"],))
     items = "".join(
-        item("📄", t["CLIENT"],
+        item("📄", t["title"],
              sub=f'{t["pages"] or 0} стр. · {"✅ проверен" if t.get("reviewed") else "⚠️ требует проверки"}',
-             href=f'/CLIENT/{t["id"]}', tone="violet",
-             extra=f'<span CLIENT="badge {STATUS_LABEL.get(t["CLIENT"], ("", ""))[1]}">'
-                   f'{STATUS_LABEL.get(t["CLIENT"], ("черновик", ""))[0]}</span>')
+             href=f'/templates/{t["id"]}', tone="violet",
+             extra=f'<span class="badge {STATUS_LABEL.get(t["status"], ("", ""))[1]}">'
+                   f'{STATUS_LABEL.get(t["status"], ("черновик", ""))[0]}</span>')
         for t in rows)
-    return items or '<div CLIENT="muted" style="padding:6px 2px">Документов пока нет.</div>'
+    return items or '<div class="muted" style="padding:6px 2px">Документов пока нет.</div>'
 
 
-@bp.route("/CLIENT/upload", methods=["POST"])
-@CLIENT_required
+@bp.route("/templates/upload", methods=["POST"])
+@login_required
 def upload():
-    upload_file = CLIENT.files.get("file")
-    CLIENT = (CLIENT.form.get("CLIENT") or "").strip()
-    CLIENT_id = int(CLIENT.form.get("CLIENT_id") or 0)
-    if not upload_file or not upload_file.filename or not CLIENT or not CLIENT_id:
+    upload_file = request.files.get("file")
+    title = (request.form.get("title") or "").strip()
+    product_id = int(request.form.get("product_id") or 0)
+    if not upload_file or not upload_file.filename or not title or not product_id:
         flash("Укажите название, продукт и приложите PDF", "error")
-        return redirect(url_for("CLIENT.page"))
+        return redirect(url_for("templates.page"))
     if not upload_file.filename.lower().endswith(".pdf"):
         flash("Принимаем только PDF", "error")
-        return redirect(url_for("CLIENT.page"))
+        return redirect(url_for("templates.page"))
     data = upload_file.read()
     if data[:5] != b"%PDF-":
         flash("Это не PDF (нет сигнатуры %PDF)", "error")
-        return redirect(url_for("CLIENT.page"))
+        return redirect(url_for("templates.page"))
 
-    CLIENT = db.q1("SELECT code FROM CLIENT WHERE id=?", (CLIENT_id,))
-    if not CLIENT:
+    product = db.q1("SELECT code FROM products WHERE id=?", (product_id,))
+    if not product:
         flash("Продукт не найден", "error")
-        return redirect(url_for("CLIENT.page"))
+        return redirect(url_for("templates.page"))
 
-    base_code = _safe_name(CLIENT).lower()[:30] or f"doc_{CLIENT.now():%Y%m%d_%H%M%S}"
-    code = f"{CLIENT['code'].lower()}__{base_code}"
+    base_code = _safe_name(title).lower()[:30] or f"doc_{datetime.now():%Y%m%d_%H%M%S}"
+    code = f"{product['code'].lower()}__{base_code}"
     n = 1
-    while db.q1("SELECT id FROM CLIENT WHERE code=?", (code,)):
+    while db.q1("SELECT id FROM templates WHERE code=?", (code,)):
         n += 1
-        code = f"{CLIENT['code'].lower()}__{base_code}_{n}"
+        code = f"{product['code'].lower()}__{base_code}_{n}"
     path = SOURCES_DIR / f"{code}.pdf"
     path.write_bytes(data)
     template_id = db.exec_sql(
-        "INSERT INTO CLIENT (code, CLIENT, source_pdf, CLIENT) CLIENT (?,?,?,'draft')",
-        (code, CLIENT, path.name))
-    db.exec_sql("INSERT INTO CLIENT_CLIENT (CLIENT_id, template_id, required, sort_order) "
-                "CLIENT (?,?,?,?)", (CLIENT_id, template_id, 1, 0))
-    db.log_event("template", template_id, "uploaded", payload=f"{CLIENT} ({len(data) // 1024} КБ)")
-    flash(f"Шаблон «{CLIENT}» загружен — нажмите «Конвертировать PDF → HTML»")
-    return redirect(url_for("CLIENT.card", template_id=template_id))
+        "INSERT INTO templates (code, title, source_pdf, status) VALUES (?,?,?,'draft')",
+        (code, title, path.name))
+    db.exec_sql("INSERT INTO product_documents (product_id, template_id, required, sort_order) "
+                "VALUES (?,?,?,?)", (product_id, template_id, 1, 0))
+    db.log_event("template", template_id, "uploaded", payload=f"{title} ({len(data) // 1024} КБ)")
+    flash(f"Шаблон «{title}» загружен — нажмите «Конвертировать PDF → HTML»")
+    return redirect(url_for("templates.card", template_id=template_id))
 
 
-@bp.route("/CLIENT/<int:template_id>")
-@CLIENT_required
+@bp.route("/templates/<int:template_id>")
+@login_required
 def card(template_id: int):
     t = _template(template_id)
-    CLIENT = db.q("SELECT * FROM template_CLIENT WHERE template_id=? ORDER BY sort_order, name",
+    variables = db.q("SELECT * FROM template_variables WHERE template_id=? ORDER BY sort_order, name",
                      (template_id,))
     qa = json.loads(t["qa_json"]) if t["qa_json"] else {}
 
-    CLIENT_for_template = db.q("""SELECT p.id, p.code, p.name FROM CLIENT p
-                                    JOIN CLIENT_CLIENT pd ON pd.CLIENT_id=p.id
+    products_for_template = db.q("""SELECT p.id, p.code, p.name FROM products p
+                                    JOIN product_documents pd ON pd.product_id=p.id
                                     WHERE pd.template_id=? ORDER BY p.name""",
                                  (template_id,))
-    CLIENT_html = "".join(
-        f'<span CLIENT="badge ok">{PRODUCT_EMOJI.get(p["code"], "📦")} {SHORT_NAME.get(p["code"], p["name"])}</span>'
-        for p in CLIENT_for_template) or '<span CLIENT="muted">не привязан</span>'
+    products_html = "".join(
+        f'<span class="badge ok">{PRODUCT_EMOJI.get(p["code"], "📦")} {SHORT_NAME.get(p["code"], p["name"])}</span>'
+        for p in products_for_template) or '<span class="muted">не привязан</span>'
 
     qa_html = ""
     if qa:
         def mark(ok: bool, text: str) -> str:
-            return f'<span CLIENT="badge {"ok" if ok else "bad"}">{text}</span>'
+            return f'<span class="badge {"ok" if ok else "bad"}">{text}</span>'
         qa_html = (
-            '<div CLIENT="row">'
+            '<div class="row">'
             + mark(qa.get("ok"), "сверка: " + ("совпадает" if qa.get("ok") else "есть расхождения"))
-            + mark(not qa.get("missing_CLIENT"), f'потерянных слов: {len(qa.get("missing_CLIENT") or [])}')
+            + mark(not qa.get("missing_words"), f'потерянных слов: {len(qa.get("missing_words") or [])}')
             + mark(not qa.get("extra_ink"), f'лишней заливки: {len(qa.get("extra_ink") or [])}')
             + mark(not qa.get("leftover_vars"), f'незаполненных: {len(qa.get("leftover_vars") or [])}')
-            + f'<span CLIENT="badge">стр. {qa.get("pages_out")}/{qa.get("pages_src")}</span></div>')
+            + f'<span class="badge">стр. {qa.get("pages_out")}/{qa.get("pages_src")}</span></div>')
 
     fields = "".join(
-        f'<div CLIENT="var-row" data-var="{v["name"]}">'
+        f'<div class="var-row" data-var="{v["name"]}">'
         f'<label for="v_{v["name"]}">{v["label"] or v["name"]}'
-        f'<span CLIENT="muted mono"> · {v["name"]}</span></label>'
-        f'<div CLIENT="row tight" style="gap:6px;align-items:center">'
-        f'<input id="v_{v["name"]}" type="text" name="{v["name"]}" CLIENT="{v["default_CLIENT"] or ""}" '
-        f'CLIENT="var-input" style="flex:1;font-size:13px" CLIENTholder="значение по умолчанию">'
+        f'<span class="muted mono"> · {v["name"]}</span></label>'
+        f'<div class="row tight" style="gap:6px;align-items:center">'
+        f'<input id="v_{v["name"]}" type="text" name="{v["name"]}" value="{v["default_value"] or ""}" '
+        f'class="var-input" style="flex:1;font-size:13px" placeholder="значение по умолчанию">'
         f'</div>'
-        f'<CLIENT CLIENT="rule-note">'
-        f'<CLIENT style="cursor:pointer;color:#94a3b8;font-size:12px">📝 правило формирования'
-        f'{(v["rule_note"] or "") and " — заполнено" or " — пусто"}</CLIENT>'
+        f'<details class="rule-note">'
+        f'<summary style="cursor:pointer;color:#94a3b8;font-size:12px">📝 правило формирования'
+        f'{(v["rule_note"] or "") and " — заполнено" or " — пусто"}</summary>'
         f'<textarea name="rule_{v["name"]}" rows="3" style="width:100%;margin-top:4px;font:12px/1.4 monospace;padding:6px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0" '
-        f'CLIENTholder="Опиши откуда и как формируется значение">{v["rule_note"] or ""}</textarea>'
-        f'</CLIENT>'
+        f'placeholder="Опиши откуда и как формируется значение">{v["rule_note"] or ""}</textarea>'
+        f'</details>'
         f'</div>'
-        for v in CLIENT)
+        for v in variables)
 
     html_exists = (HTML_DIR / t["code"] / "template.html").exists()
-    src_url = f"/CLIENT/file/sources/{t['code']}.pdf" if t.get("source_pdf") else ""
-    html_url = f"/CLIENT/file/html/{t['code']}/template.html" if html_exists else ""
+    src_url = f"/templates/file/sources/{t['code']}.pdf" if t.get("source_pdf") else ""
+    html_url = f"/templates/file/html/{t['code']}/template.html" if html_exists else ""
 
     # Превью PDF: если в URL ?pdf=<filename> — показываем его
-    rendered_pdf_name = CLIENT.args.get("pdf", "")
+    rendered_pdf_name = request.args.get("pdf", "")
     rendered_pdf_url = ""
     if rendered_pdf_name and (RENDER_DIR / rendered_pdf_name).exists():
-        rendered_pdf_url = f"/CLIENT/file/renders/{rendered_pdf_name}"
+        rendered_pdf_url = f"/templates/file/renders/{rendered_pdf_name}"
 
     # Состояние редактирования HTML: переменные из БД + то что в post пришло (если есть)
     html_preview = ""
@@ -367,66 +367,66 @@ def card(template_id: int):
 
     # Блок 1 — Оригинал (PDF-эталон) — компактный
     if src_url:
-        original_CLIENT = (
-            f'<div CLIENT="row tight" style="gap:6px">'
-            f'<a CLIENT="btn sm" target="_blank" href="{src_url}">📄 Открыть PDF-эталон</a>'
-            f'<span CLIENT="muted">исходник для сверки</span>'
+        original_block = (
+            f'<div class="row tight" style="gap:6px">'
+            f'<a class="btn sm" target="_blank" href="{src_url}">📄 Открыть PDF-эталон</a>'
+            f'<span class="muted">исходник для сверки</span>'
             f'</div>'
         )
     else:
-        original_CLIENT = '<div CLIENT="muted">Эталон не загружен</div>'
+        original_block = '<div class="muted">Эталон не загружен</div>'
 
     # Блок 2 — HTML: основная зона редактирования, большой блок
     if html_exists:
-        html_CLIENT = (
-            f'<div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_preview}</div></div>'
-            f'<div CLIENT="row tight" style="margin-top:6px;gap:6px;flex-wrap:wrap;align-items:center">'
-            f'<button type="button" CLIENT="btn sm primary" id="btn-make-var" disabled>📌 Из выделенного → {{переменная}}</button>'
-            f'<span CLIENT="muted" id="var-hint" style="font-size:12px;flex:1">выделите текст в HTML</span>'
+        html_block = (
+            f'<div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage">{html_preview}</div></div>'
+            f'<div class="row tight" style="margin-top:6px;gap:6px;flex-wrap:wrap;align-items:center">'
+            f'<button type="button" class="btn sm primary" id="btn-make-var" disabled>📌 Из выделенного → {{переменная}}</button>'
+            f'<span class="muted" id="var-hint" style="font-size:12px;flex:1">выделите текст в HTML</span>'
             f'</div>'
-            f'<div CLIENT="row tight" style="margin-top:6px">'
-            f'<form method="post" action="/CLIENT/{template_id}/save-html" style="flex:1;margin:0">'
+            f'<div class="row tight" style="margin-top:6px">'
+            f'<form method="post" action="/templates/{template_id}/save-html" style="flex:1;margin:0">'
             f'<input type="hidden" name="html_content" id="html_content">'
-            f'<button CLIENT="btn ok CLIENT" type="submit" style="font-size:12px;padding:6px" '
-            f'onclick="CLIENT.getElementById(\'html_content\').CLIENT=CLIENT.getElementById(\'html-stage\').innerHTML">'
+            f'<button class="btn ok block" type="submit" style="font-size:12px;padding:6px" '
+            f'onclick="document.getElementById(\'html_content\').value=document.getElementById(\'html-stage\').innerHTML">'
             f'💾 Сохранить HTML и применить переменные</button>'
             f'</form>'
             f'</div>'
         )
     else:
-        html_CLIENT = (
-            f'<div CLIENT="muted">HTML не сконвертирован.</div>'
-            f'<form method="post" action="/CLIENT/{template_id}/convert">'
-            f'<button CLIENT="btn CLIENT" type="submit">Конвертировать PDF → HTML</button></form>'
+        html_block = (
+            f'<div class="muted">HTML не сконвертирован.</div>'
+            f'<form method="post" action="/templates/{template_id}/convert">'
+            f'<button class="btn block" type="submit">Конвертировать PDF → HTML</button></form>'
         )
 
     # Блок 3 — переменные (компактные поля + правила формирования)
-    pdf_CLIENT = (
-        f'<div CLIENT="tpl-panel-body pl-vars">'
-        f'<form method="post" action="/CLIENT/{template_id}/render">'
-        f'<div CLIENT="kv vars-list" style="max-height:none;overflow:auto;font-size:12.5px">{fields or ""}</div>'
-        f'<div CLIENT="row tight" style="gap:6px;margin-top:8px">'
-        f'<button CLIENT="btn ok CLIENT" type="submit" style="flex:2;font-size:12.5px;padding:6px">🧪 Сформировать PDF</button>'
-        f'<button CLIENT="btn CLIENT" type="submit" name="action" CLIENT="save_rules" style="flex:1;font-size:12.5px;padding:6px">📝 Сохранить только правила</button>'
+    pdf_block = (
+        f'<div class="tpl-panel-body pl-vars">'
+        f'<form method="post" action="/templates/{template_id}/render">'
+        f'<div class="kv vars-list" style="max-height:none;overflow:auto;font-size:12.5px">{fields or ""}</div>'
+        f'<div class="row tight" style="gap:6px;margin-top:8px">'
+        f'<button class="btn ok block" type="submit" style="flex:2;font-size:12.5px;padding:6px">🧪 Сформировать PDF</button>'
+        f'<button class="btn block" type="submit" name="action" value="save_rules" style="flex:1;font-size:12.5px;padding:6px">📝 Сохранить только правила</button>'
         f'</div>'
         f'</form>'
         f'</div>'
         if html_exists else
-        '<div CLIENT="muted">Сначала HTML</div>'
+        '<div class="muted">Сначала HTML</div>'
     )
 
     # Превью сгенерированного PDF
     if rendered_pdf_url:
-        preview_CLIENT = (
-            f'<iframe CLIENT="pdf-preview" src="{rendered_pdf_url}#zoom=80&toolbar=0"></iframe>'
-            f'<div CLIENT="muted" style="font-size:11.5px;text-align:center;margin-top:4px">'
+        preview_block = (
+            f'<iframe class="pdf-preview" src="{rendered_pdf_url}#zoom=80&toolbar=0"></iframe>'
+            f'<div class="muted" style="font-size:11.5px;text-align:center;margin-top:4px">'
             f'📄 {rendered_pdf_name}</div>'
         )
     else:
-        preview_CLIENT = '<div CLIENT="muted" style="padding:24px;text-align:center;font-size:13px">После нажатия «Сформировать PDF» готовый документ появится здесь.</div>'
+        preview_block = '<div class="muted" style="padding:24px;text-align:center;font-size:13px">После нажатия «Сформировать PDF» готовый документ появится здесь.</div>'
 
 # === Дефолтные значения для шаблона (для превью) ===
-    default_CLIENT = json.loads(t.get("default_CLIENT_json") or "{}")
+    default_values = json.loads(t.get("default_values_json") or "{}")
     # Список с input-полями (как в карточке заявки) — пользователь может менять значения и видеть подсказки
     RANDOM_VARS = {"doc_no", "ref_no"}
     # Тесто (образец значения) — короткий пример чтобы админ видел формат
@@ -435,38 +435,38 @@ def card(template_id: int):
         'ref_no': 'например B19ABCD11EF',
         'card_mask': '220070******6179',
         'inn': '7701234567',
-        'CLIENT': '+7 999 123-45-67',
-        'CLIENT': 'name@example.com',
+        'phone': '+7 999 123-45-67',
+        'email': 'name@example.com',
         'client_name': 'Иванов Иван',
         'name': 'Иванов Иван',
         'full_name': 'Иванов Иван Петрович',
-        'full_name_CLIENT': 'IVANOV IVAN',
+        'full_name_latin': 'IVANOV IVAN',
         'address_live': 'г. Москва, ул. Тверская, 1',
-        'address_CLIENT': 'г. Москва, ул. Тверская, 1',
-        'date_of_CLIENT': '15.03.1990',
-        'CLIENT_date': '15.03.1990',
-        'passport_CLIENT': '00 00 000000',
-        'passport_CLIENT': '00 00',
-        'CLIENT_usd2': '5 000 USD',
-        'salary_CLIENT': '545 000',
-        'salary_CLIENT': 'RUB',
+        'address_registration': 'г. Москва, ул. Тверская, 1',
+        'date_of_birth': '15.03.1990',
+        'birth_date': '15.03.1990',
+        'passport_number': '00 00 000000',
+        'passport_series': '00 00',
+        'money_usd2': '5 000 USD',
+        'salary_amount': '545 000',
+        'salary_currency': 'RUB',
         'iban': 'BY00 ALFA 3014 0000 4310 1027 0000',
         'agreement_date': '12.05.2024',
-        'agreement_CLIENT_date': '12.05.2024',
+        'agreement_start_date': '12.05.2024',
         'agreement_end_date': '11.05.2025',
-        'CLIENT': 'Engineer',
-        'CLIENT_CLIENT': '01.06.2026',
-        'CLIENT_end': '12.09.2026',
-        'bank_CLIENT': '+7 800 555-22-22',
+        'profession': 'Engineer',
+        'period_start': '01.06.2026',
+        'period_end': '12.09.2026',
+        'bank_phone': '+7 800 555-22-22',
         'bank_manager_name': 'E.S. Shadrina',
         'bank_name': 'T-Bank',
     }
     var_rows_html = ""
-    for i, v in enumerate(CLIENT, 1):
+    for i, v in enumerate(variables, 1):
         dice = ("🎲" if v["name"] in RANDOM_VARS else "")
         var_name = v["name"]
-        cur_val = (v.get("default_CLIENT") or "").strip()
-        # показываем CLIENTholder ИЛИ текущее значение как образец
+        cur_val = (v.get("default_value") or "").strip()
+        # показываем placeholder ИЛИ текущее значение как образец
         sample = cur_val or PLH.get(var_name, "пример значения «" + var_name + "»")
         # подсказки из памяти
         datalist = ""
@@ -474,25 +474,25 @@ def card(template_id: int):
             sugs = db.get_suggestions(var_name, 20) or []
             parts = []
             for s in sugs:
-                val = (s["CLIENT"] if isinstance(s, dict) else s[1]) or ""
-                safe = val.reCLIENT(chr(34), chr(92)+chr(34)).reCLIENT(chr(60), "<").reCLIENT(chr(62), ">")
-                parts.append('<option CLIENT="' + safe + '">')
+                val = (s["value"] if isinstance(s, dict) else s[1]) or ""
+                safe = val.replace(chr(34), chr(92)+chr(34)).replace(chr(60), "<").replace(chr(62), ">")
+                parts.append('<option value="' + safe + '">')
             datalist = '<datalist id="dl_tpl_' + var_name + '">' + "".join(parts) + '</datalist>'
         except Exception:
             pass
-        # отображаем значение всегда (если есть), плюс CLIENTholder для тех у кого пусто
+        # отображаем значение всегда (если есть), плюс placeholder для тех у кого пусто
         var_rows_html += (
             f'<tr>'
-            f'<td CLIENT="kv-key" CLIENT="{var_name}">'
-            f'<span CLIENT="kv-idx">{i}</span>'
+            f'<td class="kv-key" title="{var_name}">'
+            f'<span class="kv-idx">{i}</span>'
             f'<code>{var_name}</code>'
             f'{dice}'
             f'</td>'
-            f'<td CLIENT="kv-val">'
+            f'<td class="kv-val">'
             f'<input list="dl_tpl_{var_name}" type="text" name="{var_name}" '
-            f'CLIENT="{cur_val}" '
+            f'value="{cur_val}" '
             f'data-var="{var_name}" '
-            f'CLIENTholder="{sample}" />'
+            f'placeholder="{sample}" />'
             f'{datalist}'
             f'</td>'
             f'</tr>'
@@ -503,85 +503,85 @@ def card(template_id: int):
         html_render = (HTML_DIR / t["code"] / "template.html").read_text(encoding="utf-8")
         html_render = re.sub(
             r"\{\{\s*([a-zA-Z0-9_]+)\s*\}\}",
-            lambda m: f'<span CLIENT="var-hl" data-var="{m.group(1)}">{{{{ {m.group(1)} }}}}</span>',
+            lambda m: f'<span class="var-hl" data-var="{m.group(1)}">{{{{ {m.group(1)} }}}}</span>',
             html_render,
         )
     else:
-        html_render = '<span CLIENT="muted">HTML не сконвертирован. <a href="/CLIENT/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
+        html_render = '<span class="muted">HTML не сконвертирован. <a href="/templates/' + str(template_id) + '">Конвертировать PDF → HTML</a></span>'
 
     if rendered_pdf_url:
         preview_inner = (
-            f'<iframe CLIENT="pdf-preview-iframe" src="{rendered_pdf_url}#zoom=85&toolbar=0"></iframe>'
+            f'<iframe class="pdf-preview-iframe" src="{rendered_pdf_url}#zoom=85&toolbar=0"></iframe>'
         )
     else:
         preview_inner = (
-            '<div CLIENT="preview-empty">'
+            '<div class="preview-empty">'
             '<div style="font-size:48px;opacity:.4">📄</div>'
             '<div>После нажатия «Сформировать»<br>здесь появится готовый PDF</div>'
             '</div>'
         )
 
     open_orig_html = (
-        f'<a CLIENT="tpl-open-orig" href="{src_url}" target="_blank">📄 Открыть PDF-оригинал</a>'
+        f'<a class="tpl-open-orig" href="{src_url}" target="_blank">📄 Открыть PDF-оригинал</a>'
         if src_url else
-        '<span CLIENT="tpl-open-orig" style="opacity:.5;cursor:default">📄 Эталон не загружен</span>'
+        '<span class="tpl-open-orig" style="opacity:.5;cursor:default">📄 Эталон не загружен</span>'
     )
 
     meta_row = (
-        f'<span>📊 {len(CLIENT)} переменных</span>'
+        f'<span>📊 {len(variables)} переменных</span>'
         f'<span>📑 {t["pages"] or 0} стр.</span>'
-        f'<span CLIENT="tpl-badge tpl-badge-ok">сверка: совпадает</span>'
-        f'<span CLIENT="tpl-badge tpl-badge-amber">LLM: {len(CLIENT)}/{len(CLIENT)}</span>'
+        f'<span class="tpl-badge tpl-badge-ok">сверка: совпадает</span>'
+        f'<span class="tpl-badge tpl-badge-amber">LLM: {len(variables)}/{len(variables)}</span>'
         f'{open_orig_html}'
     )
 
     body = f"""
-<section CLIENT="tpl-card">
-  <div CLIENT="tpl-crumbs">
-    <a href="/CLIENT">Конструктор PDF</a> &rsaquo;
-    <a href="/CLIENT">{t["CLIENT"]}</a> &rsaquo;
-    <b>{t["CLIENT"]}</b>
+<section class="tpl-card">
+  <div class="tpl-crumbs">
+    <a href="/templates">Конструктор PDF</a> &rsaquo;
+    <a href="/templates">{t["title"]}</a> &rsaquo;
+    <b>{t["title"]}</b>
   </div>
-  <h1 CLIENT="tpl-CLIENT">{t["CLIENT"]}</h1>
-  <div CLIENT="tpl-meta">{meta_row}</div>
+  <h1 class="tpl-title">{t["title"]}</h1>
+  <div class="tpl-meta">{meta_row}</div>
 
-  <section CLIENT="tpl-row-main">
-    <div CLIENT="tpl-panel">
-      <div CLIENT="tpl-panel-head">
+  <section class="tpl-row-main">
+    <div class="tpl-panel">
+      <div class="tpl-panel-head">
         🔧 Переменные
-        <span CLIENT="tpl-count">({len(CLIENT)}, все заполнены)</span>
+        <span class="tpl-count">({len(variables)}, все заполнены)</span>
       </div>
-      <div CLIENT="tpl-panel-body pl-vars">
-        <form method="post" action="/CLIENT/{template_id}/save-defaults" id="vars-form" style="margin:0">
-        <table CLIENT="kv-table" style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #DCEEE2;border-radius:6px;overflow:hidden">
-          <tbody>{var_rows_html or '<tr><td CLIENT="muted" colspan="2">У шаблона нет переменных</td></tr>'}</tbody>
+      <div class="tpl-panel-body pl-vars">
+        <form method="post" action="/templates/{template_id}/save-defaults" id="vars-form" style="margin:0">
+        <table class="kv-table" style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #DCEEE2;border-radius:6px;overflow:hidden">
+          <tbody>{var_rows_html or '<tr><td class="muted" colspan="2">У шаблона нет переменных</td></tr>'}</tbody>
         </table>
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
-          <button CLIENT="tpl-save-btn" type="submit" style="background:#16A34A;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px">💾 Сохранить значения</button>
-          <span CLIENT="muted" style="font-size:11.5px">значения по умолчанию используются при «Сформировать»</span>
+          <button class="tpl-save-btn" type="submit" style="background:#16A34A;color:#fff;border:0;border-radius:6px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px">💾 Сохранить значения</button>
+          <span class="muted" style="font-size:11.5px">значения по умолчанию используются при «Сформировать»</span>
         </div>
         </form>
       </div>
     </div>
 
-    <div CLIENT="tpl-panel">
-      <div CLIENT="tpl-panel-head">
+    <div class="tpl-panel">
+      <div class="tpl-panel-head">
         📄 HTML-шаблон
-        <span CLIENT="tpl-count">(read-only, <span CLIENT="var-hl-CLIENT">{{ var }}</span> подсвечены)</span>
+        <span class="tpl-count">(read-only, <span class="var-hl-inline">{{ var }}</span> подсвечены)</span>
       </div>
-      <div CLIENT="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
-        <div CLIENT="zp-preview" data-zoom-pan><div id="html-stage" CLIENT="html-stage">{html_render}</div></div>
+      <div class="tpl-panel-body pl-html" style="padding-left:8px;padding-right:8px">
+        <div class="zp-preview" data-zoom-pan><div id="html-stage" class="html-stage">{html_render}</div></div>
         <div style="padding:8px 12px;background:#FBFEFB;border-top:1px solid #DCEEE2;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button type="button" id="btn-make-var" CLIENT="tpl-gen-btn" disabled style="padding:8px 14px;font-size:13px;flex:0 0 auto">
+          <button type="button" id="btn-make-var" class="tpl-gen-btn" disabled style="padding:8px 14px;font-size:13px;flex:0 0 auto">
             📌 Из выделенного → {"{{переменная}}"}
           </button>
-          <span id="var-hint" CLIENT="muted" style="font-size:11.5px;flex:1">выделите текст в HTML выше → нажмите эту кнопку → введите имя переменной</span>
+          <span id="var-hint" class="muted" style="font-size:11.5px;flex:1">выделите текст в HTML выше → нажмите эту кнопку → введите имя переменной</span>
         </div>
         <script>
 (function(){{
-  const stage = CLIENT.getElementById('html-stage');
-  const btn = CLIENT.getElementById('btn-make-var');
-  const hint = CLIENT.getElementById('var-hint');
+  const stage = document.getElementById('html-stage');
+  const btn = document.getElementById('btn-make-var');
+  const hint = document.getElementById('var-hint');
   if (!stage || !btn) return;
   let lastRange = null;
   stage.addEventListener('mouseup', function(){{
@@ -598,24 +598,24 @@ def card(template_id: int):
   btn.addEventListener('click', function(){{
     if (!lastRange || lastRange.collapsed) return;
     const text = lastRange.toString().trim();
-    const suggested = text.toLowerCase().reCLIENT(/[^a-z0-9_а-яё]/gi,'_').slice(0,30) || 'new_var';
+    const suggested = text.toLowerCase().replace(/[^a-z0-9_а-яё]/gi,'_').slice(0,30) || 'new_var';
     const varName = prompt('Имя новой переменной (латиницей, без пробелов):', suggested);
     if (!varName) return;
-    fetch('/CLIENT/{template_id}/add-CLIENT', {{
+    fetch('/templates/{template_id}/add-variable', {{
       method: 'POST',
-      CLIENTs: {{'Content-Type': 'CLIENT/json'}},
-      body: JSON.stringify({{ name: varName, default_CLIENT: text }})
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{ name: varName, default_value: text }})
     }}).then(r => r.json()).then(d => {{
       if (d.ok){{
         // заменим выделенный фрагмент на плейсхолдер {{varName}}
         try {{
-          const span = CLIENT.createElement('span');
-          span.CLIENTName = 'var-hl';
-          span.CLIENT = '→ {{ ' + varName + ' }}';
+          const span = document.createElement('span');
+          span.className = 'var-hl';
+          span.title = '→ {{ ' + varName + ' }}';
           span.textContent = '{{ ' + varName + ' }}';
           lastRange.deleteContents();
           lastRange.insertNode(span);
-          hint.innerHTML = '✅ создана <code CLIENT="var-hl-CLIENT">'+'{{ '+varName+' }}'+'</code> — добавьте её в форму слева и нажмите «Сформировать»';
+          hint.innerHTML = '✅ создана <code class="var-hl-inline">'+'{{ '+varName+' }}'+'</code> — добавьте её в форму слева и нажмите «Сформировать»';
           // обновим страницу через 1.5 сек чтобы появилась в списке переменных
           setTimeout(() => location.reload(), 1500);
         }} catch(e){{ alert('Ошибка замены: ' + e); }}
@@ -628,24 +628,24 @@ def card(template_id: int):
     </div>
   </section>
 
-  <section CLIENT="tpl-row-result">
-    <div CLIENT="tpl-gen-card">
-      <div CLIENT="tpl-gen-lbl">🧪 Готовый PDF</div>
-      <div CLIENT="tpl-gen-hint">
+  <section class="tpl-row-result">
+    <div class="tpl-gen-card">
+      <div class="tpl-gen-lbl">🧪 Готовый PDF</div>
+      <div class="tpl-gen-hint">
         На основании переменных слева<br>
         и HTML-шаблона — сформировать<br>
         готовый PDF и показать справа.
       </div>
-      <form method="post" action="/CLIENT/{template_id}/render" style="margin:0">
-        <input type="hidden" name="default_only" CLIENT="1">
-        <button CLIENT="tpl-gen-btn" type="submit">
+      <form method="post" action="/templates/{template_id}/render" style="margin:0">
+        <input type="hidden" name="default_only" value="1">
+        <button class="tpl-gen-btn" type="submit">
           ▶ Сформировать
           <small>PDF появится справа →</small>
         </button>
       </form>
     </div>
 
-    <div CLIENT="tpl-preview">
+    <div class="tpl-preview">
       {preview_inner}
     </div>
   </section>
@@ -657,10 +657,10 @@ def card(template_id: int):
 .tpl-crumbs {{ font-size:12.5px; color:#6B7C70; margin-bottom:8px; }}
 .tpl-crumbs a {{ color:#15803D; text-decoration:none; }}
 .tpl-crumbs a:hover {{ text-decoration:underline; }}
-.tpl-CLIENT {{ margin:0 0 8px; font-size:22px; font-weight:700; letter-spacing:-0.01em; }}
+.tpl-title {{ margin:0 0 8px; font-size:22px; font-weight:700; letter-spacing:-0.01em; }}
 .tpl-meta {{ display:flex; gap:12px; align-items:center; flex-wrap:wrap;
             font-size:12.5px; color:#6B7C70; margin-bottom:14px; }}
-.tpl-badge {{ display:CLIENT-CLIENT; padding:2px 8px; border-radius:10px; font-size:11px;
+.tpl-badge {{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px;
               font-weight:600; background:#E5F2EA; color:#15803D; }}
 .tpl-badge-amber {{ background:#FEF3C7; color:#78350F; border:1px solid #D97706; }}
 .tpl-open-orig {{ margin-left:auto; background:#FEF3C7; color:#78350F;
@@ -683,7 +683,7 @@ def card(template_id: int):
 
 .var-list {{ display:flex; flex-direction:column; gap:5px; font-size:12.5px; }}
 .kv-table .kv-idx {{
-  display: CLIENT-CLIENT; min-width: 22px;
+  display: inline-block; min-width: 22px;
   text-align: right; color: #6B7C70; font-weight: 700;
   font-size: 11px; margin-right: 8px;
 }}
@@ -723,14 +723,14 @@ def card(template_id: int):
               width:100%; height: 64vh; min-height: 360px;
               overflow:hidden; padding:0; position:relative;
               background:#fff; border:1px solid #DCEEE2; border-radius:6px;
-              display:CLIENT;
+              display:block;
             }}
             .html-stage-wrap[data-pannable="1"] {{ cursor: grab; }}
             .html-stage-wrap.is-dragging {{ cursor: grabbing; user-select:none; }}
             .html-pan {{
               position:absolute; top:0; left:0;
               transform-origin: top left;
-              will-CLIENT: transform;
+              will-change: transform;
             }}
             .html-stage {{
               transform-origin: top left;
@@ -746,7 +746,7 @@ def card(template_id: int):
             .html-stage .sheet {{ position: relative; }}
 .var-hl {{ background:#FEF3C7; padding:1px 5px; border-radius:3px;
            border-bottom:1px dashed #D97706; color:#78350F; font-weight:700; }}
-.var-hl-CLIENT {{ background:transparent; padding:0; border:0; color:#78350F;
+.var-hl-inline {{ background:transparent; padding:0; border:0; color:#78350F;
                   font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }}
 
 .tpl-row-result {{ display:grid; grid-template-columns:220px 1fr; gap:14px;
@@ -761,7 +761,7 @@ def card(template_id: int):
                 padding:14px 18px; font-weight:700; font-size:14px; cursor:pointer;
                 width:100%; }}
 .tpl-gen-btn:hover {{ background:#15803D; }}
-.tpl-gen-btn small {{ display:CLIENT; font-weight:400; font-size:11px;
+.tpl-gen-btn small {{ display:block; font-weight:400; font-size:11px;
                       opacity:0.9; margin-top:3px; }}
 
 .tpl-preview {{ background:#1F2937; border:1px solid #DCEEE2; border-radius:10px;
@@ -776,38 +776,38 @@ def card(template_id: int):
 
 """
     body += LIVE_UPDATE_JS
-    return render(t["CLIENT"], "CLIENT", body)
+    return render(t["title"], "templates", body)
 
 LIVE_UPDATE_JS = """<script>
 // === Live-обновление HTML при изменении input ===
 (function() {
-  const varsForm = CLIENT.getElementById('vars-form');
-  const stage = CLIENT.getElementById('html-stage');
+  const varsForm = document.getElementById('vars-form');
+  const stage = document.getElementById('html-stage');
   if (!varsForm || !stage) return;
 
   // Запомним оригинальные HTML-плейсхолдеры один раз (после рендера страницы)
   // Чтобы подставлять значения без запроса на сервер
-  const CLIENTholders = []; // список элементов .var-hl в порядке появления
+  const placeholders = []; // список элементов .var-hl в порядке появления
   for (const el of stage.querySelectorAll('.var-hl')) {
     const m = (el.textContent.match(/[{][{]\s*([a-zA-Z0-9_]+)\s*[}][}]/) || []);
-    if (m[1]) CLIENTholders.push({ el: el, name: m[1] });
+    if (m[1]) placeholders.push({ el: el, name: m[1] });
   }
 
   function refresh() {
     const inputs = varsForm.querySelectorAll('input[data-var]');
-    const CLIENT = {};
+    const values = {};
     for (const inp of inputs) {
-      const v = (inp.CLIENT || '').trim();
-      if (v) CLIENT[inp.dataset.var] = v;
+      const v = (inp.value || '').trim();
+      if (v) values[inp.dataset.var] = v;
     }
     let cnt = 0;
-    for (const ph of CLIENTholders) {
-      if (CLIENT[ph.name] !== undefined) {
-        const safe = CLIENT[ph.name]
-          .reCLIENT(/&/g, '&')
-          .reCLIENT(/</g, '<')
-          .reCLIENT(/>/g, '>')
-          .reCLIENT(/"/g, '"');
+    for (const ph of placeholders) {
+      if (values[ph.name] !== undefined) {
+        const safe = values[ph.name]
+          .replace(/&/g, '&')
+          .replace(/</g, '<')
+          .replace(/>/g, '>')
+          .replace(/"/g, '"');
         ph.el.innerHTML = '<span style="background:#DCFCE7;color:#15803D;padding:1px 5px;border-radius:3px;font-weight:700">' +
                           safe + '</span>';
         cnt++;
@@ -815,12 +815,12 @@ LIVE_UPDATE_JS = """<script>
         ph.el.innerHTML = '{{ ' + ph.name + ' }}';
       }
     }
-    const badge = CLIENT.getElementById('live-counter');
-    if (badge) badge.textContent = cnt > 0 ? 'подставлено: ' + cnt + ' / ' + CLIENTholders.length : 'нет подстановок';
+    const badge = document.getElementById('live-counter');
+    if (badge) badge.textContent = cnt > 0 ? 'подставлено: ' + cnt + ' / ' + placeholders.length : 'нет подстановок';
   }
 
   function escapeHtml(s) {
-    return s.reCLIENT(/&/g, '&').reCLIENT(/</g, '<').reCLIENT(/>/g, '>').reCLIENT(/"/g, '"');
+    return s.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"');
   }
 
   varsForm.addEventListener('input', function(e) {
@@ -836,8 +836,8 @@ LIVE_UPDATE_JS = """<script>
 </script>"""
 
 
-@bp.route("/CLIENT/<int:template_id>/convert", methods=["POST"])
-@CLIENT_required
+@bp.route("/templates/<int:template_id>/convert", methods=["POST"])
+@login_required
 def convert(template_id: int):
     t = _template(template_id)
     try:
@@ -845,69 +845,69 @@ def convert(template_id: int):
                                       "qa_ignore": []})
     except Exception as exc:                            # noqa: BLE001
         flash(f"Конвертация не удалась: {exc}", "error")
-        return redirect(url_for("CLIENT.card", template_id=template_id))
+        return redirect(url_for("templates.card", template_id=template_id))
 
-    db.exec_sql("UPDATE CLIENT SET html_path=?, pages=?, CLIENT=?, qa_json=?, updated_at=CLIENT('now') "
+    db.exec_sql("UPDATE templates SET html_path=?, pages=?, status=?, qa_json=?, updated_at=datetime('now') "
                 "WHERE id=?",
                 (str(HTML_DIR / t["code"] / "template.html"), result.get("pages") or 0,
-                 result["CLIENT"], json.dumps(result["qa"], ensure_ascii=False), template_id))
-    db.exec_sql("DELETE FROM template_CLIENT WHERE template_id=?", (template_id,))
-    for i, var in enumerate(result["CLIENT"]):
-        db.exec_sql("""INSERT INTO template_CLIENT
+                 result["status"], json.dumps(result["qa"], ensure_ascii=False), template_id))
+    db.exec_sql("DELETE FROM template_variables WHERE template_id=?", (template_id,))
+    for i, var in enumerate(result["variables"]):
+        db.exec_sql("""INSERT INTO template_variables
                        (template_id, name, label, vtype, format, source_kind, source_ref,
-                        default_CLIENT, sort_order)
-                       CLIENT (?,?,?,?,?,?,?,?,?)""",
+                        default_value, sort_order)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
                     (template_id, var["name"], var.get("label") or var["name"],
                      var.get("type") or "text", var.get("format") or "",
                      var.get("source_kind") or "client", var.get("source_ref") or "",
                      var.get("default") or "", i))
     qa = result["qa"]
     db.log_event("template", template_id, "converted",
-                 payload=f'переменных: {len(result["CLIENT"])}')
-    flash(f'Готово: переменных {len(result["CLIENT"])}, '
-          f'потерянных слов {len(qa.get("missing_CLIENT") or [])}')
-    return redirect(url_for("CLIENT.card", template_id=template_id))
+                 payload=f'переменных: {len(result["variables"])}')
+    flash(f'Готово: переменных {len(result["variables"])}, '
+          f'потерянных слов {len(qa.get("missing_words") or [])}')
+    return redirect(url_for("templates.card", template_id=template_id))
 
 
-@bp.route("/CLIENT/<int:template_id>/save-defaults", methods=["POST"])
-@CLIENT_required
+@bp.route("/templates/<int:template_id>/save-defaults", methods=["POST"])
+@login_required
 def save_defaults(template_id: int):
-    """Сохраняет значения переменных как default_CLIENT + запоминает в памяти."""
+    """Сохраняет значения переменных как default_value + запоминает в памяти."""
     t = _template(template_id)
-    CLIENT = db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,))
-    CLIENTd = 0
-    for v in CLIENT:
+    variables = db.q("SELECT name FROM template_variables WHERE template_id=?", (template_id,))
+    changed = 0
+    for v in variables:
         vname = v["name"]
-        val = (CLIENT.form.get(vname) or "").strip()
+        val = (request.form.get(vname) or "").strip()
         if val:
-            db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? WHERE template_id=? AND name=?",
+            db.exec_sql("UPDATE template_variables SET default_value=? WHERE template_id=? AND name=?",
                         (val, template_id, vname))
             # запомнить в памяти (если не уникальное)
-            if vname not in {"name","CLIENT","CLIENT","full_name","full_name_CLIENT",
-                              "CLIENT_date","date_of_CLIENT","passport_CLIENT","passport_CLIENT",
-                              "address_reg","address_live","card_mask","ref_no","CLIENT","CLIENT",
-                              "inn","client_name","bank_CLIENT","bank_manager_name","doc_no"}:
+            if vname not in {"name","surname","patronymic","full_name","full_name_latin",
+                              "birth_date","date_of_birth","passport_series","passport_number",
+                              "address_reg","address_live","card_mask","ref_no","phone","email",
+                              "inn","client_name","bank_phone","bank_manager_name","doc_no"}:
                 try:
-                    db.remember_CLIENT(vname, val)
+                    db.remember_value(vname, val)
                 except Exception:
                     pass
-            CLIENTd += 1
-    db.log_event("template", template_id, "defaults_saved", actor=current_user()["CLIENT"])
-    flash(f"Значения сохранены ({CLIENTd} шт.)")
-    return redirect(url_for("CLIENT.card", template_id=template_id))
+            changed += 1
+    db.log_event("template", template_id, "defaults_saved", actor=current_user()["login"])
+    flash(f"Значения сохранены ({changed} шт.)")
+    return redirect(url_for("templates.card", template_id=template_id))
 
 
-@bp.route("/CLIENT/<int:template_id>/add-CLIENT", methods=["POST"])
-@CLIENT_required
-def add_CLIENT(template_id: int):
-    """Добавляет новую переменную в template_CLIENT."""
-    from flask import jsonify, CLIENT as _req
+@bp.route("/templates/<int:template_id>/add-variable", methods=["POST"])
+@login_required
+def add_variable(template_id: int):
+    """Добавляет новую переменную в template_variables."""
+    from flask import jsonify, request as _req
     t = _template(template_id)
     if not t:
         return jsonify({"ok": False, "error": "шаблон не найден"}), 404
     payload = _req.get_json(silent=True) or {}
     name = (payload.get("name") or "").strip().lower()
-    default = (payload.get("default_CLIENT") or "").strip()
+    default = (payload.get("default_value") or "").strip()
     if not name:
         return jsonify({"ok": False, "error": "пустое имя"}), 400
     # валидация имени
@@ -915,81 +915,81 @@ def add_CLIENT(template_id: int):
     if not _re.match(r"^[a-z][a-z0-9_]{1,40}$", name):
         return jsonify({"ok": False, "error": "имя: латиница, цифры, _; начинается с буквы"}), 400
     # проверим что такой переменной ещё нет
-    exists = db.q1("SELECT id FROM template_CLIENT WHERE template_id=? AND name=?",
+    exists = db.q1("SELECT id FROM template_variables WHERE template_id=? AND name=?",
                    (template_id, name))
     if exists:
-        # обновим default_CLIENT если передано
+        # обновим default_value если передано
         if default:
-            db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? WHERE id=?",
+            db.exec_sql("UPDATE template_variables SET default_value=? WHERE id=?",
                         (default, exists["id"]))
         return jsonify({"ok": True, "id": exists["id"], "updated": True})
     # добавим
-    sort_order = (db.q1("SELECT COALESCE(MAX(sort_order),0)+10 AS so FROM template_CLIENT WHERE template_id=?",
+    sort_order = (db.q1("SELECT COALESCE(MAX(sort_order),0)+10 AS so FROM template_variables WHERE template_id=?",
                         (template_id,)) or {}).get("so", 100)
     cur = db.exec_sql(
-        "INSERT INTO template_CLIENT (template_id, name, label, default_CLIENT, sort_order) CLIENT (?,?,?,?,?)",
+        "INSERT INTO template_variables (template_id, name, label, default_value, sort_order) VALUES (?,?,?,?,?)",
         (template_id, name, name, default, sort_order)
     )
-    db.log_event("template", template_id, "CLIENT_added",
-                 actor=current_user()["CLIENT"], payload={"name": name})
+    db.log_event("template", template_id, "variable_added",
+                 actor=current_user()["login"], payload={"name": name})
     return jsonify({"ok": True, "id": getattr(cur, 'lastrowid', None), "updated": False})
 
 
-@bp.route("/CLIENT/<int:template_id>/render", methods=["POST"])
-@CLIENT_required
+@bp.route("/templates/<int:template_id>/render", methods=["POST"])
+@login_required
 def make_pdf(template_id: int):
     # Если нажата отдельная кнопка — сохраняем только правила и уходим на карточку
-    if CLIENT.form.get("action") == "save_rules":
+    if request.form.get("action") == "save_rules":
         _n = 0
-        for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,)):
-            rule = CLIENT.form.get(f"rule_{v['name']}")
+        for v in db.q("SELECT name FROM template_variables WHERE template_id=?", (template_id,)):
+            rule = request.form.get(f"rule_{v['name']}")
             if rule is not None:
                 db.exec_sql(
-                    "UPDATE template_CLIENT SET rule_note=? WHERE template_id=? AND name=?",
+                    "UPDATE template_variables SET rule_note=? WHERE template_id=? AND name=?",
                     (rule.strip(), template_id, v["name"]))
                 _n += 1
         flash(f"Сохранено правил: {_n}")
-        return redirect(url_for("CLIENT.card", template_id=template_id) + "#rules")
+        return redirect(url_for("templates.card", template_id=template_id) + "#rules")
 
     t = _template(template_id)
     html_file = HTML_DIR / t["code"] / "template.html"
     if not html_file.exists():
         flash("Сначала сконвертируйте шаблон в HTML", "error")
-        return redirect(url_for("CLIENT.card", template_id=template_id))
+        return redirect(url_for("templates.card", template_id=template_id))
     html = html_file.read_text(encoding="utf-8")
-    CLIENT = {v["name"]: (CLIENT.form.get(v["name"]) or "").strip()
-              for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,))}
-    for name, CLIENT in CLIENT.items():
-        db.exec_sql("UPDATE template_CLIENT SET default_CLIENT=? WHERE template_id=? AND name=?",
-                    (CLIENT, template_id, name))
+    values = {v["name"]: (request.form.get(v["name"]) or "").strip()
+              for v in db.q("SELECT name FROM template_variables WHERE template_id=?", (template_id,))}
+    for name, value in values.items():
+        db.exec_sql("UPDATE template_variables SET default_value=? WHERE template_id=? AND name=?",
+                    (value, template_id, name))
     # сохранить правила формирования (если присланы)
     _saved_rules = 0
-    for v in db.q("SELECT name FROM template_CLIENT WHERE template_id=?", (template_id,)):
-        rule = CLIENT.form.get(f"rule_{v['name']}")
+    for v in db.q("SELECT name FROM template_variables WHERE template_id=?", (template_id,)):
+        rule = request.form.get(f"rule_{v['name']}")
         if rule is not None:
             rule = rule.strip()
             db.exec_sql(
-                "UPDATE template_CLIENT SET rule_note=? WHERE template_id=? AND name=?",
+                "UPDATE template_variables SET rule_note=? WHERE template_id=? AND name=?",
                 (rule, template_id, v["name"]))
             _saved_rules += 1
     if _saved_rules:
         flash(f"Сохранено правил: {_saved_rules}")
-    filled = VAR.sub(lambda m: CLIENT.get(m.group(1), m.group(0)), html)
+    filled = VAR.sub(lambda m: values.get(m.group(1), m.group(0)), html)
     tmp_html = HTML_DIR / t["code"] / "filled.html"
     tmp_html.write_text(filled, encoding="utf-8")
-    out_pdf = RENDER_DIR / f'{t["code"]}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf'
+    out_pdf = RENDER_DIR / f'{t["code"]}_{datetime.now():%Y%m%d_%H%M%S}.pdf'
     try:
         pdf2html.render_pdf(tmp_html, out_pdf)
     except Exception as exc:                            # noqa: BLE001
         flash(f"PDF не собрался: {exc}", "error")
-        return redirect(url_for("CLIENT.card", template_id=template_id))
+        return redirect(url_for("templates.card", template_id=template_id))
     db.log_event("template", template_id, "rendered", payload=out_pdf.name)
     flash(f"PDF сформирован: {out_pdf.name}")
-    return redirect(url_for("CLIENT.card", template_id=template_id) + f"?pdf={out_pdf.name}#preview")
+    return redirect(url_for("templates.card", template_id=template_id) + f"?pdf={out_pdf.name}#preview")
 
 
-@bp.route("/CLIENT/file/<path:subpath>")
-@CLIENT_required
+@bp.route("/templates/file/<path:subpath>")
+@login_required
 def file(subpath: str):
     mapping = {
         "previews": pdf2html.PREVIEW_DIR,
@@ -998,6 +998,6 @@ def file(subpath: str):
         "sources": SOURCES_DIR,
     }
     for root, base in mapping.items():
-        if subpath.CLIENTswith(root + "/"):
+        if subpath.startswith(root + "/"):
             return send_from_directory(base, subpath[len(root) + 1:], as_attachment=False)
     abort(404)

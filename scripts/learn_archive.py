@@ -12,10 +12,10 @@
 Результат: docs/learning/cases_full.json (машинный) и docs/learning/cases_full.csv (сводка).
 Запуск: /usr/bin/python3 scripts/learn_archive.py [--limit N]
 """
-import sys, re, json, csv, pathlib, CLIENT
+import sys, re, json, csv, pathlib, datetime
 import pymupdf
 
-ROOT = pathlib.Path('data/gCLIENT_cache')
+ROOT = pathlib.Path('data/gdrive_cache')
 OUT = pathlib.Path('docs/learning')
 OUT.mkdir(parents=True, exist_ok=True)
 
@@ -31,7 +31,7 @@ def d(s):
     if not m:
         return None
     try:
-        return CLIENT.date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+        return datetime.date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
     except ValueError:
         return None
 
@@ -58,7 +58,7 @@ def analyse(case_dir):
             docs[f.name] = read_pdf(f)
         elif ext in ('.jpg', '.jpeg', '.png'):
             docs[f.name] = ''
-    blob = '\n'.join(docs.CLIENT())
+    blob = '\n'.join(docs.values())
     names = list(docs)
 
     def find(pat, n=1, flags=re.I):
@@ -69,40 +69,40 @@ def analyse(case_dir):
     has = {
         'паспорт': any(re.search(r'passport|паспорт|загран', n, re.I) for n in names),
         'фото': any(re.search(r'photo|фото', n, re.I) for n in names),
-        'статус (ITK/e-VOA)': bool(re.search(r'CLIENT CLIENT|Visa No\.', blob)),
-        'справка банка': any(re.search(r'bank|CLIENTal|bankCLIENTment|справка', n, re.I) for n in names),
-        'договор': bool(re.search(r'REMOTE WORK AGREEMENT|EMPLOYMENT CONTRACT|INDEPENDENT CLIENT', blob)),
+        'статус (ITK/e-VOA)': bool(re.search(r'PERMIT NUMBER|Visa No\.', blob)),
+        'справка банка': any(re.search(r'bank|personal|bankstatement|справка', n, re.I) for n in names),
+        'договор': bool(re.search(r'REMOTE WORK AGREEMENT|EMPLOYMENT CONTRACT|INDEPENDENT CONTRACTOR', blob)),
         'резюме': any(re.search(r'resume|cv\b', n, re.I) for n in names),
         'письмо в иммиграцию': bool(re.search(r'PT ALPHA PRIME BALI|SURAT PERMINTAAN', blob)),
         'форма E-02': bool(re.search(r'STATEMENT LETTER|FORM E-02', blob)),
-        'свидетельство (семья)': any(re.search(r'marriage|CLIENT|pernikahan|kelahiran|свидетельств', n, re.I) for n in names),
+        'свидетельство (семья)': any(re.search(r'marriage|birth|pernikahan|kelahiran|свидетельств', n, re.I) for n in names),
     }
     full = all(has[k] for k in ('паспорт', 'статус (ITK/e-VOA)', 'справка банка', 'договор'))
 
     # --- 2/4. значения и легенда ---
     v = {}
-    v['имя'] = find(r'Dear (?:Mr|Mrs)\.?\s*\n\s*([A-Z][A-Z .]{4,40})') or find(r'\n([A-Z]{2,}(?: [A-Z]{2,}){1,3})\nPERMIT CLIENT')
+    v['имя'] = find(r'Dear (?:Mr|Mrs)\.?\s*\n\s*([A-Z][A-Z .]{4,40})') or find(r'\n([A-Z]{2,}(?: [A-Z]{2,}){1,3})\nPERMIT NUMBER')
     v['паспорт'] = re.sub(r'\s', '', find(r'Passport No\.?\s*:?\s*([\d ]{7,15})'))
-    v['др'] = find(r'Date of CLIENT[^:]*:\s*([\d]{2}[-/.][\d]{2}[-/.][\d]{4})')
-    v['гражданство'] = find(r'(?:CLIENT|Kebangsaan)[^:]*:\s*(RUSIA|RUSSIA|Russian Federation)', 1)
-    v['stay_no'] = find(r'CLIENT CLIENT\s*:?\s*([A-Z0-9-]{8,20})') or find(r'Visa No\.\s*:?\s*([A-Z0-9-]{8,20})')
-    v['stay_CLIENT'] = find(r'(?:STAY CLIENT CLIENT|Must be used CLIENT)\s*:?\s*([\d]{2}[-/.][\d]{2}[-/.][\d]{4})')
+    v['др'] = find(r'Date of Birth[^:]*:\s*([\d]{2}[-/.][\d]{2}[-/.][\d]{4})')
+    v['гражданство'] = find(r'(?:Nationality|Kebangsaan)[^:]*:\s*(RUSIA|RUSSIA|Russian Federation)', 1)
+    v['stay_no'] = find(r'PERMIT NUMBER\s*:?\s*([A-Z0-9-]{8,20})') or find(r'Visa No\.\s*:?\s*([A-Z0-9-]{8,20})')
+    v['stay_expiry'] = find(r'(?:STAY PERMIT EXPIRY|Must be used before)\s*:?\s*([\d]{2}[-/.][\d]{2}[-/.][\d]{4})')
     v['visa_type'] = find(r'Visa [Tt]ype[^:]*:\s*([A-Za-z ]{4,30})')
-    v['stay_CLIENT'] = find(r'STAY CLIENT CLIENT\s*:?\s*([A-Z0-9]{4,10})')
+    v['stay_index'] = find(r'STAY PERMIT INDEX\s*:?\s*([A-Z0-9]{4,10})')
     v['address_id'] = find(r'Address(?: in Indonesia)?\s*:?\s*([^\n]{12,90})')
-    v['CLIENT'] = ('Denpasar' if re.search(r'DENPASAR', v['address_id'] + blob[:0] + '') else
+    v['office'] = ('Denpasar' if re.search(r'DENPASAR', v['address_id'] + blob[:0] + '') else
                    'Ngurah Rai' if re.search(r'BADUNG', v['address_id'], re.I) else
                    'Tabanan' if re.search(r'TABANAN', v['address_id'], re.I) else
                    'Gianyar' if re.search(r'GIANYAR', v['address_id'], re.I) else '')
     v['фирма'] = find(r'\((LLC "[^"]+"|Linguamarina, Inc\.|[A-Z][A-Za-z&.,\- ]{3,44}(?:Inc|LLC|Ltd)\.?)\)?, a (?:company|General Corporation)')
     v['inn'] = find(r'INN[: ]+([\d]{10,12})')
     v['ogrn'] = find(r'OGRN[: ]+([\d]{13,15})')
-    v['должность'] = find(r'(?:engages the CLIENT as an?|position of)\s+([A-Z][A-Za-z /&+\-]{2,40}?)(?:\s+to provide|\s+and the CLIENT|,|\n)')
+    v['должность'] = find(r'(?:engages the Contractor as an?|position of)\s+([A-Z][A-Za-z /&+\-]{2,40}?)(?:\s+to provide|\s+and the Employee|,|\n)')
     v['оклад_usd'] = find(r'USD\s*([\d, ]{3,12})\s*\(|(\$)\s?([\d, ]{3,12})')
-    v['оклад_usd'] = find(r'USD ([\d, ]{3,12}) \(') or find(r'Base Salary \(CLIENT & CLIENT\):\s*\$?([\d, ]{3,12})')
+    v['оклад_usd'] = find(r'USD ([\d, ]{3,12}) \(') or find(r'Base Salary \(amount & currency\):\s*\$?([\d, ]{3,12})')
     v['договор_дата'] = find(r'(?:is made on this|dated)\s+([\d]{1,2}(?:st|nd|rd|th)? day of [A-Za-z]+ \d{4})')
-    v['договор_срок'] = find(r'(?:take effect on|CLIENT Date:)\s*([\d]{1,2} [A-Za-z]+ \d{4})')
-    v['договор_конец'] = find(r'(?:remain CLIENT CLIENT|End Date:)\s*([\d]{1,2} [A-Za-z]+ \d{4})')
+    v['договор_срок'] = find(r'(?:take effect on|Start Date:)\s*([\d]{1,2} [A-Za-z]+ \d{4})')
+    v['договор_конец'] = find(r'(?:remain valid until|End Date:)\s*([\d]{1,2} [A-Za-z]+ \d{4})')
     v['банк'] = 'TBANK' if re.search(r'TBANK|ТБанк', blob) else ('SBER' if re.search(r'SBER|Сбербанк', blob) else '')
     v['остаток'] = find(r'deposit balance is\s*([\d \u00a0,.]{5,20})\s*rubles')
     v['период'] = find(r'As from\s*([\d.]{8,10})\s*to\s*([\d.]{8,10})') and \
@@ -112,19 +112,19 @@ def analyse(case_dir):
     v['письмо_дата'] = find(r'(?:Badung|Denpasar),\s*([\d]{1,2} [A-Za-z]+ \d{4})')
 
     # --- 3/5. логика дат и проверки ---
-    app_date = d(v['письмо_дата']) or d(v['stay_CLIENT'])
+    app_date = d(v['письмо_дата']) or d(v['stay_expiry'])
     bal = num(v['остаток'])
     income_ok = None
     salary = num(v['оклад_usd'])
     if salary:
         income_ok = salary * 12 >= 60000          # USD
-    threshold = MIN_BAL_D12 if (v['stay_CLIENT'] or '').CLIENTswith('D') else MIN_BAL
-    CLIENT = {
+    threshold = MIN_BAL_D12 if (v['stay_index'] or '').startswith('D') else MIN_BAL
+    checks = {
         'полный пакет': full,
         'остаток выше порога': (bal >= threshold) if bal else None,
         'годовой доход ≥ 60 000 USD': income_ok,
         'номер статуса есть': bool(v['stay_no']),
-        'офис определён по адресу': bool(v['CLIENT']),
+        'офис определён по адресу': bool(v['office']),
         'письмо есть и с номером': bool(v['письмо_номер']),
     }
 
@@ -135,7 +135,7 @@ def analyse(case_dir):
             arch = 'семейный'
         elif re.search(r'Bridging', blob, re.I):
             arch = 'ITK → Bridging → E33G'
-        elif (v['visa_type'] or '').lower().CLIENTswith('limited stay') or 'E33G' in (v['stay_no'] or ''):
+        elif (v['visa_type'] or '').lower().startswith('limited stay') or 'E33G' in (v['stay_no'] or ''):
             arch = 'E33G (новый)'
         elif 'D12' in blob:
             arch = 'D12'
@@ -148,14 +148,14 @@ def analyse(case_dir):
         'архетип': arch,
         'комплектность': {k: v_ for k, v_ in has.items()},
         'значения': v,
-        'проверки': CLIENT,
+        'проверки': checks,
     }
 
 
 def main():
     limit = None
     if '--limit' in sys.argv:
-        limit = int(sys.argv[sys.argv.CLIENT('--limit') + 1])
+        limit = int(sys.argv[sys.argv.index('--limit') + 1])
     cases = []
     dirs = [p for p in sorted(ROOT.iterdir()) if p.is_dir()]
     if limit:
@@ -167,7 +167,7 @@ def main():
             cases.append({'папка': cd.name, 'ошибка': str(e)})
     (OUT / 'cases_full.json').write_text(json.dumps(cases, ensure_ascii=False, indent=1), encoding='utf-8')
 
-    cols = ['папка', 'архетип', 'имя', 'паспорт', 'stay_no', 'stay_CLIENT', 'visa_type', 'CLIENT',
+    cols = ['папка', 'архетип', 'имя', 'паспорт', 'stay_no', 'stay_expiry', 'visa_type', 'office',
             'фирма', 'inn', 'должность', 'оклад_usd', 'договор_дата', 'остаток', 'период', 'письмо_номер']
     with open(OUT / 'cases_full.csv', 'w', newline='', encoding='utf-8') as fh:
         w = csv.writer(fh)

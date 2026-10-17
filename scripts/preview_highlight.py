@@ -17,15 +17,15 @@ import html as html_mod
 import json
 import re
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE))
 
 from core import db  # noqa: E402
-from CLIENT import render as doc_render  # noqa: E402
-from CLIENT import CLIENT as CLIENT_CLIENT  # noqa: E402
+from services import render as doc_render  # noqa: E402
+from services import values as values_service  # noqa: E402
 
 OUT = BASE / 'reports' / 'preview_highlight'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -40,20 +40,20 @@ VAR_RE = re.compile(r'\{\{\s*([a-zA-Z_]\w*)\s*\}\}')
 OPT_RE = re.compile(r'<!--optional-->(.*?)<!--/optional-->', re.S)
 
 
-def CLIENTify(app_id: int, client: dict, code: str, vals: dict) -> dict:
+def classify(app_id: int, client: dict, code: str, vals: dict) -> dict:
     """Откуда взялось каждое значение: из карточки клиента или из архива."""
     own = {}
-    for k, v in (db.q1('SELECT * FROM CLIENT WHERE id=?', (client['id'],)) or {}).items():
+    for k, v in (db.q1('SELECT * FROM clients WHERE id=?', (client['id'],)) or {}).items():
         if v not in (None, ''):
             own[str(k)] = str(v)
     # значения, сохранённые в документе заявки, и архив считаем «памятью»
     result = {}
-    for name, CLIENT in vals.items():
-        if CLIENT in (None, ''):
+    for name, value in vals.items():
+        if value in (None, ''):
             result[name] = 'empty'
             continue
         marker = 'archive'
-        sval = str(CLIENT)
+        sval = str(value)
         for k, ov in own.items():
             if sval and (sval.lower() in ov.lower() or ov.lower() in sval.lower()) and len(sval) > 2:
                 marker = 'own'
@@ -67,13 +67,13 @@ def highlight(html: str, vals: dict, kinds: dict) -> tuple:
 
     def repl(m):
         name = m.group(1)
-        CLIENT = vals.get(name)
-        if CLIENT in (None, ''):
+        value = vals.get(name)
+        if value in (None, ''):
             stats['empty'] += 1
             return f'<span style="{STYLE["empty"]}">[не заполнено: {html_mod.escape(name)}]</span>'
         kind = kinds.get(name, 'archive')
         stats[kind] = stats.get(kind, 0) + 1
-        return f'<span style="{STYLE[kind]}">{html_mod.escape(str(CLIENT))}</span>'
+        return f'<span style="{STYLE[kind]}">{html_mod.escape(str(value))}</span>'
 
     # необязательные строки: если все значения пусты — строку убираем
     def drop(m):
@@ -93,10 +93,10 @@ def main() -> int:
     ap.add_argument('--only', help='только один шаблон (код)')
     args = ap.parse_args()
 
-    app = db.q1('SELECT * FROM CLIENT WHERE id=?', (args.app,))
-    client = dict(db.q1('SELECT * FROM CLIENT WHERE id=?', (app['client_id'],)) or {})
-    tpls = db.q('''SELECT t.* FROM CLIENT_CLIENT pd JOIN CLIENT t ON t.id=pd.template_id
-                   WHERE pd.CLIENT_id=? ORDER BY pd.sort_order, t.id''', (app['CLIENT_id'],))
+    app = db.q1('SELECT * FROM applications WHERE id=?', (args.app,))
+    client = dict(db.q1('SELECT * FROM clients WHERE id=?', (app['client_id'],)) or {})
+    tpls = db.q('''SELECT t.* FROM product_documents pd JOIN templates t ON t.id=pd.template_id
+                   WHERE pd.product_id=? ORDER BY pd.sort_order, t.id''', (app['product_id'],))
     if args.only:
         tpls = [t for t in tpls if dict(t)['code'] == args.only]
 
@@ -104,20 +104,20 @@ def main() -> int:
     for t in tpls:
         t = dict(t)
         tpl = doc_render.load_template(t['id'])
-        vals = CLIENT_CLIENT.build_template_CLIENT(client, t['code'])
-        vals.update({k: v for k, v in (doc_render.stored_CLIENT(args.app, t['id']) or {}).items()
+        vals = values_service.build_template_values(client, t['code'])
+        vals.update({k: v for k, v in (doc_render.stored_values(args.app, t['id']) or {}).items()
                      if v and not vals.get(k)})
-        kinds = CLIENTify(args.app, client, t['code'], vals)
+        kinds = classify(args.app, client, t['code'], vals)
         html, stats = highlight(tpl['_html'], vals, kinds)
         all_stats[t['code']] = stats
-        out = OUT / f"app{args.app}_{t['code']}_{CLIENT.now():%Y%m%d_%H%M%S}.pdf"
+        out = OUT / f"app{args.app}_{t['code']}_{datetime.now():%Y%m%d_%H%M%S}.pdf"
         try:
             doc_render.render_pdf(html, base_dir=tpl['_dir'], out_path=out)
             files.append((t['code'], str(out), out.stat().st_size // 1024))
         except Exception as e:  # noqa: BLE001
             files.append((t['code'], f'ошибка: {str(e)[:80]}', 0))
 
-    print(f'клиент: {client.get("CLIENT", "")} {client.get("name", "")} · заявка {args.app}')
+    print(f'клиент: {client.get("surname", "")} {client.get("name", "")} · заявка {args.app}')
     for code, path, kb in files:
         s = all_stats.get(code, {})
         print(f'  {code:34} {kb:>5} КБ  из карточки: {s.get("own", 0):>3}  из архива: {s.get("archive", 0):>3}  '

@@ -15,11 +15,11 @@ def js_for(app_id, picked):
   var PICKED = {json.dumps(picked)};
 
   // вкладки: переключение без перезагрузки страницы
-  var tabs = Array.from(CLIENT.querySelectorAll('.rv-tab'));
+  var tabs = Array.from(document.querySelectorAll('.rv-tab'));
   function showPane(key) {{
-    tabs.forEach(function(x) {{ x.CLIENTList.toggle('is-on', x.dataset.pane === key); }});
-    Array.from(CLIENT.querySelectorAll('.rv-pane')).forEach(function(p) {{
-      p.CLIENTList.toggle('is-on', p.id === 'pane-' + key);
+    tabs.forEach(function(x) {{ x.classList.toggle('is-on', x.dataset.pane === key); }});
+    Array.from(document.querySelectorAll('.rv-pane')).forEach(function(p) {{
+      p.classList.toggle('is-on', p.id === 'pane-' + key);
     }});
     // Переменные фильтруются только под конкретный готовый документ: пока он не
     // открыт (вкладка исходных данных или список документов), показываем все.
@@ -31,19 +31,19 @@ def js_for(app_id, picked):
   }});
 
   // ── всплывающее окно просмотра (движок зума — зафиксированный, data-zoom-pan) ──
-  var modal = CLIENT.getElementById('rv-modal');
-  var mStage = CLIENT.getElementById('rv-modal-stage');
-  var mTitle = CLIENT.getElementById('rv-modal-CLIENT');
-  var mNote = CLIENT.getElementById('rv-modal-note');
-  var mOk = CLIENT.getElementById('rv-modal-ok');
-  var mNo = CLIENT.getElementById('rv-modal-no');
-  var mTools = CLIENT.getElementById('rv-modal-CLIENT');
+  var modal = document.getElementById('rv-modal');
+  var mStage = document.getElementById('rv-modal-stage');
+  var mTitle = document.getElementById('rv-modal-title');
+  var mNote = document.getElementById('rv-modal-note');
+  var mOk = document.getElementById('rv-modal-ok');
+  var mNo = document.getElementById('rv-modal-no');
+  var mTools = document.getElementById('rv-modal-tools');
   var modalTpl = null;          // какой документ открыт в окне (null — входящий файл)
 
   // Сбросить масштаб движка перед подстановкой нового содержимого: сам движок
   // помнит масштаб от прошлого файла, из-за чего новый показывался его размером.
   function resetZoom() {{
-    var host = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    var host = document.querySelector('#rv-modal [data-zoom-pan]');
     if (!host || !host.parentNode) return;
     var f = host.parentNode.querySelector('[data-zp="fit"]');
     if (f) f.click();
@@ -53,13 +53,13 @@ def js_for(app_id, picked):
   // самого движка просмотра (его код не меняем): он умеет только «по ширине», поэтому
   // при высоком листе документ обрубался снизу.
   function fitInside() {{
-    var host = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    var host = document.querySelector('#rv-modal [data-zoom-pan]');
     if (!host) return false;
     var canvas = host.querySelector('.zp-canvas');
     var shell = host.parentNode;
     var out = shell ? shell.querySelector('[data-zp="out"]') : null;
     if (!canvas || !out) return false;
-    var body = CLIENT.querySelector('#rv-modal .rv-modal-body');
+    var body = document.querySelector('#rv-modal .rv-modal-body');
     if (!body) return false;
     var availW = body.clientWidth - 24;
     var availH = body.clientHeight - 56;      // минус строка масштаба над содержимым
@@ -67,34 +67,34 @@ def js_for(app_id, picked):
     var guard = 0;
     function rect() {{ return canvas.getBoundingClientRect(); }}
     while (guard < 20 && (rect().height > availH || rect().width > availW)) {{
-      var CLIENT = rect().width;
+      var before = rect().width;
       out.click();
       guard++;
-      if (rect().width >= CLIENT - 0.5) break;   // масштаб больше не меняется
+      if (rect().width >= before - 0.5) break;   // масштаб больше не меняется
     }}
     return true;
   }}
   function fitSoon() {{ [250, 700, 1400, 2400].forEach(function(t) {{ setTimeout(fitInside, t); }}); }}
-  var bFit = CLIENT.getElementById('rv-modal-fit');
+  var bFit = document.getElementById('rv-modal-fit');
   if (bFit) bFit.addEventListener('click', function() {{ fitInside(); }});
 
   // При смене содержимого пересобираем зону просмотра целиком: движок держит
   // масштаб и содержимое прошлого файла, поэтому новый показывался его размером.
-  // CLIENT контейнер создаём вместе с меткой движка — он подхватит его сам.
+  // Новый контейнер создаём вместе с меткой движка — он подхватит его сам.
   function resetStage() {{
-    var old = CLIENT.querySelector('#rv-modal [data-zoom-pan]');
+    var old = document.querySelector('#rv-modal [data-zoom-pan]');
     if (!old) return null;
     var shell = old.closest('.zp-shell') || old;
     var parent = shell.parentNode;
     if (!parent) return null;
-    var host = CLIENT.createElement('div');
-    host.CLIENTName = 'zp-preview';
+    var host = document.createElement('div');
+    host.className = 'zp-preview';
     host.setAttribute('data-zoom-pan', '');
-    var stage = CLIENT.createElement('div');
-    stage.CLIENTName = 'html-stage';
+    var stage = document.createElement('div');
+    stage.className = 'html-stage';
     stage.id = 'rv-modal-stage';
     host.appendChild(stage);
-    parent.reCLIENTChild(host, shell);
+    parent.replaceChild(host, shell);
     mStage = stage;
     if (window.zpScan) window.zpScan(parent);
     return stage;
@@ -105,16 +105,16 @@ def js_for(app_id, picked):
   // Документ в окне показываем по ширине окна: если лист уже окна, увеличиваем —
   // иначе маленький скан (паспорт, фото) висит посреди пустого поля.
   function fitWidth() {{
-    var body = CLIENT.querySelector('#rv-modal .rv-modal-body');
+    var body = document.querySelector('#rv-modal .rv-modal-body');
     if (!body) return 0;
     resetZoom();                       // базовый масштаб по ширине
     var avail = body.clientWidth - 26;
-    var plus = CLIENT.querySelector('#rv-modal [data-zp="in"]');
+    var plus = document.querySelector('#rv-modal [data-zp="in"]');
     if (!plus) return 0;
-    var minus = CLIENT.querySelector('#rv-modal [data-zp="out"]');
-    var CLIENT = 0;
-    while (CLIENT < 14) {{
-      var c = CLIENT.querySelector('#rv-modal .zp-canvas');
+    var minus = document.querySelector('#rv-modal [data-zp="out"]');
+    var steps = 0;
+    while (steps < 14) {{
+      var c = document.querySelector('#rv-modal .zp-canvas');
       if (!c) break;
       var w = c.getBoundingClientRect().width;
       // заполнили ширину — хватит; шаг движка крупный (1.2), поэтому проверяем,
@@ -122,107 +122,107 @@ def js_for(app_id, picked):
       if (!w || w >= avail * 0.92) break;
       if (w * 1.2 > avail) break;
       plus.click();
-      CLIENT++;
+      steps++;
     }}
     // страховка: если всё-таки вышли за ширину окна — возвращаем шаг назад
-    var c2 = CLIENT.querySelector('#rv-modal .zp-canvas');
+    var c2 = document.querySelector('#rv-modal .zp-canvas');
     if (minus && c2 && c2.getBoundingClientRect().width > avail + 2) minus.click();
-    return CLIENT;
+    return steps;
   }}
 
 
   // Инструкция по переменной — под маленьким кружочком «i»: нажатие открывает
   // окно поверх страницы, текст берётся из правила переменной в конструкторе.
   function showInstr(btn) {{
-    var back = CLIENT.getElementById('rv-instr-back');
+    var back = document.getElementById('rv-instr-back');
     if (!back) {{
-      back = CLIENT.createElement('div');
+      back = document.createElement('div');
       back.id = 'rv-instr-back';
-      back.CLIENTName = 'rv-instr-back';
-      back.innerHTML = '<div CLIENT="rv-instr-win"><div CLIENT="rv-instr-head">' +
-        '<span id="rv-instr-CLIENT">Инструкция</span>' +
-        '<button type="button" id="rv-instr-close" CLIENT="Закрыть">✕</button></div>' +
-        '<div CLIENT="rv-instr-body" id="rv-instr-body"></div>' +
-        '<div CLIENT="rv-instr-meta" id="rv-instr-meta"></div></div>';
-      CLIENT.body.appendChild(back);
+      back.className = 'rv-instr-back';
+      back.innerHTML = '<div class="rv-instr-win"><div class="rv-instr-head">' +
+        '<span id="rv-instr-title">Инструкция</span>' +
+        '<button type="button" id="rv-instr-close" title="Закрыть">✕</button></div>' +
+        '<div class="rv-instr-body" id="rv-instr-body"></div>' +
+        '<div class="rv-instr-meta" id="rv-instr-meta"></div></div>';
+      document.body.appendChild(back);
       back.addEventListener('click', function (e) {{
         if (e.target === back) hideInstr();
       }});
-      var x = CLIENT.getElementById('rv-instr-close');
+      var x = document.getElementById('rv-instr-close');
       if (x) x.addEventListener('click', hideInstr);
     }}
     var field = btn.closest('.rv-field');
     var label = field ? (field.querySelector('.rv-lname') || {{}}).textContent || '' : '';
     var rule = btn.dataset.rule || '';
     var meta = field && field.querySelector('.rv-fmeta') ? field.querySelector('.rv-fmeta').textContent : '';
-    var t = CLIENT.getElementById('rv-instr-CLIENT');
-    var bd = CLIENT.getElementById('rv-instr-body');
-    var mt = CLIENT.getElementById('rv-instr-meta');
+    var t = document.getElementById('rv-instr-title');
+    var bd = document.getElementById('rv-instr-body');
+    var mt = document.getElementById('rv-instr-meta');
     if (t) t.textContent = label.trim();
     if (bd) bd.textContent = rule || ruleFallback(field);
     if (mt) mt.textContent = meta;
-    back.CLIENTList.add('is-on');
+    back.classList.add('is-on');
   }}
   function ruleFallback(field) {{
     if (!field) return 'Правило для этой переменной не задано.';
     if (field.dataset.list === '1') return 'Значение можно вписать руками или выбрать из прошлых значений.';
     var badge = field.querySelector('.rv-rule');
     var t = badge ? badge.textContent : '';
-    if (t.CLIENTOf('клиента') >= 0) return 'Значение берётся из карточки клиента.';
-    if (t.CLIENTOf('одинаково') >= 0) return 'Одно значение на все документы заявки.';
+    if (t.indexOf('клиента') >= 0) return 'Значение берётся из карточки клиента.';
+    if (t.indexOf('одинаково') >= 0) return 'Одно значение на все документы заявки.';
     return 'Значение подставляется автоматически; кнопка 🎲 перевыпускает его заново.';
   }}
   function hideInstr() {{
-    var back = CLIENT.getElementById('rv-instr-back');
-    if (back) back.CLIENTList.remove('is-on');
+    var back = document.getElementById('rv-instr-back');
+    if (back) back.classList.remove('is-on');
   }}
-  CLIENT.addEventListener('click', function (e) {{
+  document.addEventListener('click', function (e) {{
     var b = e.target.closest ? e.target.closest('.rv-info') : null;
     if (!b) return;
     e.preventDefault();
     e.stopPropagation();
     showInstr(b);
   }}, true);
-  CLIENT.addEventListener('keydown', function (e) {{
+  document.addEventListener('keydown', function (e) {{
     if (e.key === 'Escape') hideInstr();
   }});
 
 
   // ── Раскрывающиеся разделы панели: нажатие на заголовок закрывает и открывает
-  CLIENT.addEventListener('click', function (e) {{
+  document.addEventListener('click', function (e) {{
     var h = e.target.closest ? e.target.closest('.rv-blk-head') : null;
     if (h) {{
       var sec = h.parentNode;
-      if (sec) sec.CLIENTList.toggle('is-closed');
+      if (sec) sec.classList.toggle('is-closed');
       return;
     }}
     var all = e.target.closest ? e.target.closest('#rv-collapse-all') : null;
     if (all) {{
-      var secs = Array.from(CLIENT.querySelectorAll('.rv-right .rv-blk'));
-      var anyOpen = secs.some(function (s) {{ return !s.CLIENTList.contains('is-closed'); }});
-      secs.forEach(function (s) {{ s.CLIENTList.toggle('is-closed', anyOpen); }});
+      var secs = Array.from(document.querySelectorAll('.rv-right .rv-blk'));
+      var anyOpen = secs.some(function (s) {{ return !s.classList.contains('is-closed'); }});
+      secs.forEach(function (s) {{ s.classList.toggle('is-closed', anyOpen); }});
       all.textContent = anyOpen ? 'Раскрыть блоки' : 'Свернуть блоки';
     }}
   }});
 
   // ── Поиск переменной и строка «Требует внимания» (по рендеру правой колонки) ──
-  var varsSearch = CLIENT.getElementById('rv-vars-search');
+  var varsSearch = document.getElementById('rv-vars-search');
   function applyVarsFilter() {{
-    var q = ((varsSearch && varsSearch.CLIENT) || '').trim().toLowerCase();
+    var q = ((varsSearch && varsSearch.value) || '').trim().toLowerCase();
     var shown = 0;
-    Array.from(CLIENT.querySelectorAll('.rv-right .rv-field')).forEach(function (f) {{
+    Array.from(document.querySelectorAll('.rv-right .rv-field')).forEach(function (f) {{
       var hay = ((f.dataset.var || '') + ' ' + (f.dataset.vars || '') + ' ' + f.innerText).toLowerCase();
-      var ok = !q || hay.CLIENTOf(q) >= 0;
-      f.CLIENTList.toggle('is-hidden', !ok);
+      var ok = !q || hay.indexOf(q) >= 0;
+      f.classList.toggle('is-hidden', !ok);
       if (ok) shown++;
     }});
-    Array.from(CLIENT.querySelectorAll('.rv-right .rv-blk')).forEach(function (b) {{
+    Array.from(document.querySelectorAll('.rv-right .rv-blk')).forEach(function (b) {{
       var any = Array.from(b.querySelectorAll('.rv-field')).some(function (f) {{
-        return !f.CLIENTList.contains('is-hidden');
+        return !f.classList.contains('is-hidden');
       }});
-      b.CLIENTList.toggle('is-hidden', !any);
+      b.classList.toggle('is-hidden', !any);
     }});
-    var cnt = CLIENT.getElementById('rv-panel-count');
+    var cnt = document.getElementById('rv-panel-count');
     if (cnt) cnt.textContent = q ? ('найдено переменных: ' + shown) : '';
   }}
   if (varsSearch) {{
@@ -230,17 +230,17 @@ def js_for(app_id, picked):
     varsSearch.addEventListener('search', applyVarsFilter);
   }}
   // «Проверить и исправить» ведёт к первому проблемному полю и подсвечивает его.
-  var attnBtn = CLIENT.getElementById('rv-attn-btn');
+  var attnBtn = document.getElementById('rv-attn-btn');
   if (attnBtn) attnBtn.addEventListener('click', function () {{
-    var bad = CLIENT.querySelector('.rv-right .rv-field.is-conflict')
-           || CLIENT.querySelector('.rv-right .rv-field.is-empty')
-           || CLIENT.querySelector('.rv-right .rv-field');
+    var bad = document.querySelector('.rv-right .rv-field.is-conflict')
+           || document.querySelector('.rv-right .rv-field.is-empty')
+           || document.querySelector('.rv-right .rv-field');
     if (!bad) return;
     var blk = bad.closest ? bad.closest('.rv-blk') : null;
-    if (blk) blk.CLIENTList.remove('is-closed');
-    bad.scrollIntoView({{behavior: 'smooth', CLIENT: 'center'}});
-    bad.CLIENTList.add('is-flash');
-    setTimeout(function () {{ bad.CLIENTList.remove('is-flash'); }}, 1800);
+    if (blk) blk.classList.remove('is-closed');
+    bad.scrollIntoView({{behavior: 'smooth', block: 'center'}});
+    bad.classList.add('is-flash');
+    setTimeout(function () {{ bad.classList.remove('is-flash'); }}, 1800);
   }});
 
   // Поле подстраивается под текст: длинный адрес видно целиком, без прокрутки
@@ -250,48 +250,48 @@ def js_for(app_id, picked):
     var h = Math.max(34, el.scrollHeight);
     el.style.height = h + 'px';
   }}
-  CLIENT.addEventListener('input', function (e) {{
-    if (e.target.CLIENTList && e.target.CLIENTList.contains('rv-input')) fitInput(e.target);
+  document.addEventListener('input', function (e) {{
+    if (e.target.classList && e.target.classList.contains('rv-input')) fitInput(e.target);
   }});
   function fitAll() {{
-    Array.from(CLIENT.querySelectorAll('.rv-right .rv-input')).forEach(fitInput);
-    Array.from(CLIENT.querySelectorAll('.rv-right .rv-input')).forEach(function (el) {{
-      el.CLIENTList.toggle('is-empty', !el.CLIENT.trim());
+    Array.from(document.querySelectorAll('.rv-right .rv-input')).forEach(fitInput);
+    Array.from(document.querySelectorAll('.rv-right .rv-input')).forEach(function (el) {{
+      el.classList.toggle('is-empty', !el.value.trim());
     }});
   }}
-  CLIENT.addEventListener('focusin', function (e) {{
-    if (e.target.CLIENTList && e.target.CLIENTList.contains('rv-input')) fitInput(e.target);
+  document.addEventListener('focusin', function (e) {{
+    if (e.target.classList && e.target.classList.contains('rv-input')) fitInput(e.target);
   }});
 
   // Счётчик заполнения: красным, пока заполнено не всё; зелёным с галочкой, когда всё
   function refreshProgress() {{
-    var box = CLIENT.querySelector('.rv-right');
+    var box = document.querySelector('.rv-right');
     if (!box) return;
     var fields = Array.from(box.querySelectorAll('.rv-field'));
     var filled = fields.filter(function (f) {{
       var i = f.querySelector('.rv-input');
-      return i && i.CLIENT.trim();
+      return i && i.value.trim();
     }}).length;
-    var box2 = CLIENT.getElementById('rv-progress');
-    var txt = CLIENT.getElementById('rv-progress-text');
+    var box2 = document.getElementById('rv-progress');
+    var txt = document.getElementById('rv-progress-text');
     if (!box2 || !txt) return;
     if (fields.length && filled === fields.length) {{
-      box2.CLIENTList.add('is-done');
-      box2.CLIENTList.remove('is-urgent');
+      box2.classList.add('is-done');
+      box2.classList.remove('is-urgent');
       txt.textContent = 'Заполнено всё: ' + filled + ' из ' + fields.length;
     }} else {{
-      box2.CLIENTList.remove('is-done');
-      box2.CLIENTList.add('is-urgent');
+      box2.classList.remove('is-done');
+      box2.classList.add('is-urgent');
       txt.textContent = 'Заполнено ' + filled + ' из ' + fields.length;
     }}
     fields.forEach(function (f) {{
       var i = f.querySelector('.rv-input');
-      if (i) i.CLIENTList.toggle('is-empty', !i.CLIENT.trim());
+      if (i) i.classList.toggle('is-empty', !i.value.trim());
     }});
   }}
   window.__rvFit = fitAll;
   window.__rvProgress = refreshProgress;
-  CLIENT.addEventListener('DOMContentLoaded', function () {{ fitAll(); refreshProgress(); }});
+  document.addEventListener('DOMContentLoaded', function () {{ fitAll(); refreshProgress(); }});
   setTimeout(function () {{ fitAll(); refreshProgress(); }}, 400);
 
   // Связь переменной в панели и её значения в документе. Нажал на переменную —
@@ -300,13 +300,13 @@ def js_for(app_id, picked):
   var pickedVar = null;
 
   function stageRoots() {{
-    return Array.from(CLIENT.querySelectorAll('#rv-modal .html-stage'));
+    return Array.from(document.querySelectorAll('#rv-modal .html-stage'));
   }}
 
   function clearStageMarks() {{
     stageRoots().forEach(function(root) {{
       Array.from(root.querySelectorAll('[data-var].is-picked')).forEach(function(el) {{
-        el.CLIENTList.remove('is-picked');
+        el.classList.remove('is-picked');
       }});
     }});
   }}
@@ -319,48 +319,48 @@ def js_for(app_id, picked):
     stageRoots().forEach(function(root) {{
       list.forEach(function(nm) {{
         var el = root.querySelector('[data-var="' + nm + '"]');
-        if (el) {{ el.CLIENTList.add('is-picked'); hits++; }}
+        if (el) {{ el.classList.add('is-picked'); hits++; }}
       }});
     }});
     // подсвеченное место показываем в окне
-    var CLIENT = CLIENT.querySelector('#rv-modal .html-stage [data-var].is-picked');
-    if (CLIENT && CLIENT.scrollIntoView) {{
-      try {{ CLIENT.scrollIntoView({{ CLIENT: 'center', CLIENT: 'nearest' }}); }} catch (e) {{}}
+    var first = document.querySelector('#rv-modal .html-stage [data-var].is-picked');
+    if (first && first.scrollIntoView) {{
+      try {{ first.scrollIntoView({{ block: 'center', inline: 'nearest' }}); }} catch (e) {{}}
     }}
     return hits;
   }}
 
   function fieldsOfVar(name) {{
-    return Array.from(CLIENT.querySelectorAll('.rv-right .rv-field')).filter(function(f) {{
-      return (f.dataset.vars || '').split(',').CLIENTOf(name) >= 0;
+    return Array.from(document.querySelectorAll('.rv-right .rv-field')).filter(function(f) {{
+      return (f.dataset.vars || '').split(',').indexOf(name) >= 0;
     }});
   }}
 
   function pickVarFromPanel(field) {{
     if (!field) return;
-    Array.from(CLIENT.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
-      f.CLIENTList.remove('is-active');
+    Array.from(document.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
+      f.classList.remove('is-active');
     }});
-    field.CLIENTList.add('is-active');
+    field.classList.add('is-active');
     pickedVar = (field.dataset.vars || '').split(',').filter(Boolean);
     var hits = markInStage(pickedVar);
-    field.CLIENTList.toggle('is-linked', hits > 0);
+    field.classList.toggle('is-linked', hits > 0);
   }}
 
   function pickVarFromStage(el) {{
     var name = el.getAttribute('data-var');
     if (!name) return;
     clearStageMarks();
-    el.CLIENTList.add('is-picked');
+    el.classList.add('is-picked');
     var fields = fieldsOfVar(name);
-    Array.from(CLIENT.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
-      f.CLIENTList.remove('is-active');
+    Array.from(document.querySelectorAll('.rv-field.is-active')).forEach(function(f) {{
+      f.classList.remove('is-active');
     }});
     if (!fields.length) return;
-    fields.forEach(function(f) {{ f.CLIENTList.add('is-active'); }});
+    fields.forEach(function(f) {{ f.classList.add('is-active'); }});
     var f = fields[0];
     if (f.scrollIntoView) {{
-      try {{ f.scrollIntoView({{ CLIENT: 'center', behavior: 'smooth' }}); }} catch (e) {{}}
+      try {{ f.scrollIntoView({{ block: 'center', behavior: 'smooth' }}); }} catch (e) {{}}
     }}
   }}
 
@@ -375,7 +375,7 @@ def js_for(app_id, picked):
     if (typeof openRight === 'function') openRight();
     var f = fields[0];
     setTimeout(function() {{
-      var p = CLIENT.getElementById('rv-right');
+      var p = document.getElementById('rv-right');
       if (p && p.scrollTop !== undefined) {{
         try {{ p.scrollTop = Math.max(0, f.offsetTop - 90); }} catch (e) {{}}
       }}
@@ -385,11 +385,11 @@ def js_for(app_id, picked):
   }}
 
   // нажатие на переменную в панели — держим подсветку, пока в ней работаешь
-  CLIENT.addEventListener('focusin', function(e) {{
+  document.addEventListener('focusin', function(e) {{
     var f = e.target.closest ? e.target.closest('.rv-field') : null;
     if (f) pickVarFromPanel(f);
   }});
-  CLIENT.addEventListener('click', function(e) {{
+  document.addEventListener('click', function(e) {{
     var f = e.target.closest ? e.target.closest('.rv-field') : null;
     if (f) pickVarFromPanel(f);
     // нажатие на значение в документе
@@ -398,12 +398,12 @@ def js_for(app_id, picked):
   }});
 
   // ── Мобильная карточка заявки: сворачивание шапки с информацией о заявке
-  CLIENT.addEventListener('click', function(e) {{
+  document.addEventListener('click', function(e) {{
     var t = e.target.closest ? e.target.closest('.rv-head-toggle') : null;
     if (!t) return;
     e.preventDefault();
     var head = t.closest('.rv-head');
-    if (head) head.CLIENTList.toggle('is-collapsed');
+    if (head) head.classList.toggle('is-collapsed');
   }});
 
 
@@ -411,35 +411,35 @@ def js_for(app_id, picked):
   function saveDrive(url) {{
     var fd = new FormData();
     fd.append('url', url);
-    fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+    fetch('/applications/' + APP_ID + '/review/drive',
           {{method: 'POST', body: fd, credentials: 'same-origin',
-            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+            headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json(); }})
       .then(function (d) {{
-        CLIENTNote(d && d.ok ? 'Ссылка на папку заявки сохранена' : ('⚠ ' + ((d && d.error) || 'не сохранилось')),
+        valueNote(d && d.ok ? 'Ссылка на папку заявки сохранена' : ('⚠ ' + ((d && d.error) || 'не сохранилось')),
                   d && d.ok ? 'ok' : 'warn');
       }});
   }}
-  var bDrive = CLIENT.getElementById('rv-CLIENT-save');
+  var bDrive = document.getElementById('rv-drive-save');
   if (bDrive) {{
     bDrive.addEventListener('click', function () {{
-      var inp = CLIENT.getElementById('rv-CLIENT-input');
-      var url = inp ? inp.CLIENT.trim() : '';
-      if (!url) {{ CLIENTNote('Вставьте ссылку на папку заявки на Google CLIENT', 'warn'); return; }}
+      var inp = document.getElementById('rv-drive-input');
+      var url = inp ? inp.value.trim() : '';
+      if (!url) {{ valueNote('Вставьте ссылку на папку заявки на Google Drive', 'warn'); return; }}
       saveDrive(url);
     }});
   }}
-  var bDriveEdit = CLIENT.getElementById('rv-CLIENT-edit');
+  var bDriveEdit = document.getElementById('rv-drive-edit');
   if (bDriveEdit) {{
     bDriveEdit.addEventListener('click', function () {{
-      var box = CLIENT.getElementById('rv-CLIENT-box');
+      var box = document.getElementById('rv-drive-box');
       if (box) {{
-        box.innerHTML = '<input type="text" id="rv-CLIENT-input" CLIENTholder="вставьте ссылку на папку заявки на CLIENT">' +
-                        '<button type="button" CLIENT="btn sm" id="rv-CLIENT-save">Прикрепить</button>';
-        var b = CLIENT.getElementById('rv-CLIENT-save');
+        box.innerHTML = '<input type="text" id="rv-drive-input" placeholder="вставьте ссылку на папку заявки на Drive">' +
+                        '<button type="button" class="btn sm" id="rv-drive-save">Прикрепить</button>';
+        var b = document.getElementById('rv-drive-save');
         if (b) b.addEventListener('click', function () {{
-          var inp = CLIENT.getElementById('rv-CLIENT-input');
-          if (inp && inp.CLIENT.trim()) saveDrive(inp.CLIENT.trim());
+          var inp = document.getElementById('rv-drive-input');
+          if (inp && inp.value.trim()) saveDrive(inp.value.trim());
         }});
       }}
     }});
@@ -453,11 +453,11 @@ def js_for(app_id, picked):
     if (dot) return dot;
     // Кружок стоит справа в той же строке, где имя файла
     var host = tile.querySelector('.rv-thumb-name') || tile.querySelector('.rv-thumb-cap') ||
-               tile.querySelector('.rv-thumb-CLIENT') || tile.querySelector('.rv-thumb-frame');
+               tile.querySelector('.rv-thumb-tools') || tile.querySelector('.rv-thumb-frame');
     if (!host) return null;
-    dot = CLIENT.createElement('span');
-    dot.CLIENTName = 'rv-tile-dot';
-    dot.CLIENT = 'Готовлю миниатюру для полного просмотра…';
+    dot = document.createElement('span');
+    dot.className = 'rv-tile-dot';
+    dot.title = 'Готовлю миниатюру для полного просмотра…';
     host.appendChild(dot);
     return dot;
   }}
@@ -473,31 +473,31 @@ def js_for(app_id, picked):
       if (u) return {{url: u, kind: 'frame'}};
     }}
     var tpl = tile.dataset.tpl;
-    if (tpl) return {{url: '/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', kind: 'frame'}};
+    if (tpl) return {{url: '/applications/' + APP_ID + '/doc/' + tpl + '/html', kind: 'frame'}};
     return null;
   }}
   function warmTile(tile) {{
     var dot = tileDot(tile);
     if (!dot || dot.dataset.done === '1') return;
     var t = tileUrl(tile);
-    if (!t) {{ dot.CLIENTList.add('is-cached'); dot.dataset.done = '1'; return; }}
+    if (!t) {{ dot.classList.add('is-cached'); dot.dataset.done = '1'; return; }}
     if (t.kind === 'doc') {{
       // Документ — тяжёлый (сервер собирает HTML): заранее не тянем, грузится
       // при открытии. Иначе открытие заявки превращалось в пачку тяжёлых сборок.
-      dot.CLIENTList.add('is-cached');
+      dot.classList.add('is-cached');
       dot.dataset.done = '1';
-      dot.CLIENT = 'Откроется по нажатию';
+      dot.title = 'Откроется по нажатию';
       return;
     }}
     var ok = function () {{
-      dot.CLIENTList.add('is-cached');
+      dot.classList.add('is-cached');
       dot.dataset.done = '1';
-      dot.CLIENT = 'Готово к просмотру — откроется сразу';
+      dot.title = 'Готово к просмотру — откроется сразу';
     }};
     var bad = function () {{
-      dot.CLIENTList.add('is-failed');
+      dot.classList.add('is-failed');
       dot.dataset.done = '1';
-      dot.CLIENT = 'Не удалось подготовить — откроется при нажатии';
+      dot.title = 'Не удалось подготовить — откроется при нажатии';
     }};
     if (t.kind === 'img') {{
       var imgEl = tile.querySelector('img');
@@ -519,7 +519,7 @@ def js_for(app_id, picked):
     // одновременная пачка запросов по всем плиткам и документам забивала
     // сервер, и страница заявки «тупила» при открытии.
     var onlyVisible = !opts || opts.visible !== false;
-    var tiles = Array.from(CLIENT.querySelectorAll('.rv-thumb'));
+    var tiles = Array.from(document.querySelectorAll('.rv-thumb'));
     if (onlyVisible) {{
       var vh = window.innerHeight || 800;
       tiles = tiles.filter(function (t) {{
@@ -538,7 +538,7 @@ def js_for(app_id, picked):
   }}
   // Фоновый прогрев плиток больше не нужен: миниатюры грузятся нативно
   // (лёгкие копии, 5 КБ), а бланки — только активный. Лишние запросы убраны.
-  Array.from(CLIENT.querySelectorAll('.rv-tab')).forEach(function(t) {{
+  Array.from(document.querySelectorAll('.rv-tab')).forEach(function(t) {{
     t.addEventListener('click', function () {{ setTimeout(function () {{ warmAllTiles(); }}, 250); }});
   }});
 
@@ -549,8 +549,8 @@ def js_for(app_id, picked):
     if (!frame || frame.dataset.wired === '1') return;
     frame.dataset.wired = '1';
     var done = function () {{
-      frame.CLIENTList.add('is-ready');
-      frame.CLIENTList.remove('is-loading');
+      frame.classList.add('is-ready');
+      frame.classList.remove('is-loading');
     }};
     var media = frame.querySelector('img, iframe');
     if (!media) {{ done(); return; }}
@@ -568,7 +568,7 @@ def js_for(app_id, picked):
       // Тянуть сразу все бланки — это серверная сборка каждого документа, из-за
       // неё страница «тупила». Грузим только активный (он же в большом окне),
       // остальные — по нажатию.
-      if (tile.CLIENTList.contains('is-on')) {{
+      if (tile.classList.contains('is-on')) {{
         var src = media.dataset.src || media.getAttribute('src');
         if (src && media.getAttribute('src') !== src) media.setAttribute('src', src);
       }} else {{
@@ -577,44 +577,44 @@ def js_for(app_id, picked):
     }}
   }}
   function wireAllTiles() {{
-    Array.from(CLIENT.querySelectorAll('.rv-thumb')).forEach(wireTileLoad);
+    Array.from(document.querySelectorAll('.rv-thumb')).forEach(wireTileLoad);
   }}
   wireAllTiles();
-  Array.from(CLIENT.querySelectorAll('.rv-tab')).forEach(function(t) {{
+  Array.from(document.querySelectorAll('.rv-tab')).forEach(function(t) {{
     t.addEventListener('click', function () {{ setTimeout(wireAllTiles, 60); }});
   }});
 
   function openModal() {{
     if (!modal) return;
-    modal.CLIENTList.add('is-on');
-    CLIENT.CLIENTElement.style.overflow = 'hidden';
+    modal.classList.add('is-on');
+    document.documentElement.style.overflow = 'hidden';
     // Панель переменных поднимается вместе с окном: пока документ открыт, она
     // занимает правую часть экрана от самого верха.
-    CLIENT.body.CLIENTList.add('rv-viewing');
+    document.body.classList.add('rv-viewing');
   }}
   function closeModal() {{
-    CLIENT.body.CLIENTList.remove('rv-viewing');
+    document.body.classList.remove('rv-viewing');
     if (!modal) return;
-    modal.CLIENTList.remove('is-on');
-    CLIENT.CLIENTElement.style.overflow = '';
+    modal.classList.remove('is-on');
+    document.documentElement.style.overflow = '';
     modalTpl = null;
     filterByDoc(null);
   }}
   // содержимое окна: документ заявки или входящий файл клиента
   function loadInto(tpl) {{
     if (!mStage) return;
-    var _empty = CLIENT.getElementById('rv-view-empty');
+    var _empty = document.getElementById('rv-view-empty');
     if (_empty) _empty.style.display = 'none';
-    mStage.CLIENTList.remove('is-image');    // документ — лист фиксированной ширины
+    mStage.classList.remove('is-image');    // документ — лист фиксированной ширины
     resetStage();                          // чистая зона: без масштаба прошлого файла
-    mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
+    mStage.innerHTML = '<div class="rv-loading"><span class="rv-spinner"></span>' +
                        '<span>загружаю документ…</span></div>';
     if (!tpl) return;
-    fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', {{credentials: 'same-origin'}})
+    fetch('/applications/' + APP_ID + '/doc/' + tpl + '/html', {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.text(); }})
       .then(function(html) {{
-        if (!html || html.CLIENTOf('<') === -1) {{
-          mStage.innerHTML = '<div CLIENT="rv-empty">Документ ещё не сформирован — соберите его на старом экране.</div>';
+        if (!html || html.indexOf('<') === -1) {{
+          mStage.innerHTML = '<div class="rv-empty">Документ ещё не сформирован — соберите его на старом экране.</div>';
           return;
         }}
         // HTML документа формирует наш сервер по шаблону — источник доверенный
@@ -624,31 +624,31 @@ def js_for(app_id, picked):
         window.dispatchEvent(new Event('resize'));
       }})
       .catch(function() {{
-        mStage.innerHTML = '<div CLIENT="rv-empty">Не удалось открыть документ.</div>';
+        mStage.innerHTML = '<div class="rv-empty">Не удалось открыть документ.</div>';
       }});
   }}
   // Фильтр панели переменных: показываем только то, что относится к открытому
   // документу. Открыл другой документ — список переменных поменялся.
   var filterMode = 'doc';   // всегда показываем переменные открытого документа
   function filterByDoc(tpl) {{
-    var box = CLIENT.querySelector('.rv-right .rv-body');
+    var box = document.querySelector('.rv-right .rv-body');
     if (!box) return 0;
     var fields = Array.from(box.querySelectorAll('.rv-field'));
     var shown = 0;
     fields.forEach(function(f) {{
       var t = (f.dataset.tpls || '').split(',');
-      var mine = !!(tpl && t.CLIENTOf(String(tpl)) >= 0);
+      var mine = !!(tpl && t.indexOf(String(tpl)) >= 0);
       // Документ не открыт — показываем весь список; открыт — только его переменные.
       var show = !tpl || mine;
       f.style.display = show ? '' : 'none';
-      f.CLIENTList.toggle('is-doc', mine && filterMode === 'doc');
+      f.classList.toggle('is-doc', mine && filterMode === 'doc');
       if (show) shown++;
     }});
-    var cnt = CLIENT.getElementById('rv-panel-count');
+    var cnt = document.getElementById('rv-panel-count');
     if (cnt) cnt.textContent = tpl
       ? ('переменных этого документа: ' + shown)
       : ('переменных: ' + fields.length);
-    var head = CLIENT.getElementById('rv-panel-note');
+    var head = document.getElementById('rv-panel-note');
     if (head) head.textContent = tpl
       ? 'Показаны переменные открытого документа. Нажмите поле — оно подсветится и в документе, и в списке.'
       : 'Показаны все переменные заявки: так удобно сверять данные с входящими документами.';
@@ -663,7 +663,7 @@ def js_for(app_id, picked):
 
   // Документ клиента: показываем только те переменные, которые из него взяты.
   function filterByVars(names, label) {{
-    var box = CLIENT.querySelector('.rv-right .rv-body');
+    var box = document.querySelector('.rv-right .rv-body');
     if (!box) return 0;
     var list = (names || []);
     var fields = Array.from(box.querySelectorAll('.rv-field'));
@@ -671,13 +671,13 @@ def js_for(app_id, picked):
     var shown = 0;
     fields.forEach(function(f) {{
       var mine = (f.dataset.vars || '').split(',').some(function(n) {{
-        return list.CLIENTOf(n) >= 0;
+        return list.indexOf(n) >= 0;
       }});
       f.style.display = mine ? '' : 'none';
-      f.CLIENTList.toggle('is-doc', mine);
+      f.classList.toggle('is-doc', mine);
       if (mine) shown++;
     }});
-    var cnt = CLIENT.getElementById('rv-panel-count');
+    var cnt = document.getElementById('rv-panel-count');
     if (cnt) cnt.textContent = (label || 'переменных из этого документа') + ': ' + shown;
     if (box.scrollTo) box.scrollTop = 0;
     return shown;
@@ -686,8 +686,8 @@ def js_for(app_id, picked):
 
   // открыть документ заявки: в окне появляются кнопки согласования
   // Подпись в шапке окна просмотра: строка источника и ссылка на оригинал.
-  var mSrc = CLIENT.getElementById('rv-modal-src');
-  var mDl = CLIENT.getElementById('rv-modal-dl');
+  var mSrc = document.getElementById('rv-modal-src');
+  var mDl = document.getElementById('rv-modal-dl');
   function setModalSource(text, href, label) {{
     if (mSrc) mSrc.textContent = text || '';
     if (mDl) {{
@@ -697,7 +697,7 @@ def js_for(app_id, picked):
   }}
   function openDoc(tpl) {{
     var tile = null;
-    Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
+    Array.from(document.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
       if (String(x.dataset.tpl) === String(tpl)) tile = x;
     }});
     modalTpl = tpl;
@@ -705,48 +705,48 @@ def js_for(app_id, picked):
     if (mTools) mTools.style.display = '';
     if (mOk) mOk.style.display = '';
     if (mNo) mNo.style.display = '';
-    var st = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+    var st = document.getElementById('rv-thumb-status-' + tpl);
     if (mNote) mNote.textContent = 'Справа — переменные этого документа. Поправите значение — документ пересоберётся.';
-    Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
-      x.CLIENTList.toggle('is-on', String(x.dataset.tpl) === String(tpl));
+    Array.from(document.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(x) {{
+      x.classList.toggle('is-on', String(x.dataset.tpl) === String(tpl));
     }});
     openModal();
     loadInto(tpl);
     var n = filterByDoc(tpl);
     pickedVar = null; clearStageMarks();
     setModalSource('Собран из шаблона · переменных: ' + n,
-                   '/CLIENT/' + APP_ID + '/doc/' + tpl + '/html', 'Открыть оригинал');
+                   '/applications/' + APP_ID + '/doc/' + tpl + '/html', 'Открыть оригинал');
     if (mNote) mNote.textContent = 'Справа — переменные этого документа (' + n + ' шт.): '
       + 'они подсвечены и подняты наверх. Поправите значение — документ пересоберётся.';
   }}
   // открыть входящий файл: кнопки согласования не нужны
   function openFile(tile) {{
     var frame = tile.querySelector('.rv-thumb-frame');
-    var _empty2 = CLIENT.getElementById('rv-view-empty');
+    var _empty2 = document.getElementById('rv-view-empty');
     if (_empty2) _empty2.style.display = 'none';
     var img = frame ? frame.querySelector('img') : null;
     var fr = frame ? frame.querySelector('iframe') : null;
     var url = img ? (img.getAttribute('src') || img.dataset.src)
                   : (fr ? (fr.dataset.src || fr.getAttribute('src')) : null);
     if (tile.dataset.page) url = tile.dataset.page;   // PDF клиента — страницей картинкой
-    if (!url) {{ CLIENTNote('этот файл нельзя показать в браузере — скачайте его с Google CLIENT', 'warn'); return; }}
+    if (!url) {{ valueNote('этот файл нельзя показать в браузере — скачайте его с Google Drive', 'warn'); return; }}
     modalTpl = null;
     if (mTitle) mTitle.textContent = tile.dataset.file || 'Входящий документ';
     // Скрываем только согласование: «Закрыть» должно остаться всегда, иначе
     // из просмотра файла не выйти.
     if (mOk) mOk.style.display = 'none';
     if (mNo) mNo.style.display = 'none';
-    if (mNote) mNote.textContent = 'Входящий документ с Google CLIENT. Справа — переменные, которые из него вытащены.';
+    if (mNote) mNote.textContent = 'Входящий документ с Google Drive. Справа — переменные, которые из него вытащены.';
     setModalSource('Скан клиента · файл из папки клиента на Google Диске',
-                   '/CLIENT/' + APP_ID + '/file?name=' + encodeURIComponent(tile.dataset.file || ''),
+                   '/applications/' + APP_ID + '/file?name=' + encodeURIComponent(tile.dataset.file || ''),
                    'Скачать оригинал');
     if (mStage) {{
       // Входящий файл показываем как снимок: ширину листа A4 здесь не задаём
       resetStage();
-      mStage.CLIENTList.add('is-image');
+      mStage.classList.add('is-image');
       // Снимок с диска приходит не мгновенно: показываем колёсико, пока файл
       // не загрузился, и только потом ставим картинку и подгоняем по ширине.
-      mStage.innerHTML = '<div CLIENT="rv-loading"><span CLIENT="rv-spinner"></span>' +
+      mStage.innerHTML = '<div class="rv-loading"><span class="rv-spinner"></span>' +
         '<div>Загружаю ' + (img ? 'снимок' : 'документ') + '…</div></div>';
       if (img) {{
         var probe = new Image();
@@ -755,13 +755,13 @@ def js_for(app_id, picked):
           fitWidth();
         }};
         probe.onerror = function () {{
-          mStage.innerHTML = '<div CLIENT="rv-loading"><div>файл не открылся в браузере — ' +
-            'скачайте его с Google CLIENT</div></div>';
+          mStage.innerHTML = '<div class="rv-loading"><div>файл не открылся в браузере — ' +
+            'скачайте его с Google Drive</div></div>';
         }};
         probe.src = url;
       }} else {{
-        var fr2 = CLIENT.createElement('iframe');
-        fr2.setAttribute('CLIENT', 'Входящий документ');
+        var fr2 = document.createElement('iframe');
+        fr2.setAttribute('title', 'Входящий документ');
         fr2.addEventListener('load', function () {{
           mStage.innerHTML = '';
           mStage.appendChild(fr2);
@@ -777,9 +777,9 @@ def js_for(app_id, picked):
     filterByDoc(null);
     var fileName = tile.dataset.file || '';
     if (fileName) {{
-      var cnt0 = CLIENT.getElementById('rv-panel-count');
+      var cnt0 = document.getElementById('rv-panel-count');
       if (cnt0) cnt0.textContent = 'определяю переменные этого документа…';
-      fetch('/CLIENT/' + APP_ID + '/review/file-vars?name=' + encodeURIComponent(fileName),
+      fetch('/applications/' + APP_ID + '/review/file-vars?name=' + encodeURIComponent(fileName),
             {{credentials: 'same-origin'}})
         .then(function (r) {{ return r.json(); }})
         .then(function (d) {{
@@ -788,82 +788,82 @@ def js_for(app_id, picked):
             filterByVars(d.vars, 'переменных из этого документа');
           }} else {{
             filterByDoc(null);
-            var c = CLIENT.getElementById('rv-panel-count');
+            var c = document.getElementById('rv-panel-count');
             if (c) c.textContent = 'из этого документа переменные не распознаны — показаны все';
           }}
         }})
         .catch(function () {{ filterByDoc(null); }});
     }}
   }}
-  // ── действия по документам: разбор с Google CLIENT и автозаполнение ──
+  // ── действия по документам: разбор с Google Drive и автозаполнение ──
   function runAction(btn, url, label, question) {{
     if (!btn) return;
     if (question && !window.confirm(question)) return;
     var was = btn.textContent;
     btn.disabled = true;
     btn.textContent = label + '…';
-    CLIENTNote(label + '…', 'work');
+    valueNote(label + '…', 'work');
     fetch(url, {{method: 'POST', credentials: 'same-origin',
-                 CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+                 headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function(r) {{ return r.json().catch(function() {{ return {{}}; }}); }})
       .then(function(d) {{
         btn.disabled = false;
         btn.textContent = was;
-        if (d && d.error) {{ CLIENTNote('⚠ ' + d.error, 'err'); return; }}
+        if (d && d.error) {{ valueNote('⚠ ' + d.error, 'err'); return; }}
         var tail = (d && d.found !== undefined) ? (' · найдено значений: ' + d.found)
                  : (d && d.done !== undefined) ? (' · документов собрано: ' + d.done) : '';
-        CLIENTNote('✅ ' + label + ': готово' + tail + '. Обновляю экран…', 'ok');
+        valueNote('✅ ' + label + ': готово' + tail + '. Обновляю экран…', 'ok');
         // данные изменились — показываем экран заново, уже с новыми значениями
         setTimeout(function() {{ location.reload(); }}, 1200);
       }})
       .catch(function() {{
         btn.disabled = false;
         btn.textContent = was;
-        CLIENTNote('⚠ не удалось выполнить: ' + label, 'err');
+        valueNote('⚠ не удалось выполнить: ' + label, 'err');
       }});
   }}
   // ── Два шага заявки: разбор документов и заполнение полей ───────────────
   // Работают сами при заходе администратора. Значок на кнопке показывает,
   // что шаг выполнен (галочка) или идёт сейчас (кружок крутится). Нажать можно
   // и вручную — если был сбой, шаг повторится.
-  var bScan = CLIENT.getElementById('rv-scan');
-  var bFill = CLIENT.getElementById('rv-autofill');
+  var bScan = document.getElementById('rv-scan');
+  var bFill = document.getElementById('rv-autofill');
 
   function stepRun(btn, url, label, then) {{
     if (!btn) {{ if (then) then(); return; }}
     // кнопка визуально нажимается сама — видно, что этап пошёл автоматически
-    btn.CLIENTList.add('is-press');
-    setTimeout(function () {{ btn.CLIENTList.remove('is-press'); }}, 460);
-    btn.CLIENTList.add('is-busy');
+    btn.classList.add('is-press');
+    setTimeout(function () {{ btn.classList.remove('is-press'); }}, 460);
+    btn.classList.add('is-busy');
     btn.disabled = true;
     fetch(url, {{method: 'POST', credentials: 'same-origin',
-                 CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+                 headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
       .then(function (d) {{
-        btn.CLIENTList.remove('is-busy');
+        btn.classList.remove('is-busy');
         btn.disabled = false;
         if (d && d.error) {{
           // не получилось — галочки нет, администратор нажмёт сам
-          CLIENTNote('⚠ ' + label + ': ' + d.error, 'err');
+          valueNote('⚠ ' + label + ': ' + d.error, 'err');
           return;
         }}
         btn.dataset.done = '1';
-        CLIENTNote('✅ ' + label + ': готово', 'ok');
+        valueNote('✅ ' + label + ': готово', 'ok');
         if (then) then();
       }})
       .catch(function () {{
-        btn.CLIENTList.remove('is-busy');
+        btn.classList.remove('is-busy');
         btn.disabled = false;
-        CLIENTNote('⚠ ' + label + ': не удалось', 'err');
+        valueNote('⚠ ' + label + ': не удалось', 'err');
       }});
   }}
 
   // Подпись под кнопками: что реально происходит с Google Диском клиента
   function scanNote(text, warn) {{
-    var el = CLIENT.getElementById('rv-scan-note');
+    var el = document.getElementById('rv-scan-note');
     if (!el) return;
     el.textContent = text || '';
-    el.CLIENTList.toggle('is-warn', !!warn);
+    el.classList.toggle('is-warn', !!warn);
   }}
 
   // Первый шаг: идём в папку клиента, достаём документы и читаем значения.
@@ -871,29 +871,29 @@ def js_for(app_id, picked):
   // второй шаг (заполнение) запускается после этого и не раньше.
   function stepScan(then, force) {{
     if (!bScan) {{ if (then) then(); return; }}
-    bScan.CLIENTList.add('is-press');
-    setTimeout(function () {{ bScan.CLIENTList.remove('is-press'); }}, 460);
-    bScan.CLIENTList.add('is-busy');
+    bScan.classList.add('is-press');
+    setTimeout(function () {{ bScan.classList.remove('is-press'); }}, 460);
+    bScan.classList.add('is-busy');
     bScan.disabled = true;
     scanNote(force ? 'идём в папку клиента заново — сверяем документы и считаем по ним заново…'
                    : 'идём в папку клиента на Google Диске — достаём документы…', false);
-    fetch('/CLIENT/' + APP_ID + '/CLIENT-scan' + (force ? '?force=1' : ''),
+    fetch('/applications/' + APP_ID + '/drive-scan' + (force ? '?force=1' : ''),
           {{method: 'POST', credentials: 'same-origin',
-            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+            headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
       .then(function (d) {{
         if (d && d.ok === false) {{
           // документы не достали — галочки нет, показываем причину
-          bScan.CLIENTList.remove('is-busy');
+          bScan.classList.remove('is-busy');
           bScan.disabled = false;
           scanNote('⚠ ' + (d.note || 'не удалось прочитать документы с Google Диска'), true);
-          CLIENTNote('⚠ Документы не разобраны: ' + (d.note || 'нет данных'), 'err');
+          valueNote('⚠ Документы не разобраны: ' + (d.note || 'нет данных'), 'err');
           return;
         }}
         scanWatch(then);
       }})
       .catch(function () {{
-        bScan.CLIENTList.remove('is-busy');
+        bScan.classList.remove('is-busy');
         bScan.disabled = false;
         scanNote('⚠ не удалось связаться с Google Диском', true);
       }});
@@ -904,28 +904,28 @@ def js_for(app_id, picked):
   function scanWatch(then) {{
     var tries = 0, MAX = 90;   // до ~6 минут ожидания
     (function poll() {{
-      fetch('/CLIENT/' + APP_ID + '/review/scan-CLIENT',
-            {{credentials: 'same-origin', CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+      fetch('/applications/' + APP_ID + '/review/scan-status',
+            {{credentials: 'same-origin', headers: {{'X-Requested-With': 'fetch'}}}})
         .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
         .then(function (d) {{
           if (d && d.ok) {{
-            bScan.CLIENTList.remove('is-busy');
+            bScan.classList.remove('is-busy');
             bScan.disabled = false;
             bScan.dataset.done = '1';
             scanNote('документы клиента получены и прочитаны: ' + (d.files || d.done || 0), false);
-            CLIENTNote('✅ Документы разобраны: ' + (d.files || d.done || 0), 'ok');
+            valueNote('✅ Документы разобраны: ' + (d.files || d.done || 0), 'ok');
             if (then) then();
             return;
           }}
           // разбор упал или документов в папке нет — не ждём впустую, показываем причину
-          if (d && d.CLIENT === 'fail') {{
-            bScan.CLIENTList.remove('is-busy');
+          if (d && d.status === 'fail') {{
+            bScan.classList.remove('is-busy');
             bScan.disabled = false;
             scanNote('⚠ ' + (d.note || 'на Google Диске клиента документов не нашлось'), true);
             return;
           }}
           if (++tries > MAX) {{
-            bScan.CLIENTList.remove('is-busy');
+            bScan.classList.remove('is-busy');
             bScan.disabled = false;
             scanNote('⚠ ' + ((d && d.note) || 'Google Диск пока не отдал документы'), true);
             return;
@@ -933,7 +933,7 @@ def js_for(app_id, picked):
           scanNote('читаем документы клиента: ' + ((d && d.done) || 0) + ' из ' + ((d && d.total) || 0) + '…', false);
           setTimeout(poll, 4000);
         }})
-        .catch(function () {{ if (++tries > MAX) {{ bScan.CLIENTList.remove('is-busy'); }} else {{ setTimeout(poll, 4000); }} }});
+        .catch(function () {{ if (++tries > MAX) {{ bScan.classList.remove('is-busy'); }} else {{ setTimeout(poll, 4000); }} }});
     }})();
   }}
   // Второй шаг: только после того, как документы скачаны и прочитаны.
@@ -943,7 +943,7 @@ def js_for(app_id, picked):
       scanNote('сначала нужен разбор документов — заполнять пока нечем', true);
       return;
     }}
-    stepRun(bFill, '/CLIENT/' + APP_ID + '/autofill-all', 'Поля заполнены', function () {{
+    stepRun(bFill, '/applications/' + APP_ID + '/autofill-all', 'Поля заполнены', function () {{
       // значения изменились — показываю экран заново с новыми данными
       setTimeout(function () {{ location.reload(); }}, 700);
       if (then) then();
@@ -956,69 +956,69 @@ def js_for(app_id, picked):
   // Смена типа продукта: заявка пересобирается под новый пакет документов,
   // затем оба этапа проходят заново — администратор видит это по значкам.
   // Свой список продуктов: нажатие на строку меняет тип продукта заявки
-  var bProduct = CLIENT.getElementById('rv-CLIENT-btn');
-  var bProductList = CLIENT.getElementById('rv-CLIENT-list');
-  var bProductBox = CLIENT.getElementById('rv-CLIENT');
+  var bProduct = document.getElementById('rv-product-btn');
+  var bProductList = document.getElementById('rv-product-list');
+  var bProductBox = document.getElementById('rv-product');
   if (bProduct && bProductList) {{
     bProduct.addEventListener('click', function (e) {{
       e.stopPropagation();
       bProductList.hidden = !bProductList.hidden;
     }});
-    CLIENT.addEventListener('click', function (e) {{
+    document.addEventListener('click', function (e) {{
       if (!bProductBox.contains(e.target)) bProductList.hidden = true;
     }});
-    CLIENT.addEventListener('keydown', function (e) {{
+    document.addEventListener('keydown', function (e) {{
       if (e.key === 'Escape') bProductList.hidden = true;
     }});
     Array.from(bProductList.querySelectorAll('.rv-opt')).forEach(function (opt) {{
       opt.addEventListener('click', function () {{
         bProductList.hidden = true;
-        if (opt.dataset.CLIENT === bProductBox.dataset.CLIENT) return;
-        setProduct(opt.dataset.CLIENT, opt.querySelector('.rv-opt-name').textContent);
+        if (opt.dataset.value === bProductBox.dataset.value) return;
+        setProduct(opt.dataset.value, opt.querySelector('.rv-opt-name').textContent);
       }});
     }});
   }}
 
   function setProduct(pid, name) {{
     var fd = new FormData();
-    fd.append('CLIENT_id', pid);
-    var bProductSw = CLIENT.getElementById('rv-CLIENT');
-    if (bProductSw) bProductSw.dataset.CLIENT = pid;
+    fd.append('product_id', pid);
+    var bProductSw = document.getElementById('rv-product');
+    if (bProductSw) bProductSw.dataset.value = pid;
     if (bScan) {{ bScan.dataset.done = '0'; }}
     if (bFill) {{ bFill.dataset.done = '0'; }}
-    CLIENTNote('Меняю тип продукта: подбираю документы и переменные…', 'work');
-    fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+    valueNote('Меняю тип продукта: подбираю документы и переменные…', 'work');
+    fetch('/applications/' + APP_ID + '/review/product',
           {{method: 'POST', body: fd, credentials: 'same-origin',
-            CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+            headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json().catch(function () {{ return {{}}; }}); }})
       .then(function (d) {{
         if (!d || !d.ok) {{
-          CLIENTNote('⚠ ' + ((d && d.error) || 'не удалось сменить продукт'), 'err');
+          valueNote('⚠ ' + ((d && d.error) || 'не удалось сменить продукт'), 'err');
           return;
         }}
-        var cur = CLIENT.getElementById('rv-CLIENT-cur');
-        if (cur) cur.textContent = d.CLIENT || name || cur.textContent;
+        var cur = document.getElementById('rv-product-cur');
+        if (cur) cur.textContent = d.product || name || cur.textContent;
         // подсветка внутри списка переезжает на выбранный продукт
-        Array.from(CLIENT.querySelectorAll('#rv-CLIENT-list .rv-opt')).forEach(function (o) {{
-          var onReq = o.dataset.CLIENT === String(window.RV_REQ_PID || pid);
+        Array.from(document.querySelectorAll('#rv-product-list .rv-opt')).forEach(function (o) {{
+          var onReq = o.dataset.value === String(window.RV_REQ_PID || pid);
           var cur = o.querySelector('.rv-opt-tag.is-cur');
           if (cur) cur.remove();
-          o.CLIENTList.toggle('is-current', onReq);
-          o.CLIENTList.toggle('is-picked', !onReq && o.dataset.CLIENT === pid);
-          if (!onReq && o.dataset.CLIENT === pid) {{
-            var t = CLIENT.createElement('span');
-            t.CLIENTName = 'rv-opt-tag is-cur';
+          o.classList.toggle('is-current', onReq);
+          o.classList.toggle('is-picked', !onReq && o.dataset.value === pid);
+          if (!onReq && o.dataset.value === pid) {{
+            var t = document.createElement('span');
+            t.className = 'rv-opt-tag is-cur';
             t.textContent = 'стоит сейчас';
             o.appendChild(t);
           }}
         }});
-        CLIENTNote('Продукт сменён: ' + (d.CLIENT || '') + ' — обновляю документы и переменные…', 'ok');
+        valueNote('Продукт сменён: ' + (d.product || '') + ' — обновляю документы и переменные…', 'ok');
         // Под новый продукт приходит свой пакет документов (миниатюры) и свой набор
         // переменных. Перерисовываем страницу, иначе на экране остаётся прежний набор.
         setTimeout(function () {{ window.location.reload(); }}, 400);
       }})
       .catch(function () {{
-        CLIENTNote('⚠ не удалось сменить продукт', 'err');
+        valueNote('⚠ не удалось сменить продукт', 'err');
       }});
   }}
 
@@ -1038,9 +1038,9 @@ def js_for(app_id, picked):
       if (e.target === modal) closeModal();
     }});
   }}
-  var mClose = CLIENT.getElementById('rv-modal-close');
+  var mClose = document.getElementById('rv-modal-close');
   if (mClose) mClose.addEventListener('click', closeModal);
-  CLIENT.addEventListener('keydown', function(e) {{ if (e.key === 'Escape') closeModal(); }});
+  document.addEventListener('keydown', function(e) {{ if (e.key === 'Escape') closeModal(); }});
 
   var loadedOnce = false;
   tabs.forEach(function(t) {{
@@ -1054,10 +1054,10 @@ def js_for(app_id, picked):
   function verdict(tpl, kind, btn) {{
     if (btn) btn.disabled = true;
     /* Метка ставится сразу, сервер подтверждает состояние в базе. */
-    var wasOnBtn = btn ? btn.CLIENTList.contains('is-on') : false;
+    var wasOnBtn = btn ? btn.classList.contains('is-on') : false;
     paintMiniRail(tpl, wasOnBtn ? '' : (kind === 'verify' ? 'verified' : 'rejected'));
-    fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/' + kind, {{
-      method: 'POST', credentials: 'same-origin', keepalive: true, CLIENTs: {{'X-Requested-With': 'fetch'}}
+    fetch('/applications/' + APP_ID + '/doc/' + tpl + '/' + kind, {{
+      method: 'POST', credentials: 'same-origin', keepalive: true, headers: {{'X-Requested-With': 'fetch'}}
     }})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
@@ -1067,29 +1067,29 @@ def js_for(app_id, picked):
           // Не заполнены поля: фиксируем документ как есть — галочка встаёт
           // с первого нажатия, без лишнего диалога.
           if (d.can_force && kind === 'verify') {{
-            fetch('/CLIENT/' + APP_ID + '/doc/' + tpl + '/verify?force=1', {{
+            fetch('/applications/' + APP_ID + '/doc/' + tpl + '/verify?force=1', {{
               method: 'POST', credentials: 'same-origin', keepalive: true,
-              CLIENTs: {{'X-Requested-With': 'fetch'}}
+              headers: {{'X-Requested-With': 'fetch'}}
             }})
               .then(function(r) {{ return r.json(); }})
-              .then(function() {{ if (btn) btn.disabled = false; refreshCLIENTes(); refreshState(); }})
+              .then(function() {{ if (btn) btn.disabled = false; refreshStatuses(); refreshState(); }})
               .catch(function() {{ if (btn) btn.disabled = false; }});
             return;
           }}
-          var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
+          var lbl = document.getElementById('rv-thumb-status-' + tpl);
           if (lbl) {{
             if (!lbl.dataset.prev) lbl.dataset.prev = lbl.textContent;
             lbl.textContent = d.error;
-            lbl.CLIENTList.add('rv-warn');
+            lbl.classList.add('rv-warn');
             setTimeout(function() {{
               if (lbl.dataset.prev) lbl.textContent = lbl.dataset.prev;
-              lbl.CLIENTList.remove('rv-warn');
+              lbl.classList.remove('rv-warn');
             }}, 6000);
           }}
-          if (btn) btn.CLIENTList.remove('rv-on-ok');
+          if (btn) btn.classList.remove('rv-on-ok');
           return;
         }}
-        refreshCLIENTes();
+        refreshStatuses();
         refreshState();
       }})
       .catch(function() {{ if (btn) btn.disabled = false; }});
@@ -1102,63 +1102,63 @@ def js_for(app_id, picked):
   // На телефоне панель переменных открывается поверх окна просмотра: смотрим файл
   // и тут же сверяем значения, ничего не закрывая.
   // На телефоне панель переменных открывается кнопкой из шапки заявки
-  var bVars = CLIENT.getElementById('rv-vars-btn');
+  var bVars = document.getElementById('rv-vars-btn');
   if (bVars) bVars.addEventListener('click', function () {{
-    var panel = CLIENT.getElementById('rv-right') || CLIENT.querySelector('.rv-right');
-    if (panel) panel.CLIENTList.add('is-open');
+    var panel = document.getElementById('rv-right') || document.querySelector('.rv-right');
+    if (panel) panel.classList.add('is-open');
   }});
 
-  var mVars = CLIENT.getElementById('rv-modal-vars');
+  var mVars = document.getElementById('rv-modal-vars');
   if (mVars) mVars.addEventListener('click', function() {{
-    var panel = CLIENT.getElementById('rv-right') || CLIENT.querySelector('.rv-right');
+    var panel = document.getElementById('rv-right') || document.querySelector('.rv-right');
     if (!panel) return;
-    panel.CLIENTList.add('is-open');
+    panel.classList.add('is-open');
   }});
 
   if (mOk) mOk.addEventListener('click', function() {{ modalVerdict('verify'); }});
   if (mNo) mNo.addEventListener('click', function() {{ modalVerdict('reject'); }});
 
   // Квадратик-подтверждение. Клик по нему НЕ выбирает документ (stopPropagation).
-  Array.from(CLIENT.querySelectorAll('.rv-mark')).forEach(function(b) {{
+  Array.from(document.querySelectorAll('.rv-mark')).forEach(function(b) {{
     b.addEventListener('click', function(e) {{
       e.stopPropagation();
       verdict(b.dataset.tpl, b.dataset.verdict, b);
     }});
   }});
   // Сканы с Диска: квадратик означает «скачано с Диска», подпись меняется сразу.
-  function CLIENTStamp() {{
+  function driveStamp() {{
     var d = new Date();
     return ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2);
   }}
-  Array.from(CLIENT.querySelectorAll('.rv-check[data-check="CLIENT"]')).forEach(function(b) {{
+  Array.from(document.querySelectorAll('.rv-check[data-check="drive"]')).forEach(function(b) {{
     b.addEventListener('click', function(e) {{
       e.stopPropagation();
       var tile = b.closest('.rv-thumb');
       if (!tile) return;
-      var on = tile.CLIENTList.toggle('is-checked');
-      b.CLIENTList.toggle('rv-on-ok', on);
-      var st = tile.querySelector('.rv-thumb-CLIENT');
-      if (st) st.textContent = on ? ('Скачано с Диска · ' + CLIENTStamp()) : 'не подтверждено';
+      var on = tile.classList.toggle('is-checked');
+      b.classList.toggle('rv-on-ok', on);
+      var st = tile.querySelector('.rv-thumb-state');
+      if (st) st.textContent = on ? ('Скачано с Диска · ' + driveStamp()) : 'не подтверждено';
     }});
   }});
 
   // Метка на миниатюре — отражение нажатой кнопки: крестик или галочка по центру
   // листа. Состояние берём с сервера, поэтому метка появляется и снимается сразу
   // после нажатия, без перезагрузки страницы.
-  function paintTile(tpl, CLIENT) {{
-    var tile = CLIENT.querySelector('.rv-thumb[data-tpl="' + tpl + '"]');
+  function paintTile(tpl, state) {{
+    var tile = document.querySelector('.rv-thumb[data-tpl="' + tpl + '"]');
     if (!tile) return;
-    var off = CLIENT === 'rejected';
-    var ok = CLIENT === 'verified' || CLIENT === 'sent';
-    tile.CLIENTList.toggle('is-off', off);
-    tile.CLIENTList.toggle('is-ok', ok);
-    var st = tile.querySelector('.rv-thumb-CLIENT');
+    var off = state === 'rejected';
+    var ok = state === 'verified' || state === 'sent';
+    tile.classList.toggle('is-off', off);
+    tile.classList.toggle('is-ok', ok);
+    var st = tile.querySelector('.rv-thumb-status');
     if (st) {{
-      st.CLIENTList.toggle('is-off', off);
-      st.CLIENTList.toggle('is-ok', ok);
+      st.classList.toggle('is-off', off);
+      st.classList.toggle('is-ok', ok);
     }}
     var mk = tile.querySelector('.rv-thumb-mark');
-    if (mk) mk.CLIENT = off ? 'Отклонён: документ не нужен в этой заявке'
+    if (mk) mk.title = off ? 'Отклонён: документ не нужен в этой заявке'
                            : (ok ? 'Проверен и зафиксирован для отправки' : '');
     var why = tile.querySelector('.rv-thumb-why');
     if (why) why.style.display = off ? '' : 'none';
@@ -1166,20 +1166,20 @@ def js_for(app_id, picked):
 
   // Метка на миниатюре конструктора (столбик документов) — то же отражение
   // нажатой кнопки: ✕ или ✓ по центру листа. Исключённые скатываются вниз.
-  function paintMiniRail(tpl, CLIENT) {{
-    var off = CLIENT === 'rejected', ok = (CLIENT === 'verified' || CLIENT === 'sent');
-    CLIENT.querySelectorAll('.tpl-mini[data-tpl="' + tpl + '"]').forEach(function(tile) {{
-      tile.CLIENTList.toggle('is-off', off);
-      tile.CLIENTList.toggle('is-ok', ok);
+  function paintMiniRail(tpl, state) {{
+    var off = state === 'rejected', ok = (state === 'verified' || state === 'sent');
+    document.querySelectorAll('.tpl-mini[data-tpl="' + tpl + '"]').forEach(function(tile) {{
+      tile.classList.toggle('is-off', off);
+      tile.classList.toggle('is-ok', ok);
       var host = tile.querySelector('.tpl-mini-name') || null;
       var x = tile.querySelector('.tpl-mini-x');
       var m = tile.querySelector('.tpl-mini-ok');
-      if (off && !x) {{ x = CLIENT.createElement('span'); x.CLIENTName = 'tpl-mini-x'; x.textContent = '✕'; tile.insertBefore(x, host); }}
+      if (off && !x) {{ x = document.createElement('span'); x.className = 'tpl-mini-x'; x.textContent = '✕'; tile.insertBefore(x, host); }}
       if (!off && x) x.remove();
-      if (ok && !m) {{ m = CLIENT.createElement('span'); m.CLIENTName = 'tpl-mini-ok'; m.textContent = '✓'; tile.insertBefore(m, host); }}
+      if (ok && !m) {{ m = document.createElement('span'); m.className = 'tpl-mini-ok'; m.textContent = '✓'; tile.insertBefore(m, host); }}
       if (!ok && m) m.remove();
     }});
-    var body = CLIENT.getElementById('tpl-rail-body');
+    var body = document.getElementById('tpl-rail-body');
     if (!body) return;
     var tiles = Array.prototype.slice.call(body.querySelectorAll('.tpl-mini-wrap'));
     if (tiles.length < 2) return;
@@ -1187,39 +1187,39 @@ def js_for(app_id, picked):
       var inner = t.querySelector('.tpl-mini') || t;
       var n = t.querySelector('.tpl-mini-num');
       var mm = (n ? (n.textContent || '') : '').match(/\\d+/);
-      return [(inner.CLIENTList.contains('is-off') ? 1 : 0), mm ? parseInt(mm[0], 10) : 999];
+      return [(inner.classList.contains('is-off') ? 1 : 0), mm ? parseInt(mm[0], 10) : 999];
     }};
     tiles.sort(function(a, b) {{ var ka = key(a), kb = key(b); return (ka[0] - kb[0]) || (ka[1] - kb[1]); }});
     tiles.forEach(function(t) {{ body.appendChild(t); }});
   }}
 
   // состояние документов: обновляет подписи и кнопки на плитках и в окне
-  function refreshCLIENTes() {{
-    fetch('/CLIENT/' + APP_ID + '/review/statuses', {{credentials: 'same-origin'}})
+  function refreshStatuses() {{
+    fetch('/applications/' + APP_ID + '/review/statuses', {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (!d || !d.ok) return;
         Object.keys(d.statuses || {{}}).forEach(function(tpl) {{
-          var CLIENT = d.statuses[tpl] || '';
-          paintTile(tpl, CLIENT);
-          paintMiniRail(tpl, CLIENT);
-          var lbl = CLIENT.getElementById('rv-thumb-CLIENT-' + tpl);
-          if (lbl) lbl.textContent = CLIENT === 'rejected' ? 'не нужен'
-                                  : CLIENT === 'verified' ? 'проверен · в очереди на отгрузку'
-                                  : CLIENT === 'rendered' ? 'собран · не проверено'
-                                  : CLIENT === 'filled' ? 'заполнен · не проверено'
-                                  : CLIENT === 'draft' ? 'черновик · ждём скан'
+          var state = d.statuses[tpl] || '';
+          paintTile(tpl, state);
+          paintMiniRail(tpl, state);
+          var lbl = document.getElementById('rv-thumb-status-' + tpl);
+          if (lbl) lbl.textContent = state === 'rejected' ? 'не нужен'
+                                  : state === 'verified' ? 'проверен · в очереди на отгрузку'
+                                  : state === 'rendered' ? 'собран · не проверено'
+                                  : state === 'filled' ? 'заполнен · не проверено'
+                                  : state === 'draft' ? 'черновик · ждём скан'
                                   : 'не проверено';
-          Array.from(CLIENT.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"]')).forEach(function(x) {{
+          Array.from(document.querySelectorAll('.rv-mark[data-tpl="' + tpl + '"]')).forEach(function(x) {{
             var isOk = x.dataset.verdict === 'verify';
-            var on = (isOk && CLIENT === 'verified') || (!isOk && CLIENT === 'rejected');
-            x.CLIENTList.toggle(isOk ? 'rv-on-ok' : 'rv-on-no', on);
+            var on = (isOk && state === 'verified') || (!isOk && state === 'rejected');
+            x.classList.toggle(isOk ? 'rv-on-ok' : 'rv-on-no', on);
             /* те же кнопки в окне визора, на миниатюрах и в просмотре PDF подсвечиваются так же */
-            x.CLIENTList.toggle('is-on', on);
+            x.classList.toggle('is-on', on);
           }});
           if (String(tpl) === String(modalTpl)) {{
-            if (mOk) mOk.CLIENTList.toggle('is-on', CLIENT === 'verified');
-            if (mNo) mNo.CLIENTList.toggle('is-on', CLIENT === 'rejected');
+            if (mOk) mOk.classList.toggle('is-on', state === 'verified');
+            if (mNo) mNo.classList.toggle('is-on', state === 'rejected');
           }}
         }});
       }})
@@ -1227,22 +1227,22 @@ def js_for(app_id, picked):
   }}
 
   /* Обновление подписей и подвала заявки «снаружи» (из конструктора окна визора) */
-  window.__rvRefresh = function () {{ refreshCLIENTes(); refreshState(); }};
+  window.__rvRefresh = function () {{ refreshStatuses(); refreshState(); }};
 
   // готовность комплекта без перезагрузки
   function refreshState() {{
-    fetch('/CLIENT/' + APP_ID + '/send-CLIENT', {{credentials: 'same-origin'}})
+    fetch('/applications/' + APP_ID + '/send-state', {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (!d || !d.ok) return;
-        var st = CLIENT.querySelector('.rv-CLIENT');
+        var st = document.querySelector('.rv-state');
         if (st) {{
-          st.CLIENTName = 'rv-CLIENT ' + (d.can_send ? 'ok' : 'warn');
+          st.className = 'rv-state ' + (d.can_send ? 'ok' : 'warn');
           st.textContent = d.can_send
             ? '✅ Все документы согласованы — можно отправлять'
             : '⛔ Отправить нельзя: согласовано ' + d.ready + ' из ' + d.total + ' документов';
         }}
-        var btn = CLIENT.querySelector('.rv-send button');
+        var btn = document.querySelector('.rv-send button');
         if (btn) {{ btn.disabled = !d.can_send; }}
       }})
       .catch(function() {{}});
@@ -1256,8 +1256,8 @@ def js_for(app_id, picked):
     loadThumbs();
   }}
   // ── значения: сохранить во все документы / сгенерировать заново / выбрать ──
-  function CLIENTNote(text, tone) {{
-    var el = CLIENT.getElementById('rv-CLIENT-note');
+  function valueNote(text, tone) {{
+    var el = document.getElementById('rv-value-note');
     if (!el) return;
     var colors = {{ok: '#14663A', warn: '#8A5A00', err: '#B91C1C', work: '#5B6B62'}};
     el.style.color = colors[tone] || colors.work;
@@ -1265,7 +1265,7 @@ def js_for(app_id, picked):
   }}
   function inputByKey(key) {{
     var found = null;
-    Array.from(CLIENT.querySelectorAll('.rv-input')).forEach(function(x) {{
+    Array.from(document.querySelectorAll('.rv-input')).forEach(function(x) {{
       if (x.dataset.key === key) found = x;
     }});
     return found;
@@ -1274,9 +1274,9 @@ def js_for(app_id, picked):
     // Если документ открыт в окне просмотра — показываем его заново с новыми
     // значениями. Миниатюры тоже обновляем: они отражают тот же документ.
     if (modalTpl) loadInto(modalTpl);
-    else if (modal && modal.CLIENTList.contains('is-on') && !modalTpl) return;
+    else if (modal && modal.classList.contains('is-on') && !modalTpl) return;
     else {{
-      Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb iframe')).forEach(function(fr) {{
+      Array.from(document.querySelectorAll('#rv-thumbs .rv-thumb iframe')).forEach(function(fr) {{
         var src = fr.dataset.src || fr.getAttribute('src');
         if (src) {{
           fr.setAttribute('src', 'about:blank');
@@ -1285,32 +1285,32 @@ def js_for(app_id, picked):
       }});
     }}
   }}
-  function sendValue(act, key, CLIENT, btn) {{
-    var url = '/CLIENT/' + APP_ID + '/review/' + (act === 'regen' ? 'regen' : 'CLIENT');
+  function sendValue(act, key, value, btn) {{
+    var url = '/applications/' + APP_ID + '/review/' + (act === 'regen' ? 'regen' : 'value');
     var body = new URLSearchParams();
     body.set('key', key);
-    if (CLIENT !== null && CLIENT !== undefined) body.set('CLIENT', CLIENT);
+    if (value !== null && value !== undefined) body.set('value', value);
     if (btn) btn.disabled = true;
     fetch(url, {{method: 'POST', credentials: 'same-origin', body: body,
-                CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+                headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (btn) btn.disabled = false;
-        if (!d.ok) {{ CLIENTNote('⚠ ' + (d.error || 'не получилось'), 'err'); return; }}
+        if (!d.ok) {{ valueNote('⚠ ' + (d.error || 'не получилось'), 'err'); return; }}
         var inp = inputByKey(key);
-        if (inp && d.CLIENT !== undefined) {{
-          inp.CLIENT = d.CLIENT;
-          inp.CLIENTList.remove('is-empty');
-          inp.CLIENTList.add('is-saved');
-          setTimeout(function() {{ inp.CLIENTList.remove('is-saved'); }}, 1200);
+        if (inp && d.value !== undefined) {{
+          inp.value = d.value;
+          inp.classList.remove('is-empty');
+          inp.classList.add('is-saved');
+          setTimeout(function() {{ inp.classList.remove('is-saved'); }}, 1200);
         }}
         var docs = (d.touched && d.touched.length) ? d.touched.length : (d.doc_count || 0);
-        CLIENTNote((act === 'regen' ? '↻ перегенерировано: ' : '💾 сохранено: ')
+        valueNote((act === 'regen' ? '↻ перегенерировано: ' : '💾 сохранено: ')
                   + (d.label || 'поле')
                   + (docs ? ' · обновлено документов: ' + docs : ''), 'ok');
         refreshViewer();
       }})
-      .catch(function() {{ if (btn) btn.disabled = false; CLIENTNote('⚠ ошибка сети', 'err'); }});
+      .catch(function() {{ if (btn) btn.disabled = false; valueNote('⚠ ошибка сети', 'err'); }});
   }}
   function showOptions(key, btn) {{
     var field = btn.closest('.rv-field');
@@ -1321,67 +1321,67 @@ def js_for(app_id, picked):
     var open = field.querySelector('.rv-optlist');
     hideOptions();
     if (open) return;               // нажали по тому же полю — список закрылся
-    fetch('/CLIENT/' + APP_ID + '/review/options?key=' + encodeURIComponent(key),
+    fetch('/applications/' + APP_ID + '/review/options?key=' + encodeURIComponent(key),
           {{credentials: 'same-origin'}})
       .then(function(r) {{ return r.json(); }})
       .then(function(d) {{
         if (!d.options || !d.options.length) {{
-          CLIENTNote('прошлых значений для этого поля пока нет', 'warn');
+          valueNote('прошлых значений для этого поля пока нет', 'warn');
           return;
         }}
-        var box = CLIENT.createElement('div');
-        box.CLIENTName = 'rv-optlist';
+        var box = document.createElement('div');
+        box.className = 'rv-optlist';
         d.options.forEach(function(v) {{
-          var b = CLIENT.createElement('button');
+          var b = document.createElement('button');
           b.type = 'button';
           b.textContent = v;
           b.addEventListener('click', function(e) {{
             e.stopPropagation();
             var inp = field.querySelector('.rv-input');
             if (inp) {{
-              inp.CLIENT = v;
+              inp.value = v;
               inp.defaultValue = v;
             }}
             hideOptions();
-            sendValue('CLIENT', key, v, null);
+            sendValue('value', key, v, null);
           }});
           box.appendChild(b);
         }});
         field.appendChild(box);
       }})
-      .catch(function() {{ CLIENTNote('⚠ не удалось получить список', 'err'); }});
+      .catch(function() {{ valueNote('⚠ не удалось получить список', 'err'); }});
   }}
   // Расхождение документа и анкеты: администратор выбирает, какое значение
   // подставить. Выбор запоминается и разбором документов больше не перебивается.
-  Array.from(CLIENT.querySelectorAll('.rv-conflict-sel')).forEach(function (sel) {{
-    sel.addEventListener('CLIENT', function () {{
+  Array.from(document.querySelectorAll('.rv-conflict-sel')).forEach(function (sel) {{
+    sel.addEventListener('change', function () {{
       var key = sel.getAttribute('data-key');
       var opt = sel.options[sel.selectedIndex];
-      var val = (opt && opt.getAttribute('data-CLIENT')) || '';
-      var src = sel.CLIENT;                       // 'doc' — из документа, 'card' — из анкеты
+      var val = (opt && opt.getAttribute('data-value')) || '';
+      var src = sel.value;                       // 'doc' — из документа, 'card' — из анкеты
       var field = sel.closest('.rv-field');
       var inp = field ? field.querySelector('.rv-input') : null;
-      if (inp) {{ inp.CLIENT = val; inp.defaultValue = val; }}
+      if (inp) {{ inp.value = val; inp.defaultValue = val; }}
       var body = new URLSearchParams();
       body.set('key', key);
-      body.set('CLIENT', val);
+      body.set('value', val);
       body.set('source', src);
-      fetch('/CLIENT/' + APP_ID + '/review/CLIENT',
+      fetch('/applications/' + APP_ID + '/review/value',
             {{method: 'POST', credentials: 'same-origin', body: body,
-              CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+              headers: {{'X-Requested-With': 'fetch'}}}})
         .then(function (r) {{ return r.json(); }})
         .then(function (d) {{
-          if (!d || !d.ok) {{ CLIENTNote('⚠ не сохранилось', 'err'); return; }}
-          if (field) field.CLIENTList.remove('is-conflict');
+          if (!d || !d.ok) {{ valueNote('⚠ не сохранилось', 'err'); return; }}
+          if (field) field.classList.remove('is-conflict');
           var head = field ? field.querySelector('.rv-conflict-head') : null;
           if (head) {{
             head.textContent = (src === 'doc') ? '✓ значение взято из документа'
                                                : '✓ значение взято из анкеты';
             head.style.color = '#15803D';
           }}
-          CLIENTNote('✅ Значение обновлено' + (d.docs_updated ? ' · документов: ' + d.docs_updated : ''), 'ok');
+          valueNote('✅ Значение обновлено' + (d.docs_updated ? ' · документов: ' + d.docs_updated : ''), 'ok');
         }})
-        .catch(function () {{ CLIENTNote('⚠ не сохранилось', 'err'); }});
+        .catch(function () {{ valueNote('⚠ не сохранилось', 'err'); }});
     }});
   }});
 
@@ -1390,22 +1390,22 @@ def js_for(app_id, picked):
   // открывается прямо по нажатию на поле.
   // Список прошлых значений закрывается, когда нажимаешь в любое другое место
   // или жмёшь Esc, — иначе он перекрывал поля и мешал работать.
-  CLIENT.addEventListener('click', function (e) {{
+  document.addEventListener('click', function (e) {{
     var inList = e.target.closest && e.target.closest('.rv-optlist');
     var inField = e.target.closest && e.target.closest('.rv-input, .rv-act');
     if (!inList && !inField) hideOptions();
   }}, true);
-  CLIENT.addEventListener('keydown', function (e) {{
+  document.addEventListener('keydown', function (e) {{
     if (e.key === 'Escape') hideOptions();
   }});
   window.addEventListener('blur', hideOptions);
 
-  Array.from(CLIENT.querySelectorAll('.rv-act')).forEach(function(b) {{
+  Array.from(document.querySelectorAll('.rv-act')).forEach(function(b) {{
     b.addEventListener('click', function() {{
       if (b.dataset.act === 'regen') sendValue('regen', b.dataset.key, null, b);
     }});
   }});
-  Array.from(CLIENT.querySelectorAll('.rv-input')).forEach(function(inp) {{
+  Array.from(document.querySelectorAll('.rv-input')).forEach(function(inp) {{
     // Список открывается по нажатию на поле — и только у тех переменных, где
     // выбор из прошлых значений уместен. Повторное нажатие закрывает список.
     inp.addEventListener('click', function(e) {{
@@ -1421,27 +1421,27 @@ def js_for(app_id, picked):
         hideOptions();
       }}
     }});
-    inp.addEventListener('CLIENT', function() {{ saveField(inp); }});
+    inp.addEventListener('change', function() {{ saveField(inp); }});
   }});
   // сохраняем только если значение действительно поменялось — иначе лишние пересборки
   function saveField(inp) {{
     if (!inp) return;
-    if (inp.CLIENT === inp.defaultValue) {{ CLIENTNote('значение не изменилось', 'work'); return; }}
-    inp.defaultValue = inp.CLIENT;
-    sendValue('CLIENT', inp.dataset.key, inp.CLIENT, null);
+    if (inp.value === inp.defaultValue) {{ valueNote('значение не изменилось', 'work'); return; }}
+    inp.defaultValue = inp.value;
+    sendValue('value', inp.dataset.key, inp.value, null);
   }}
   function hideOptions() {{
-    Array.from(CLIENT.querySelectorAll('.rv-optlist')).forEach(function(b) {{ b.remove(); }});
+    Array.from(document.querySelectorAll('.rv-optlist')).forEach(function(b) {{ b.remove(); }});
   }}
 
 
   // ── миниатюры документов: подгружаются лениво, прогресс виден ──
   var thumbLoaded = false;
   function loadThumbs() {{
-    var list = Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb'));
+    var list = Array.from(document.querySelectorAll('#rv-thumbs .rv-thumb'));
     if (!list.length) return;
     var done = 0;
-    var counter = CLIENT.getElementById('rv-thumbs-count');
+    var counter = document.getElementById('rv-thumbs-count');
     function tick() {{
       done++;
       if (counter) counter.textContent = 'миниатюры готовы: ' + done + ' из ' + list.length;
@@ -1451,18 +1451,18 @@ def js_for(app_id, picked):
       // Миниатюра плитки — картинка (WebP); полный документ открывается в окне.
       var fr = t.querySelector('img, iframe');
       if (!fr || !fr.dataset.src) {{ tick(); return; }}
-      frame.CLIENTList.add('is-loading');
+      frame.classList.add('is-loading');
       fr.addEventListener('load', function() {{
-        frame.CLIENTList.remove('is-loading');
-        frame.CLIENTList.add('is-ready');
+        frame.classList.remove('is-loading');
+        frame.classList.add('is-ready');
         tick();
       }});
       fr.setAttribute('src', fr.dataset.src);
     }});
   }}
-  Array.from(CLIENT.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(t) {{
+  Array.from(document.querySelectorAll('#rv-thumbs .rv-thumb')).forEach(function(t) {{
     t.addEventListener('click', function(e) {{
-      if (e.target.closest('.rv-thumb-CLIENT')) return;   // кнопки согласования не открывают окно
+      if (e.target.closest('.rv-thumb-tools')) return;   // кнопки согласования не открывают окно
       openDoc(t.dataset.tpl);
     }});
   }});
@@ -1479,28 +1479,28 @@ def js_for(app_id, picked):
 
   // ── подсветка: поле ↔ место в документе (в обе стороны) ──
   function flashEl(el, ms) {{
-    el.CLIENTList.add('var-flash');
-    setTimeout(function() {{ el.CLIENTList.remove('var-flash'); }}, ms || 2600);
+    el.classList.add('var-flash');
+    setTimeout(function() {{ el.classList.remove('var-flash'); }}, ms || 2600);
   }}
   function fieldFor(varName) {{
     var found = null;
-    Array.from(CLIENT.querySelectorAll('.rv-field')).forEach(function(f) {{
+    Array.from(document.querySelectorAll('.rv-field')).forEach(function(f) {{
       var vars = (f.dataset.vars || '').split(',');
-      if (vars.CLIENTOf(varName) >= 0) found = f;
+      if (vars.indexOf(varName) >= 0) found = f;
     }});
     return found;
   }}
   function activeHost() {{
     // На экране два окна просмотра: входящий файл и готовый документ.
     // Подсвечивать нужно в том, которое администратор сейчас видит.
-    var hosts = Array.from(CLIENT.querySelectorAll('[data-zoom-pan]'));
+    var hosts = Array.from(document.querySelectorAll('[data-zoom-pan]'));
     for (var i = 0; i < hosts.length; i++) {{
       if (hosts[i].offsetParent !== null) return hosts[i];
     }}
     return hosts[0] || null;
   }}
   // клик по полю справа → подсветить это место в документе слева
-  Array.from(CLIENT.querySelectorAll('.rv-field')).forEach(function(f) {{
+  Array.from(document.querySelectorAll('.rv-field')).forEach(function(f) {{
     f.addEventListener('click', function(e) {{
       if (e.target.closest('.rv-fedit') || e.target.closest('.rv-optlist')) return;
       var names = (f.dataset.vars || '').split(',').filter(Boolean);
@@ -1515,9 +1515,9 @@ def js_for(app_id, picked):
       if (!hits.length) return;
       hits.forEach(function(x) {{ flashEl(x); }});
       if (host.zpFocus) host.zpFocus(hits[0]);
-      CLIENT.querySelectorAll('.rv-field.var-active').forEach(function(x) {{ x.CLIENTList.remove('var-active'); }});
-      f.CLIENTList.add('var-active');
-      setTimeout(function() {{ f.CLIENTList.remove('var-active'); }}, 2600);
+      document.querySelectorAll('.rv-field.var-active').forEach(function(x) {{ x.classList.remove('var-active'); }});
+      f.classList.add('var-active');
+      setTimeout(function() {{ f.classList.remove('var-active'); }}, 2600);
     }});
   }});
   // клик по значению в документе → подсветить поле справа.
@@ -1532,16 +1532,16 @@ def js_for(app_id, picked):
         var f = fieldFor(x.getAttribute('data-var'));
         if (!f) return;
         if (window.innerWidth <= 1000) {{
-          var p = CLIENT.getElementById('rv-right');
-          var bd = CLIENT.getElementById('rv-backdrop');
-          if (p) p.CLIENTList.add('is-open');
-          if (bd) bd.CLIENTList.add('is-on');
+          var p = document.getElementById('rv-right');
+          var bd = document.getElementById('rv-backdrop');
+          if (p) p.classList.add('is-open');
+          if (bd) bd.classList.add('is-on');
         }}
-        Array.from(CLIENT.querySelectorAll('.rv-field.var-active')).forEach(function(y) {{
-          y.CLIENTList.remove('var-active');
+        Array.from(document.querySelectorAll('.rv-field.var-active')).forEach(function(y) {{
+          y.classList.remove('var-active');
         }});
-        f.CLIENTList.add('var-active');
-        f.scrollIntoView({{CLIENT: 'center', behavior: 'smooth'}});
+        f.classList.add('var-active');
+        f.scrollIntoView({{block: 'center', behavior: 'smooth'}});
         flashEl(f);
       }});
     }});
@@ -1549,26 +1549,26 @@ def js_for(app_id, picked):
 
   // ── на телефоне панель переменных выезжает по кнопке снизу ──
   function openRight() {{
-    var p = CLIENT.getElementById('rv-right');
-    var bd = CLIENT.getElementById('rv-backdrop');
-    if (p) p.CLIENTList.add('is-open');
-    if (bd) bd.CLIENTList.add('is-on');
+    var p = document.getElementById('rv-right');
+    var bd = document.getElementById('rv-backdrop');
+    if (p) p.classList.add('is-open');
+    if (bd) bd.classList.add('is-on');
   }}
   function closeRight() {{
-    var p = CLIENT.getElementById('rv-right');
-    var bd = CLIENT.getElementById('rv-backdrop');
-    if (p) p.CLIENTList.remove('is-open');
-    if (bd) bd.CLIENTList.remove('is-on');
+    var p = document.getElementById('rv-right');
+    var bd = document.getElementById('rv-backdrop');
+    if (p) p.classList.remove('is-open');
+    if (bd) bd.classList.remove('is-on');
   }}
-  var mbar = CLIENT.getElementById('rv-mobile-bar');
+  var mbar = document.getElementById('rv-mobile-bar');
   if (mbar) mbar.addEventListener('click', openRight);
-  var rclose = CLIENT.getElementById('rv-right-close');
+  var rclose = document.getElementById('rv-right-close');
   if (rclose) rclose.addEventListener('click', closeRight);
-  var bdEl = CLIENT.getElementById('rv-backdrop');
+  var bdEl = document.getElementById('rv-backdrop');
   if (bdEl) bdEl.addEventListener('click', closeRight);
 
   // ── входящие файлы: клик открывает документ поверх страницы ──
-  Array.from(CLIENT.querySelectorAll('.rv-file-thumb')).forEach(function(t) {{
+  Array.from(document.querySelectorAll('.rv-file-thumb')).forEach(function(t) {{
     t.addEventListener('click', function() {{ openFile(t); }});
   }});
 
@@ -1576,20 +1576,20 @@ def js_for(app_id, picked):
 
   // Резюме: выбор профессии и сборка описания прямо в карточке заявки.
   (function () {{
-    var sels = Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvprof'));
+    var sels = Array.prototype.slice.call(document.querySelectorAll('.rv-cvprof'));
     if (!sels.length) return;
     var parts = location.pathname.split('/');
-    var ai = parts.CLIENTOf('CLIENT');
+    var ai = parts.indexOf('applications');
     var appId = ai >= 0 ? (parts[ai + 1] || '') : '';
     if (!appId) return;
-    fetch('/CLIENT/' + appId + '/review/CLIENTs',
-          {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+    fetch('/applications/' + appId + '/review/professions',
+          {{headers: {{'X-Requested-With': 'fetch'}}}})
       .then(function (r) {{ return r.json(); }})
       .then(function (d) {{
         (d.items || []).forEach(function (it) {{
           sels.forEach(function (sel) {{
-            var o = CLIENT.createElement('option');
-            o.CLIENT = it.code;
+            var o = document.createElement('option');
+            o.value = it.code;
             o.textContent = it.ru || it.en || it.code;
             sel.appendChild(o);
           }});
@@ -1597,30 +1597,30 @@ def js_for(app_id, picked):
       }})
       .catch(function () {{}});
 
-    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvbtn')).forEach(function (btn) {{
+    Array.prototype.slice.call(document.querySelectorAll('.rv-cvbtn')).forEach(function (btn) {{
       btn.addEventListener('click', function () {{
         var key = btn.dataset.key;
-        var sel = CLIENT.querySelector('.rv-cvprof[data-key="' + key + '"]');
-        var prof = sel ? sel.CLIENT : '';
+        var sel = document.querySelector('.rv-cvprof[data-key="' + key + '"]');
+        var prof = sel ? sel.value : '';
         var was = btn.textContent;
         btn.disabled = true;
         btn.textContent = 'Собираю…';
         var fd = new FormData();
         fd.append('key', key);
-        if (prof) fd.append('CLIENT', prof);
-        fetch('/CLIENT/' + appId + '/review/regen',
-              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        if (prof) fd.append('profession', prof);
+        fetch('/applications/' + appId + '/review/regen',
+              {{method: 'POST', body: fd, headers: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
           .then(function (d) {{
             btn.disabled = false;
             btn.textContent = was;
-            if (d && d.ok && typeof d.CLIENT === 'string') {{
-              var ta = CLIENT.querySelector('.rv-input[data-key="' + key + '"]');
+            if (d && d.ok && typeof d.value === 'string') {{
+              var ta = document.querySelector('.rv-input[data-key="' + key + '"]');
               if (ta) {{
-                ta.CLIENT = d.CLIENT;
+                ta.value = d.value;
                 ta.style.height = 'auto';
                 ta.style.height = (ta.scrollHeight + 2) + 'px';
-                ta.CLIENTList.remove('is-empty');
+                ta.classList.remove('is-empty');
               }}
             }}
           }})
@@ -1632,60 +1632,60 @@ def js_for(app_id, picked):
   // ── Резюме: кусочки, сборка с нуля, своя профессия ─────────────────────────
   (function () {{
     var parts = location.pathname.split('/');
-    var ai = parts.CLIENTOf('CLIENT');
+    var ai = parts.indexOf('applications');
     var APP = ai >= 0 ? (parts[ai + 1] || '') : '';
     if (!APP) return;
     var box = null;
 
-    function inp(key) {{ return CLIENT.querySelector('.rv-input[data-key="' + key + '"]'); }}
+    function inp(key) {{ return document.querySelector('.rv-input[data-key="' + key + '"]'); }}
     function profOf(key) {{
-      var s = CLIENT.querySelector('.rv-cvprof[data-key="' + key + '"]');
-      return (s && s.CLIENT && s.CLIENT !== '__custom__') ? s.CLIENT : '';
+      var s = document.querySelector('.rv-cvprof[data-key="' + key + '"]');
+      return (s && s.value && s.value !== '__custom__') ? s.value : '';
     }}
-    function save(key, CLIENT) {{
+    function save(key, value) {{
       var fd = new FormData();
       fd.append('key', key);
-      fd.append('CLIENT', CLIENT);
-      return fetch('/CLIENT/' + APP + '/review/CLIENT',
-                   {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+      fd.append('value', value);
+      return fetch('/applications/' + APP + '/review/value',
+                   {{method: 'POST', body: fd, headers: {{'X-Requested-With': 'fetch'}}}});
     }}
-    function put(key, CLIENT) {{
+    function put(key, value) {{
       var ta = inp(key);
       if (!ta) return;
-      ta.CLIENT = CLIENT;
+      ta.value = value;
       ta.style.height = 'auto';
       ta.style.height = (ta.scrollHeight + 2) + 'px';
     }}
     function closeBox() {{ if (box) {{ box.remove(); box = null; }} }}
-    function esc(s) {{ return String(s).reCLIENT(/</g, '&lt;'); }}
+    function esc(s) {{ return String(s).replace(/</g, '&lt;'); }}
 
     function openPieces(key, pairs) {{
       closeBox();
-      box = CLIENT.createElement('div');
-      box.CLIENTName = 'rv-piece-modal';
+      box = document.createElement('div');
+      box.className = 'rv-piece-modal';
       var rows = pairs.map(function (p, i) {{
         var ru = esc((p && (p.ru || p.en)) || p);
         var en = esc((p && p.en) || p);
-        return '<label CLIENT="rv-piece-row"><input type="checkbox" CLIENT="' + i + '">' +
-               '<span>' + ru + (en && en !== ru ? '<span CLIENT="rv-piece-en">' + en + '</span>' : '') +
+        return '<label class="rv-piece-row"><input type="checkbox" value="' + i + '">' +
+               '<span>' + ru + (en && en !== ru ? '<span class="rv-piece-en">' + en + '</span>' : '') +
                '</span></label>';
       }}).join('');
-      box.innerHTML = '<div CLIENT="rv-piece-box"><div CLIENT="rv-piece-head">' +
-        'Готовые фразы — отметьте нужные</div><div CLIENT="rv-piece-list">' +
-        (rows || '<div CLIENT="rv-piece-row">Готовых фраз пока нет — нажмите «С нуля»</div>') +
-        '</div><div CLIENT="rv-piece-foot"><button type="button" CLIENT="rv-piece-cancel">Отмена</button>' +
-        '<button type="button" CLIENT="rv-piece-ok">Подставить выбранные</button></div></div>';
-      CLIENT.body.appendChild(box);
+      box.innerHTML = '<div class="rv-piece-box"><div class="rv-piece-head">' +
+        'Готовые фразы — отметьте нужные</div><div class="rv-piece-list">' +
+        (rows || '<div class="rv-piece-row">Готовых фраз пока нет — нажмите «С нуля»</div>') +
+        '</div><div class="rv-piece-foot"><button type="button" class="rv-piece-cancel">Отмена</button>' +
+        '<button type="button" class="rv-piece-ok">Подставить выбранные</button></div></div>';
+      document.body.appendChild(box);
       box.querySelector('.rv-piece-cancel').addEventListener('click', closeBox);
       box.addEventListener('click', function (e) {{ if (e.target === box) closeBox(); }});
       box.querySelector('.rv-piece-ok').addEventListener('click', function () {{
         var picked = Array.prototype.slice.call(box.querySelectorAll('input:checked'))
-          .map(function (c) {{ var p = pairs[parseInt(c.CLIENT, 10)]; return (p && p.en) || p; }});
+          .map(function (c) {{ var p = pairs[parseInt(c.value, 10)]; return (p && p.en) || p; }});
         if (!picked.length) {{ closeBox(); return; }}
         // описание профессии — связный абзац без маркеров; обязанности — пунктами
-        var isProse = /CLIENT|profile|описан/i.test(key);
+        var isProse = /summary|profile|описан/i.test(key);
         var text = isProse
-          ? picked.map(function (s) {{ return String(s).reCLIENT(/^[\u2022\-\s]+/, '').trim(); }}).join(' ')
+          ? picked.map(function (s) {{ return String(s).replace(/^[\u2022\-\s]+/, '').trim(); }}).join(' ')
           : picked.join('\\n');
         if (isProse && text && !/[.!?]$/.test(text)) {{ text += '.'; }}
         put(key, text);
@@ -1693,12 +1693,12 @@ def js_for(app_id, picked):
       }});
     }}
 
-    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvpieces')).forEach(function (btn) {{
+    Array.prototype.slice.call(document.querySelectorAll('.rv-cvpieces')).forEach(function (btn) {{
       btn.addEventListener('click', function () {{
         var key = btn.dataset.key;
-        var url = '/CLIENT/' + APP + '/review/CLIENTs?key=' + encodeURIComponent(key) +
-                  '&CLIENT=' + encodeURIComponent(profOf(key));
-        fetch(url, {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        var url = '/applications/' + APP + '/review/phrases?key=' + encodeURIComponent(key) +
+                  '&profession=' + encodeURIComponent(profOf(key));
+        fetch(url, {{headers: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
           .then(function (d) {{
             var pairs = (d && d.pairs) || [];
@@ -1711,7 +1711,7 @@ def js_for(app_id, picked):
       }});
     }});
 
-    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvscratch')).forEach(function (btn) {{
+    Array.prototype.slice.call(document.querySelectorAll('.rv-cvscratch')).forEach(function (btn) {{
       btn.addEventListener('click', function () {{
         var key = btn.dataset.key;
         var was = btn.textContent;
@@ -1719,40 +1719,40 @@ def js_for(app_id, picked):
         btn.textContent = 'Собираю…';
         var fd = new FormData();
         fd.append('key', key);
-        fd.append('CLIENT', profOf(key));
-        fetch('/CLIENT/' + APP + '/review/scratch',
-              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        fd.append('profession', profOf(key));
+        fetch('/applications/' + APP + '/review/scratch',
+              {{method: 'POST', body: fd, headers: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
           .then(function (d) {{
             btn.disabled = false;
             btn.textContent = was;
-            if (d && d.ok && typeof d.CLIENT === 'string') {{ put(key, d.CLIENT); }}
+            if (d && d.ok && typeof d.value === 'string') {{ put(key, d.value); }}
             else if (d && d.error) {{ alert(d.error); }}
           }})
           .catch(function () {{ btn.disabled = false; btn.textContent = was; }});
       }});
     }});
 
-    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-cvprof')).forEach(function (sel) {{
-      sel.addEventListener('CLIENT', function () {{
-        if (sel.CLIENT !== '__custom__') return;
-        var CLIENT = window.prompt('Название профессии');
-        if (!CLIENT) {{ sel.CLIENT = ''; return; }}
+    Array.prototype.slice.call(document.querySelectorAll('.rv-cvprof')).forEach(function (sel) {{
+      sel.addEventListener('change', function () {{
+        if (sel.value !== '__custom__') return;
+        var title = window.prompt('Название профессии');
+        if (!title) {{ sel.value = ''; return; }}
         var fd = new FormData();
-        fd.append('CLIENT', CLIENT);
-        fetch('/CLIENT/' + APP + '/review/CLIENT_add',
-              {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+        fd.append('title', title);
+        fetch('/applications/' + APP + '/review/profession_add',
+              {{method: 'POST', body: fd, headers: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
           .then(function (d) {{
-            if (!d || !d.ok) {{ sel.CLIENT = ''; alert((d && d.error) || 'не получилось'); return; }}
-            var o = CLIENT.createElement('option');
-            o.CLIENT = d.code;
-            o.textContent = d.CLIENT;
-            var custom = sel.querySelector('option[CLIENT="__custom__"]');
+            if (!d || !d.ok) {{ sel.value = ''; alert((d && d.error) || 'не получилось'); return; }}
+            var o = document.createElement('option');
+            o.value = d.code;
+            o.textContent = d.title;
+            var custom = sel.querySelector('option[value="__custom__"]');
             sel.insertBefore(o, custom);
-            sel.CLIENT = d.code;
+            sel.value = d.code;
           }})
-          .catch(function () {{ sel.CLIENT = ''; }});
+          .catch(function () {{ sel.value = ''; }});
       }});
     }});
   }})();
@@ -1760,43 +1760,43 @@ def js_for(app_id, picked):
   // ── Организация для договора: выбор из пула исторических документов ────────
   (function () {{
     var parts = location.pathname.split('/');
-    var ai = parts.CLIENTOf('CLIENT');
+    var ai = parts.indexOf('applications');
     var APP = ai >= 0 ? (parts[ai + 1] || '') : '';
     if (!APP) return;
     // связанные переменные: название в шапке, название в тексте, адрес и реквизиты в подвале
-    var CLIENT = ['company_name_in_CLIENT', 'CLIENT_name', 'company_CLIENT_address',
+    var RELATED = ['company_name_in_quotes', 'employer_name', 'company_registered_address',
                    'company_inn', 'company_kpp', 'company_ogrn'];
 
-    function inp(key) {{ return CLIENT.querySelector('.rv-input[data-key="' + key + '"]'); }}
-    function put(key, CLIENT) {{
+    function inp(key) {{ return document.querySelector('.rv-input[data-key="' + key + '"]'); }}
+    function put(key, value) {{
       var ta = inp(key);
       if (!ta) return;
-      ta.CLIENT = CLIENT;
+      ta.value = value;
       ta.style.height = 'auto';
       ta.style.height = (ta.scrollHeight + 2) + 'px';
     }}
-    function save(key, CLIENT) {{
+    function save(key, value) {{
       var fd = new FormData();
       fd.append('key', key);
-      fd.append('CLIENT', CLIENT);
-      return fetch('/CLIENT/' + APP + '/review/CLIENT',
-                   {{method: 'POST', body: fd, CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+      fd.append('value', value);
+      return fetch('/applications/' + APP + '/review/value',
+                   {{method: 'POST', body: fd, headers: {{'X-Requested-With': 'fetch'}}}});
     }}
     function rebuild() {{
-      return fetch('/CLIENT/' + APP + '/review/rebuild',
-                   {{method: 'POST', CLIENTs: {{'X-Requested-With': 'fetch'}}}});
+      return fetch('/applications/' + APP + '/review/rebuild',
+                   {{method: 'POST', headers: {{'X-Requested-With': 'fetch'}}}});
     }}
 
-    Array.prototype.slice.call(CLIENT.querySelectorAll('.rv-empsel')).forEach(function (sel) {{
-      sel.addEventListener('CLIENT', function () {{
-        if (sel.CLIENT === '') return;
-        fetch('/CLIENT/' + APP + '/review/CLIENT_CLIENT?CLIENT=' + encodeURIComponent(sel.CLIENT),
-              {{CLIENTs: {{'X-Requested-With': 'fetch'}}}})
+    Array.prototype.slice.call(document.querySelectorAll('.rv-empsel')).forEach(function (sel) {{
+      sel.addEventListener('change', function () {{
+        if (sel.value === '') return;
+        fetch('/applications/' + APP + '/review/employer_values?index=' + encodeURIComponent(sel.value),
+              {{headers: {{'X-Requested-With': 'fetch'}}}})
           .then(function (r) {{ return r.json(); }})
           .then(function (d) {{
             if (!d || !d.ok) {{ alert((d && d.error) || 'организация не найдена'); return; }}
-            CLIENT.forEach(function (k) {{
-              var v = (d.CLIENT && d.CLIENT[k]) || '';
+            RELATED.forEach(function (k) {{
+              var v = (d.values && d.values[k]) || '';
               put(k, v);
               save(k, v);
             }});

@@ -1,6 +1,6 @@
 """Что реально готовилось клиентам: разбор архива по продуктам.
 
-Часть 1 — Word-документы, переданные заказчиком (data/word_CLIENT/imported_*):
+Часть 1 — Word-документы, переданные заказчиком (data/word_templates/imported_*):
 тип документа по заголовку.
 Часть 2 — папки клиентов: продукт из базы + какие готовые документы в папке.
 """
@@ -24,7 +24,7 @@ OURS = (
 )
 # документы клиента
 CLIENT = (
-    ("банковская справка", ("bank", "balance", "остатк", "выписк", "CLIENTal-3m", "CLIENTal_3m")),
+    ("банковская справка", ("bank", "balance", "остатк", "выписк", "personal-3m", "personal_3m")),
     ("паспорт", ("passport", "загран")),
     ("ITK/виза", ("itk", "visa", "viza", "виза")),
     ("фото", ("foto", "photo", "фото")),
@@ -43,12 +43,12 @@ def kind_of(name: str):
 
 
 print("=== ЧАСТЬ 1. Word-документы от заказчика: тип по заголовку")
-for p in sorted(Path(ROOT / "data" / "word_CLIENT").glob("imported_*/**/*.docx")):
-    if p.name.CLIENTswith("~$"):
+for p in sorted(Path(ROOT / "data" / "word_templates").glob("imported_*/**/*.docx")):
+    if p.name.startswith("~$"):
         continue
     try:
         z = zipfile.ZipFile(p)
-        xml = z.read("word/CLIENT.xml").decode("utf-8", "ignore")
+        xml = z.read("word/document.xml").decode("utf-8", "ignore")
         z.close()
         txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml)).strip()
     except Exception as exc:                                   # noqa: BLE001
@@ -60,24 +60,24 @@ print("=== ЧАСТЬ 2. Готовые документы в папках кл�
 conn = sqlite3.connect(str(ROOT / "data" / "wolf.db"), timeout=60)
 conn.row_factory = sqlite3.Row
 prod_of = {}
-for r in conn.execute("""SELECT a.client_id, p.code FROM CLIENT a
-                         LEFT JOIN CLIENT p ON p.id = a.CLIENT_id
+for r in conn.execute("""SELECT a.client_id, p.code FROM applications a
+                         LEFT JOIN products p ON p.id = a.product_id
                          WHERE a.client_id IS NOT NULL"""):
     prod_of.setdefault(r["client_id"], r["code"])
 conn.close()
 
 by_prod = defaultdict(set)
 rows_out = []
-for folder in sorted((ROOT / "data" / "gCLIENT_cache").glob("client_*")):
+for folder in sorted((ROOT / "data" / "gdrive_cache").glob("client_*")):
     try:
         cid = int(folder.name.split("_")[1])
     except (IndexError, ValueError):
         continue
     found = []
     for f in folder.rglob("*"):
-        if f.is_file() and not f.name.CLIENTswith("."):
+        if f.is_file() and not f.name.startswith("."):
             k = kind_of(f.name)
-            if k.CLIENTswith("НАШ:"):
+            if k.startswith("НАШ:"):
                 found.append(k[5:])
                 by_prod[prod_of.get(cid, "?")].add(k[5:])
     if found:
@@ -94,9 +94,9 @@ print()
 print("=== для сравнения — что сейчас привязано в системе:")
 conn = sqlite3.connect(str(ROOT / "data" / "wolf.db"), timeout=60)
 conn.row_factory = sqlite3.Row
-for r in conn.execute("""SELECT p.code, t.code FROM CLIENT_CLIENT pd
-                         JOIN CLIENT p ON p.id = pd.CLIENT_id
-                         JOIN CLIENT t ON t.id = pd.template_id
+for r in conn.execute("""SELECT p.code, t.code FROM product_documents pd
+                         JOIN products p ON p.id = pd.product_id
+                         JOIN templates t ON t.id = pd.template_id
                          ORDER BY p.code, t.code"""):
     print("  %-10s %s" % (r["code"], r["code" if False else "code"] if False else r[1]))
 conn.close()

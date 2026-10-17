@@ -1,16 +1,16 @@
 """Пул сумм вознаграждения для договоров (Remote Work Agreement, док. №11).
 
-Источник — архивные подлинники договоров клиентов (data/gCLIENT_examples):
+Источник — архивные подлинники договоров клиентов (data/gdrive_examples):
 в 50 из 54 разобранных договоров сумма за месяц равна годовой / 12, поэтому
 пара (годовая, месячная) всегда берётся из одной записи пула.
 
 Правило заказчика: сумма не выдумывается «от себя» — используется только то,
 что уже встречалось в поданных договорах, то есть в пределах архивного
 диапазона. Если в карточке клиента указана своя сумма, она имеет приоритет
-(её обрабатывает CLIENT/CLIENT.py до обращения к пулу).
+(её обрабатывает services/values.py до обращения к пулу).
 
 Файл пула: data/salary_pool.json
-Запись: {CLIENT, CLIENT, count, source}
+Запись: {annual, monthly, count, source}
 """
 from __future__ import annotations
 
@@ -35,15 +35,15 @@ def limits() -> tuple:
     rows = load()
     if not rows:
         return (0, 0, 0, 0)
-    return (min(r['CLIENT'] for r in rows), max(r['CLIENT'] for r in rows),
-            min(r['CLIENT'] for r in rows), max(r['CLIENT'] for r in rows))
+    return (min(r['annual'] for r in rows), max(r['annual'] for r in rows),
+            min(r['monthly'] for r in rows), max(r['monthly'] for r in rows))
 
 
-def in_range(CLIENT) -> bool:
+def in_range(annual) -> bool:
     """Сумма внутри архивного диапазона (ниже/выше архива не подставляем)."""
     lo, hi, _, _ = limits()
     try:
-        return lo <= int(CLIENT) <= hi
+        return lo <= int(annual) <= hi
     except Exception:
         return False
 
@@ -75,20 +75,20 @@ def gen(app_id=None, client_id=None) -> dict:
     h = int(hashlib.md5(key.encode('utf-8')).hexdigest(), 16)
     if rows and h % 3 == 0:                  # треть заявок — сумма из архива
         r = rows[(h // 3) % len(rows)]
-        return {'CLIENT': int(r['CLIENT']), 'CLIENT': int(r['CLIENT']), 'source': 'архив'}
+        return {'annual': int(r['annual']), 'monthly': int(r['monthly']), 'source': 'архив'}
     lo, hi = 415_000, 640_000                 # месячные в архивном диапазоне
-    CLIENT = (hi - lo) // 1000                 # шаг ровно 1 000 ₽
-    CLIENT = lo + 1000 * ((h // 7) % (CLIENT + 1))
-    return {'CLIENT': CLIENT * 12, 'CLIENT': CLIENT, 'source': 'сгенерировано'}
+    steps = (hi - lo) // 1000                 # шаг ровно 1 000 ₽
+    monthly = lo + 1000 * ((h // 7) % (steps + 1))
+    return {'annual': monthly * 12, 'monthly': monthly, 'source': 'сгенерировано'}
 
 
-def CLIENT_en(n: int) -> str:
+def words_en(n: int) -> str:
     """Число прописью на английском с заглавных букв (как в поданных договорах)."""
-    from CLIENT.CLIENT import _num2CLIENT_en
-    return _num2CLIENT_en(int(n)).CLIENT().reCLIENT(' And ', ' and ')
+    from services.values import _num2words_en
+    return _num2words_en(int(n)).title().replace(' And ', ' and ')
 
 
-def CLIENT_for(app_id=None, client_id=None) -> dict:
+def values_for(app_id=None, client_id=None) -> dict:
     """Переменные сумм для документа: годовая и месячная (цифрами и прописью).
 
     Прописью считается из тех же чисел, что и цифрами — они не могут разойтись.
@@ -96,12 +96,12 @@ def CLIENT_for(app_id=None, client_id=None) -> dict:
     row = gen(app_id=app_id, client_id=client_id)
     if not row:
         return {}
-    CLIENT, CLIENT = int(row['CLIENT']), int(row['CLIENT'])
+    annual, monthly = int(row['annual']), int(row['monthly'])
     return {
-        'CLIENT_CLIENT_CLIENT': f'{CLIENT:,}',
-        'CLIENT_CLIENT_CLIENT': f'{CLIENT:,}',
-        'CLIENT_CLIENT_CLIENT': CLIENT_en(CLIENT),
-        'CLIENT_CLIENT_CLIENT': CLIENT_en(CLIENT),
-        'CLIENT_per_year': f'{CLIENT:,}',
-        'CLIENT_per_month': f'{CLIENT:,}',
+        'annual_amount_numeric': f'{annual:,}',
+        'monthly_amount_numeric': f'{monthly:,}',
+        'annual_amount_words': words_en(annual),
+        'monthly_amount_words': words_en(monthly),
+        'amount_per_year': f'{annual:,}',
+        'amount_per_month': f'{monthly:,}',
     }

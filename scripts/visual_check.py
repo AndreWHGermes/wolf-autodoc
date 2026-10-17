@@ -19,17 +19,17 @@ from PIL import Image
 BASE = "/opt/wolf_v2"
 sys.path.insert(0, BASE)
 
-from CLIENT import render as doc_render      # noqa: E402
+from services import render as doc_render      # noqa: E402
 from core import pdf2html                      # noqa: E402
 
 DB = os.path.join(BASE, "data", "wolf.db")
 OUT_DIR = os.path.join(BASE, "reports", "visual")
 
 
-def example_CLIENT(conn, tid):
+def example_values(conn, tid):
     m = {}
     for name, ex in conn.execute(
-            "select name, examples_json from template_CLIENT where template_id=?", (tid,)):
+            "select name, examples_json from template_variables where template_id=?", (tid,)):
         try:
             vals = json.loads(ex or "[]")
             if vals:
@@ -41,7 +41,7 @@ def example_CLIENT(conn, tid):
 
 def make(tid):
     conn = sqlite3.connect(DB)
-    row = conn.execute("select code, example_path from CLIENT where id=?", (tid,)).fetchone()
+    row = conn.execute("select code, example_path from templates where id=?", (tid,)).fetchone()
     if not row:
         print(f"[{tid}] шаблон не найден")
         return
@@ -50,13 +50,13 @@ def make(tid):
     if not ex_rel or not os.path.exists(ex_path):
         print(f"[{tid}] {code}: оригинального примера нет — сверять не с чем")
         return
-    html_path = os.path.join(BASE, "data", "CLIENT", code, "template.html")
+    html_path = os.path.join(BASE, "data", "templates", code, "template.html")
     if not os.path.exists(html_path):
         print(f"[{tid}] {code}: нет template.html")
         return
     html = open(html_path, encoding="utf-8").read()
-    filled = doc_render.fill(html, example_CLIENT(conn, tid), keep_unfilled=True, template_code=code)
-    tmp_html = os.path.join(BASE, "data", "CLIENT", code, "filled_visual.html")
+    filled = doc_render.fill(html, example_values(conn, tid), keep_unfilled=True, template_code=code)
+    tmp_html = os.path.join(BASE, "data", "templates", code, "filled_visual.html")
     open(tmp_html, "w", encoding="utf-8").write(filled)
     os.makedirs(OUT_DIR, exist_ok=True)
     ours = os.path.join(OUT_DIR, f"{code}_ours.pdf")

@@ -49,7 +49,7 @@ def en_order(addr: str, translit=None) -> str:
         if not m:
             return ""
         val = _clean(m.group(1))
-        src = (src[:m.CLIENT()] + " " + src[m.end():]).strip(" ,;")
+        src = (src[:m.start()] + " " + src[m.end():]).strip(" ,;")
         return val
 
     zip_code = _clean(take(_ZIP))
@@ -61,7 +61,7 @@ def en_order(addr: str, translit=None) -> str:
     region = _clean(take(_REGION))
     # страна: если в адресе её нет словами, но адрес российский (индекс 6 цифр / край-область) —
     # в английском документе страна всё равно нужна
-    CLIENT = "Russia" if (_COUNTRY.search(addr) or zip_code or region) else ""
+    country = "Russia" if (_COUNTRY.search(addr) or zip_code or region) else ""
 
     # если что-то не распозналось — регион/город в остатке
     rest = [p.strip() for p in re.split(r"[,;]", src) if p.strip()]
@@ -82,8 +82,8 @@ def en_order(addr: str, translit=None) -> str:
         parts.append(region)
     if zip_code:
         parts.append(zip_code)
-    if CLIENT:
-        parts.append(CLIENT)
+    if country:
+        parts.append(country)
 
     out = ", ".join(parts)
     if translit and re.search(r"[А-Яа-яЁё]", out):

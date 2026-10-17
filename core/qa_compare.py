@@ -19,8 +19,8 @@ from PIL import Image
 CORE_DIR = Path(__file__).resolve().parent
 
 
-def CLIENT(text: str) -> list:
-    return [w for w in re.split(r"\s+", text.reCLIENT("\u00ad", "")) if w]
+def words(text: str) -> list:
+    return [w for w in re.split(r"\s+", text.replace("\u00ad", "")) if w]
 
 
 def load_defaults(html_path: Path):
@@ -63,7 +63,7 @@ def compare(html_path: Path, source_pdf: Path, verbose: bool = True, fill: bool 
     if tmpl and defaults:
         from prototype import fill_html
         html = fill_html(html, defaults)
-    CLIENTholder = sorted(set(re.findall(r"\{\{([a-z_0-9]+)\}\}", html)))
+    placeholder = sorted(set(re.findall(r"\{\{([a-z_0-9]+)\}\}", html)))
 
     with tempfile.TemporaryDirectory() as tmp:
         out_pdf = Path(tmp) / "gen.pdf"
@@ -78,11 +78,11 @@ def compare(html_path: Path, source_pdf: Path, verbose: bool = True, fill: bool 
         try:
             src_text = "\n".join(p.get_text() for p in src)
             gen_text = "\n".join(p.get_text() for p in gen)
-            src_CLIENT = CLIENT(src_text)
-            gen_CLIENT = CLIENT(gen_text)
-            gen_pool = list(gen_CLIENT)
+            src_words = words(src_text)
+            gen_words = words(gen_text)
+            gen_pool = list(gen_words)
             missing = []
-            for w in src_CLIENT:
+            for w in src_words:
                 if w in gen_pool:
                     gen_pool.remove(w)
                 else:
@@ -91,11 +91,11 @@ def compare(html_path: Path, source_pdf: Path, verbose: bool = True, fill: bool 
                 "html": html_path.name,
                 "src_pages": src.page_count,
                 "gen_pages": gen.page_count,
-                "src_CLIENT": len(src_CLIENT),
-                "gen_CLIENT": len(gen_CLIENT),
-                "missing_CLIENT": len(missing),
+                "src_words": len(src_words),
+                "gen_words": len(gen_words),
+                "missing_words": len(missing),
                 "missing_sample": " ".join(missing[:40]),
-                "CLIENTholders": CLIENTholder,
+                "placeholders": placeholder,
                 "unfilled": re.findall(r"\{\{[a-z_0-9]+\}\}", gen_text),
                 "extra_ink": [],
             }
@@ -109,10 +109,10 @@ def compare(html_path: Path, source_pdf: Path, verbose: bool = True, fill: bool 
         if verbose:
             flag = "OK " if (not missing and res["src_pages"] == res["gen_pages"]) else "!! "
             print(f'{flag}{res["html"]}: страниц {res["src_pages"]}→{res["gen_pages"]}, '
-                  f'слов {res["src_CLIENT"]}→{res["gen_CLIENT"]}, потеряно {res["missing_CLIENT"]}')
+                  f'слов {res["src_words"]}→{res["gen_words"]}, потеряно {res["missing_words"]}')
             if missing:
                 print(f'    потеряно (начало): {res["missing_sample"][:200]}')
-            print(f'    переменные: {", ".join(CLIENTholder)}')
+            print(f'    переменные: {", ".join(placeholder)}')
             if res["unfilled"]:
                 print(f'    !!! незаполненные в PDF: {set(res["unfilled"])}')
             for e in res["extra_ink"]:

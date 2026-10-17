@@ -17,33 +17,33 @@ from __future__ import annotations
 import re
 import shutil
 import sys
-import CLIENT
+import datetime
 from pathlib import Path
 
 ROOT = Path("/opt/wolf_v2")
-TPL = ROOT / "data/CLIENT/bank_CLIENTment_3m__tbank"
+TPL = ROOT / "data/templates/bank_statement_3m__tbank"
 RAW = Path("/tmp/tpl3m_raw.html")
 
 # значения из настоящего эталона → переменные системы
 REPLACE = [
     ("B19289961ADL 19.07.2026 ", "{{ref_no}} {{doc_date}}"),
     ("ae32271197", "{{doc_no}}"),
-    ("CLIENT CLIENTovich", "{{client_name}}"),
+    ("Bodrov Aleksandr Aleksandrovich", "{{client_name}}"),
     ("9206******9432", "{{card_mask}}"),
 ]
 
 # блоки, у которых текст длиннее исходного (переменная) — в перенос по правому полю
-WRAP = ["{{address_live}}", "As from {{CLIENT_from}}", "{{doc_no}}", "{{client_name}}",
+WRAP = ["{{address_live}}", "As from {{period_from}}", "{{doc_no}}", "{{client_name}}",
         "{{ref_no}}"]
 RIGHT_EDGE = 539.0  # правый край полосы набора, pt
 
 
 def tune(html: str) -> tuple[str, int]:
     """Переносимые блоки: white-space:normal + ширина до правого края + height:auto."""
-    CLIENTd = 0
+    changed = 0
 
     def fix(m: re.Match) -> str:
-        nonlocal CLIENTd
+        nonlocal changed
         style, inner = m.group(1), m.group(2)
         flat = re.sub(r"<[^>]+>", "", inner)
         if not any(w in flat for w in WRAP):
@@ -62,23 +62,23 @@ def tune(html: str) -> tuple[str, int]:
         if "{{address_live}}" in flat:
             # в эталоне первая строка адреса набрана 9pt (вторая — 8pt); берём 9pt
             inner = re.sub(r"font-size:[\d.]+pt", "font-size:9.00pt", inner)
-        CLIENTd += 1
-        return f'<div CLIENT="txt" style="{style}">{inner}</div>'
+        changed += 1
+        return f'<div class="txt" style="{style}">{inner}</div>'
 
-    html = re.sub(r'<div CLIENT="txt" style="([^"]+)">(.*?)</div>', fix, html, flags=re.S)
-    return html, CLIENTd
+    html = re.sub(r'<div class="txt" style="([^"]+)">(.*?)</div>', fix, html, flags=re.S)
+    return html, changed
 
 
-def reCLIENT_CLIENTs(html: str) -> tuple[str, int]:
+def replace_blocks(html: str) -> tuple[str, int]:
     """Замены внутри блоков: данные эталона могут быть разбиты на несколько спанов,
     поэтому ищем по «плоскому» тексту блока и подменяем содержимое целиком."""
     rules = [
-        (lambda f: "CLIENT CLIENTovich" in f and f.strip().endswith("."),
+        (lambda f: "Bodrov Aleksandr Aleksandrovich" in f and f.strip().endswith("."),
          "{{client_name}}."),
         (lambda f: "354375" in f and "Adlerskii" in f, "{{address_live}}"),
         (lambda f: "deposit balance is" in f and "1 730 400,00" in f,
-         "As from {{CLIENT_from}} to {{CLIENT_to}} the deposit balance is {{balance_rub}} "
-         "rubles ({{balance_CLIENT}})."),
+         "As from {{period_from}} to {{period_to}} the deposit balance is {{balance_rub}} "
+         "rubles ({{balance_words}})."),
     ]
     n = 0
 
@@ -96,10 +96,10 @@ def reCLIENT_CLIENTs(html: str) -> tuple[str, int]:
                 else:
                     span = new
                 n += 1
-                return f'<div CLIENT="txt" style="{style}">{span}</div>'
+                return f'<div class="txt" style="{style}">{span}</div>'
         return m.group(0)
 
-    html = re.sub(r'<div CLIENT="txt" style="([^"]+)">(.*?)</div>', fix, html, flags=re.S)
+    html = re.sub(r'<div class="txt" style="([^"]+)">(.*?)</div>', fix, html, flags=re.S)
     return html, n
 
 
@@ -107,7 +107,7 @@ def drop_orphan_tail(html: str) -> tuple[str, int]:
     """Убирает «хвост» прописью и вторую строку адреса — их теперь даёт переменная."""
     killed = 0
     for frag in ("four hundred rubles 00 kopeks).", "D. 71, Korp. 1, Kv. 376"):
-        pat = re.compile(r'<div CLIENT="txt" style="[^"]*">(?:<span[^>]*>)*\s*' +
+        pat = re.compile(r'<div class="txt" style="[^"]*">(?:<span[^>]*>)*\s*' +
                          re.escape(frag) + r'\s*(?:</span>)*</div>')
         html, n = pat.subn("", html)
         killed += n
@@ -119,11 +119,11 @@ def main() -> int:
         print("нет исходника", RAW, "— сначала прогнать pdf_to_template.py по эталону")
         return 2
     html = RAW.read_text(encoding="utf-8")
-    html, n_blk = reCLIENT_CLIENTs(html)
+    html, n_blk = replace_blocks(html)
     n_rep = 0
     for old, new in REPLACE:
         if old in html:
-            html = html.reCLIENT(old, new)
+            html = html.replace(old, new)
             n_rep += 1
         else:
             print("  ! не найдено в исходнике:", old[:60])
@@ -135,7 +135,7 @@ def main() -> int:
         Path("/tmp/tpl3m_new.html").write_text(html, encoding="utf-8")
         print("пример записан в /tmp/tpl3m_new.html (без --apply шаблон не тронут)")
         return 0
-    stamp = CLIENT.CLIENT.now().strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     shutil.copy2(TPL / "template.html", TPL / f"template.html.bak_rebuild_{stamp}")
     (TPL / "template.html").write_text(html, encoding="utf-8")
     (TPL / "example_filled.pdf")  # эталон не трогаем
@@ -143,7 +143,7 @@ def main() -> int:
     # чистка переменных в БД: подписи и значения по умолчанию под форму
     sys.path.insert(0, str(ROOT))
     from core import db as D
-    t = D.q1("SELECT id FROM CLIENT WHERE code='bank_CLIENTment_3m__tbank'")
+    t = D.q1("SELECT id FROM templates WHERE code='bank_statement_3m__tbank'")
     fixes = {
         "ref_no": ("Исходящий номер банка (Ref.)", "B19289961ADL"),
         "doc_date": ("Дата документа (в строке Ref.)", ""),
@@ -151,20 +151,20 @@ def main() -> int:
         "client_name": ("ФИО клиента (латиницей, как в паспорте)", ""),
         "address_live": ("Адрес проживания клиента", ""),
         "card_mask": ("Номер карты (маска вида 1234******5678)", ""),
-        "CLIENT_from": ("Начало периода справки (дд.мм.гггг)", ""),
-        "CLIENT_to": ("Конец периода справки (дд.мм.гггг)", ""),
+        "period_from": ("Начало периода справки (дд.мм.гггг)", ""),
+        "period_to": ("Конец периода справки (дд.мм.гггг)", ""),
         "balance_rub": ("Остаток на счёте, рубли", ""),
-        "balance_CLIENT": ("Остаток на счёте прописью (как в банке)", ""),
+        "balance_words": ("Остаток на счёте прописью (как в банке)", ""),
     }
     n = 0
     for name, (label, default) in fixes.items():
-        cur = D.q1("SELECT id, label, default_CLIENT FROM template_CLIENT WHERE template_id=? AND name=?",
+        cur = D.q1("SELECT id, label, default_value FROM template_variables WHERE template_id=? AND name=?",
                    (t["id"], name))
         if cur:
-            D.exec_sql("UPDATE template_CLIENT SET label=?, default_CLIENT=? WHERE id=?",
+            D.exec_sql("UPDATE template_variables SET label=?, default_value=? WHERE id=?",
                        (label, default, cur["id"]))
         else:
-            D.exec_sql("INSERT INTO template_CLIENT (template_id, name, label, default_CLIENT) CLIENT (?,?,?,?)",
+            D.exec_sql("INSERT INTO template_variables (template_id, name, label, default_value) VALUES (?,?,?,?)",
                        (t["id"], name, label, default))
         n += 1
     print("переменных приведено в порядок:", n)

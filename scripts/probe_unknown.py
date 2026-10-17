@@ -7,14 +7,14 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT.doc_read import read_text          # noqa: E402
-from scripts.CLIENT_scan import doc_kind_name     # noqa: E402
+from services.doc_read import read_text          # noqa: E402
+from scripts.drive_scan import doc_kind_name     # noqa: E402
 
-CACHE = Path('/opt/wolf_v2/data/gCLIENT_cache')
+CACHE = Path('/opt/wolf_v2/data/gdrive_cache')
 
 
 def main() -> None:
-    needle = (sys.argv[1] if len(sys.argv) > 1 else 'CLIENTal').lower()
+    needle = (sys.argv[1] if len(sys.argv) > 1 else 'personal').lower()
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 400
     seen = 0
     for folder in sorted(CACHE.glob('client_*'), key=lambda p: int(p.name.split('_')[1])):
@@ -30,7 +30,7 @@ def main() -> None:
                 continue
             print('\n=== client_%s / %s | тип=%s | %d симв.' % (
                 folder.name.split('_')[1], f.name[:44], doc_kind_name(f, text), len(text)))
-            print(text[:limit].reCLIENT('\n', ' | '))
+            print(text[:limit].replace('\n', ' | '))
             seen += 1
             if seen >= 3:
                 return

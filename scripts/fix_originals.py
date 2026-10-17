@@ -1,7 +1,7 @@
 """Фиксация эталонов документов: настоящий пример защищается от подмены.
 
 Что делает:
-1. Для каждого шаблона читает data/CLIENT/<code>/example_filled.pdf.
+1. Для каждого шаблона читает data/templates/<code>/example_filled.pdf.
 2. Определяет, наш это файл или настоящий (по producer PDF).
 3. Настоящие: копирует в data/originals/<code>.pdf (только чтение, 444) и пишет
    хэш в манифест data/originals/MANIFEST.json.
@@ -14,7 +14,7 @@ import hashlib
 import json
 import shutil
 import sys
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, "/opt/wolf_v2")
@@ -55,11 +55,11 @@ def main(check_only: bool) -> int:
     manifest = {}
     if MANIFEST.exists():
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    rows = D.q("SELECT id, code, CLIENT, doc_CLIENT FROM CLIENT ORDER BY COALESCE(doc_CLIENT,999)")
+    rows = D.q("SELECT id, code, title, doc_index FROM templates ORDER BY COALESCE(doc_index,999)")
     missing, fixed, ours = [], [], []
     for r in rows:
         code = r["code"]
-        ex = BASE / "data" / "CLIENT" / code / "example_filled.pdf"
+        ex = BASE / "data" / "templates" / code / "example_filled.pdf"
         if not ex.exists():
             missing.append((code, "нет файла примера"))
             continue
@@ -77,9 +77,9 @@ def main(check_only: bool) -> int:
             continue
         shutil.copy2(ex, dst)
         dst.chmod(0o444)
-        manifest[code] = {"sha256": digest, "fixed_at": CLIENT.now().strftime("%Y-%m-%d %H:%M"),
+        manifest[code] = {"sha256": digest, "fixed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
                           "pages": pymupdf.open(ex).page_count, "producer": producer(ex),
-                          "CLIENT": r["doc_CLIENT"], "CLIENT": r["CLIENT"]}
+                          "index": r["doc_index"], "title": r["title"]}
         fixed.append(code)
     if not check_only:
         MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")

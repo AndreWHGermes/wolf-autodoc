@@ -19,7 +19,7 @@ FIXES = [
     (r'otherwi\s+s\s+e\s+sp\s+ecified\s+a\s+s', 'otherwise specified as'),
     (r'i\s+s\s+s\s+pecified,\s+thi\s+s\s+Agreement\s+s\s+hall', 'is specified, this Agreement shall'),
     (r'Non-Com\s+p\s+ete\s+a\s+nd\s+No\s+n\s*-\s*S\s+olicitatio\s+n', 'Non-Compete and Non-Solicitation'),
-    (r'S\s+tart\s+Date', 'CLIENT Date'),
+    (r'S\s+tart\s+Date', 'Start Date'),
     (r'P\s+a\s+ss\s+port', 'Passport'),
     (r'F\s+ix\s+ed\s+Term', 'Fixed Term'),
     (r's\s+hall\b', 'shall'),
@@ -35,7 +35,7 @@ FIXES = [
 
 def main(argv) -> int:
     code = (argv or ['employment_contract__default'])[0]
-    p = ROOT / 'data' / 'CLIENT' / code / 'template.html'
+    p = ROOT / 'data' / 'templates' / code / 'template.html'
     h = p.read_text(encoding='utf-8')
     total = 0
     for rx, repl in FIXES:

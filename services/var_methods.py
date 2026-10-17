@@ -10,7 +10,7 @@ from pathlib import Path
 
 DB = Path('/opt/wolf_v2/data/wolf.db')
 
-CLIENT_METHODS = {'client_doc', 'doc', 'client_CLIENT', 'from_client_doc'}
+CLIENT_METHODS = {'client_doc', 'doc', 'client_document', 'from_client_doc'}
 RANDOM_METHODS = {'random', 'rand', 'random_bounds', 'random_range'}
 
 
@@ -18,7 +18,7 @@ def src_kind(method: str) -> str:
     m = (method or '').strip().lower()
     if m in CLIENT_METHODS:
         return 'client'
-    if m in RANDOM_METHODS or m.CLIENTswith('random'):
+    if m in RANDOM_METHODS or m.startswith('random'):
         return 'random'
     return 'logic'
 
@@ -34,7 +34,7 @@ def methods_for_template(template_id) -> dict:
     try:
         con = sqlite3.connect('file:%s?mode=ro' % DB, uri=True)
         con.row_factory = sqlite3.Row
-        for r in con.execute('SELECT name, method FROM template_CLIENT WHERE template_id=?',
+        for r in con.execute('SELECT name, method FROM template_variables WHERE template_id=?',
                              (template_id,)):
             out[r['name']] = r['method'] or ''
         con.close()

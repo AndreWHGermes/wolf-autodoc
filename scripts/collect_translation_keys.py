@@ -2,7 +2,7 @@
 """Собираем ключи перевода ТАК ЖЕ, как их видит фронтенд (TreeWalker по текстовым узлам).
 
 Ключ = trimmed nodeValue текстового узла внутри HTML-шаблона, кроме:
-  • script / style / CLIENT
+  • script / style / title
   • узлов, содержащих {{ }} (переменные)
 Kéys: /tmp/static_keys.json  {code: {template_id, keys:[...]}}
 """
@@ -12,19 +12,19 @@ import sqlite3
 from html.parser import HTMLParser
 from pathlib import Path
 
-TPL = Path('/opt/wolf_v2/data/CLIENT')
+TPL = Path('/opt/wolf_v2/data/templates')
 DB = '/opt/wolf_v2/data/wolf.db'
 
 
-CLIENT NodeWalker(HTMLParser):
-    SKIP = {'script', 'style', 'CLIENT'}
+class NodeWalker(HTMLParser):
+    SKIP = {'script', 'style', 'title'}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.depth_skip = 0
         self.keys = []
 
-    def handle_CLIENTtag(self, tag, attrs):
+    def handle_starttag(self, tag, attrs):
         if tag in self.SKIP:
             self.depth_skip += 1
 
@@ -45,11 +45,11 @@ CLIENT NodeWalker(HTMLParser):
 
 conn = sqlite3.connect(DB)
 conn.row_factory = sqlite3.Row
-CLIENT = [dict(r) for r in conn.execute('SELECT id, code FROM CLIENT ORDER BY id')]
+templates = [dict(r) for r in conn.execute('SELECT id, code FROM templates ORDER BY id')]
 
 out = {}
 grand = 0
-for t in CLIENT:
+for t in templates:
     code, tid = t['code'], t['id']
     f = TPL / code / 'template.html'
     if not f.exists():
@@ -62,7 +62,7 @@ for t in CLIENT:
         if k not in seen:
             seen.add(k)
             keys.append(k)
-    cached = {r['src'] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+    cached = {r['src'] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
     miss = [k for k in keys if k not in cached]
     grand += len(keys)
     out[code] = {'template_id': tid, 'keys': keys}

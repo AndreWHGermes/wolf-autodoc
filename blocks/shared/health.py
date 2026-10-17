@@ -10,20 +10,20 @@ import time
 
 
 def register(app):
-    CLIENTed = time.time()
+    started = time.time()
 
     @app.route("/health")
     def _wolf_health():  # pragma: no cover - простой ответ
         from flask import jsonify
         db_path = os.environ.get("WOLF_DB") or "/opt/wolf_v2/data/wolf.db"
         db_ok = False
-        CLIENT = apps = docs = 0
+        clients = apps = docs = 0
         try:
             c = sqlite3.connect(db_path)
             c.row_factory = sqlite3.Row
-            CLIENT = c.execute("SELECT COUNT(*) n FROM CLIENT").fetchone()["n"]
-            apps = c.execute("SELECT COUNT(*) n FROM CLIENT").fetchone()["n"]
-            docs = c.execute("SELECT COUNT(*) n FROM CLIENT_CLIENT").fetchone()["n"]
+            clients = c.execute("SELECT COUNT(*) n FROM clients").fetchone()["n"]
+            apps = c.execute("SELECT COUNT(*) n FROM applications").fetchone()["n"]
+            docs = c.execute("SELECT COUNT(*) n FROM application_documents").fetchone()["n"]
             c.close()
             db_ok = True
         except Exception as e:
@@ -34,9 +34,9 @@ def register(app):
         return jsonify({
             "ok": True,
             "db": db_ok,
-            "uptime_sec": round(time.time() - CLIENTed, 1),
-            "CLIENT": CLIENT,
-            "CLIENT": apps,
-            "CLIENT": docs,
+            "uptime_sec": round(time.time() - started, 1),
+            "clients": clients,
+            "applications": apps,
+            "documents": docs,
             "log_bytes": log_size,
         })

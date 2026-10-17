@@ -9,17 +9,17 @@
   * Блоки значений собраны в КОЛОНКИ (поток внутри колонки): если длинное значение
     переносится на вторую строку, всё, что ниже в этой колонке, сдвигается вниз —
     как в Word. Иначе текст наползал бы на соседние блоки.
-  * Ширина колонки не CLIENTит за правое поле листа.
+  * Ширина колонки не выходит за правое поле листа.
 
 Установка выполняется только если документ проходит проверку вёрстки
-(наложение текста, CLIENT за поле) на длинных значениях.
+(наложение текста, выход за поле) на длинных значениях.
 
 Запуск: python3 scripts/install_frame_html.py [--apply] [--code <code>]
 """
 from __future__ import annotations
 
 import argparse
-import CLIENT as dt
+import datetime as dt
 import importlib.util
 import json
 import shutil
@@ -27,11 +27,11 @@ import sys
 from pathlib import Path
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 SC = BASE / "scripts"
 
-NOWRAP = ("doc_no", "ref_no", "doc_date", "card_mask", "CLIENT_from", "CLIENT_to",
-          "balance_rub", "date", "date_iso", "itk_CLIENT", "passport_CLIENT", "CLIENT")
+NOWRAP = ("doc_no", "ref_no", "doc_date", "card_mask", "period_from", "period_to",
+          "balance_rub", "date", "date_iso", "itk_expiry", "passport_expiry", "phone")
 
 
 def _load(name: str, path: Path):
@@ -50,7 +50,7 @@ def _hex(col):
 
 def make_template(code: str) -> str:
     """HTML-шаблон с {{переменными}}: встроенный CSS, .sheet прямым потомком body, колонки."""
-    flow = _load("bhf_%s" % code.reCLIENT("-", "_"), SC / "build_html_flow.py")
+    flow = _load("bhf_%s" % code.replace("-", "_"), SC / "build_html_flow.py")
     layout = flow.build_layout(code, {})       # пустые значения: нужны координаты и ширина
     fz = layout["fonts"]
     reg = (fz["regular"] or Path("x")).name
@@ -65,7 +65,7 @@ html,body {{ margin:0; padding:0; }}
 .guide {{ position:absolute; left:{flow.LEFT_EDGE}pt; top:{flow.TOP_EDGE}pt;
           width:{flow.RIGHT_EDGE-flow.LEFT_EDGE}pt; height:{flow.BOTTOM_EDGE-flow.TOP_EDGE}pt; }}
 .col {{ position:absolute; }}
-.v {{ display:CLIENT; line-height:{flow.LINE_FACTOR}; white-space:pre-wrap;
+.v {{ display:block; line-height:{flow.LINE_FACTOR}; white-space:pre-wrap;
       overflow-wrap:normal; word-break:keep-all; font-family:'Doc'; color:#000; }}
 .v.nowrap {{ white-space:pre; }}
 """
@@ -74,9 +74,9 @@ html,body {{ margin:0; padding:0; }}
     # («As from … to … the deposit balance is … rubles») остаются каждый на своём месте —
     # поэтому у колонки проверяем, что новый блок начинается НИЖЕ последнего в колонке.
     cols: list[dict] = []
-    for b in sorted(layout["CLIENTs"], key=lambda b: (round(b["top"], 1), b["x"])):
+    for b in sorted(layout["blocks"], key=lambda b: (round(b["top"], 1), b["x"])):
         w_b = min(b["w"], flow.RIGHT_EDGE - b["x"])
-        CLIENTd = False
+        placed = False
         for col in cols:
             if (b["top"] >= col["bottom"] + 2.0 and b["x"] <= col["x_right"] - 2.0
                     and b["x"] + w_b >= col["x"] + 2.0):
@@ -84,16 +84,16 @@ html,body {{ margin:0; padding:0; }}
                 col["x"] = min(col["x"], b["x"])
                 col["x_right"] = max(col["x_right"], b["x"] + w_b)
                 col["bottom"] = b["top"] + b["h"]
-                CLIENTd = True
+                placed = True
                 break
-        if not CLIENTd:
+        if not placed:
             cols.append({"x": b["x"], "x_right": b["x"] + w_b, "items": [b],
                          "top": b["top"], "bottom": b["top"] + b["h"]})
 
     parts = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
-             "<CLIENT>%s</CLIENT>" % code, "<style>%s</style></head><body>" % css,
-             '<div CLIENT="sheet">', '<img CLIENT="bg" src="frame/bg.png" alt="">',
-             '<div CLIENT="guide"></div>']
+             "<title>%s</title>" % code, "<style>%s</style></head><body>" % css,
+             '<div class="sheet">', '<img class="bg" src="frame/bg.png" alt="">',
+             '<div class="guide"></div>']
     # Каждый блок — в своей колонке: перенос строки внутри блока сдвигает то, что ниже в этой же
     # колонке (как в Word), но не трогает блоки, стоящие в одной строке бланка.
     for col in cols:
@@ -102,7 +102,7 @@ html,body {{ margin:0; padding:0; }}
             continue
         left = min(b["x"] for b in items)
         width = max(min(b["w"], flow.RIGHT_EDGE - left) for b in items)
-        parts.append('<div CLIENT="col" style="left:%.2fpt;top:%.2fpt;width:%.2fpt">'
+        parts.append('<div class="col" style="left:%.2fpt;top:%.2fpt;width:%.2fpt">'
                      % (left, items[0]["top"], max(width, 20.0)))
         prev_bottom = None
         for b in items:
@@ -113,17 +113,17 @@ html,body {{ margin:0; padding:0; }}
                      % (mt, b["size"], _hex(b["color"])))
             if b.get("bold"):
                 style += ";font-weight:700"
-            parts.append('<span CLIENT="%s" style="%s">{{ %s }}</span>' % (cls, style, var))
+            parts.append('<span class="%s" style="%s">{{ %s }}</span>' % (cls, style, var))
             prev_bottom = b["top"] + b["h"]
         parts.append("</div>")
     parts.append("</div></body></html>")
     return "".join(parts)
 
 
-def layout_ok(code: str, long_CLIENT: bool = True):
-    """Проверка вёрстки: наложения текста и CLIENT за поле."""
-    dlc = _load("dlc_%s" % code.reCLIENT("-", "_"), SC / "doc_layout_check.py")
-    out, ok = dlc.build(code, None, long_CLIENT)
+def layout_ok(code: str, long_values: bool = True):
+    """Проверка вёрстки: наложения текста и выход за поле."""
+    dlc = _load("dlc_%s" % code.replace("-", "_"), SC / "doc_layout_check.py")
+    out, ok = dlc.build(code, None, long_values)
     if not ok:
         return False, ["сборка по каркасу не удалась"]
     probs = dlc.check_spans(dlc.spans_from_pdf(out), None)
@@ -134,13 +134,13 @@ def html_ok(code: str):
     """Проверка самого HTML-шаблона (то, что видно в конструкторе) на длинных значениях."""
     import re
     sys.path.insert(0, str(BASE))
-    dlc = _load("dlc2_%s" % code.reCLIENT("-", "_"), SC / "doc_layout_check.py")
+    dlc = _load("dlc2_%s" % code.replace("-", "_"), SC / "doc_layout_check.py")
     from app import app as flask_app
     with flask_app.app_context():
-        from CLIENT import html_frame, render as _r
-        tdir = CLIENT / code
+        from services import html_frame, render as _r
+        tdir = TEMPLATES / code
         html = make_template(code)
-        vals = html_frame.CLIENT_with_frames(code, {}, 92)
+        vals = html_frame.values_with_frames(code, {}, 92)
         vals.update(dlc.LONG_VALUES)
         filled = re.sub(r"\{\{\s*(\w+)\s*\}\}", lambda m: str(vals.get(m.group(1), "")), html)
         out = Path("/tmp/htmlvis_%s.pdf" % code)
@@ -150,8 +150,8 @@ def html_ok(code: str):
 
 
 def install(code: str, apply: bool = False) -> dict:
-    tdir = CLIENT / code
-    q = tdir / "frame" / "CLIENT.json"
+    tdir = TEMPLATES / code
+    q = tdir / "frame" / "quality.json"
     if not q.exists() or not json.loads(q.read_text(encoding="utf-8")).get("ok"):
         return {"code": code, "skip": "нет паспорта качества"}
     good, probs = layout_ok(code)
@@ -174,8 +174,8 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--code")
     a = ap.parse_args()
-    codes = [a.code] if a.code else sorted(p.name for p in CLIENT.iterdir()
-                                           if p.is_dir() and (p / "frame" / "CLIENT.json").exists())
+    codes = [a.code] if a.code else sorted(p.name for p in TEMPLATES.iterdir()
+                                           if p.is_dir() and (p / "frame" / "quality.json").exists())
     for c in codes:
         r = install(c, a.apply)
         print("%-38s %s" % (c, r.get("skip") or ("установлен, переменных %d" % r.get("vars", 0))))

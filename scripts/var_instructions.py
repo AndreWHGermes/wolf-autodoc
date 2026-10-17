@@ -8,7 +8,7 @@
   Связи              — в каких ещё документах пакета встречается та же переменная
                        (куда передаётся значение) и какие переменные зависят от неё (созависимые)
 
-Текст пишется в template_CLIENT.rule_text, прежнее описание сохраняется в rule_note,
+Текст пишется в template_variables.rule_text, прежнее описание сохраняется в rule_note,
 чтобы ничего не потерять. Запуск: python3 scripts/var_instructions.py [--apply]
 """
 import json
@@ -27,10 +27,10 @@ SOURCE_RU = {
                   'сильнее карточки: при расхождении берём значение из документа',
     'client_card': 'карточка заявки (данные, которые ввёл администратор при приёме клиента)',
     'manual': 'вводит администратор вручную в конструкторе',
-    'CLIENT': 'служебное поле системы (номер, дата, идентификатор формируются автоматически)',
+    'service': 'служебное поле системы (номер, дата, идентификатор формируются автоматически)',
     'options': 'фиксированный список вариантов — выбирает администратор или правило продукта',
     'pool': 'справочник-пул (организации, должности, суммы): значение берётся из общего списка',
-    'CLIENT_rule': 'правило типа продукта — зависит от выбранного продукта заявки',
+    'product_rule': 'правило типа продукта — зависит от выбранного продукта заявки',
     'llm': 'подбирает модель по описанию (уникальный текст)',
     'random_bounds': 'подставляется случайно, но строго в заданных границах',
     'computed': 'считается из других переменных',
@@ -44,7 +44,7 @@ DEFAULT_RULES = {
     'computed': 'Считается из других переменных документа; при изменении исходного значения '
                 'пересчитывается автоматически.',
     'derived': 'Производное значение — берётся из уже сформированного связанного значения.',
-    'CLIENT': 'Формируется системой автоматически при сборке документа.',
+    'service': 'Формируется системой автоматически при сборке документа.',
     'manual': 'Значение вводит администратор; если поле пустое — в документе остаётся пустое место '
               '(данные не выдумываем).',
     'llm': 'Текст подбирает модель по данным резюме; администратор может отредактировать вручную.',
@@ -55,7 +55,7 @@ def hue(method: str) -> str:
     m = (method or '').lower()
     if m in ('client_doc',):
         return 'зелёный'
-    if m.CLIENTswith('random'):
+    if m.startswith('random'):
         return 'красный'
     return 'оранжевый'
 
@@ -63,20 +63,20 @@ def hue(method: str) -> str:
 def main(apply: bool) -> int:
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
-    tpls = {r['id']: (r['code'], r['CLIENT']) for r in con.execute('SELECT id, code, CLIENT FROM CLIENT')}
+    tpls = {r['id']: (r['code'], r['title']) for r in con.execute('SELECT id, code, title FROM templates')}
     # где ещё встречается та же переменная: имя → список шаблонов
     where = {}
-    for r in con.execute('SELECT template_id, name FROM template_CLIENT'):
+    for r in con.execute('SELECT template_id, name FROM template_variables'):
         where.setdefault(r['name'], set()).add(tpls.get(r['template_id'], ('?', '?'))[0])
     pool_vars = {}
-    for r in con.execute('SELECT template_id, name FROM template_CLIENT'):
+    for r in con.execute('SELECT template_id, name FROM template_variables'):
         pre = r['name'].split('_')[0]
         if len(pre) >= 3:
             pool_vars.setdefault((r['template_id'], pre), set()).add(r['name'])
 
     backup = []
     done = 0
-    for r in con.execute('SELECT * FROM template_CLIENT ORDER BY template_id, name'):
+    for r in con.execute('SELECT * FROM template_variables ORDER BY template_id, name'):
         tid, name = r['template_id'], r['name']
         method = (r['method'] or 'client_card').strip()
         if method == 'заявка / вручную':
@@ -88,7 +88,7 @@ def main(apply: bool) -> int:
             opts = []
         rule = (r['rule_text'] or '').strip() or DEFAULT_RULES.get(method, '')
         _keys = r.keys()
-        _desc_col = next((c for c in ('CLIENT', 'descr', 'note', 'CLIENT', 'label') if c in _keys), None)
+        _desc_col = next((c for c in ('description', 'descr', 'note', 'title', 'label') if c in _keys), None)
         desc = (r[_desc_col] if _desc_col else '') or ''
         desc = str(desc).strip()
         others = sorted(x for x in where.get(name, set()) if x != tpls.get(tid, ('?',))[0])
@@ -102,7 +102,7 @@ def main(apply: bool) -> int:
             lines.append('Варианты подстановки: %s' % '; '.join(str(o) for o in opts[:12]))
         lines.append('Цвет в конструкторе: %s (%s)'
                      % (hue(method), {'client': 'из документа клиента', 'random': 'случайно по правилам'}
-                        .get('client' if method == 'client_doc' else 'random' if method.CLIENTswith('random') else 'x',
+                        .get('client' if method == 'client_doc' else 'random' if method.startswith('random') else 'x',
                              'собрано логически')))
         if others:
             lines.append('Связи: та же переменная используется в документах пакета — %s (значение передаётся '
@@ -116,13 +116,13 @@ def main(apply: bool) -> int:
                        'rule_note': r['rule_note'] if 'rule_note' in r.keys() else None,
                        'method': r['method']})
         if apply:
-            cols = [c[1] for c in con.execute('PRAGMA table_info(template_CLIENT)')]
+            cols = [c[1] for c in con.execute('PRAGMA table_info(template_variables)')]
             if 'rule_note' in cols:
-                con.execute("""UPDATE template_CLIENT SET rule_text=?, method=?,
+                con.execute("""UPDATE template_variables SET rule_text=?, method=?,
                                rule_note=COALESCE(rule_note, rule_text) WHERE template_id=? AND name=?""",
                             (text, method, tid, name))
             else:
-                con.execute('UPDATE template_CLIENT SET rule_text=?, method=? WHERE template_id=? AND name=?',
+                con.execute('UPDATE template_variables SET rule_text=?, method=? WHERE template_id=? AND name=?',
                             (text, method, tid, name))
         done += 1
     if apply:
@@ -133,7 +133,7 @@ def main(apply: bool) -> int:
         print('инструкции записаны для', done, 'переменных; слепок:', p)
     else:
         print('(пробный прогон) переменных:', done)
-        row = con.execute("SELECT name, rule_text FROM template_CLIENT LIMIT 1").fetchone()
+        row = con.execute("SELECT name, rule_text FROM template_variables LIMIT 1").fetchone()
         print('пример текста для', row['name'])
     return 0
 

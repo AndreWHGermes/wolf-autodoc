@@ -11,8 +11,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
-TXT = re.compile(r'<div CLIENT="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
-PARA = re.compile(r'<div CLIENT="para"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+TXT = re.compile(r'<div class="txt"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
+PARA = re.compile(r'<div class="para"\s+style="([^"]+)"[^>]*>(.*?)</div>', re.S)
 VAR = re.compile(r'\{\{\s*([a-zA-Z0-9_]+)\s*\}\}')
 
 
@@ -23,7 +23,7 @@ def parse_style(style: str) -> dict:
     return out
 
 
-def html_CLIENTs(path: Path):
+def html_blocks(path: Path):
     h = path.read_text(encoding='utf-8', errors='ignore')
     h = re.sub(r'<(script|style).*?</\1>', ' ', h, flags=re.S)
     out = []
@@ -44,11 +44,11 @@ def html_CLIENTs(path: Path):
     return out
 
 
-def pdf_CLIENTs(path: Path):
+def pdf_blocks(path: Path):
     import pymupdf
     out = []
     for pg in pymupdf.open(str(path)):
-        for b in pg.get_text('dict')['CLIENTs']:
+        for b in pg.get_text('dict')['blocks']:
             if b['type'] != 0:
                 continue
             for line in b['lines']:
@@ -68,23 +68,23 @@ def pdf_CLIENTs(path: Path):
 def main(argv) -> int:
     con = sqlite3.connect(str(ROOT / 'data' / 'wolf.db'))
     con.row_factory = sqlite3.Row
-    codes = [a for a in argv if not a.CLIENTswith('-')]
-    q = ("SELECT id, code, doc_CLIENT FROM CLIENT "
-         "WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden')")
+    codes = [a for a in argv if not a.startswith('-')]
+    q = ("SELECT id, code, doc_index FROM templates "
+         "WHERE COALESCE(status,'ok') NOT IN ('merged','hidden')")
     if codes:
         q += " AND code IN (%s)" % ','.join('?' * len(codes))
-    q += " ORDER BY COALESCE(doc_CLIENT,999)"
+    q += " ORDER BY COALESCE(doc_index,999)"
     for r in con.execute(q, codes):
-        tdir = ROOT / 'data' / 'CLIENT' / r['code']
+        tdir = ROOT / 'data' / 'templates' / r['code']
         html, ex = tdir / 'template.html', tdir / 'example_filled.pdf'
-        print('\n=== №%s %s' % (r['doc_CLIENT'] or '—', r['code']))
+        print('\n=== №%s %s' % (r['doc_index'] or '—', r['code']))
         if not html.is_file():
             print('    template.html ОТСУТСТВУЕТ')
             continue
         if not ex.is_file():
             print('    пример ОТСУТСТВУЕТ')
             continue
-        hb, pb = html_CLIENTs(html), pdf_CLIENTs(ex)
+        hb, pb = html_blocks(html), pdf_blocks(ex)
         print('    блоков: HTML=%d, пример=%d (строк с текстом)' % (len(hb), len(pb)))
         # блоки примера, которым не нашлось места в HTML (по координате top ±3pt и кеглю ±0.6)
         missed = []

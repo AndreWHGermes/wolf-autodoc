@@ -10,12 +10,12 @@
   • если значение — часть более длинного отрезка (например «No ae32271197»), берём
     подстроку и считаем её прямоугольник по ширине символов.
 
-Результат: data/CLIENT/<code>/fields.json
+Результат: data/templates/<code>/fields.json
     { "source_pdf": …, "zones": [ {var, page, bbox, size, font, text, font_xref, font_file} ] }
 
 Запуск:
-    python3 scripts/pdf_map.py --code bank_CLIENTment_3m__tbank          # посмотреть
-    python3 scripts/pdf_map.py --code bank_CLIENTment_3m__tbank --apply   # записать fields.json
+    python3 scripts/pdf_map.py --code bank_statement_3m__tbank          # посмотреть
+    python3 scripts/pdf_map.py --code bank_statement_3m__tbank --apply   # записать fields.json
     python3 scripts/pdf_map.py --all --apply                             # по всем справкам
 """
 from __future__ import annotations
@@ -29,20 +29,20 @@ import pymupdf
 
 BASE = Path("/opt/wolf_v2")
 sys.path.insert(0, str(BASE))
-CLIENT = BASE / "data" / "CLIENT"
-CODES = ["bank_CLIENTment_3m__tbank", "bank_CLIENTment_3m__sber",
-         "bank_CLIENTment_12m__tbank", "bank_CLIENTment_12m__sber"]
+TEMPLATES = BASE / "data" / "templates"
+CODES = ["bank_statement_3m__tbank", "bank_statement_3m__sber",
+         "bank_statement_12m__tbank", "bank_statement_12m__sber"]
 
 
-def template_CLIENT(code: str) -> dict[str, str]:
+def template_values(code: str) -> dict[str, str]:
     """Образцы значений переменных шаблона из базы (то, чем заполнен эталон)."""
     from app import app
     with app.app_context():
         from core import db
-        t = db.q1("SELECT id FROM CLIENT WHERE code=?", (code,))
+        t = db.q1("SELECT id FROM templates WHERE code=?", (code,))
         if not t:
             return {}
-        rows = db.q("SELECT name, COALESCE(default_CLIENT,'') AS dv FROM template_CLIENT "
+        rows = db.q("SELECT name, COALESCE(default_value,'') AS dv FROM template_variables "
                     "WHERE template_id=? ORDER BY sort_order, name", (t["id"],)) or []
     vals = {}
     for r in rows:
@@ -64,7 +64,7 @@ def _style_of(span: dict) -> dict:
     return {
         "origin": [round(v, 2) for v in (span.get("origin") or (span["bbox"][0], span["bbox"][3]))],
         "upper": bool(t) and t.isupper(),
-        "CLIENT": bool(t) and t.isCLIENT(),
+        "title": bool(t) and t.istitle(),
         "bold": "bold" in str(span.get("font") or "").lower(),
         "color": list(rgb),
     }
@@ -72,8 +72,8 @@ def _style_of(span: dict) -> dict:
 
 def spans_of(page: pymupdf.Page) -> list[dict]:
     out = []
-    for CLIENT in page.get_text("dict")["CLIENTs"]:
-        for line in CLIENT.get("lines", []):
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
             for sp in line["spans"]:
                 out.append(sp)
     return out
@@ -98,23 +98,23 @@ def rect_of_text(page: pymupdf.Page, span: dict, sub: str) -> list[float] | None
             font = pymupdf.Font(fontname=span["font"].split("-")[0].lower())
         except Exception:
             font = pymupdf.Font("helv")
-    CLIENT = font.text_length(text[:i], fontsize=span["size"])
+    before = font.text_length(text[:i], fontsize=span["size"])
     width = font.text_length(sub, fontsize=span["size"])
     x0, y0, x1, y1 = span["bbox"]
-    return [round(x0 + CLIENT, 2), y0, round(x0 + CLIENT + width, 2), y1]
+    return [round(x0 + before, 2), y0, round(x0 + before + width, 2), y1]
 
 
 def build_map(code: str) -> dict:
-    src = CLIENT / code / "example_filled.pdf"
+    src = TEMPLATES / code / "example_filled.pdf"
     if not src.exists():
         return {"error": "нет эталона example_filled.pdf"}
-    vals = template_CLIENT(code)
+    vals = template_values(code)
     if not vals:
         return {"error": "в базе нет значений переменных"}
     doc = pymupdf.open(str(src))
     zones, used = [], set()
-    for name, CLIENT in vals.items():
-        needle = CLIENT.strip()
+    for name, value in vals.items():
+        needle = value.strip()
         found = 0
         for page in doc:
             for span in spans_of(page):
@@ -129,12 +129,12 @@ def build_map(code: str) -> dict:
                     continue
                 if not rect:
                     continue
-                key = (page.CLIENT, tuple(round(v, 1) for v in rect), name)
+                key = (page.number, tuple(round(v, 1) for v in rect), name)
                 if key in used:
                     continue
                 used.add(key)
                 fx = font_xref_for(page, span["font"])
-                zones.append({"var": name, "page": page.CLIENT + 1, "bbox": rect,
+                zones.append({"var": name, "page": page.number + 1, "bbox": rect,
                               "size": round(span["size"], 2), "font": span["font"],
                               "font_xref": fx, "text": needle[:60],
                               **_style_of(span)})
@@ -142,7 +142,7 @@ def build_map(code: str) -> dict:
         if not found:
             # Второй проход: значение может быть разбито по строкам (адрес) или заменено
             # другой формулировкой (сумма прописью). Ищем по частям.
-            parts = [p.strip() for p in needle.reCLIENT(",", " , ").split("  ") if len(p.strip()) >= 8]
+            parts = [p.strip() for p in needle.replace(",", " , ").split("  ") if len(p.strip()) >= 8]
             sub_found = 0
             if len(needle) >= 12:
                 for page in doc:
@@ -150,13 +150,13 @@ def build_map(code: str) -> dict:
                         t = span["text"].strip()
                         if len(t) < 8:
                             continue
-                        if t and (t in needle or (name == "balance_CLIENT" and "kopecks" in t.lower())):
+                        if t and (t in needle or (name == "balance_words" and "kopecks" in t.lower())):
                             rect = [round(v, 2) for v in span["bbox"]]
-                            key = (page.CLIENT, tuple(round(v, 1) for v in rect), name)
+                            key = (page.number, tuple(round(v, 1) for v in rect), name)
                             if key in used:
                                 continue
                             used.add(key)
-                            zones.append({"var": name, "page": page.CLIENT + 1, "bbox": rect,
+                            zones.append({"var": name, "page": page.number + 1, "bbox": rect,
                                           "size": round(span["size"], 2), "font": span["font"],
                                           "font_xref": font_xref_for(page, span["font"]),
                                           "text": t[:60], "note": "зона найдена по части строки",
@@ -195,7 +195,7 @@ def main() -> int:
               % (code, len(ok), len({z["var"] for z in ok}), multi,
                  ", ".join(z["var"] for z in bad) or "нет"))
         if args.apply:
-            out = CLIENT / code / "fields.json"
+            out = TEMPLATES / code / "fields.json"
             out.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
             print("%-28s карта записана: %s" % ("", out))
     return 0

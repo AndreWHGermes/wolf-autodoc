@@ -2,7 +2,7 @@
 документа (example_filled.pdf) и кладёт их в examples_json — чтобы кнопка
 «Подставить значения из примера» возвращала и эти поля.
 
-Запуск: /usr/bin/python3 /opt/wolf_v2/scripts/example_CLIENT_extract.py [--dry]
+Запуск: /usr/bin/python3 /opt/wolf_v2/scripts/example_values_extract.py [--dry]
 """
 import json
 import os
@@ -24,11 +24,11 @@ PATTERNS = {
 PERIOD_RE = re.compile(r"As from\s+(\d{2}\.\d{2}\.\d{4})\s+to\s+(\d{2}\.\d{2}\.\d{4})")
 
 
-def CLIENT_CLIENT(text):
+def period_values(text):
     m = PERIOD_RE.search(text)
     if not m:
         return {}
-    return {"doc_date": m.group(2), "CLIENT_to": m.group(2), "CLIENT_from": m.group(1)}
+    return {"doc_date": m.group(2), "period_to": m.group(2), "period_from": m.group(1)}
 
 
 def extract(path):
@@ -54,22 +54,22 @@ def main():
     conn = sqlite3.connect(DB)
     conn.row_factory = sqlite3.Row
     rows = list(conn.execute(
-        "SELECT id, code, example_path FROM CLIENT WHERE code LIKE 'bank_CLIENTment%' ORDER BY id"))
-    CLIENTd = 0
+        "SELECT id, code, example_path FROM templates WHERE code LIKE 'bank_statement%' ORDER BY id"))
+    changed = 0
     for t in rows:
         path = t["example_path"]
         if not path or not os.path.exists(path):
             print(f"[{t['code']}] примера нет — пропуск")
             continue
         found, text = extract(path)
-        for k, v in CLIENT_CLIENT(text).items():
+        for k, v in period_values(text).items():
             found.setdefault(k, v)
         print(f"[{t['code']}] из примера: {found}")
         for name, val in found.items():
             if not val:
                 continue
             cur = conn.execute(
-                "SELECT id, examples_json FROM template_CLIENT WHERE template_id=? AND name=?",
+                "SELECT id, examples_json FROM template_variables WHERE template_id=? AND name=?",
                 (t["id"], name)).fetchone()
             if not cur:
                 continue
@@ -78,14 +78,14 @@ def main():
                 continue
             ex = [val] + [x for x in ex if x != val]
             if not dry:
-                conn.execute("UPDATE template_CLIENT SET examples_json=? WHERE id=?",
+                conn.execute("UPDATE template_variables SET examples_json=? WHERE id=?",
                              (json.dumps(ex, ensure_ascii=False), cur["id"]))
-            CLIENTd += 1
+            changed += 1
             print(f"    {name}: пример = {val}")
     if not dry:
         conn.commit()
     conn.close()
-    print("обновлено примеров:", CLIENTd, "| режим:", "dry" if dry else "записано")
+    print("обновлено примеров:", changed, "| режим:", "dry" if dry else "записано")
 
 
 if __name__ == "__main__":

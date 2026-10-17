@@ -14,19 +14,19 @@ def norm(s):
 c = sqlite3.connect('data/wolf.db')
 c.row_factory = sqlite3.Row
 rows = [dict(r) for r in c.execute(
-    "SELECT id, full_name_CLIENT, CLIENT, name FROM CLIENT "
-    "WHERE full_name_CLIENT IS NOT NULL AND full_name_CLIENT<>'' LIMIT 40")]
+    "SELECT id, full_name_latin, surname, name FROM clients "
+    "WHERE full_name_latin IS NOT NULL AND full_name_latin<>'' LIMIT 40")]
 
 found = miss = nofolder = 0
 for r in rows:
-    toks = set(norm(r['full_name_CLIENT']).split())
+    toks = set(norm(r['full_name_latin']).split())
     folder = None
-    for d in glob.glob('data/gCLIENT_examples/*'):
+    for d in glob.glob('data/gdrive_examples/*'):
         if not os.path.isdir(d):
             continue
         dn = set(norm(os.path.basename(d)).split())
         if toks and (toks <= dn or dn <= toks
-                     or (r['CLIENT'] and norm(r['CLIENT']) in dn and r['name'] and norm(r['name']) in dn)):
+                     or (r['surname'] and norm(r['surname']) in dn and r['name'] and norm(r['name']) in dn)):
             folder = d
             break
     if not folder:
@@ -41,13 +41,13 @@ for r in rows:
         except Exception:
             continue
         u = t.upper()
-        if 'CLIENT CLIENT' in u or 'STAY CLIENT' in u:
+        if 'PERMIT NUMBER' in u or 'STAY PERMIT' in u:
             itk = f
             break
     if itk:
         found += 1
         if found <= 6:
-            print('   ✓ %-30s %s' % ((r['full_name_CLIENT'] or '')[:30], os.path.basename(itk)[:42]))
+            print('   ✓ %-30s %s' % ((r['full_name_latin'] or '')[:30], os.path.basename(itk)[:42]))
     else:
         miss += 1
 

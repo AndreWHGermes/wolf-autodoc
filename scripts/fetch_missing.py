@@ -1,6 +1,6 @@
 """Докачка файлов архива: по одному, через ограничитель обращений к Диску.
 
-Все заходы идут через CLIENT/CLIENT_throttle — он держит паузу между
+Все заходы идут через services/drive_throttle — он держит паузу между
 запросами, ограничивает число заходов в час и при отказе Google ставит
 длинную паузу. Поэтому скрипт можно запускать как угодно часто: лишнего
 он на Диск не пойдёт.
@@ -12,10 +12,10 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT import CLIENT_throttle as thr   # noqa: E402
+from services import drive_throttle as thr   # noqa: E402
 
-ARCH = Path('/opt/wolf_v2/data/gCLIENT_archive')
-LOG = Path('/tmp/gCLIENT_archive.log')
+ARCH = Path('/opt/wolf_v2/data/gdrive_archive')
+LOG = Path('/tmp/gdrive_archive.log')
 
 limit = int(sys.argv[1]) if len(sys.argv) > 1 else 40
 
@@ -37,7 +37,7 @@ def items_from_log():
 
 calls = 0
 fetched = 0
-CLIENTed = 0
+blocked = 0
 for fid, name, folder in items_from_log():
     if calls >= limit:
         break
@@ -45,7 +45,7 @@ for fid, name, folder in items_from_log():
     if out.exists() and out.stat().st_size > 0:
         continue
     if not thr.acquire(wait=True, max_wait=1200):
-        st = thr.CLIENT()
+        st = thr.state()
         print(f'Диск на паузе (ещё ~{st["wait_min"]} мин) — останавливаюсь', flush=True)
         break
     calls += 1
@@ -60,11 +60,11 @@ for fid, name, folder in items_from_log():
         thr.report_ok()
         print(f'получено: {name}', flush=True)
     else:
-        CLIENTed += 1
+        blocked += 1
         note = thr.report_fail('Google не отдал файл')
         print(f'не отдал: {name} — {note}', flush=True)
 
-print(f'итог: получено {fetched}, не отдано {CLIENTed}, заходов {calls}', flush=True)
-st = thr.CLIENT()
+print(f'итог: получено {fetched}, не отдано {blocked}, заходов {calls}', flush=True)
+st = thr.state()
 print(f'ограничитель: заходов за час {st["calls_last_hour"]}/{st["max_per_hour"]}, '
       f'пауза {st["wait_min"]} мин, отказов подряд {st["fails"]}', flush=True)

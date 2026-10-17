@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
-from CLIENT.doc_read import read_text                      # noqa: E402
-from CLIENT.llm_extract import MISSING_BY_KIND, extract_missing, build_prompt  # noqa: E402
+from services.doc_read import read_text                      # noqa: E402
+from services.llm_extract import MISSING_BY_KIND, extract_missing, build_prompt  # noqa: E402
 from bot.ai_parser import _call_llm, _extract_json           # noqa: E402
 
 
@@ -18,7 +18,7 @@ def main() -> None:
     print('файл:', path.name[:50], '| тип:', kind, '| символов текста:', len(text))
     print('поля по типу:', MISSING_BY_KIND.get(kind))
 
-    fields = [v for v in MISSING_BY_KIND.get(kind, []) if v not in ('passport_CLIENT', 'CLIENT_date')]
+    fields = [v for v in MISSING_BY_KIND.get(kind, []) if v not in ('passport_number', 'birth_date')]
     print('\nспрашиваем:', fields)
     msgs = build_prompt(text, kind, fields)
     print('размер запроса:', sum(len(m['content']) for m in msgs), 'символов')

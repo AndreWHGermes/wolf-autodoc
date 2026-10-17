@@ -1,0 +1,182 @@
+{
+ "bank_statement_12m__sber": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 9,
+  "txt": 0,
+  "flow": 0,
+  "vars": 13,
+  "chars": 1101384
+ },
+ "bank_statement_12m__tbank": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 9,
+  "txt": 0,
+  "flow": 0,
+  "vars": 13,
+  "chars": 1101376
+ },
+ "bank_statement_3m__sber": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 7,
+  "txt": 0,
+  "flow": 0,
+  "vars": 13,
+  "chars": 1101389
+ },
+ "bank_statement_3m__tbank": {
+  "status": "ok",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 85,
+  "flow": 0,
+  "vars": 12,
+  "chars": 1333
+ },
+ "bridging_request_letter__default": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 23,
+  "txt": 0,
+  "flow": 0,
+  "vars": 23,
+  "chars": 1101568
+ },
+ "bridging_request_letter__ngurahrai": {
+  "status": "merged",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 60,
+  "flow": 0,
+  "vars": 22,
+  "chars": 2326
+ },
+ "bridging_request_letter__tabanan": {
+  "status": "merged",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 60,
+  "flow": 0,
+  "vars": 22,
+  "chars": 2326
+ },
+ "conversion_request_letter__default": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 20,
+  "txt": 0,
+  "flow": 0,
+  "vars": 20,
+  "chars": 1101481
+ },
+ "conversion_request_letter__denpasar": {
+  "status": "merged",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 60,
+  "flow": 0,
+  "vars": 22,
+  "chars": 2326
+ },
+ "cv__format_detailed": {
+  "status": "hidden",
+  "kind": "не распознан",
+  "bg": false,
+  "v": 0,
+  "txt": 0,
+  "flow": 0,
+  "vars": 25,
+  "chars": 3090
+ },
+ "cv__format_short": {
+  "status": "hidden",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 29,
+  "flow": 0,
+  "vars": 19,
+  "chars": 2222
+ },
+ "cv__format_sivaev": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 14,
+  "txt": 0,
+  "flow": 0,
+  "vars": 16,
+  "chars": 1101404
+ },
+ "d12_cover_letter__default": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 22,
+  "txt": 0,
+  "flow": 0,
+  "vars": 22,
+  "chars": 1101589
+ },
+ "employment_contract__default": {
+  "status": "ok",
+  "kind": "поток HTML",
+  "bg": false,
+  "v": 0,
+  "txt": 0,
+  "flow": 7,
+  "vars": 21,
+  "chars": 5631
+ },
+ "remote_work_agreement__default": {
+  "status": "ok",
+  "kind": "поток HTML",
+  "bg": false,
+  "v": 0,
+  "txt": 0,
+  "flow": 1,
+  "vars": 23,
+  "chars": 4586
+ },
+ "statement_letter_e02__conversion": {
+  "status": "merged",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 57,
+  "flow": 0,
+  "vars": 18,
+  "chars": 2968
+ },
+ "statement_letter_e02__default": {
+  "status": "ok",
+  "kind": "каркас+подложка (bg+v)",
+  "bg": true,
+  "v": 17,
+  "txt": 0,
+  "flow": 0,
+  "vars": 16,
+  "chars": 1101353
+ },
+ "test_sber": {
+  "status": "—",
+  "kind": "координаты (txt)",
+  "bg": false,
+  "v": 0,
+  "txt": 68,
+  "flow": 0,
+  "vars": 15,
+  "chars": 5724
+ }
+}

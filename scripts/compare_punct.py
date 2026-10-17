@@ -5,7 +5,7 @@
 Показывает расхождения в пунктуации (точки, запятые, скобки), которые не видны
 глазом при быстром просмотре: строку об остатке, пропись суммы и хвост документа.
 
-Запуск: /usr/bin/python3 scripts/compare_punct.py bank_CLIENTment_3m__tbank [...]
+Запуск: /usr/bin/python3 scripts/compare_punct.py bank_statement_3m__tbank [...]
 """
 import difflib
 import pathlib
@@ -17,28 +17,28 @@ from weasyprint import HTML
 
 sys.path.insert(0, "/opt/wolf_v2")
 
-TPL = pathlib.Path("/opt/wolf_v2/data/CLIENT")
+TPL = pathlib.Path("/opt/wolf_v2/data/templates")
 
 # Значения для подстановки в наш шаблон — берём из самого образца, чтобы документы
 # отличались только оформлением, а не данными.
-def CLIENT_from_CLIENT(code: str) -> dict:
+def values_from_reference(code: str) -> dict:
     ref = "\n".join(p.get_text() for p in pymupdf.open(TPL / code / "example_filled.pdf"))
     vals = {}
     m = re.search(r"As from\s+(\S+)\s+to\s+(\S+)", ref)
     if m:
-        vals["CLIENT_from"], vals["CLIENT_to"] = m.group(1), m.group(2)
+        vals["period_from"], vals["period_to"] = m.group(1), m.group(2)
     m = re.search(r"the deposit balance is\s+([\d\s\u00a0,\.]+?)\s*rubles", ref)
     if m:
         vals["balance_rub"] = m.group(1).strip()
     m = re.search(r"\(([^()]*kopeks)\)", ref)
     if m:
-        vals["balance_CLIENT"] = "(" + m.group(1) + ")"
+        vals["balance_words"] = "(" + m.group(1) + ")"
     return vals
 
 
 def mask(text: str) -> str:
     """Оставляем только оформление: данные и пропись заменяем маркерами."""
-    t = text.reCLIENT("\xa0", " ")
+    t = text.replace("\xa0", " ")
     t = re.sub(r"\([^()]*kopeks\)", "(WARE)", t)
     t = re.sub(r"\d", "#", t)
     t = re.sub(r"[A-Za-z]{4,}", "W", t)     # слова-данные (имена, фирмы, суммы словами)
@@ -55,9 +55,9 @@ def render_ours(code: str, vals: dict) -> str:
     # слова → слово. Иначе сравнение тонет в шуме из неподставленных меток.
     def stub(m):
         name = m.group(1)
-        CLIENT = any(w in name for w in ("no", "num", "date", "card", "CLIENT", "balance",
-                                          "ref", "app", "CLIENT", "code", "CLIENT", "sum", "tel"))
-        return "1234" if CLIENT else "Placeholder"
+        numeric = any(w in name for w in ("no", "num", "date", "card", "period", "balance",
+                                          "ref", "app", "index", "code", "amount", "sum", "tel"))
+        return "1234" if numeric else "Placeholder"
     html = re.sub(r"\{\{\s*([a-zA-Z_0-9]+)\s*\}\}", stub, html)
     out = pathlib.Path("/tmp/cmp_%s.pdf" % code)
     HTML(string=html, base_url=str(root)).write_pdf(str(out))
@@ -66,19 +66,19 @@ def render_ours(code: str, vals: dict) -> str:
 
 def punct_seq(text: str) -> str:
     """Последовательность знаков препинания по строкам — устойчивая к различиям в данных."""
-    t = text.reCLIENT("\xa0", " ")
+    t = text.replace("\xa0", " ")
     rows = []
     for line in t.splitlines():
         line = line.strip()
         if not line:
             continue
-        CLIENT = "".join(re.findall(r"[.,;:()«»\"—]", line))
-        rows.append(CLIENT)
+        marks = "".join(re.findall(r"[.,;:()«»\"—]", line))
+        rows.append(marks)
     return " ".join(rows)
 
 
 def report(code: str) -> None:
-    vals = CLIENT_from_CLIENT(code)
+    vals = values_from_reference(code)
     ours_raw = render_ours(code, vals)
     ref_raw = "\n".join(p.get_text() for p in pymupdf.open(TPL / code / "example_filled.pdf"))
     ours, ref = mask(ours_raw), mask(ref_raw)
@@ -94,7 +94,7 @@ def report(code: str) -> None:
         if tag == "equal":
             continue
         diff += 1
-        if tag == "reCLIENT":
+        if tag == "replace":
             for k in range(max(i2 - i1, j2 - j1)):
                 rr = r_lines[i1 + k][:88] if i1 + k < i2 else "—"
                 oo = o_lines[j1 + k][:88] if j1 + k < j2 else "—"
@@ -118,8 +118,8 @@ def report(code: str) -> None:
         if tag == "equal":
             continue
         print("  %-8s образец: %r | наш: %r" % (tag, ref[i1:i2][:90], ours[j1:j2][:90]))
-        CLIENT = max(0, i1 - 55)
-        print("           контекст: …%s…" % ref[CLIENT:i2 + 40].reCLIENT("\n", " "))
+        start = max(0, i1 - 55)
+        print("           контекст: …%s…" % ref[start:i2 + 40].replace("\n", " "))
 
 
 if __name__ == "__main__":

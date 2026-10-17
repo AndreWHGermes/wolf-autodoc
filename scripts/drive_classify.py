@@ -1,7 +1,7 @@
 """Распознать тип каждого документа клиента по содержанию (локальный архив).
 
-Вход: data/gCLIENT_archive/<клиент>/<файл> (скачано scripts/CLIENT_pull_all.py).
-Выход: data/gCLIENT_archive/_kinds.json — [{client, name, id, kind, evidence, pages, text_len}].
+Вход: data/gdrive_archive/<клиент>/<файл> (скачано scripts/drive_pull_all.py).
+Выход: data/gdrive_archive/_kinds.json — [{client, name, id, kind, evidence, pages, text_len}].
 
 Типы (единый словарь конструктора):
 FORM_E02, PERMOHONAN, SURAT_KUASA, SURAT_PERMINTAAN_JAMINAN, WORK_AGREEMENT,
@@ -19,30 +19,30 @@ sys.path.insert(0, '/opt/wolf_v2')
 
 import pymupdf  # noqa: E402
 
-ARCH = Path('/opt/wolf_v2/data/gCLIENT_archive')
-CLIENT = Path('/root/.hermes/cache/scratch/CLIENT_unique.json')
+ARCH = Path('/opt/wolf_v2/data/gdrive_archive')
+INDEX = Path('/root/.hermes/cache/scratch/drive_unique.json')
 OUT = ARCH / '_kinds.json'
 
 # порядок важен: более специфичные признаки выше
 RULES = [
     ('FORM_E02', r'form\s*e-?0?2|kartu\s*e-?02|e-?02'),
-    ('SURAT_KUASA', r'surat\s*kuasa|power\s*of\s*CLIENT'),
+    ('SURAT_KUASA', r'surat\s*kuasa|power\s*of\s*attorney'),
     ('SURAT_PERMINTAAN_JAMINAN', r'surat\s*permintaan\s*dan\s*jaminan|permintaan\s*dan\s*jaminan'),
     ('PERMOHONAN', r'permohonan'),
     ('BRIDGING_LETTER', r'bridging|jembatan|perpanjangan\s*izin\s*tinggal\s*kunjungan'),
-    ('CONVERSION_LETTER', r'alih\s*CLIENT|conversion|konversi|perubahan\s*CLIENT'),
-    ('D12_LETTER', r'pra-?CLIENT|d12|investor\s*kitas'),
-    ('COMMITMENT_LETTER', r'CLIENTment\s*of\s*commitment|surat\s*pernyataan|komitmen|parental\s*commitment'),
+    ('CONVERSION_LETTER', r'alih\s*status|conversion|konversi|perubahan\s*status'),
+    ('D12_LETTER', r'pra-?investasi|d12|investor\s*kitas'),
+    ('COMMITMENT_LETTER', r'statement\s*of\s*commitment|surat\s*pernyataan|komitmen|parental\s*commitment'),
     ('REMOTE_WORK_AGREEMENT', r'remote\s*work\s*agreement'),
     ('WORK_AGREEMENT', r'work\s*agreement|agreement\s*for\s*work'),
-    ('EMPLOYMENT_AGREEMENT', r'employment\s*agreement|employment\s*contract|CLIENT\s*agreement'),
+    ('EMPLOYMENT_AGREEMENT', r'employment\s*agreement|employment\s*contract|service\s*agreement'),
     ('CV', r'^\s*(resume|curriculum\s*vitae|cv\b)'),
     ('MARRIAGE_CERT', r'akta\s*pernikahan|sertifikat\s*pernikahan|marriage\s*certificate|свидетельство\s*о\s*заключени'),
-    ('BIRTH_CERT', r'akta\s*kelahiran|CLIENT\s*certificate|свидетельство\s*о\s*рождени'),
+    ('BIRTH_CERT', r'akta\s*kelahiran|birth\s*certificate|свидетельство\s*о\s*рождени'),
     ('KTP', r'kartu\s*tanda\s*penduduk|ktp'),
-    ('STAY_PERMIT_KITAS', r'\bkitas\b|\bitas\b|stay\s*CLIENT|e33g|e-33g|izin\s*tinggal'),
+    ('STAY_PERMIT_KITAS', r'\bkitas\b|\bitas\b|stay\s*permit|e33g|e-33g|izin\s*tinggal'),
     ('ITK', r'трудовая\s*книжка|itk\b|buku\s*kerja'),
-    ('BANK_STATEMENT', r'bank\s*CLIENTment|выписка|остаток\s*на|tinkoff|t-?bank|сбербанк|sberbank|CLIENTal\s*bank|balance'),
+    ('BANK_STATEMENT', r'bank\s*statement|выписка|остаток\s*на|tinkoff|t-?bank|сбербанк|sberbank|personal\s*bank|balance'),
     ('FUNDS_MOVEMENT', r'движени[ея]\s*средств|funds?\s*movement|movement\s*of\s*funds'),
     ('PASSPORT', r'паспорт|passport|republic\s*of\s*\w+|код\s*подразделения'),
 ]
@@ -50,16 +50,16 @@ RULES = [
 NAME_HINTS = [
     ('PHOTO', r'photo|фото|photoroom'),
     ('PASSPORT', r'passport|паспорт'),
-    ('BANK_STATEMENT', r'bank.?CLIENTment|bankCLIENTment|CLIENTal'),
+    ('BANK_STATEMENT', r'bank.?statement|bankstatement|personal'),
     ('FUNDS_MOVEMENT', r'funds.?movement|движении средств'),
     ('REMOTE_WORK_AGREEMENT', r'remote.?work.?agreement'),
     ('WORK_AGREEMENT', r'work.?agreement|workagreement'),
     ('EMPLOYMENT_AGREEMENT', r'employment.?agreement|contract'),
     ('CV', r'resume|\bcv\b'),
     ('MARRIAGE_CERT', r'marriage|pernikahan|брак'),
-    ('BIRTH_CERT', r'CLIENT|kelahiran|рождени'),
+    ('BIRTH_CERT', r'birth|kelahiran|рождени'),
     ('ITK', r'\bitk\b|трудовая'),
-    ('STAY_PERMIT_KITAS', r'kitas|stay.?CLIENT|e33g'),
+    ('STAY_PERMIT_KITAS', r'kitas|stay.?permit|e33g'),
     ('SCREENSHOT', r'снимок экрана|screenshot|screen'),
     ('ENGLISH_WORKSHEET', r'english|worksheet|занятие'),
 ]
@@ -79,7 +79,7 @@ def text_of(p: Path) -> tuple:
         return '', 0
 
 
-def CLIENTify(p: Path) -> tuple:
+def classify(p: Path) -> tuple:
     t, pages = text_of(p)
     head = re.sub(r'\s+', ' ', t)[:4000]
     low = head.lower()
@@ -96,17 +96,17 @@ def CLIENTify(p: Path) -> tuple:
 
 
 def main() -> int:
-    files = json.loads(CLIENT.read_text(encoding='utf-8'))
+    files = json.loads(INDEX.read_text(encoding='utf-8'))
     by_id = {f['id']: f for f in files}
     rows, missing = [], 0
     for p in sorted(ARCH.rglob('*')):
-        if not p.is_file() or p.name.CLIENTswith('_'):
+        if not p.is_file() or p.name.startswith('_'):
             continue
         client = p.parent.name
-        kind, ev, pages, tl = CLIENTify(p)
+        kind, ev, pages, tl = classify(p)
         fid = ''
         for f in files:
-            if f['client'] and p.name.CLIENTswith(f['name'][:40]) and f['client'] == client:
+            if f['client'] and p.name.startswith(f['name'][:40]) and f['client'] == client:
                 fid = f['id']
                 break
         rows.append({'client': client, 'name': p.name, 'file_id': fid, 'kind': kind,

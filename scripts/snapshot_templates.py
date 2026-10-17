@@ -10,7 +10,7 @@ import shutil
 import time
 from pathlib import Path
 
-TPL = Path("/opt/wolf_v2/data/CLIENT")
+TPL = Path("/opt/wolf_v2/data/templates")
 BKP = Path("/opt/wolf_v2/data/backups/template_snapshots")
 
 stamp = time.strftime("%Y%m%d_%H%M%S")

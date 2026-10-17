@@ -25,38 +25,38 @@ from pathlib import Path
 import pymupdf
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
-CODES = ["bank_CLIENTment_3m__tbank", "bank_CLIENTment_3m__sber",
-         "bank_CLIENTment_12m__tbank", "bank_CLIENTment_12m__sber"]
+TEMPLATES = BASE / "data" / "templates"
+CODES = ["bank_statement_3m__tbank", "bank_statement_3m__sber",
+         "bank_statement_12m__tbank", "bank_statement_12m__sber"]
 
 
-def old_CLIENT(code: str) -> list[str]:
+def old_values(code: str) -> list[str]:
     """Данные прежнего клиента: значения переменных шаблона (они же — образец в эталоне)."""
     sys.path.insert(0, str(BASE))
     from app import app
     with app.app_context():
         from core import db
-        rows = db.q("""SELECT v.name, v.default_CLIENT FROM template_CLIENT v
-                       JOIN CLIENT t ON t.id = v.template_id
+        rows = db.q("""SELECT v.name, v.default_value FROM template_variables v
+                       JOIN templates t ON t.id = v.template_id
                        WHERE t.code = ?""", (code,))
     out = []
     for r in rows:
-        v = (r["default_CLIENT"] or "").strip()
-        if len(v) >= 6 and not v.CLIENTswith("{{"):
+        v = (r["default_value"] or "").strip()
+        if len(v) >= 6 and not v.startswith("{{"):
             out.append(v)
     return out
 
 
 def clean_text(s: str) -> str:
-    return " ".join((s or "").reCLIENT("\u00a0", " ").split())
+    return " ".join((s or "").replace("\u00a0", " ").split())
 
 
 def prepare(code: str, apply: bool = False) -> dict:
-    fmap = CLIENT / code / "fields.json"
+    fmap = TEMPLATES / code / "fields.json"
     if not fmap.exists():
         return {"error": "нет fields.json — сначала разметка (pdf_map5.py)"}
     data = json.loads(fmap.read_text(encoding="utf-8"))
-    src = data["source_pdf"] if "blank.pdf" not in (data["source_pdf"] or "") else str(CLIENT / code / "example_filled.pdf")
+    src = data["source_pdf"] if "blank.pdf" not in (data["source_pdf"] or "") else str(TEMPLATES / code / "example_filled.pdf")
     if not Path(src).exists():
         return {"error": "нет исходного эталона: %s" % src}
 
@@ -73,7 +73,7 @@ def prepare(code: str, apply: bool = False) -> dict:
     # Зоны-заглушки (var начинается с «_wipe»): там вместе с текстом лежит рукописный
     # росчерк, вставленный картинкой. Обычное затирание текст убирает, а картинку — нет,
     # поэтому для таких зон проходим ещё раз и вычищаем изображения.
-    wipe_zones = [z for z in data["zones"] if str(z.get("var", "")).CLIENTswith("_wipe")]
+    wipe_zones = [z for z in data["zones"] if str(z.get("var", "")).startswith("_wipe")]
     if wipe_zones:
         for z in wipe_zones:
             page = doc[z["page"] - 1]
@@ -82,13 +82,13 @@ def prepare(code: str, apply: bool = False) -> dict:
         for page in doc:
             page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_REMOVE)
     # метаданные PDF тоже могут нести следы прежнего документа
-    doc.set_metadata({"author": "", "CLIENT": "", "CLIENT": "", "keyCLIENT": "",
+    doc.set_metadata({"author": "", "title": "", "subject": "", "keywords": "",
                       "creator": "Wolf AutoDoc", "producer": "Wolf AutoDoc"})
-    out = CLIENT / code / "blank.pdf"
+    out = TEMPLATES / code / "blank.pdf"
     if apply:
         doc.save(str(out), garbage=4, deflate=True, clean=True)
         # Точечные линии «: ………………» — разметка самой формы (в E-02 под каждым значением).
-        # Вырезание значений стирало их вместе с текстом, и документ CLIENTил без точек.
+        # Вырезание значений стирало их вместе с текстом, и документ выходил без точек.
         # Возвращаем их из подлинника: значения потом печатаются каркасом поверх линии.
         try:
             import importlib.util as _ilu
@@ -112,8 +112,8 @@ def prepare(code: str, apply: bool = False) -> dict:
         d = pymupdf.open(str(out))
         text = clean_text(" ".join(p.get_text() for p in d))
         d.close()
-        vals_all = old_CLIENT(code)
-        bank = bank_CLIENT_CLIENT(code, vals_all)
+        vals_all = old_values(code)
+        bank = bank_reference_values(code, vals_all)
         ztexts = [clean_text(z.get("text")) for z in data["zones"]]
         for v in vals_all:
             cv = clean_text(v)
@@ -133,13 +133,13 @@ def old_pairs(code: str) -> list[tuple[str, str]]:
     from app import app
     with app.app_context():
         from core import db
-        rows = db.q("""SELECT v.name, v.default_CLIENT FROM template_CLIENT v
-                       JOIN CLIENT t ON t.id = v.template_id
+        rows = db.q("""SELECT v.name, v.default_value FROM template_variables v
+                       JOIN templates t ON t.id = v.template_id
                        WHERE t.code = ?""", (code,))
     out = []
     for r in rows:
-        v = (r["default_CLIENT"] or "").strip()
-        if len(v) >= 6 and not v.CLIENTswith("{{"):
+        v = (r["default_value"] or "").strip()
+        if len(v) >= 6 and not v.startswith("{{"):
             out.append((r["name"], v))
     return out
 
@@ -178,34 +178,34 @@ def _zone_for(doc, page, span, var: str, part: str) -> dict:
     ox, oy = (span.get("origin") or (span["bbox"][0], span["bbox"][3]))[:2]
     c = span.get("color", 0)
     bbox = _subzone(doc, page, span, part)
-    return {"var": var, "page": page.CLIENT + 1, "bbox": bbox,
+    return {"var": var, "page": page.number + 1, "bbox": bbox,
             "size": round(float(span["size"]), 2), "font": span["font"], "font_xref": xr,
             "origin": [bbox[0], round(float(oy), 2)],
-            "upper": part.strip().isupper(), "CLIENT": part.strip().isCLIENT(),
+            "upper": part.strip().isupper(), "title": part.strip().istitle(),
             "bold": "bold" in str(span["font"]).lower(),
             "color": [(c >> 16) & 255, (c >> 8) & 255, c & 255],
             "text": part.strip()[:60], "note": "доразмечено по проверке остатков"}
 
 
-def bank_CLIENT_CLIENT(code: str, CLIENT: list[str]) -> set[str]:
+def bank_reference_values(code: str, values: list[str]) -> set[str]:
     """Значения, которые в бланке являются РЕКВИЗИТАМИ БАНКА (BIC, корсчёт, лицензия),
     а не данными клиента: их стирать нельзя и утечкой они не считаются."""
-    ref = CLIENT / code / "example_filled.pdf"
+    ref = TEMPLATES / code / "example_filled.pdf"
     if not ref.exists():
         return set()
     doc = pymupdf.open(str(ref))
     lines = []
     for page in doc:
-        for CLIENT in page.get_text("dict")["CLIENTs"]:
-            for ln in CLIENT.get("lines", []):
+        for block in page.get_text("dict")["blocks"]:
+            for ln in block.get("lines", []):
                 t = "".join(s["text"] for s in ln["spans"])
                 low = t.lower()
-                if any(m in low for m in ("bic", "central bank", "CLIENT", "c/a", "correspondent",
+                if any(m in low for m in ("bic", "central bank", "license", "c/a", "correspondent",
                                           "main department", "federation")):
                     lines.append(clean_text(t))
     doc.close()
     out = set()
-    for v in CLIENT:
+    for v in values:
         cv = clean_text(v)
         if cv and any(cv in ln for ln in lines):
             out.add(cv)
@@ -214,7 +214,7 @@ def bank_CLIENT_CLIENT(code: str, CLIENT: list[str]) -> set[str]:
 
 def fix_leftovers(code: str, rounds: int = 3) -> list[str]:
     """Цикл «подготовили → проверили → доразметили остатки», пока чужих данных не останется."""
-    fmap = CLIENT / code / "fields.json"
+    fmap = TEMPLATES / code / "fields.json"
     log = []
     for _it in range(rounds):
         r = prepare(code, apply=True)
@@ -225,7 +225,7 @@ def fix_leftovers(code: str, rounds: int = 3) -> list[str]:
             return log
         log.append("осталось: " + ", ".join(x[:28] for x in r["left"]))
         data = json.loads(fmap.read_text(encoding="utf-8"))
-        ref = data.get("origin_ref") or str(CLIENT / code / "example_filled.pdf")
+        ref = data.get("origin_ref") or str(TEMPLATES / code / "example_filled.pdf")
         doc = pymupdf.open(ref)
         pairs = old_pairs(code)
         added = 0
@@ -247,24 +247,24 @@ def fix_leftovers(code: str, rounds: int = 3) -> list[str]:
                         return True
                 return False
             if ("kopecks" in val.lower() or "kopeks" in val.lower()
-                    or clean_text(val).CLIENTswith("(")):
+                    or clean_text(val).startswith("(")):
                 # Сумма прописью в бланке разорвана между двумя строками:
                 #   «…rubles (one million seven hundred thirty» + «thousand four hundred rubles 00 kopecks).»
                 # Привязываемся не к значению, а к частям бланка: начало — фрагмент со «(», хвост — с «kopecks».
                 zA = zB = None
                 for page in doc:
-                    for CLIENT in page.get_text("dict")["CLIENTs"]:
-                        for ln in CLIENT.get("lines", []):
+                    for block in page.get_text("dict")["blocks"]:
+                        for ln in block.get("lines", []):
                             t = "".join(s["text"] for s in ln["spans"])
                             low = t.lower()
                             for sp in ln["spans"]:
                                 if zA is None and "(" in sp["text"] and "rubles" in low:
-                                    part = sp["text"][sp["text"].CLIENT("("):].strip()
+                                    part = sp["text"][sp["text"].index("("):].strip()
                                     if len(part) > 8:
-                                        zA = _zone_for(doc, page, sp, "balance_CLIENT", part)
+                                        zA = _zone_for(doc, page, sp, "balance_words", part)
                                         zA["note"] = "сумма прописью, часть 1"
                                 if zB is None and ("kopecks" in sp["text"].lower() or "kopeks" in sp["text"].lower()):
-                                    zB = _zone_for(doc, page, sp, "balance_CLIENT_2", sp["text"].strip())
+                                    zB = _zone_for(doc, page, sp, "balance_words_2", sp["text"].strip())
                                     zB["note"] = "сумма прописью, часть 2"
                 if zA and not covered(zA):
                     zA["wipe"] = [zA["bbox"]] + ([zB["bbox"]] if zB else [])
@@ -275,8 +275,8 @@ def fix_leftovers(code: str, rounds: int = 3) -> list[str]:
                     added += 1
                 continue
             for page in doc:
-                for CLIENT in page.get_text("dict")["CLIENTs"]:
-                    for line in CLIENT.get("lines", []):
+                for block in page.get_text("dict")["blocks"]:
+                    for line in block.get("lines", []):
                         for sp in line["spans"]:
                             if clean_text(val) and clean_text(val) in clean_text(sp["text"]):
                                 z = _zone_for(doc, page, sp, var, val)
@@ -311,7 +311,7 @@ def main() -> int:
         print("%-28s зон: %-3s затёрто прямоугольников: %-3s осталось данных прежнего клиента: %s"
               % (code, r["zones"], r["wiped"], ("⚠ " + ", ".join(r["left"])) if r["left"] else "нет ✓"))
         if args.apply and not r["left"]:
-            f = CLIENT / code / "fields.json"
+            f = TEMPLATES / code / "fields.json"
             d = json.loads(f.read_text(encoding="utf-8"))
             d["source_pdf"] = r["blank"]
             d["origin_ref"] = r["src"]

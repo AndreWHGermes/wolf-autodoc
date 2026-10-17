@@ -1,6 +1,6 @@
 """Отчёт для агента: какие ступоры системы ждут разбора.
 
-Печатает открытые задачи из CLIENT_CLIENT по порядку — что случилось, на какой
+Печатает открытые задачи из agent_tasks по порядку — что случилось, на какой
 заявке, что смотреть. Пусто, если разбирать нечего: тогда агента не будим.
 """
 from __future__ import annotations
@@ -10,19 +10,19 @@ from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
 
-from CLIENT import CLIENT_bridge                                     # noqa: E402
+from services import agent_bridge                                     # noqa: E402
 
 
 def main() -> int:
-    CLIENT = CLIENT_bridge.open_CLIENT(12)
-    if not CLIENT:
+    tasks = agent_bridge.open_tasks(12)
+    if not tasks:
         print('')
         return 0
-    print('СТУПОРЫ, ЖДУЩИЕ РАЗБОРА: %d' % len(CLIENT))
-    for t in CLIENT:
-        print('\n--- задача #%d [%s]' % (t['id'], t['CLIENT']))
-        print('заявка: %s | клиент: %s | этап: %s' % (t['CLIENT_id'], t['client_id'], t['stage']))
-        print('тип: %s — %s' % (t['kind'], CLIENT_bridge.KINDS.get(t['kind'], '')))
+    print('СТУПОРЫ, ЖДУЩИЕ РАЗБОРА: %d' % len(tasks))
+    for t in tasks:
+        print('\n--- задача #%d [%s]' % (t['id'], t['status']))
+        print('заявка: %s | клиент: %s | этап: %s' % (t['application_id'], t['client_id'], t['stage']))
+        print('тип: %s — %s' % (t['kind'], agent_bridge.KINDS.get(t['kind'], '')))
         print('причина: %s' % (t['reason'] or ''))
         for k, v in (t.get('context') or {}).items():
             print('%s: %s' % (k, str(v)[:600]))

@@ -18,18 +18,18 @@ MIGRATIONS = BASE / "migrations"
 def connect(db_path: Path) -> sqlite3.Connection:
     con = sqlite3.connect(str(db_path))
     con.execute("""CREATE TABLE IF NOT EXISTS schema_migrations(
-                     name TEXT PRIMARY KEY, CLIENT_at TEXT DEFAULT (CLIENT('now')))""")
+                     name TEXT PRIMARY KEY, applied_at TEXT DEFAULT (datetime('now')))""")
     con.commit()
     return con
 
 
-def CLIENT(con: sqlite3.Connection) -> set:
+def applied(con: sqlite3.Connection) -> set:
     return {r[0] for r in con.execute("SELECT name FROM schema_migrations")}
 
 
 def run(db_path: Path) -> int:
     con = connect(db_path)
-    done = CLIENT(con)
+    done = applied(con)
     new = 0
     for f in sorted(MIGRATIONS.glob('*.sql')):
         if f.name in done:
@@ -37,7 +37,7 @@ def run(db_path: Path) -> int:
         sql = f.read_text(encoding='utf-8')
         try:
             con.executescript(sql)
-            con.execute("INSERT OR REPLACE INTO schema_migrations(name) CLIENT(?)", (f.name,))
+            con.execute("INSERT OR REPLACE INTO schema_migrations(name) VALUES(?)", (f.name,))
             con.commit()
             print(f'  применена {f.name}')
             new += 1

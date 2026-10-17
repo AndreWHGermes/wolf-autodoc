@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Параллельное заполнение кэша переводов (CLIENT_line) для всех шаблонов.
+"""Параллельное заполнение кэша переводов (translation_line) для всех шаблонов.
 
 Ключи: /tmp/static_keys.json (собраны так же, как их видит фронтенд).
 Перевод: бесплатный LLM-роутер bynara, 4 параллельных запроса, батч 15 строк.
@@ -10,7 +10,7 @@ import re
 import sqlite3
 import sys
 import time
-import urllib.CLIENT
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -46,10 +46,10 @@ def log(msg: str) -> None:
 def _ask(lines: list[str], timeout: int = 180) -> list[str]:
     body = {'model': MODEL, 'messages': [{'role': 'user', 'content': PROMPT + '\n'.join(lines)}],
             'temperature': 0}
-    req = urllib.CLIENT.CLIENT(URL, data=json.dumps(body).encode(),
-                                 CLIENTs={'Authorization': f'Bearer {KEY}',
-                                          'Content-Type': 'CLIENT/json'})
-    with urllib.CLIENT.urlopen(req, timeout=timeout) as r:
+    req = urllib.request.Request(URL, data=json.dumps(body).encode(),
+                                 headers={'Authorization': f'Bearer {KEY}',
+                                          'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         out = json.loads(r.read().decode())['choices'][0]['message']['content'] or ''
     got = [re.sub(r'^\s*\d+[.)]\s*', '', l).strip() for l in out.splitlines()]
     return [g for g in got if g]
@@ -86,7 +86,7 @@ def main() -> None:
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         missing = [k for k in keys if k not in have]
         if not missing:
             log(f'{code[:36].ljust(36)} кэш полный ({len(keys)})')
@@ -109,7 +109,7 @@ def main() -> None:
             for src, dst in zip(ch, got):
                 if not dst:
                     continue
-                conn.execute('INSERT OR REPLACE INTO CLIENT_line(template_id, src, ru) CLIENT(?,?,?)',
+                conn.execute('INSERT OR REPLACE INTO translation_line(template_id, src, ru) VALUES(?,?,?)',
                              (tid, src, dst))
                 saved += 1
             conn.commit()
@@ -122,7 +122,7 @@ def main() -> None:
         tid, keys = info['template_id'], info.get('keys') or []
         if not keys:
             continue
-        have = {r[0] for r in conn.execute('SELECT src FROM CLIENT_line WHERE template_id=?', (tid,))}
+        have = {r[0] for r in conn.execute('SELECT src FROM translation_line WHERE template_id=?', (tid,))}
         miss = [k for k in keys if k not in have]
         log(f'  {code[:36].ljust(36)} {len(keys)-len(miss)}/{len(keys)}' + (f'  БЕЗ: {miss[:2]}' if miss else '  ✅'))
     conn.close()

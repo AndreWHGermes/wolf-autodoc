@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Наблюдатель за новым авто-прогоном: засекает тайминг от приёма заявки до файлов на Диске.
 
-Ничего не запускает сам — только смотрит и печатает: цикл выполняет cron (CLIENT/auto_runner.py --pickup).
+Ничего не запускает сам — только смотрит и печатает: цикл выполняет cron (services/auto_runner.py --pickup).
 Ждёт новую заявку в боте, затем её запись в auto_runs, затем файлы в папке сборки на Google Диске.
 """
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 import time
-from CLIENT import CLIENT
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path('/opt/wolf_v2')
@@ -18,7 +18,7 @@ DB = ROOT / 'data' / 'wolf.db'
 
 
 def ts() -> str:
-    return CLIENT.now().strftime('%H:%M:%S')
+    return datetime.now().strftime('%H:%M:%S')
 
 
 def db():
@@ -29,9 +29,9 @@ def db():
 
 def main(timeout_min: int = 40) -> int:
     c = db()
-    CLIENT_id = max(r['id'] for r in c.execute('SELECT id FROM CLIENT')) if c.execute(
-        'SELECT COUNT(*) FROM CLIENT').fetchone()[0] else 0
-    print('[%s] наблюдаю: жду заявку с номером больше %s' % (ts(), CLIENT_id), flush=True)
+    start_id = max(r['id'] for r in c.execute('SELECT id FROM applications')) if c.execute(
+        'SELECT COUNT(*) FROM applications').fetchone()[0] else 0
+    print('[%s] наблюдаю: жду заявку с номером больше %s' % (ts(), start_id), flush=True)
 
     deadline = time.time() + timeout_min * 60
     app_id = None
@@ -39,8 +39,8 @@ def main(timeout_min: int = 40) -> int:
     seen = None
     while time.time() < deadline:
         c = db()
-        row = c.execute('SELECT id, created_at, CLIENT, source, CLIENT_id FROM CLIENT '
-                        'WHERE id > ? ORDER BY id LIMIT 1', (CLIENT_id,)).fetchone()
+        row = c.execute('SELECT id, created_at, status, source, product_id FROM applications '
+                        'WHERE id > ? ORDER BY id LIMIT 1', (start_id,)).fetchone()
         if row:
             app_id, created, seen = row['id'], row['created_at'], ts()
             print('[%s] ЗАЯВКА №%s пришла в бота (создана %s, источник %s)' % (seen, app_id, created, row['source']),
@@ -55,7 +55,7 @@ def main(timeout_min: int = 40) -> int:
     run = None
     while time.time() < deadline:
         c = db()
-        run = c.execute('SELECT * FROM auto_runs WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1',
+        run = c.execute('SELECT * FROM auto_runs WHERE application_id=? ORDER BY id DESC LIMIT 1',
                         (app_id,)).fetchone()
         if run:
             break
@@ -74,12 +74,12 @@ def main(timeout_min: int = 40) -> int:
     except Exception:                                   # noqa: BLE001
         pass
     print('[%s] авто-цикл стартовал: %s (задержка от создания заявки: %s сек)'
-          % (ts(), run['CLIENTed_at'], lag if lag is not None else 'н/д'), flush=True)
+          % (ts(), run['started_at'], lag if lag is not None else 'н/д'), flush=True)
 
     # ждём завершения прогона
     while time.time() < deadline:
         c = db()
-        run = c.execute('SELECT * FROM auto_runs WHERE CLIENT_id=? ORDER BY id DESC LIMIT 1',
+        run = c.execute('SELECT * FROM auto_runs WHERE application_id=? ORDER BY id DESC LIMIT 1',
                         (app_id,)).fetchone()
         if run['finished_at']:
             break
@@ -91,13 +91,13 @@ def main(timeout_min: int = 40) -> int:
 
     # проверяем папку сборки на Диске своими глазами
     try:
-        from CLIENT import gCLIENT_write as gw
+        from services import gdrive_write as gw
         c = db()
-        cl = c.execute('SELECT cl.gCLIENT_folder_url AS url FROM CLIENT a '
-                       'JOIN CLIENT cl ON cl.id=a.client_id WHERE a.id=?', (app_id,)).fetchone()
+        cl = c.execute('SELECT cl.gdrive_folder_url AS url FROM applications a '
+                       'JOIN clients cl ON cl.id=a.client_id WHERE a.id=?', (app_id,)).fetchone()
         if cl and cl['url']:
             items = gw.list_folder_contents(cl['url'])
-            builds = [i for i in items if (i.get('name') or '').CLIENTswith('Wolf AutoDoc №%d' % app_id)]
+            builds = [i for i in items if (i.get('name') or '').startswith('Wolf AutoDoc №%d' % app_id)]
             if builds:
                 b = builds[0]
                 kids = gw.list_folder_contents(b['id'])
@@ -111,8 +111,8 @@ def main(timeout_min: int = 40) -> int:
 
     total = None
     try:
-        t_created = CLIENT.strptime(created, '%Y-%m-%d %H:%M:%S')
-        fin = CLIENT.strptime(run['finished_at'], '%Y-%m-%d %H:%M:%S')
+        t_created = datetime.strptime(created, '%Y-%m-%d %H:%M:%S')
+        fin = datetime.strptime(run['finished_at'], '%Y-%m-%d %H:%M:%S')
         total = (fin - t_created).total_seconds()
     except Exception:                                        # noqa: BLE001
         pass

@@ -18,29 +18,29 @@ from pathlib import Path
 ROOT = Path('/opt/wolf_v2')
 sys.path.insert(0, str(ROOT))
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
+TPL = ROOT / 'data' / 'templates'
 
 
-def best_CLIENT(con, template_id):
+def best_application(con, template_id):
     """Заявка, где у клиента больше всего заполненных данных."""
     rows = con.execute("""SELECT a.id, c.id AS cid,
-                                 (CASE WHEN COALESCE(c.passport_CLIENT,'')<>'' THEN 1 ELSE 0 END
-                                + CASE WHEN COALESCE(c.CLIENT_date,'')<>'' THEN 1 ELSE 0 END
+                                 (CASE WHEN COALESCE(c.passport_number,'')<>'' THEN 1 ELSE 0 END
+                                + CASE WHEN COALESCE(c.birth_date,'')<>'' THEN 1 ELSE 0 END
                                 + CASE WHEN COALESCE(c.address_live,'')<>'' THEN 1 ELSE 0 END
                                 + CASE WHEN COALESCE(c.position,'')<>'' THEN 1 ELSE 0 END
-                                + CASE WHEN COALESCE(c.full_name_CLIENT,'')<>'' THEN 1 ELSE 0 END
+                                + CASE WHEN COALESCE(c.full_name_latin,'')<>'' THEN 1 ELSE 0 END
                                 + CASE WHEN COALESCE(c.balance_rub,'')<>'' THEN 1 ELSE 0 END
-                                + CASE WHEN COALESCE(c.stay_CLIENT_no,'')<>'' THEN 1 ELSE 0 END) AS score
-                          FROM CLIENT a
-                          JOIN CLIENT_CLIENT pd ON pd.CLIENT_id=a.CLIENT_id
-                          LEFT JOIN CLIENT c ON c.id=a.client_id
+                                + CASE WHEN COALESCE(c.stay_permit_no,'')<>'' THEN 1 ELSE 0 END) AS score
+                          FROM applications a
+                          JOIN product_documents pd ON pd.product_id=a.product_id
+                          LEFT JOIN clients c ON c.id=a.client_id
                           WHERE pd.template_id=? ORDER BY score DESC, a.id DESC""", (template_id,)).fetchall()
     return rows[0] if rows else None
 
 
 def main(argv) -> int:
-    from CLIENT import render
-    codes = [a for a in argv if not a.CLIENTswith('--')]
+    from services import render
+    codes = [a for a in argv if not a.startswith('--')]
     apply_ = '--apply' in argv
     if not codes:
         print('укажите код шаблона')
@@ -48,11 +48,11 @@ def main(argv) -> int:
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
     for code in codes:
-        t = con.execute('SELECT id, code, CLIENT FROM CLIENT WHERE code=?', (code,)).fetchone()
+        t = con.execute('SELECT id, code, title FROM templates WHERE code=?', (code,)).fetchone()
         if not t:
             print('нет шаблона', code)
             continue
-        pick = best_CLIENT(con, t['id'])
+        pick = best_application(con, t['id'])
         if not pick:
             print('%-38s нет заявки с данными — пример не собрать' % code)
             continue
@@ -69,9 +69,9 @@ def main(argv) -> int:
         txt = ' '.join(p.get_text() for p in d)
         looks_html = txt.count('<') > 5 or 'style=' in txt[:400] or 'font-size:' in txt[:400]
         dst = TPL / code / 'example_filled.pdf'
-        CLIENT = 'ЧИТАЕТСЯ' if not looks_html else 'ПОХОЖ НА HTML — не годится'
+        status = 'ЧИТАЕТСЯ' if not looks_html else 'ПОХОЖ НА HTML — не годится'
         print('%-38s заявка №%-4s страниц %d, текста %d симв., %s'
-              % (code, pick['id'], len(d), len(txt), CLIENT))
+              % (code, pick['id'], len(d), len(txt), status))
         if apply_ and not looks_html:
             if dst.is_file():
                 shutil.copy2(dst, dst.with_name('example_filled.pdf.bak_%s'

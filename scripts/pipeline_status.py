@@ -28,10 +28,10 @@ def _conn():
     return con
 
 
-def _CLIENT(con, app_id: int) -> list[dict]:
+def _steps(con, app_id: int) -> list[dict]:
     try:
         return [dict(r) for r in con.execute(
-            "SELECT step, CLIENT, note, created_at FROM app_CLIENT WHERE CLIENT_id=? ORDER BY id", (app_id,))]
+            "SELECT step, status, note, created_at FROM app_steps WHERE application_id=? ORDER BY id", (app_id,))]
     except Exception:      # noqa: BLE001
         return []
 
@@ -39,10 +39,10 @@ def _CLIENT(con, app_id: int) -> list[dict]:
 def _docs(con, app_id: int) -> list[dict]:
     try:
         return [dict(r) for r in con.execute(
-            """SELECT t.code, ad.CLIENT, ad.error, ad.pdf_path,
-                      IFNULL(LENGTH(ad.CLIENT_json),0) AS vlen
-                 FROM CLIENT_CLIENT ad JOIN CLIENT t ON t.id=ad.template_id
-                WHERE ad.CLIENT_id=? ORDER BY t.doc_CLIENT""", (app_id,))]
+            """SELECT t.code, ad.status, ad.error, ad.pdf_path,
+                      IFNULL(LENGTH(ad.values_json),0) AS vlen
+                 FROM application_documents ad JOIN templates t ON t.id=ad.template_id
+                WHERE ad.application_id=? ORDER BY t.doc_index""", (app_id,))]
     except Exception:      # noqa: BLE001
         return []
 
@@ -60,39 +60,39 @@ def _legend(con, client_id: int) -> dict:
 def _runs(con, app_id: int) -> list[dict]:
     try:
         return [dict(r) for r in con.execute(
-            "SELECT stage, ok, sent, files, note, finished_at FROM auto_runs WHERE CLIENT_id=? ORDER BY id DESC LIMIT 3",
+            "SELECT stage, ok, sent, files, note, finished_at FROM auto_runs WHERE application_id=? ORDER BY id DESC LIMIT 3",
             (app_id,))]
     except Exception:      # noqa: BLE001
         return []
 
 
 def collect(con, app_id: int) -> dict:
-    app = con.execute("""SELECT a.*, p.code AS CLIENT, p.name AS CLIENT_name,
-                                c.full_name_CLIENT AS fio
-                           FROM CLIENT a
-                           LEFT JOIN CLIENT p ON p.id=a.CLIENT_id
-                           LEFT JOIN CLIENT c ON c.id=a.client_id
+    app = con.execute("""SELECT a.*, p.code AS product, p.name AS product_name,
+                                c.full_name_latin AS fio
+                           FROM applications a
+                           LEFT JOIN products p ON p.id=a.product_id
+                           LEFT JOIN clients c ON c.id=a.client_id
                           WHERE a.id=?""", (app_id,)).fetchone()
     if not app:
         return {'app_id': app_id, 'error': 'заявка не найдена'}
     app = dict(app)
     docs = _docs(con, app_id)
-    CLIENT = _CLIENT(con, app_id)
+    steps = _steps(con, app_id)
     runs = _runs(con, app_id)
     legend = _legend(con, app.get('client_id') or 0)
 
-    active = [d for d in docs if (d['CLIENT'] or '') != 'excluded']
+    active = [d for d in docs if (d['status'] or '') != 'excluded']
     built = [d for d in active if (d['pdf_path'] or '')]
-    with_marker = [d for d in active if (d['error'] or '').CLIENTswith('не заполнены') or (d['error'] or '').CLIENTswith('не собраны')]
-    verified = [d for d in active if (d['CLIENT'] or '') in ('verified', 'sent')]
-    read_fail = [s for s in CLIENT if s['step'] == 'read' and s['CLIENT'] == 'fail']
+    with_marker = [d for d in active if (d['error'] or '').startswith('не заполнены') or (d['error'] or '').startswith('не собраны')]
+    verified = [d for d in active if (d['status'] or '') in ('verified', 'sent')]
+    read_fail = [s for s in steps if s['step'] == 'read' and s['status'] == 'fail']
     last_run = runs[0] if runs else {}
     sent = bool(last_run.get('sent'))
 
     points = []
     points.append(('К1 заявка принята', bool(app.get('created_at')), 'статус %s, продукт %s, источник %s'
-                   % (app.get('CLIENT'), app.get('CLIENT') or '—', app.get('source') or '—')))
-    points.append(('К2 легенда клиента', bool(legend) or bool([s for s in CLIENT if s['step'] == 'legend']),
+                   % (app.get('status'), app.get('product') or '—', app.get('source') or '—')))
+    points.append(('К2 легенда клиента', bool(legend) or bool([s for s in steps if s['step'] == 'legend']),
                    ('поля: %d' % len(legend.get('fields') or legend)) if legend else 'файла легенды нет'))
     points.append(('К3 состав пакета', bool(docs),
                    'в пакете: %d, исключено: %d' % (len(active), len(docs) - len(active))))
@@ -109,8 +109,8 @@ def collect(con, app_id: int) -> dict:
     points.append(('К8 отчёт', bool(runs),
                    (last_run.get('note') or '')[:70] if runs else 'прогонов нет'))
 
-    CLIENT_bad = next((p[0] for p in points if not p[1]), None)
-    return {'app_id': app_id, 'app': app, 'points': points, 'CLIENT_bad': CLIENT_bad,
+    first_bad = next((p[0] for p in points if not p[1]), None)
+    return {'app_id': app_id, 'app': app, 'points': points, 'first_bad': first_bad,
             'docs': docs, 'runs': runs, 'read_fail': len(read_fail)}
 
 
@@ -120,15 +120,15 @@ def show(res: dict, verbose: bool = False) -> None:
         return
     a = res['app']
     print('  заявка #%s | %s | %s | создана %s' % (
-        res['app_id'], a.get('CLIENT') or '—', a.get('fio') or '—', str(a.get('created_at'))[:16]))
+        res['app_id'], a.get('product') or '—', a.get('fio') or '—', str(a.get('created_at'))[:16]))
     for name, ok, note in res['points']:
         print('     %s %-24s %s' % (OK if ok else NO, name, note))
-    print('     → разрыв: %s' % (res['CLIENT_bad'] or 'нет, цепочка пройдена'))
+    print('     → разрыв: %s' % (res['first_bad'] or 'нет, цепочка пройдена'))
     if verbose:
         print('     документы:')
         for d in res['docs']:
-            print('        %-34s %-9s CLIENT:%5d %s' % (
-                d['code'], d['CLIENT'], d['vlen'], (d['error'] or '')[:40]))
+            print('        %-34s %-9s values:%5d %s' % (
+                d['code'], d['status'], d['vlen'], (d['error'] or '')[:40]))
         print('     последние прогоны:')
         for r in res['runs']:
             print('        %s ok=%s sent=%s files=%s %s' % (
@@ -146,7 +146,7 @@ def main() -> int:
         show(res, verbose=True)
     else:
         rows = [r[0] for r in con.execute(
-            "SELECT id FROM CLIENT ORDER BY id DESC LIMIT ?", (args.limit,))]
+            "SELECT id FROM applications ORDER BY id DESC LIMIT ?", (args.limit,))]
         for aid in rows:
             show(collect(con, aid))
             print()

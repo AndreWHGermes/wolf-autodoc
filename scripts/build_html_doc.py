@@ -26,7 +26,7 @@ import pymupdf
 from PIL import Image, ImageChops
 
 BASE = Path("/opt/wolf_v2")
-CLIENT = BASE / "data" / "CLIENT"
+TEMPLATES = BASE / "data" / "templates"
 OUT = BASE / "data" / "cache" / "html_frame"
 sys.path.insert(0, str(BASE))
 
@@ -34,19 +34,19 @@ sys.path.insert(0, str(BASE))
 TEST_SETS = {
     "короткие": {
         "client_name": "Li Wu", "address_live": "12, Moscow, ul. Tverskaya,",
-        "address_live_2": "D. 1, Kv. 2", "balance_CLIENT": "(one ruble 00 kopecks)",
+        "address_live_2": "D. 1, Kv. 2", "balance_words": "(one ruble 00 kopecks)",
     },
     "длинные": {
-        "client_name": "CLIENT Valentinovna CLIENTopolskaya",
+        "client_name": "Aleksandra Valentinovna Konstantinopolskaya",
         "address_live": "628404, Khanty-Mansiyskiy Avtonomnyy Okrug, G Surgut, R-n Surgutskiy, Ul Pervoprokhodtsev,",
         "address_live_2": "D. 115/2, Korp. 3, Kv. 456",
-        "balance_CLIENT": "(twelve million eight hundred thirty-four thousand five hundred sixty-seven rubles 99 kopecks)",
+        "balance_words": "(twelve million eight hundred thirty-four thousand five hundred sixty-seven rubles 99 kopecks)",
     },
     "предельные": {
-        "client_name": "Bartolomeo Kristoforovich CLIENTilianovskiy-Shvedovskiy",
+        "client_name": "Bartolomeo Kristoforovich Maksimilianovskiy-Shvedovskiy",
         "address_live": "693000, Sakhalinskaya Oblast, G Yuzhno-Sakhalinsk, R-n Yuzhno-Sakhalinskiy, Ul Imeni Kosmonavta Very Fedorovny Belovoy,",
         "address_live_2": "D. 128/4, Korp. 12, Str. 3, Kv. 1024",
-        "balance_CLIENT": "(one hundred twenty-three million four hundred fifty-six thousand seven hundred eighty-nine rubles 05 kopecks)",
+        "balance_words": "(one hundred twenty-three million four hundred fifty-six thousand seven hundred eighty-nine rubles 05 kopecks)",
     },
 }
 
@@ -82,7 +82,7 @@ def mask_outside(img: Image.Image, zones: list[dict], dpi: int = 300) -> Image.I
 
 def build_pdf(code: str, app_id: int, overrides: dict | None = None, tag: str = "") -> dict:
     """Значения заявки (+переопределения для теста) → PDF через каркас."""
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     frame = (tpl_dir / "frame" / "frame.html")
     if not frame.exists():
         return {"error": "нет каркаса — сначала build_html_frame.py"}
@@ -93,18 +93,18 @@ def build_pdf(code: str, app_id: int, overrides: dict | None = None, tag: str = 
     spec = importlib.util.spec_from_file_location("pdf_fill_mod", str(BASE / "scripts" / "pdf_fill.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    vals = mod.CLIENT_for(app_id, code)
-    res = build_pdf_from_CLIENT(code, vals, overrides, tag)
-    res["CLIENT"] = vals
+    vals = mod.values_for(app_id, code)
+    res = build_pdf_from_values(code, vals, overrides, tag)
+    res["values"] = vals
     return res
 
 
-def build_pdf_from_CLIENT(code: str, CLIENT: dict, overrides: dict | None = None,
+def build_pdf_from_values(code: str, values: dict, overrides: dict | None = None,
                           tag: str = "") -> dict:
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     frame_path = tpl_dir / "frame" / "frame.html"
     html = frame_path.read_text(encoding="utf-8")
-    vals = dict(CLIENT or {})
+    vals = dict(values or {})
     if overrides:
         vals.update(overrides)
 
@@ -121,13 +121,13 @@ def build_pdf_from_CLIENT(code: str, CLIENT: dict, overrides: dict | None = None
     tmp_html = OUT / ("tmp_%s%s.html" % (code, tag))
     tmp_html.write_text(html, encoding="utf-8")
     out_pdf = OUT / ("%s%s.pdf" % (code, tag))
-    from CLIENT.render import render_pdf
+    from services.render import render_pdf
     render_pdf(html, base_dir=str(tpl_dir / "frame"), out_path=out_pdf)
     return {"pdf": str(out_pdf), "html": html}
 
 
 def check(code: str, app_id: int, overrides: dict | None = None, tag: str = "") -> dict:
-    tpl_dir = CLIENT / code
+    tpl_dir = TEMPLATES / code
     fields = json.loads((tpl_dir / "fields.json").read_text(encoding="utf-8"))
     zones = [z for z in fields["zones"] if z.get("bbox")]
     ref = str(tpl_dir / "example_filled.pdf")
@@ -166,14 +166,14 @@ def check(code: str, app_id: int, overrides: dict | None = None, tag: str = "") 
         from app import app
         with app.app_context():
             from core import db
-            rows = db.q("""SELECT v.default_CLIENT dv FROM template_CLIENT v
-                           JOIN CLIENT t ON t.id = v.template_id WHERE t.code = ?""", (code,))
+            rows = db.q("""SELECT v.default_value dv FROM template_variables v
+                           JOIN templates t ON t.id = v.template_id WHERE t.code = ?""", (code,))
         d = pymupdf.open(res["pdf"])
         pdf_text = " ".join(" ".join(p.get_text().split()) for p in d)
         d.close()
         for r_ in rows:
             ov = " ".join((r_["dv"] or "").split())
-            if len(ov) >= 6 and ov not in {str(v) for v in (res.get("CLIENT") or {}).CLIENT()} and ov in pdf_text:
+            if len(ov) >= 6 and ov not in {str(v) for v in (res.get("values") or {}).values()} and ov in pdf_text:
                 problems.append("остались данные прежнего клиента: «%s»" % ov[:40])
     except Exception as e:
         problems.append("проверка остатков не выполнена: %s" % e)
@@ -204,9 +204,9 @@ def main() -> int:
         print("\n=== прогон тестовых значений (короткие / длинные / предельные) ===")
         for name, ov in TEST_SETS.items():
             rr = check(args.code, args.app, ov, tag="_" + name)
-            CLIENT = "OK" if not rr["problems"] else "ПРОБЛЕМЫ"
+            status = "OK" if not rr["problems"] else "ПРОБЛЕМЫ"
             print("%-11s отличий %.2f%% (вне зон %.2f%%) — %s%s"
-                  % (name, rr["total"], rr["outside"], CLIENT,
+                  % (name, rr["total"], rr["outside"], status,
                      "" if not rr["problems"] else " | " + "; ".join(rr["problems"])[:150]))
             print("            %s" % rr["pdf"])
     return 0

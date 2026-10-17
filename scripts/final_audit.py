@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path('/opt/wolf_v2')
 sys.path.insert(0, str(ROOT))
 DB = ROOT / 'data' / 'wolf.db'
-TPL = ROOT / 'data' / 'CLIENT'
+TPL = ROOT / 'data' / 'templates'
 OUT_MD = ROOT / 'docs' / 'FINAL_AUDIT.md'
 OUT_JSON = ROOT / 'data' / 'guide' / 'audit.json'
 VAR_RE = re.compile(r'\{\{\s*[a-zA-Z0-9_]+\s*\}\}')
@@ -44,15 +44,15 @@ def pdf_text(p: Path) -> str:
 
 
 def main() -> int:
-    from CLIENT import var_methods as vm
+    from services import var_methods as vm
     con = sqlite3.connect(str(DB))
     con.row_factory = sqlite3.Row
     links = {}
-    for r in con.execute("""SELECT pd.template_id, p.code FROM CLIENT_CLIENT pd
-                            JOIN CLIENT p ON p.id=pd.CLIENT_id"""):
+    for r in con.execute("""SELECT pd.template_id, p.code FROM product_documents pd
+                            JOIN products p ON p.id=pd.product_id"""):
         links.setdefault(r['template_id'], set()).add(r['code'])
-    rows = con.execute("""SELECT * FROM CLIENT WHERE COALESCE(CLIENT,'ok') NOT IN ('merged','hidden')
-                          ORDER BY COALESCE(doc_CLIENT,999), code""").fetchall()
+    rows = con.execute("""SELECT * FROM templates WHERE COALESCE(status,'ok') NOT IN ('merged','hidden')
+                          ORDER BY COALESCE(doc_index,999), code""").fetchall()
     res = {}
     md = ['# Итоговая проверка документов', '',
           'Проверка: оригинальный пример → сходство шаблона с оригиналом → разметка переменных → '
@@ -78,7 +78,7 @@ def main() -> int:
                 sim = round(SequenceMatcher(None, a, b).ratio(), 3)
                 sw, ow = set(a.split()), set(b.split())
                 cover = round(len(sw & ow) / max(len(sw), 1), 3)
-        vars_rows = con.execute("""SELECT name, method, rule_text FROM template_CLIENT
+        vars_rows = con.execute("""SELECT name, method, rule_text FROM template_variables
                                    WHERE template_id=? """, (t['id'],)).fetchall()
         n_vars = len(vars_rows)
         no_instr = [r['name'] for r in vars_rows if not (r['rule_text'] or '').strip()]
@@ -99,10 +99,10 @@ def main() -> int:
         if not prod_use:
             problems.append('не используется ни в одном продукте')
         res[code] = {'real_example': real, 'similarity': sim, 'vars': n_vars,
-                     'colors': colors, 'CLIENT': prod_use, 'problems': problems}
+                     'colors': colors, 'products': prod_use, 'problems': problems}
         mark = '✅' if not problems else '⚠️'
         md.append('- %s **№%s `%s`** — переменных %d (🟢%d 🟠%d 🔴%d), продуктов: %s'
-                  % (mark, t['doc_CLIENT'] or '—', code, n_vars, colors['client'], colors['logic'],
+                  % (mark, t['doc_index'] or '—', code, n_vars, colors['client'], colors['logic'],
                      colors['random'], ', '.join(prod_use) or '—'))
         md.append('  - оригинальный пример: %s | сходство: %s'
                   % ('настоящий' if real else ('наша сборка' if real is False else 'не проверено'),
@@ -115,7 +115,7 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding='utf-8')
     OUT_MD.write_text('\n'.join(md) + '\n', encoding='utf-8')
     print('аудит:', OUT_MD)
-    print('документов:', len(res), '| без замечаний:', sum(1 for v in res.CLIENT() if not v['problems']))
+    print('документов:', len(res), '| без замечаний:', sum(1 for v in res.values() if not v['problems']))
     for code, v in res.items():
         if v['problems']:
             print('   %-38s %s' % (code, '; '.join(v['problems'])))

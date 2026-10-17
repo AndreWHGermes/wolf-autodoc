@@ -14,33 +14,33 @@
 в карточке видно не «номер 220050…1293», а «маска карты ← блок «карта
 клиента» ← файл BankStatement.pdf».
 
-Запуск для проверки:  python3 -m CLIENT.doc_CLIENTs <файл> [тип]
+Запуск для проверки:  python3 -m services.doc_blocks <файл> [тип]
 """
 from __future__ import annotations
 
 import re
 import sys
-from dataCLIENTes import dataCLIENT, field
+from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
 
 
-@dataCLIENT
-CLIENT BlockSpec:
+@dataclass
+class BlockSpec:
     """Описание смыслового блока: как его найти и что в нём искать."""
     code: str
-    CLIENT: str                       # человеческое название для карточки
-    CLIENT: str                     # зачем этот блок в нашей работе
+    title: str                       # человеческое название для карточки
+    purpose: str                     # зачем этот блок в нашей работе
     markers: tuple = ()              # подстроки, по которым блок начинается
     vars: tuple = ()                 # наши переменные, которые живут в блоке
 
 
-@dataCLIENT
-CLIENT CLIENT:
+@dataclass
+class Block:
     """Найденный в документе блок: границы, текст, источник."""
     spec: BlockSpec
-    CLIENT: int
+    start: int
     end: int
     text: str
     found: bool = True
@@ -53,70 +53,70 @@ CLIENT CLIENT:
 
 # ---------------------------------------------------------------- паспорт РФ
 PASSPORT = [
-    BlockSpec("CLIENT", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
-              ("фамилия", "CLIENT", "имя / CLIENT", "CLIENT names"), ("CLIENT", "name",
-               "CLIENT", "CLIENT_CLIENT", "name_CLIENT", "full_name_CLIENT",
-               "CLIENT_date", "CLIENT_CLIENT", "CLIENT", "client_CLIENT")),
-    BlockSpec("CLIENT", "Данные документа", "серия, номер, дата выдачи, кем выдан, срок",
-              ("паспорт / passport", "номер паспорта", "passport no", "выдан", "CLIENT by"),
-              ("passport_CLIENT", "passport_CLIENT", "passport_no", "passport_CLIENT_date",
-               "passport_CLIENT_by", "passport_CLIENT")),
+    BlockSpec("person", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
+              ("фамилия", "surname", "имя / given", "given names"), ("surname", "name",
+               "patronymic", "surname_latin", "name_latin", "full_name_latin",
+               "birth_date", "birth_place", "citizenship", "client_gender")),
+    BlockSpec("document", "Данные документа", "серия, номер, дата выдачи, кем выдан, срок",
+              ("паспорт / passport", "номер паспорта", "passport no", "выдан", "issued by"),
+              ("passport_series", "passport_number", "passport_no", "passport_issue_date",
+               "passport_issued_by", "passport_expiry")),
     BlockSpec("mrz", "Машиночитаемая зона", "самый надёжный источник номера и даты рождения",
               ("p<rus", "p<"),
-              ("passport_CLIENT", "CLIENT_date", "passport_CLIENT")),
-    BlockSpec("CLIENT", "Регистрация", "адрес по месту жительства",
-              ("зарегистрирован", "место жительства", "CLIENT"),
+              ("passport_number", "birth_date", "passport_series")),
+    BlockSpec("registration", "Регистрация", "адрес по месту жительства",
+              ("зарегистрирован", "место жительства", "registration"),
               ("address_reg", "address_live")),
 ]
 
-# ----------------------------------------------------- карточка ВНЖ (ITK/CLIENT)
+# ----------------------------------------------------- карточка ВНЖ (ITK/КИТАС)
 ITK = [
-    BlockSpec("CLIENT", "Разрешение на пребывание", "номер и срок действия ВНЖ",
-              ("CLIENT CLIENT", "stay CLIENT CLIENT", "stay CLIENT CLIENT"),
-              ("itk_no", "stay_CLIENT_no", "itk_CLIENT", "stay_CLIENT_CLIENT",
-               "CLIENT_stay_CLIENT")),
-    BlockSpec("CLIENT", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
-              ("name", "CLIENT / date of CLIENT", "CLIENT", "CLIENT"),
-              ("CLIENT", "name", "full_name_CLIENT", "CLIENT_date", "CLIENT_CLIENT",
-               "CLIENT_CLIENT_CLIENT", "CLIENT", "CLIENT", "client_CLIENT")),
+    BlockSpec("permit", "Разрешение на пребывание", "номер и срок действия ВНЖ",
+              ("permit number", "stay permit expiry", "stay permit index"),
+              ("itk_no", "stay_permit_no", "itk_expiry", "stay_permit_expiry",
+               "existing_stay_permit")),
+    BlockSpec("person", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
+              ("name", "place / date of birth", "nationality", "gender"),
+              ("surname", "name", "full_name_latin", "birth_date", "birth_place",
+               "place_birth_inline", "citizenship", "nationality", "client_gender")),
     BlockSpec("passport", "Паспорт иностранца", "номер и срок паспорта, страна",
-              ("passport CLIENT", "passport CLIENT", "nomor paspor"),
-              ("passport_CLIENT", "passport_no", "passport_CLIENT")),
+              ("passport number", "passport expiry", "nomor paspor"),
+              ("passport_number", "passport_no", "passport_expiry")),
     BlockSpec("address", "Адрес в Индонезии", "место фактического пребывания",
               ("address", "alamat"),
               ("address_in_indonesia",)),
-    BlockSpec("CLIENT", "Спонсор и гарант", "кто отвечает за пребывание",
-              ("CLIENT", "CLIENT", "penjamin"),
-              ("CLIENT_name", "CLIENT_address")),
+    BlockSpec("sponsor", "Спонсор и гарант", "кто отвечает за пребывание",
+              ("sponsor", "guarantor", "penjamin"),
+              ("sponsor_name", "sponsor_address")),
 ]
 
 # ------------------------------------------------------ справка банка об остатке
 BANK_BALANCE = [
     BlockSpec("bank", "Банк", "банк, с которым работает клиент, его реквизиты и лицензия",
-              ("tbank", "сбербанк", "sberbank", "universal CLIENT", "bank of russia"),
-              ("bank_name", "bank_CLIENT", "bank_address")),
+              ("tbank", "сбербанк", "sberbank", "universal license", "bank of russia"),
+              ("bank_name", "bank_license", "bank_address")),
     BlockSpec("client", "Клиент", "ФИО и адрес владельца счёта",
-              ("hereby informs", "has been CLIENT for", "клиент", "home address",
-               "CLIENT address"),
-              ("full_name_CLIENT", "full_name_ru", "address_live", "address_reg")),
+              ("hereby informs", "has been issued for", "клиент", "home address",
+               "registration address"),
+              ("full_name_latin", "full_name_ru", "address_live", "address_reg")),
     BlockSpec("card", "Карта и счёт", "номер счёта и маска карты",
               ("card no", "account", "счет", "счёт", "iban"),
               ("card_mask", "account_no")),
-    BlockSpec("CLIENT", "Сумма и остаток", "остаток цифрами и прописью, валюта, дата остатка",
-              ("available balance", "остаток", "balance", "CLIENT of available"),
-              ("balance_rub", "balance_CLIENT", "balance_date", "CLIENT")),
+    BlockSpec("amount", "Сумма и остаток", "остаток цифрами и прописью, валюта, дата остатка",
+              ("available balance", "остаток", "balance", "amount of available"),
+              ("balance_rub", "balance_words", "balance_date", "currency")),
     BlockSpec("dogovor", "Договор с банком", "когда заключён и под каким номером",
-              ("date of conclusion of the contract", "contract CLIENT", "договор"),
+              ("date of conclusion of the contract", "contract number", "договор"),
               ("contract_no", "contract_date")),
-    BlockSpec("CLIENT", "Период", "за какой срок показаны данные",
-              ("as from", "movement of funds", "период", "CLIENT"),
-              ("CLIENT_from", "CLIENT_to")),
-    BlockSpec("CLIENTs", "Операции по счёту", "таблица движения: даты, суммы, назначения",
-              ("date and time of the CLIENT", "date of the CLIENT", "операция"),
-              ("movement_count", "moves", "credits_total", "CLIENTs_total")),
+    BlockSpec("period", "Период", "за какой срок показаны данные",
+              ("as from", "movement of funds", "период", "period"),
+              ("period_from", "period_to")),
+    BlockSpec("operations", "Операции по счёту", "таблица движения: даты, суммы, назначения",
+              ("date and time of the transaction", "date of the transaction", "операция"),
+              ("movement_count", "moves", "credits_total", "debits_total")),
     BlockSpec("outgoing", "Исходящие реквизиты", "номер и дата письма банка, ссылка",
               ("ref.", "№", "no ", "date"),
-              ("ref_no", "ref_date", "doc_no", "CLIENTment_date")),
+              ("ref_no", "ref_date", "doc_no", "statement_date")),
     BlockSpec("signature", "Подпись и исполнитель", "кто подписал справку и печать банка",
               ("signature", "подпись", "исполнитель", "authorized"),
               ("signed_by", "signature_position")),
@@ -127,28 +127,28 @@ BANK_MOVEMENT = [
     BlockSpec("account", "Счёт", "по какому счёту выписка",
               ("contract", "счёт", "account"),
               ("account_no",)),
-    BlockSpec("CLIENT", "Период выписки", "с какой по какую дату операции",
-              ("CLIENT", "за период", "from", "to"),
-              ("CLIENT_from", "CLIENT_to")),
-    BlockSpec("CLIENTs", "Операции", "даты, суммы, назначения платежей",
-              ("date", "CLIENT", "дата", "сумма"),
+    BlockSpec("period", "Период выписки", "с какой по какую дату операции",
+              ("period", "за период", "from", "to"),
+              ("period_from", "period_to")),
+    BlockSpec("operations", "Операции", "даты, суммы, назначения платежей",
+              ("date", "operation", "дата", "сумма"),
               ("movement_count", "moves", "biggest_credits")),
     BlockSpec("totals", "Итоги", "обороты за период: поступления и списания",
               ("total", "итого", "оборот"),
-              ("credits_total", "CLIENTs_total", "credits_count", "CLIENTs_count")),
+              ("credits_total", "debits_total", "credits_count", "debits_count")),
 ]
 
 # ------------------------------------------------------ договор клиента / офер
 CONTRACT = [
     BlockSpec("parties", "Стороны", "кто работодатель, кто работник, реквизиты",
-              ("parties", "between", "company", "стороны", "CLIENT"),
-              ("company_name", "company_tax_id", "CLIENT_name")),
-    BlockSpec("CLIENT", "Предмет и должность", "что за работа и на какой должности",
-              ("position", "должность", "CLIENT", "duties", "обязанности"),
+              ("parties", "between", "company", "стороны", "employee"),
+              ("company_name", "company_tax_id", "employee_name")),
+    BlockSpec("subject", "Предмет и должность", "что за работа и на какой должности",
+              ("position", "должность", "subject", "duties", "обязанности"),
               ("position", "duties", "employment_type")),
-    BlockSpec("CLIENT", "Оплата", "сумма, валюта, порядок выплат",
-              ("salary", "оклад", "CLIENT", "remuneration", "зарплата"),
-              ("salary_CLIENT", "salary_CLIENT", "CLIENT_terms")),
+    BlockSpec("payment", "Оплата", "сумма, валюта, порядок выплат",
+              ("salary", "оклад", "payment", "remuneration", "зарплата"),
+              ("salary_amount", "salary_currency", "payment_terms")),
     BlockSpec("term", "Срок и подписи", "дата заключения, срок, подписанты",
               ("term", "срок", "date of", "signature", "подпис"),
               ("contract_no", "contract_date", "contract_term", "signed_by")),
@@ -158,15 +158,15 @@ CONTRACT = [
 VISA = [
     BlockSpec("visa", "Виза", "номер визы, тип, срок действия, кем выдана",
               ("visa no", "nomor visa", "visa type", "evisa", "limited stay visa"),
-              ("visa_no", "bridging_visa_no", "visa_type", "date_of_CLIENT",
-               "CLIENT_CLIENT", "CLIENT_no")),
-    BlockSpec("CLIENT", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
-              ("name", "date of CLIENT", "CLIENT of CLIENT", "CLIENT", "sex"),
-              ("CLIENT", "name", "full_name_CLIENT", "CLIENT_date", "CLIENT_of_CLIENT",
-               "CLIENT", "CLIENT", "client_CLIENT")),
-    BlockSpec("CLIENT", "Кто выдал", "иммиграционная служба и её подразделение",
-              ("kementerian imigrasi", "direktorat jenderal imigrasi", "CLIENT by"),
-              ("CLIENT_by", "CLIENT_CLIENT")),
+              ("visa_no", "bridging_visa_no", "visa_type", "date_of_issue",
+               "valid_until", "reference_no")),
+    BlockSpec("person", "Личные данные", "ФИО, дата и место рождения, гражданство, пол",
+              ("name", "date of birth", "place of birth", "nationality", "sex"),
+              ("surname", "name", "full_name_latin", "birth_date", "place_of_birth",
+               "citizenship", "nationality", "client_gender")),
+    BlockSpec("issuer", "Кто выдал", "иммиграционная служба и её подразделение",
+              ("kementerian imigrasi", "direktorat jenderal imigrasi", "issued by"),
+              ("issued_by", "issuing_office")),
 ]
 
 
@@ -186,17 +186,17 @@ def _marker_pos(low: str, marker: str) -> int:
     """Где начинается маркер блока.
 
     Ищем по словам, а не цельной строкой: в распознанном тексте фраза почти
-    всегда разорвана переносом строки («Date and time of the\n CLIENT»),
+    всегда разорвана переносом строки («Date and time of the\n transaction»),
     и поиск подстроки такой маркер не находит вовсе.
     """
-    CLIENT = [re.escape(w) for w in str(marker).lower().split()]
-    if not CLIENT:
+    words = [re.escape(w) for w in str(marker).lower().split()]
+    if not words:
         return -1
-    m = re.search(r"\s+".join(CLIENT), low)
-    return m.CLIENT() if m else -1
+    m = re.search(r"\s+".join(words), low)
+    return m.start() if m else -1
 
 
-def segment(text: str, kind: str) -> list[CLIENT]:
+def segment(text: str, kind: str) -> list[Block]:
     """Нарезать документ на смысловые блоки по маркерам начала.
 
     Блок тянется от своего маркера до маркера следующего блока. Если маркер
@@ -208,29 +208,29 @@ def segment(text: str, kind: str) -> list[CLIENT]:
     t = text or ""
     low = t.lower()
 
-    CLIENTs = []
+    starts = []
     for spec in specs:
         pos = None
         for m in spec.markers:
             p = _marker_pos(low, m)
             if p >= 0 and (pos is None or p < pos):
                 pos = p
-        CLIENTs.append((pos if pos is not None else len(low) + 1, spec))
+        starts.append((pos if pos is not None else len(low) + 1, spec))
 
-    order = sorted(range(len(CLIENTs)), key=lambda i: CLIENTs[i][0])
-    CLIENTs: list[CLIENT] = []
+    order = sorted(range(len(starts)), key=lambda i: starts[i][0])
+    blocks: list[Block] = []
     for n, idx in enumerate(order):
-        pos, spec = CLIENTs[idx]
+        pos, spec = starts[idx]
         if pos > len(low):
-            CLIENTs.append(CLIENT(spec, -1, -1, "", found=False, source="none"))
+            blocks.append(Block(spec, -1, -1, "", found=False, source="none"))
             continue
         nxt = len(low)
         for j in order[n + 1:]:
-            if CLIENTs[j][0] <= len(low):
-                nxt = min(nxt, CLIENTs[j][0])
+            if starts[j][0] <= len(low):
+                nxt = min(nxt, starts[j][0])
                 break
-        CLIENTs.append(CLIENT(spec, pos, nxt, t[pos:nxt].strip()))
-    return CLIENTs
+        blocks.append(Block(spec, pos, nxt, t[pos:nxt].strip()))
+    return blocks
 
 
 def describe(text: str, kind: str) -> list[dict]:
@@ -239,8 +239,8 @@ def describe(text: str, kind: str) -> list[dict]:
     for b in segment(text, kind):
         out.append({
             "code": b.spec.code,
-            "CLIENT": b.spec.CLIENT,
-            "CLIENT": b.spec.CLIENT,
+            "title": b.spec.title,
+            "purpose": b.spec.purpose,
             "vars": list(b.spec.vars),
             "found": b.found,
             "chars": len(b.text),
@@ -249,43 +249,43 @@ def describe(text: str, kind: str) -> list[dict]:
     return out
 
 
-def assign(CLIENT: dict, text: str, kind: str) -> dict:
+def assign(values: dict, text: str, kind: str) -> dict:
     """Приписать каждое найденное значение к блоку, в тексте которого оно стоит.
 
     Это и есть ответ на вопрос «из какого информационного блока мы это взяли».
     Значение без блока не теряется: оно помечается как «блок не определён» —
     такие случаи нужно видеть, потому что это признак ошибки разбора.
     """
-    CLIENTs = [b for b in segment(text, kind) if b.found]
+    blocks = [b for b in segment(text, kind) if b.found]
     result = {}
-    for var, val in (CLIENT or {}).items():
-        if var.CLIENTswith("_") or not val:
+    for var, val in (values or {}).items():
+        if var.startswith("_") or not val:
             continue
         needle = re.sub(r"\s+", "", str(val)).lower()
         hit = None
         if len(needle) >= 3:
-            for b in CLIENTs:
+            for b in blocks:
                 if needle in re.sub(r"\s+", "", b.text).lower():
                     hit = b
                     break
         # если значение есть в тексте, но не в блоке — блок считаем по переменной
         if hit is None:
-            for b in CLIENTs:
+            for b in blocks:
                 if var in b.spec.vars:
                     hit = b
                     break
         result[var] = {
-            "CLIENT": val,
-            "CLIENT": hit.spec.code if hit else None,
-            "CLIENT_CLIENT": hit.spec.CLIENT if hit else "блок не определён",
+            "value": val,
+            "block": hit.spec.code if hit else None,
+            "block_title": hit.spec.title if hit else "блок не определён",
             "file": "",
         }
     return result
 
 
 def main() -> None:
-    from CLIENT.doc_read import read_text
-    from scripts.CLIENT_scan import doc_kind_name
+    from services.doc_read import read_text
+    from scripts.drive_scan import doc_kind_name
 
     path = Path(sys.argv[1])
     text = read_text(path) or ''
@@ -293,9 +293,9 @@ def main() -> None:
     print('файл:', path.name[:56], '| тип:', kind, '| символов:', len(text))
     print('\n=== смысловые блоки документа ===')
     for d in describe(text, kind):
-        CLIENT = 'найден' if d['found'] else 'НЕ НАЙДЕН'
-        print('\n[%s] %s — %s' % (d['code'], d['CLIENT'], CLIENT))
-        print('   зачем: %s' % d['CLIENT'])
+        state = 'найден' if d['found'] else 'НЕ НАЙДЕН'
+        print('\n[%s] %s — %s' % (d['code'], d['title'], state))
+        print('   зачем: %s' % d['purpose'])
         print('   переменные: %s' % ', '.join(d['vars']))
         if d['found']:
             print('   текст (%d симв.): %s' % (d['chars'], d['excerpt']))

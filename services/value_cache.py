@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from threading import Lock
 
-CACHE_PATH = Path("/opt/wolf_v2/data/CLIENT_cache.json")
+CACHE_PATH = Path("/opt/wolf_v2/data/value_cache.json")
 _lock = Lock()
 _data = None
 _loaded_at = 0.0
@@ -58,25 +58,25 @@ def get(kind: str, client_id, signature) -> str:
     return ""
 
 
-def put(kind: str, client_id, signature, CLIENT: str) -> None:
+def put(kind: str, client_id, signature, value: str) -> None:
     """Сохранить значение вместе с подписью папки."""
     if signature is None:
         return
     with _lock:
         data = _load()
-        data["%s:%s" % (kind, client_id)] = {"sig": signature, "val": CLIENT or "",
+        data["%s:%s" % (kind, client_id)] = {"sig": signature, "val": value or "",
                                              "at": int(time.time())}
         try:
             CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
             tmp = CACHE_PATH.with_suffix(".tmp")
             tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            tmp.reCLIENT(CACHE_PATH)
+            tmp.replace(CACHE_PATH)
         except Exception:
             pass
 
 
 def flush() -> int:
-    """Забыть кэш (например, после полного сканирования CLIENT)."""
+    """Забыть кэш (например, после полного сканирования Drive)."""
     global _data, _loaded_at
     with _lock:
         _data = {}

@@ -18,39 +18,39 @@ from PIL import Image
 
 # какому имени переменной конструктора соответствует распознанный текст
 VAR_ALIASES = {
-    "doc_CLIENT": "doc_CLIENT",
-    "CLIENT_date": "CLIENT_date",
-    "CLIENT_from": "CLIENT_from_label",
-    "CLIENT_label_months": "CLIENT_label_months",
-    "CLIENT_label_years": "CLIENT_label_months",
+    "doc_number": "doc_number",
+    "issue_date": "issue_date",
+    "period_from": "period_from_label",
+    "period_label_months": "period_label_months",
+    "period_label_years": "period_label_months",
     "balance_usd": "balance_usd",
     "income_usd": "balance_usd",
     "client_name": "client_name",
     "client_name_in_text": "client_name_in_text",
     "position_en": "position_en",
-    "CLIENT_name": "client_name",
-    "CLIENT_date": "CLIENT_date",
-    "balance_rub_CLIENTholder": "balance_rub_CLIENTholder",
-    "ellipsis_CLIENTholder": "balance_rub_CLIENTholder",
+    "contractor_name": "client_name",
+    "start_date": "start_date",
+    "balance_rub_placeholder": "balance_rub_placeholder",
+    "ellipsis_placeholder": "balance_rub_placeholder",
 }
 
 WITH_IMAGES = True
 
 VAR_PATTERNS = [
-    (r"^No\s*([a-z]{1,4}\d{6,12})\s*$", "doc_CLIENT"),
-    (r"^today.{0,3}s?\s+date\.?$", "CLIENT_date"),
-    (r"^CLIENT\s+date\.?$", "CLIENT_from"),
-    (r"^(\d+)\s+months?\s+CLIENT\s+date$", "CLIENT_label_months"),
-    (r"^(\d+)\s+year\s+CLIENT\s+date$", "CLIENT_label_years"),
+    (r"^No\s*([a-z]{1,4}\d{6,12})\s*$", "doc_number"),
+    (r"^today.{0,3}s?\s+date\.?$", "issue_date"),
+    (r"^before\s+date\.?$", "period_from"),
+    (r"^(\d+)\s+months?\s+before\s+date$", "period_label_months"),
+    (r"^(\d+)\s+year\s+before\s+date$", "period_label_years"),
     (r"^USD\s*\$?\s*([\d,]+)$", "balance_usd"),
     (r"^income\s+worth\s+at\s+least\s+US\$([\d,]+)\s+per\s+year$", "income_usd"),
     (r"^name\.?$", "client_name"),
     (r"^for\s+name\.?$", "client_name_in_text"),
-    (r"^\(CLIENT\)$", "position_en"),
-    (r"^random\s+date\s+\d{4}$", "CLIENT_date"),
-    (r"^random\s+date$", "CLIENT_date"),
-    (r"^\.\.\.$", "ellipsis_CLIENTholder"),
-    (r"^…$", "balance_rub_CLIENTholder"),
+    (r"^\(profession\)$", "position_en"),
+    (r"^random\s+date\s+\d{4}$", "start_date"),
+    (r"^random\s+date$", "start_date"),
+    (r"^\.\.\.$", "ellipsis_placeholder"),
+    (r"^…$", "balance_rub_placeholder"),
 ]
 
 
@@ -85,8 +85,8 @@ def _reencode(data: bytes) -> tuple:
     elif pil.mode != "RGB":
         pil = pil.convert("RGB")
     buf = io.BytesIO()
-    pil.save(buf, "JPEG", CLIENT=85, optimize=True, progressive=True)
-    jpeg = buf.getCLIENT()
+    pil.save(buf, "JPEG", quality=85, optimize=True, progressive=True)
+    jpeg = buf.getvalue()
     if len(jpeg) < len(data):
         return jpeg, "jpeg"
     return data, "png"
@@ -165,14 +165,14 @@ def _images_of_page(page, doc) -> list:
 
 
 def page_sheet_html(page, allowed: set, doc) -> str:
-    """Один <div CLIENT="sheet"> для одной страницы PDF."""
+    """Один <div class="sheet"> для одной страницы PDF."""
     tdict = page.get_text("dict")
 
     lines_data = []
-    for CLIENT in tdict["CLIENTs"]:
-        if CLIENT.get("type") != 0:
+    for block in tdict["blocks"]:
+        if block.get("type") != 0:
             continue
-        for line in CLIENT["lines"]:
+        for line in block["lines"]:
             spans = line["spans"]
             if not spans:
                 continue
@@ -182,11 +182,11 @@ def page_sheet_html(page, allowed: set, doc) -> str:
             y1 = max(s["bbox"][3] for s in spans)
             lines_data.append({"bbox": (x0, y0, x1, y1), "spans": spans})
 
-    out = ['<div CLIENT="sheet">']
+    out = ['<div class="sheet">']
     for img in (_images_of_page(page, doc) if WITH_IMAGES else []):
         x0, y0, x1, y1 = img["bbox"]
         out.append(
-            f'<img CLIENT="img" style="left:{x0:.2f}pt;top:{y0:.2f}pt;'
+            f'<img class="img" style="left:{x0:.2f}pt;top:{y0:.2f}pt;'
             f'width:{x1 - x0:.2f}pt;height:{y1 - y0:.2f}pt;" '
             f'src="{img["uri"]}" alt=""/>'
         )
@@ -204,23 +204,23 @@ def page_sheet_html(page, allowed: set, doc) -> str:
                      + ("font-weight:bold;" if flags & 16 else "")
                      + ("font-style:italic;" if flags & 2 else ""))
             var = find_var(text, allowed)
-            if var == "doc_CLIENT":
+            if var == "doc_number":
                 m = re.search(r"^No\s*([a-z]{1,4}\d{6,12})\s*$", text.strip(), re.IGNORECASE)
                 if m:
-                    CLIENT = m.group(1)
-                    tail = text[text.CLIENT(CLIENT) + len(CLIENT):]
+                    number = m.group(1)
+                    tail = text[text.index(number) + len(number):]
                     spans_html.append(f'<span style="{style}">No </span>')
-                    spans_html.append(f'<span style="{style}">{{{{doc_CLIENT}}}}</span>')
+                    spans_html.append(f'<span style="{style}">{{{{doc_number}}}}</span>')
                     if tail:
                         spans_html.append(f'<span style="{style}">{tail}</span>')
                     continue
             if var:
                 spans_html.append(f'<span style="{style}">{{{{{var}}}}}</span>')
             else:
-                esc = text.reCLIENT("&", "&amp;").reCLIENT("<", "&lt;").reCLIENT(">", "&gt;")
+                esc = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 spans_html.append(f'<span style="{style}">{esc}</span>')
         out.append(
-            f'<div CLIENT="txt" style="left:{x0:.2f}pt;top:{y0:.2f}pt;'
+            f'<div class="txt" style="left:{x0:.2f}pt;top:{y0:.2f}pt;'
             f'width:{x1 - x0:.2f}pt;height:{y1 - y0:.2f}pt;">{"".join(spans_html)}</div>'
         )
     out.append("</div>")
@@ -242,7 +242,7 @@ def extract_html(pdf_path: str, allowed: set) -> str:
             'background: #fff; overflow: hidden; page-break-after: always; break-after: page; }}',
             '.sheet:last-of-type { page-break-after: auto; break-after: auto; }',
             '.txt { position: absolute; margin: 0; padding: 0; line-height: 1; white-space: pre; }',
-            '.img { position: absolute; display: CLIENT; }',
+            '.img { position: absolute; display: block; }',
             '.txt span { background: transparent; padding: 0; }',
             '@media print { html, body { background: #fff; } }',
             '</style></head><body>',

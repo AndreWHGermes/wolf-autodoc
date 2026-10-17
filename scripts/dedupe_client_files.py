@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path("/opt/wolf_v2")
-CACHE = ROOT / "data" / "gCLIENT_cache"
+CACHE = ROOT / "data" / "gdrive_cache"
 DB = ROOT / "data" / "wolf.db"
 APPLY = "--apply" in sys.argv
 EXT = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".docx", ".doc", ".rtf",
@@ -32,11 +32,11 @@ c = sqlite3.connect(DB, timeout=120)
 c.row_factory = sqlite3.Row
 fixed, drops, failed = 0, 0, 0
 for f, t in pairs:
-    rows = [dict(r) for r in c.execute("SELECT id, path FROM client_CLIENT WHERE path LIKE ?",
+    rows = [dict(r) for r in c.execute("SELECT id, path FROM client_documents WHERE path LIKE ?",
                                        ("%" + f.name,))]
     if APPLY:
         for r in rows:
-            c.execute("UPDATE client_CLIENT SET path=? WHERE id=?",
+            c.execute("UPDATE client_documents SET path=? WHERE id=?",
                       (str(t), r["id"]))
         if rows:
             fixed += len(rows)

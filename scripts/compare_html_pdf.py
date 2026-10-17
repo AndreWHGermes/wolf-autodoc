@@ -23,7 +23,7 @@ def pdf_spans(path):
     out = []
     doc = pymupdf.open(path)
     for pno, page in enumerate(doc, 1):
-        for blk in page.get_text("dict")["CLIENTs"]:
+        for blk in page.get_text("dict")["blocks"]:
             if blk.get("type") != 0:
                 continue
             for line in blk["lines"]:
@@ -41,17 +41,17 @@ def pdf_spans(path):
     return out
 
 
-def html_CLIENTs(path):
+def html_blocks(path):
     html = open(path, encoding="utf-8").read()
     out = []
     # блоки-картинки
-    for m in re.finditer(r'<img CLIENT="img" style="left:([\d.]+)pt;top:([\d.]+)pt;width:([\d.]+)pt;height:([\d.]+)pt;"', html):
+    for m in re.finditer(r'<img class="img" style="left:([\d.]+)pt;top:([\d.]+)pt;width:([\d.]+)pt;height:([\d.]+)pt;"', html):
         out.append({"kind": "img", "x": float(m.group(1)), "y": float(m.group(2)),
                     "w": float(m.group(3)), "h": float(m.group(4)), "text": "[картинка]"})
-    for m in re.finditer(r'<div CLIENT="txt" style="([^"]+)">(.*?)</div>', html, re.S):
+    for m in re.finditer(r'<div class="txt" style="([^"]+)">(.*?)</div>', html, re.S):
         style, body = m.group(1), m.group(2)
         text = re.sub(r"<[^>]+>", "", body)
-        text = text.reCLIENT("&nbsp;", " ").reCLIENT("&amp;", "&").strip()
+        text = text.replace("&nbsp;", " ").replace("&amp;", "&").strip()
         if not text:
             continue
         left = re.search(r"left:([\d.]+)pt", style)
@@ -70,7 +70,7 @@ def html_CLIENTs(path):
 def example_map(conn, tid):
     m = {}
     for name, ex in conn.execute(
-            "select name, examples_json from template_CLIENT where template_id=?", (tid,)):
+            "select name, examples_json from template_variables where template_id=?", (tid,)):
         try:
             vals = json.loads(ex or "[]")
             if vals:
@@ -91,7 +91,7 @@ def main():
     key = sys.argv[1] if len(sys.argv) > 1 else "3"
     conn = sqlite3.connect(DB)
     row = conn.execute(
-        "select id, code, html_path, example_path from CLIENT where id=? or code=?",
+        "select id, code, html_path, example_path from templates where id=? or code=?",
         (key if key.isdigit() else -1, key)).fetchone()
     if not row:
         print("шаблон не найден")
@@ -101,7 +101,7 @@ def main():
         print("нет примера PDF:", example_path)
         return 1
     pdf = pdf_spans(os.path.join(BASE, example_path))
-    html = [b for b in html_CLIENTs(html_path) if True]
+    html = [b for b in html_blocks(html_path) if True]
     ex = example_map(conn, tid)
     print(f"=== {code} (id={tid}): в PDF {len(pdf)} текстовых фрагментов, в HTML {len(html)} блоков")
     used = set()

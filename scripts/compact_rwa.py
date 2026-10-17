@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pymupdf
 
-TPL = Path('/opt/wolf_v2/data/CLIENT/remote_work_agreement__default')
+TPL = Path('/opt/wolf_v2/data/templates/remote_work_agreement__default')
 SRC = TPL / 'example_filled.pdf'
 BACKUP = TPL / 'example_filled_3pages.pdf'
 
@@ -76,7 +76,7 @@ def main() -> int:
     print('листов теперь:', chk.page_count)
     last_y = 0.0
     for pno, pg in enumerate(chk, 1):
-        ys = [b[3] for b in pg.get_text('CLIENTs')]
+        ys = [b[3] for b in pg.get_text('blocks')]
         print('   лист %d: контент до y=%.0f' % (pno, max(ys) if ys else 0))
     # масштабирование блока подписей — для пересчёта зон
     k = (SIGN_BOTTOM_DST - SIGN_TOP_DST) / (SIGN_BOTTOM_SRC - SIGN_TOP_SRC)

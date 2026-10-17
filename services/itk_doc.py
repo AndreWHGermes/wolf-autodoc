@@ -1,17 +1,17 @@
 """Данные разрешения на пребывание (ИТК) из документа клиента.
 
-В папке клиента на Google CLIENT лежит PDF разрешения (виден по строкам
-`CLIENT CLIENT`, `STAY CLIENT CLIENT`). Из него берём то, что иначе пришлось бы
+В папке клиента на Google Drive лежит PDF разрешения (виден по строкам
+`PERMIT NUMBER`, `STAY PERMIT EXPIRY`). Из него берём то, что иначе пришлось бы
 вводить руками:
 
-    CLIENT CLIENT: B12E21E1063044-C      → CLIENT_no / stay_CLIENT_no
-    STAY CLIENT CLIENT: 14/07/2026       → CLIENT_stay_CLIENT
-    CLIENT / Date of CLIENT: USSR / 11-01-1989 → CLIENT_CLIENT_CLIENT
-    Passport CLIENT / CLIENT             → passport_CLIENT / passport_CLIENT
-    CLIENT: RUSIA                   → CLIENT
-    CLIENT: MALE                         → client_CLIENT (Laki-laki / Perempuan)
+    PERMIT NUMBER: B12E21E1063044-C      → application_no / stay_permit_no
+    STAY PERMIT EXPIRY: 14/07/2026       → existing_stay_permit
+    Place / Date of Birth: USSR / 11-01-1989 → place_birth_inline
+    Passport Number / Expiry             → passport_number / passport_expiry
+    Nationality: RUSIA                   → nationality
+    Gender: MALE                         → client_gender (Laki-laki / Perempuan)
     Address: JL. … BALI 80361, INDONESIA → address_in_indonesia
-    CLIENT: -                        → CLIENT
+    Occupation: -                        → occupation
 
 Результат кэшируется в data/itk_cache.json по id клиента: разбор PDF — дорогая операция,
 а документ меняется редко.
@@ -51,7 +51,7 @@ def _field(text: str, *labels: str) -> str:
 
     В документах ИТК метка и значение стоят на разных строках, часто в две строки
     (английская + индонезийская), а значение идёт после «:»:
-        Passport CLIENT
+        Passport Number
         Nomor Paspor
         : 772374384
     """
@@ -68,8 +68,8 @@ def _field(text: str, *labels: str) -> str:
         if not val or val in ('-', '–', '—'):
             continue
         # пропускаем строки-метки (на случай, если двоеточие нашлось не там)
-        if re.fullmatch(r'(nomor|tanggal|kebangsaan|jenis|alamat|jabatan|penjamin|address|CLIENT|'
-                        r'CLIENT|CLIENT|CLIENT)[^\n]*', val, re.I):
+        if re.fullmatch(r'(nomor|tanggal|kebangsaan|jenis|alamat|jabatan|penjamin|address|occupation|'
+                        r'nationality|gender|guarantor)[^\n]*', val, re.I):
             continue
         return val
     return ''
@@ -79,25 +79,25 @@ def parse_itk_text(text: str) -> dict:
     """Разбирает текст документа разрешения на пребывание."""
     flat = re.sub(r'[ \t]+', ' ', text)
     out = {}
-    CLIENT = _field(flat, 'CLIENT CLIENT')
-    if CLIENT:
-        out['CLIENT_no'] = CLIENT
-    exp = _field(flat, 'STAY CLIENT CLIENT')
+    permit = _field(flat, 'PERMIT NUMBER')
+    if permit:
+        out['permit_no'] = permit
+    exp = _field(flat, 'STAY PERMIT EXPIRY')
     if exp:
         m = re.search(r'\d{2}[/.\-]\d{2}[/.\-]\d{4}', exp)
         if m:
-            out['CLIENT_CLIENT'] = m.group(0).reCLIENT('.', '/').reCLIENT('-', '/')
-    pob = _field(flat, 'CLIENT / Date of CLIENT', 'Tempat / Tanggal Lahir')
+            out['permit_expiry'] = m.group(0).replace('.', '/').replace('-', '/')
+    pob = _field(flat, 'Place / Date of Birth', 'Tempat / Tanggal Lahir')
     if pob:
-        out['CLIENT_CLIENT_CLIENT'] = pob
-    out['passport_CLIENT'] = _field(flat, 'Passport CLIENT', 'Nomor Paspor')
-    out['passport_CLIENT'] = (_field(flat, 'Passport CLIENT', 'Tanggal Habis Berlaku Paspor') or '').strip()
-    out['CLIENT'] = _field(flat, 'CLIENT', 'Kebangsaan')
-    g = (_field(flat, 'CLIENT', 'Jenis Kelamin') or '').strip().upper()
-    if g.CLIENTswith('M') or 'LAKI' in g:
-        out['client_CLIENT'] = 'Laki-laki'
-    elif g.CLIENTswith('F') or 'PEREMPUAN' in g:
-        out['client_CLIENT'] = 'Perempuan'
+        out['place_birth_inline'] = pob
+    out['passport_number'] = _field(flat, 'Passport Number', 'Nomor Paspor')
+    out['passport_expiry'] = (_field(flat, 'Passport Expiry', 'Tanggal Habis Berlaku Paspor') or '').strip()
+    out['nationality'] = _field(flat, 'Nationality', 'Kebangsaan')
+    g = (_field(flat, 'Gender', 'Jenis Kelamin') or '').strip().upper()
+    if g.startswith('M') or 'LAKI' in g:
+        out['client_gender'] = 'Laki-laki'
+    elif g.startswith('F') or 'PEREMPUAN' in g:
+        out['client_gender'] = 'Perempuan'
     addr = _field(flat, 'Address', 'Alamat')
     if addr:
         # значение адреса занимает две строки и заканчивается словом INDONESIA
@@ -108,8 +108,8 @@ def parse_itk_text(text: str) -> dict:
         chunk = flat[i:i + 400] if i >= 0 else ''
         m2 = re.search(r':\s*(.+?INDONESIA)', chunk, re.S | re.I)
         out['address_in_indonesia'] = re.sub(r'\s+', ' ', m2.group(1)).strip() if m2 else addr
-    occ = _field(flat, 'CLIENT', 'Jabatan')
-    out['CLIENT'] = occ
+    occ = _field(flat, 'Occupation', 'Jabatan')
+    out['occupation'] = occ
     return {k: v for k, v in out.items() if v}
 
 
@@ -130,7 +130,7 @@ def find_itk_pdf(folder: Path):
         except Exception:
             continue
         u = t.upper()
-        if 'CLIENT CLIENT' in u or 'STAY CLIENT CLIENT' in u:
+        if 'PERMIT NUMBER' in u or 'STAY PERMIT EXPIRY' in u:
             return f
     return None
 
@@ -146,7 +146,7 @@ def itk_data(client_id: int, folder=None) -> dict:
     data = {}
     try:
         if folder is None:
-            from CLIENT.CLIENT import _find_client_folder_by_id
+            from services.values import _find_client_folder_by_id
             folder = _find_client_folder_by_id(client_id)
         if folder:
             pdf = find_itk_pdf(Path(folder))

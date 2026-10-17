@@ -7,22 +7,22 @@ from pathlib import Path
 
 sys.path.insert(0, '/opt/wolf_v2')
 
-from CLIENT.doc_read import read_text, mrz_text  # noqa: E402
-from CLIENT.doc_parse import parse_passport, parse_mrz, parse_bank_CLIENTment, parse_any  # noqa: E402
-from CLIENT.itk_doc import parse_itk_text  # noqa: E402
+from services.doc_read import read_text, mrz_text  # noqa: E402
+from services.doc_parse import parse_passport, parse_mrz, parse_bank_statement, parse_any  # noqa: E402
+from services.itk_doc import parse_itk_text  # noqa: E402
 
 
 def probe(path: Path) -> None:
     if not path.exists():
         print('  нет файла:', path.name)
         return
-    from scripts.CLIENT_scan import doc_kind_name
+    from scripts.drive_scan import doc_kind_name
     size = path.stat().st_size
     text = read_text(path) or ''
     kind = doc_kind_name(path, text)
     print('=== %s (%d байт, тип=%s) → текста %d симв.' % (path.name[:46], size, kind, len(text)))
     print('   фрагмент:', repr(text[:200]))
-    for name, fn in (('parse_passport', parse_passport), ('parse_bank_CLIENTment', parse_bank_CLIENTment),
+    for name, fn in (('parse_passport', parse_passport), ('parse_bank_statement', parse_bank_statement),
                      ('parse_itk_text', parse_itk_text)):
         try:
             got = fn(text) or {}
@@ -43,7 +43,7 @@ def main() -> None:
         return
     client_id = sys.argv[1]
     needle = sys.argv[2] if len(sys.argv) > 2 else ''
-    folder = Path('/opt/wolf_v2/data/gCLIENT_cache/client_%s' % client_id)
+    folder = Path('/opt/wolf_v2/data/gdrive_cache/client_%s' % client_id)
     if not folder.exists():
         print('нет папки', folder)
         return
