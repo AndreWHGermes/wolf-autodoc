@@ -3801,13 +3801,21 @@ def app_send(app_id: int):
     HTML-форма (обычный POST) получает flash + redirect, окно «Готовые доки»
     (fetch) — JSON со ссылкой на папку. Документы НЕ помечаются отправленными,
     если Диск не принял файлы: иначе в истории появилась бы ложная отправка.
+
+    Каждый запуск логируется в events: 'send_start', 'send_ok', 'send_fail'.
     """
     want_json = request.headers.get("X-Requested-With") == "fetch"
+    actor = (current_user() or {}).get("login", "") or "admin"
     a = apps_repo.get(app_id) or {}
     client = db.client_get(a.get("client_id")) or {}
     drive = (a.get("gdrive_url") or client.get("gdrive_folder_url") or "").strip()
+    db.log_event("application", app_id, "send_start",
+                 actor=actor, payload={"want_json": want_json, "drive": bool(drive)})
 
     def _fail(msg: str):
+        # Каждая ошибка отправки логируется — иначе в логе только успехи.
+        db.log_event("application", app_id, "send_fail",
+                     actor=actor, payload={"msg": msg[:200], "errors": errors[:3] if errors else []})
         if want_json:
             return jsonify({"ok": False, "error": msg, "link": drive}), 200
         flash(msg, "error")
@@ -3960,6 +3968,9 @@ def app_send(app_id: int):
         notify_manager_done(app_id, folder_link)
     except Exception as exc:                            # noqa: BLE001
         current_app.logger.warning("notify_manager_done failed: %s", exc)
+    db.log_event("application", app_id, "send_ok",
+                 actor=actor, payload={"uploaded": uploaded, "link": folder_link,
+                                       "errors": errors[:3] if errors else []})
     if want_json:
         return jsonify({"ok": True, "uploaded": uploaded, "link": folder_link,
                         "hint": "Документы отправлены на Google Диск"}), 200
