@@ -396,14 +396,37 @@ def _run(c, app_id: int):
     c.execute("UPDATE drive_scans SET status='running', docs_total=? WHERE id=?", (len(docs), scan_id))
     c.commit()
     results, ok = [], 0
+    from services import app_steps as _stp_drive
     for i, f in enumerate(docs, 1):
         try:
             r = extract(f)
             results.append(r)
             if r.get('found'):
                 ok += 1
+            # Журнал: по строке на каждый файл клиента
+            try:
+                _kind = (r.get('doc_type') or 'other')
+                _name = f.name
+                if r.get('_skipped'):
+                    _stp_drive.step(app_id, 'read_drive', 'skip',
+                                    f"⏭ {_name}: {_kind} — отброшен (старая ИТК)")
+                elif r.get('found'):
+                    _found_short = (r['found'][:120] + '…') if len(r['found']) > 120 else r['found']
+                    _stp_drive.step(app_id, 'read_drive', 'ok',
+                                    f"📄 {_name} ({_kind}): {_found_short}")
+                else:
+                    _err = r.get('error') or r.get('note') or 'нет ответа'
+                    _stp_drive.step(app_id, 'read_drive', 'warn',
+                                    f"⚠ {_name} ({_kind}): {_err[:120]}")
+            except Exception:
+                pass
         except Exception as e:
             results.append({'file': f.name, 'error': str(e)[:200]})
+            try:
+                _stp_drive.step(app_id, 'read_drive', 'fail',
+                                f"❌ {f.name}: {str(e)[:120]}")
+            except Exception:
+                pass
         c.execute('UPDATE drive_scans SET docs_done=?, payload=? WHERE id=?',
                   (ok, json.dumps(results, ensure_ascii=False), scan_id))
         c.commit()

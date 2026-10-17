@@ -830,6 +830,14 @@ def check_package(app_id: int, with_drive: bool = True):
         return {"ok": False, "summary": summary, "rework": rework}, finds
     warns = [f for f in finds if f["level"] == "WARN"]
     summary = "Проверка пакета пройдена." + (" Предупреждений: %d." % len(warns) if warns else "")
+    # Журнал: фиксируем проверку пакета отдельной строкой
+    try:
+        from services import app_steps as _stp
+        _stp.step(app_id, 'pack', 'ok' if not blocks else 'warn',
+                  ("%d блокирующих, %d предупреждений" % (len(blocks), len(warns)))
+                  + (". Вернуть на переработку: " + ", ".join(rework) if rework else ""))
+    except Exception:
+        pass
     return {"ok": True, "summary": summary, "rework": []}, finds
 
 

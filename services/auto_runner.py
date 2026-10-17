@@ -316,12 +316,26 @@ def run(app_id: int) -> dict:
         _c_v = sqlite3.connect(str(DB), timeout=60)
         _c_v.row_factory = sqlite3.Row
         _ok_v = 0
-        for _d in _c_v.execute("SELECT id, pdf_path FROM application_documents "
+        # Журнал: по строке на каждый документ — админ видит работу с каждым
+        for _d in _c_v.execute("SELECT id, pdf_path, template_id FROM application_documents "
                                "WHERE application_id=? AND status IN ('draft','filled','pending')", (app_id,)).fetchall():
             _pp = _d['pdf_path'] or ''
             if _pp and Path(_pp).exists() and Path(_pp).stat().st_size > 2000:
                 _c_v.execute("UPDATE application_documents SET status='verified' WHERE id=?", (_d['id'],))
                 _ok_v += 1
+                # Достаём имя шаблона для понятного лога
+                try:
+                    _tname = _c_v.execute("SELECT code, title FROM templates WHERE id=?",
+                                          (_d['template_id'],)).fetchone()
+                    _tlabel = (_tname['title'] or _tname['code']) if _tname else f"slot #{_d['id']}"
+                except Exception:
+                    _tlabel = f"slot #{_d['id']}"
+                try:
+                    from services import app_steps as _st_per
+                    _st_per.step(app_id, 'verify_docs', 'ok',
+                                 f"✓ {_tlabel} → verified (PDF {_pp.split('/')[-1]})")
+                except Exception:
+                    pass
         _c_v.commit(); _c_v.close()
         if _ok_v:
             _st.step(app_id, 'verify_docs', 'ok',

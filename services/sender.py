@@ -194,6 +194,13 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
 
     from services import gdrive_write
 
+    # Журнал: фиксируем сборку комплекта перед отправкой
+    try:
+        from services import app_steps as _stp
+        _stp.step(app_id, 'collect', 'ok', 'комплект из %d файлов собран в data/out/%d/' % (len(files), app_id))
+    except Exception:
+        pass
+
     uploaded, errors = [], []
     try:
         sub_name = _folder_name(app_id, a, client)
@@ -261,7 +268,20 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
 
     if errors or not uploaded:
         res['error'] = 'Google Диск не принял файлы: ' + '; '.join(errors[:2])[:200]
+        # Журнал: ошибка отправки
+        try:
+            from services import app_steps as _stp
+            _stp.step(app_id, 'upload', 'fail', res['error'][:200])
+        except Exception:
+            pass
         return res
+
+    # Журнал: фиксируем успешную отправку
+    try:
+        from services import app_steps as _stp
+        _stp.step(app_id, 'upload', 'ok', 'отправлено %d файлов в %s' % (len(uploaded), sub_name))
+    except Exception:
+        pass
 
     # Помечаем отправленным только после фактической загрузки.
     try:
@@ -276,6 +296,12 @@ def send_package(app_id: int, notify: bool = True, dry: bool = False) -> dict:
         con.execute("UPDATE applications SET status='sent', sent_at=datetime('now'), "
                     "record_kind='archive' WHERE id=?", (app_id,))
         con.commit()
+        # Журнал: перевод в архив
+        try:
+            from services import app_steps as _stp
+            _stp.step(app_id, 'archive', 'ok', 'заявка переведена в архив (record_kind=archive)')
+        except Exception:
+            pass
         con.close()
     except Exception as e:      # noqa: BLE001
         res['stops'].append('статусы не обновлены: %s' % str(e)[:100])

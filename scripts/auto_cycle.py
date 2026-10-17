@@ -230,6 +230,7 @@ with app.app_context():
 
     print()
     _stage_begin("шаг 1: пересборка HTML и PDF")
+    from services import app_steps as _st_fill
     for d in work:
         try:
             # каркас собираем заново: старый несёт значения прошлой сборки
@@ -260,15 +261,34 @@ with app.app_context():
                           (row[0],))
                 c.commit()
                 c.close()
+            # Журнал: начали собирать конкретный документ
+            try:
+                _st_fill.step(APP_ID, 'fill', 'run',
+                              f"📝 {d['code']}: рендер HTML → PDF")
+            except Exception:
+                pass
             with app.test_request_context("/"):
                 from flask import session
                 session["user_id"] = 1
                 res = page.app_doc_ensure_pdf(APP_ID, d["template_id"])
                 body = res.get_data(as_text=True) if hasattr(res, "get_data") else str(res)
                 m = re.search(r'"pdf_name"\s*:\s*"([^"]+)"', body)
-                print("   %-42s -> %s" % (d["code"], (m.group(1) if m else body[:60])))
+                pdf_name = (m.group(1) if m else body[:60])
+                print("   %-42s -> %s" % (d["code"], pdf_name))
+                # Журнал: документ собран, пишем факт
+                try:
+                    _st_fill.step(APP_ID, 'fill', 'ok',
+                                  f"✓ {d['code']} → {pdf_name}")
+                except Exception:
+                    pass
         except Exception as exc:
             print("   ошибка %s: %s" % (d["code"], str(exc)[:110]))
+            # Журнал: ошибка по конкретному документу
+            try:
+                _st_fill.step(APP_ID, 'fill', 'fail',
+                              f"✗ {d['code']}: {str(exc)[:120]}")
+            except Exception:
+                pass
 
     _stage_end("собрано %d документов" % len(work))
 
